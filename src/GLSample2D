@@ -1,0 +1,87 @@
+#include <GLES2/gl2.h>
+#include <EGL/egl.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+// Function to load BMP file
+unsigned char* loadBMP(const char* filename, int* width, int* height) {
+    FILE* file = fopen(filename, "rb");
+    if (!file) {
+        printf("Error: Unable to open file %s\n", filename);
+        return NULL;
+    }
+
+    unsigned char header[54];
+    fread(header, sizeof(unsigned char), 54, file);
+
+    *width = *(int*)&header[18];
+    *height = *(int*)&header[22];
+
+    int imageSize = 3 * (*width) * (*height);
+    unsigned char* data = (unsigned char*)malloc(imageSize);
+    fread(data, sizeof(unsigned char), imageSize, file);
+    fclose(file);
+
+    return data;
+}
+
+int main(int argc, char** argv) {
+    // Initialize EGL
+    EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    eglInitialize(display, NULL, NULL);
+
+    EGLint configAttribs[] = {
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_NONE
+    };
+    EGLConfig config;
+    EGLint numConfigs;
+    eglChooseConfig(display, configAttribs, &config, 1, &numConfigs);
+
+    EGLint contextAttribs[] = {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+        EGL_NONE
+    };
+    EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
+
+    EGLSurface surface = eglCreateWindowSurface(display, config, NULL, NULL);
+    eglMakeCurrent(display, surface, surface, context);
+
+    // Load BMP image
+    int width, height;
+    unsigned char* imageData = loadBMP("image.bmp", &width, &height);
+
+    // Create texture
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, imageData);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Main loop
+    while (1) {
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Draw texture
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glBegin(GL_QUADS);
+        glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0f, -1.0f);
+        glTexCoord2f(1.0f, 0.0f); glVertex2f(1.0f, -1.0f);
+        glTexCoord2f(1.0f, 1.0f); glVertex2f(1.0f, 1.0f);
+        glTexCoord2f(0.0f, 1.0f); glVertex2f(-1.0f, 1.0f);
+        glEnd();
+
+        eglSwapBuffers(display, surface);
+    }
+
+    // Cleanup
+    free(imageData);
+    eglDestroySurface(display, surface);
+    eglDestroyContext(display, context);
+    eglTerminate(display);
+
+    return 0;
+}
