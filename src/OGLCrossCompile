@@ -1,0 +1,158 @@
+Useful Github Prompts
+how can I cross compile on OGL ES app for raspberry pi 5 in 64 bit windows? Give me a full example with header and library setup
+
+Sure! Here's a step-by-step guide to cross-compile an OpenGL ES application for your Raspberry Pi 5 on a Windows PC:
+
+Step 1: Set Up Your Development Environment
+Install the ARM GNU Toolchain:
+
+Download the ARM GNU Toolchain for AArch64 GNU/Linux target from the ARM Developer website.
+
+Install the toolchain by running the downloaded executable (arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-aarch64-none-linux-gnu.exe).
+
+Install Visual Studio Code:
+
+Download and install Visual Studio Code (VS Code) on your Windows PC.
+
+Install the Remote - SSH extension in VS Code.
+
+Step 2: Write Your OpenGL ES Application
+Create a New File:
+
+Open VS Code and create a new file named main.cpp.
+
+Write the Code:
+
+Copy and paste the following OpenGL ES code into main.cpp:
+
+cpp
+#include <EGL/egl.h>
+#include <GLES2/gl2.h>
+#include <iostream>
+
+int main() {
+    // Initialize EGL
+    EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    eglInitialize(display, nullptr, nullptr);
+
+    // Choose an EGL config
+    EGLConfig config;
+    EGLint numConfigs;
+    EGLint configAttribs[] = {
+        EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+        EGL_BLUE_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_RED_SIZE, 8,
+        EGL_DEPTH_SIZE, 8,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_NONE
+    };
+    eglChooseConfig(display, configAttribs, &config, 1, &numConfigs);
+
+    // Create an EGL context
+    EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
+    EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
+
+    // Create an EGL surface
+    EGLint surfaceAttribs[] = { EGL_WIDTH, 640, EGL_HEIGHT, 480, EGL_NONE };
+    EGLSurface surface = eglCreatePbufferSurface(display, config, surfaceAttribs);
+
+    // Make the context current
+    eglMakeCurrent(display, surface, surface, context);
+
+    // Clear the screen
+    glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Swap buffers
+    eglSwapBuffers(display, surface);
+
+    // Terminate EGL
+    eglDestroySurface(display, surface);
+    eglDestroyContext(display, context);
+    eglTerminate(display);
+
+    std::cout << "OpenGL ES application ran successfully!" << std::endl;
+    return 0;
+}
+Save the File.
+
+Step 3: Set Up OpenGL ES Headers and Libraries
+Download OpenGL ES Headers:
+
+Download the OpenGL ES headers from the Khronos Group.
+
+Extract the headers to a directory, for example, C:\OpenGL-ES-Headers.
+
+Set Up OpenGL ES Libraries:
+
+On your Raspberry Pi, install the OpenGL ES libraries:
+
+sh
+sudo apt-get update
+sudo apt-get install -y libgles2-mesa-dev
+Copy the libraries from your Raspberry Pi to your Windows PC. You can find them in /usr/lib/arm-linux-gnueabihf/ and /opt/vc/lib/.
+
+Step 4: Cross-Compile the Application
+Open a Terminal in VS Code:
+
+Navigate to the directory where you saved main.cpp.
+
+Compile the Code:
+
+Use the following command to compile your program:
+
+sh
+aarch64-none-linux-gnu-g++.exe -I C:\OpenGL-ES-Headers -L path/to/libraries -o main main.cpp -lGLESv2 -lEGL
+Replace path/to/libraries with the path to the OpenGL ES libraries you copied from your Raspberry Pi.
+
+Step 5: Transfer and Run the Application on Raspberry Pi
+Transfer the Compiled Program:
+
+Use SCP or another method to transfer the compiled program (main) to your Raspberry Pi.
+
+Run the Program:
+
+Execute the following commands on your Raspberry Pi:
+
+sh
+chmod +x main
+./main
+This setup should allow you to cross-compile and run an OpenGL ES application for your Raspberry Pi 5 from your Windows PC.
+
+If you need further assistance or run into any issues, feel free to ask!
+
+To develop OpenGL ES 3.1 applications, you'll need several libraries. Here are the key ones:
+
+1. **libGLESv2**: This library provides the core OpenGL ES 2.0 and 3.1 functionality.
+2. **libEGL**: This library is used for creating and managing OpenGL ES contexts and surfaces.
+3. **libGL**: This library provides the core OpenGL functionality, which is sometimes needed for compatibility.
+4. **libGLU**: This library provides the OpenGL Utility Library, which includes higher-level drawing routines.
+5. **libglut**: This library provides the OpenGL Utility Toolkit, which is useful for creating windows and handling input.
+
+On your Raspberry Pi, you can install these libraries using the following command:
+```sh
+sudo apt-get install -y libgles2-mesa-dev libegl1-mesa-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev
+```
+
+This command will install the necessary development files for OpenGL ES 3.1, EGL, and other related libraries.
+
+To develop OpenGL ES 3.1 applications, you'll need several libraries. Here are the key ones:
+
+libGLESv2: This library provides the core OpenGL ES 2.0 and 3.1 functionality.
+
+libEGL: This library is used for creating and managing OpenGL ES contexts and surfaces.
+
+libGL: This library provides the core OpenGL functionality, which is sometimes needed for compatibility.
+
+libGLU: This library provides the OpenGL Utility Library, which includes higher-level drawing routines.
+
+libglut: This library provides the OpenGL Utility Toolkit, which is useful for creating windows and handling input.
+
+On your Raspberry Pi, you can install these libraries using the following command:
+
+sh
+sudo apt-get install -y libgles2-mesa-dev libegl1-mesa-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev
+This command will install the necessary development files for OpenGL ES 3.1, EGL, and other related libraries.
+
+If you need further assistance or have any other questions, feel free to ask!
