@@ -1,5 +1,5 @@
-#include <GLES2/gl2.h>
-#include <EGL/egl.h>
+#include "include_ogl/gl31.h"
+#include "include_ogl/egl.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
     GLuint texture;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, imageData);
+//    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, imageData);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -67,12 +67,12 @@ int main(int argc, char** argv) {
         // Draw texture
         glEnable(GL_TEXTURE_2D);
         glBindTexture(GL_TEXTURE_2D, texture);
-        glBegin(GL_QUADS);
-        glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0f, -1.0f);
-        glTexCoord2f(1.0f, 0.0f); glVertex2f(1.0f, -1.0f);
-        glTexCoord2f(1.0f, 1.0f); glVertex2f(1.0f, 1.0f);
-        glTexCoord2f(0.0f, 1.0f); glVertex2f(-1.0f, 1.0f);
-        glEnd();
+//        glBegin(GL_QUADS);
+//        glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0f, -1.0f);
+//        glTexCoord2f(1.0f, 0.0f); glVertex2f(1.0f, -1.0f);
+//        glTexCoord2f(1.0f, 1.0f); glVertex2f(1.0f, 1.0f);
+//        glTexCoord2f(0.0f, 1.0f); glVertex2f(-1.0f, 1.0f);
+//        glEnd();
 
         eglSwapBuffers(display, surface);
     }

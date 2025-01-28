@@ -1,5 +1,5 @@
-#include <GLES2/gl2.h>
-#include <EGL/egl.h>
+#include "include_ogl/gl31.h"
+#include "include_ogl/egl.h"
 #include <stdio.h>
 #include <stdlib.h>
 

@@ -1,0 +1,12 @@
+{
+    "configurations": [
+      {
+        "name": "Win32",
+        "includePath": [
+          "${workspaceFolder}/src/include_ogl",
+          "${workspaceFolder}/**"
+        ]
+      }
+    ],
+    "version": 4
+  }  
