@@ -1,2 +1,4 @@
-# Ignore the build directory, don't want to commmit it
+# Ignore the build directory and Angle libs, don't want to commmit it
 winbuild/
+src/lib_ogl/libEGL.dll.lib
+src/lib_ogl/libGLESv2.dll.lib

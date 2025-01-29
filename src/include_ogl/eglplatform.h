@@ -62,13 +62,13 @@ typedef void *EGLNativeWindowType;
 
 typedef HDC     EGLNativeDisplayType;
 typedef HBITMAP EGLNativePixmapType;
+
+#if !defined(WINAPI_FAMILY) || (WINAPI_FAMILY == WINAPI_FAMILY_DESKTOP_APP) /* Windows Desktop */
 typedef HWND    EGLNativeWindowType;
-
-#elif defined(__QNX__)
-
-typedef khronos_uintptr_t      EGLNativeDisplayType;
-typedef struct _screen_pixmap* EGLNativePixmapType;  /* screen_pixmap_t */
-typedef struct _screen_window* EGLNativeWindowType;  /* screen_window_t */
+#else /* Windows Store */
+#include <inspectable.h>
+typedef IInspectable* EGLNativeWindowType;
+#endif
 
 #elif defined(__EMSCRIPTEN__)
 
@@ -144,6 +144,12 @@ typedef khronos_uintptr_t  EGLNativeWindowType;
 typedef void              *EGLNativeDisplayType;
 typedef khronos_uintptr_t  EGLNativePixmapType;
 typedef khronos_uintptr_t  EGLNativeWindowType;
+
+#elif defined(__QNX__)
+
+typedef khronos_uintptr_t      EGLNativeDisplayType;
+typedef struct _screen_pixmap* EGLNativePixmapType;  /* screen_pixmap_t */
+typedef struct _screen_window* EGLNativeWindowType;  /* screen_window_t */
 
 #else
 #error "Platform not recognized"
