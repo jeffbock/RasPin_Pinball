@@ -85,6 +85,7 @@ int main(int argc, char const *argv[])
             DispatchMessage(&msg);
         }
 
+        // Just flip the screen back and forth between black and white
         glViewport(0, 0, 640, 480);
         if (!isBlack) {
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
