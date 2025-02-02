@@ -11,6 +11,7 @@
 // Windows specific includes
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include "PBWinRender.h"
 
 #else
 #define EXE_MODE_RASPI
@@ -24,5 +25,10 @@
 #include "include_ogl/gl31.h"
 #include "schrift.h"
 #include <stdio.h>
+
+#define PB_SCREENWIDTH 640
+#define PB_SCREENHEIGHT 480
+
+bool PBInitRender (LONG width, LONG height);
 
 #endif // PInball_h

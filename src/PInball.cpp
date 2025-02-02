@@ -1,8 +1,34 @@
 // Main entry point into the pinball .exe
 #include "PInball.h"
 
+// Special startup code depending on the platform
+#ifdef EXE_MODE_WINDOWS
+#include "PBWinRender.h"
+
+HWND g_WHND = NULL;
+
+bool PBInitRender (LONG width, LONG height) {
+
+g_WHND = PBInitWinRender (width, height);
+
+if (g_WHND != NULL) return true;
+else return false;
+
+}
+#endif
+
+#ifdef EXE_MODE_RASPI
+bool PBInitRender (LONG width, LONG height) {
+
+return true;
+
+}
+#endif
+
 int main(int argc, char const *argv[])
 {
+    if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
+
     // create a new instance of the pinball class
     //PInball pinball;
 
