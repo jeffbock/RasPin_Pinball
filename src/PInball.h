@@ -24,11 +24,24 @@
 #include "include_ogl/egl.h"
 #include "include_ogl/gl31.h"
 #include "schrift.h"
+#include "PBOGLES.h"
+#include <iostream>
 #include <stdio.h>
 
-#define PB_SCREENWIDTH 640
+// This must be set to whatever actual screen size is being use for Rasbeery Pi
+#define PB_SCREENWIDTH 800
 #define PB_SCREENHEIGHT 480
 
-bool PBInitRender (LONG width, LONG height);
+bool PBInitRender (long width, long height);
+
+// Make new class named PBGame that inheritis from PBOGLES with just essential functions
+class PBEngine : public PBOGLES {
+public:
+    PBEngine();
+    ~PBEngine();
+    // bool init (long width, long height, NativeWindowType nativeWindow);
+    // bool clear (long color, bool doFlip);
+    // void run();
+};
 
 #endif // PInball_h

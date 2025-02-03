@@ -1,33 +1,99 @@
 // Main entry point into the pinball .exe
 #include "PInball.h"
 
-// Special startup code depending on the platform
+ // Global pinball engine object
+PBEngine g_PBEngine;
+
+// Special startup code depending on the platform - add more as needed
+// PBInitRender: Intialize the specific window / rendering needed for the platform
+// PBProcessInput: Process input for the specifc platform (simulator will need to get input from keystrokes)
+
+// Windows startup and render code
 #ifdef EXE_MODE_WINDOWS
 #include "PBWinRender.h"
 
 HWND g_WHND = NULL;
 
-bool PBInitRender (LONG width, LONG height) {
+// Init the render system for Windows
+bool PBInitRender (long width, long height) {
 
 g_WHND = PBInitWinRender (width, height);
+if (g_WHND == NULL) return (false);
 
-if (g_WHND != NULL) return true;
-else return false;
+// For windows, OGLNativeWindows type is HWND
+if (!g_PBEngine.gfxInit (width, height, g_WHND)) return (false);
 
+return (true);
 }
+
+// Process input for Windows
+// Returns true as long as the application should continue running
+// This will be need to be expanding to take input for the windows simluator
+bool PBProcessInput() {
+
+    MSG msg;
+    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+        if (msg.message == WM_QUIT) return (false);
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    
+    return (true);
+}
+
 #endif
 
+// Raspeberry Pi startup and render code
 #ifdef EXE_MODE_RASPI
-bool PBInitRender (LONG width, LONG height) {
+#include "PBRasPiRender.h"
+bool PBInitRender (long width, long height) {
 
 return true;
 
 }
 #endif
 
+// End the platform specific code and functions
+
+// Class functions for PBEngine
+ PBEngine::PBEngine() {
+
+    // Code later...
+
+ }
+
+ PBEngine::~PBEngine(){
+
+    // Code later...
+
+ }
+
+// Main program start
 int main(int argc, char const *argv[])
 {
+    bool isBlack = true;
+    
+    // Initialize the platform specific render system
     if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
+
+
+
+    while (true) {
+        if (!PBProcessInput()) return (0);
+
+        // Just flip the screen back and forth between black and white
+        // This eventually becomes a render function....
+    
+        if (!isBlack) {
+            g_PBEngine.gfxClear (OGLES_BLACKCOLOR, true);
+            isBlack = true;
+        } else {
+            g_PBEngine.gfxClear (OGLES_WHITECOLOR, true);
+            isBlack = false;
+        }
+        
+        Sleep(500); // Sleep to limit the frame rate to ~60 FPS
+    }
 
     // create a new instance of the pinball class
     //PInball pinball;

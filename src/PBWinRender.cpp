@@ -1,7 +1,7 @@
 
 #include "PBWinRender.h"
 
-HWND PBInitWinRender (LONG width, LONG height) {
+HWND PBInitWinRender (long width, long height) {
 
     HWND hwnd = NULL;
 
@@ -15,7 +15,7 @@ HWND PBInitWinRender (LONG width, LONG height) {
     AdjustWindowRect( &rect, WS_OVERLAPPEDWINDOW, FALSE);
 
     hwnd = CreateWindow(
-        wc.lpszClassName, TEXT("PInball"), WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        wc.lpszClassName, TEXT("PInball Simulator"), WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_VISIBLE,
         CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top,
         nullptr, nullptr, wc.hInstance, nullptr);
 

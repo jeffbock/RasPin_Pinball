@@ -5,6 +5,6 @@
 #ifndef PBWinRender_h
 #define PBWinRender_h
 
-HWND PBInitWinRender (LONG width, LONG height);
+HWND PBInitWinRender (long width, long height);
 
 #endif // PBWinRender_h

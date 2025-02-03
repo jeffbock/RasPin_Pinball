@@ -1,9 +1,7 @@
 This file tracks the various items to do in the pinball project in rough priority
 
-Create basic window display for testing in windows - connect it to OGL and figure out why back buffer flipping isn't working
-Create basic windows message / input loop
 Create basic OGL ES sprite library to load bitmaps / textures w/ transparency and render them
-  - Start with standard rects, but could expand to more comprehensive sprite rendering, animation, etc...
+- Start with standard rects, but could expand to more comprehensive sprite rendering, animation, etc...
 Use the font library to create the text textures (probably should store them off rather than glyph render them continuously)
     -  Fix / align schrift code / headers to windows and PiOS
     -  Need a strategy here.. pre-render and load as textures?  Or just dynamically do it in the app? dynamically is better as a framework
