@@ -3,6 +3,6 @@
 #ifndef PBRasPiRender_h
 #define PBRasPiRender_h
 
-bool PBInitWinRender (long width, long height);
+bool PBInitPiRender (long width, long height);
 
 #endif // PBRasPiRender_h

@@ -1,7 +1,7 @@
 
 #include "PBRasPiRender.h"
 
-bool PBInitWinRender (long width, long height) {
+bool PBInitPiRender (long width, long height) {
 
     return (true);
 }

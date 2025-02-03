@@ -32,6 +32,7 @@ private:
     EGLContext m_context;
     EGLSurface m_surface;
 
+    void gfxRenderQuad ();
     void cleanup();
 };
 

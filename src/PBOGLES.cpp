@@ -124,3 +124,8 @@ bool PBOGLES::gfxClear(long color, bool doFlip) {
 
         return (true);
 }
+
+// Renderig a quad to the back buffer 
+void gfxRenderQuad (){
+
+}
