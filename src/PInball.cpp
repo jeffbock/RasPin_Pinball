@@ -76,8 +76,6 @@ int main(int argc, char const *argv[])
     // Initialize the platform specific render system
     if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
 
-
-
     while (true) {
         if (!PBProcessInput()) return (0);
 
@@ -85,13 +83,17 @@ int main(int argc, char const *argv[])
         // This eventually becomes a render function....
     
         if (!isBlack) {
-            g_PBEngine.gfxClear (OGLES_BLACKCOLOR, true);
+            g_PBEngine.gfxClear (OGLES_BLACKCOLOR, false);
             isBlack = true;
         } else {
-            g_PBEngine.gfxClear (OGLES_WHITECOLOR, true);
+            g_PBEngine.gfxClear (OGLES_WHITECOLOR, false);
             isBlack = false;
         }
-        
+
+        g_PBEngine.gfxRenderQuad();
+
+        g_PBEngine.gfxSwap();
+
         Sleep(500); // Sleep to limit the frame rate to ~60 FPS
     }
 

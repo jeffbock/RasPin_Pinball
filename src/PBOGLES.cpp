@@ -11,17 +11,18 @@ PBOGLES::PBOGLES() {
     m_display = EGL_NO_DISPLAY;
     m_context = EGL_NO_CONTEXT;
     m_surface = EGL_NO_SURFACE;
-
+    m_shaderProgram = 0;
+    m_texture = 0;
 }
 
 PBOGLES::~PBOGLES() {
 
     // Clean up the EGL context
-    cleanup();
+    gfxCleanup();
 }
 
 // Clean up the EGL / OGL context
-void PBOGLES::cleanup() {
+void PBOGLES::gfxCleanup() {
     if (m_display != EGL_NO_DISPLAY) {
         eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
         if (m_surface != EGL_NO_SURFACE) {
@@ -101,6 +102,13 @@ bool PBOGLES::gfxInit(long width, long height, NativeWindowType nativeWindow) {
         return false;
     }
 
+    // Compile the quad shader for the sprite system
+    m_shaderProgram = gfxCreateProgram(vertexShaderSource, fragmentShaderSource);
+    glUseProgram(m_shaderProgram);
+
+    // Load the test texture - this will get moved...
+    gfxLoadBMPTexture("resources/textures/godzilla.bmp");
+
     // St the internal variables and reflect that the basic rendering engine has been intialized
     m_width = width;
     m_height = height;
@@ -119,13 +127,120 @@ bool PBOGLES::gfxClear(long color, bool doFlip) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         if (doFlip) {
-            if (eglSwapBuffers(m_display, m_surface) != EGL_TRUE) return (false);
+            if (gfxSwap() == false) return (false);
         }
 
         return (true);
 }
 
-// Renderig a quad to the back buffer 
-void gfxRenderQuad (){
+// Clear the back buffer with option to flip
+bool PBOGLES::gfxSwap(){
 
+    if (eglSwapBuffers(m_display, m_surface) != EGL_TRUE) return (false);
+    return (true);
+}
+
+// Function to compile shader
+GLuint PBOGLES::gfxCompileShader(GLenum type, const char* source) {
+    GLuint shader = glCreateShader(type);
+    glShaderSource(shader, 1, &source, nullptr);
+    glCompileShader(shader);
+    return shader;
+}
+
+// Function to create shader program
+GLuint PBOGLES::gfxCreateProgram(const char* vertexSource, const char* fragmentSource) {
+    GLuint vertexShader = gfxCompileShader(GL_VERTEX_SHADER, vertexSource);
+    GLuint fragmentShader = gfxCompileShader(GL_FRAGMENT_SHADER, fragmentSource);
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragmentShader);
+    glLinkProgram(program);
+    return program;
+}
+
+// Renderig a quad to the back buffer 
+void PBOGLES::gfxRenderQuad (){
+
+    // Define the quad vertices, colors, and texture coordinates
+    GLfloat vertices[] = {
+    // Pos (3 XYZ)      // Colors (4 RGB)       // Texture Coords
+    -0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, // Top-left
+    -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, // Bottom-left
+     0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, // Bottom-right
+     0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f  // Top-right
+    };
+
+    // Define the indices for the quad
+    GLushort indices[] = {
+        0, 1, 2,
+        0, 2, 3
+    };
+
+     // Get the attribute locations, enable them
+    GLint posAttrib = glGetAttribLocation(m_shaderProgram, "vPosition");
+    glEnableVertexAttribArray(posAttrib);
+    GLint colorAttrib = glGetAttribLocation(m_shaderProgram, "vColor");
+    glEnableVertexAttribArray(colorAttrib);
+    GLint texCoordAttrib = glGetAttribLocation(m_shaderProgram, "vTexCoord");
+    glEnableVertexAttribArray(texCoordAttrib);
+
+    // Specify how the data for each attribute is retrieved from the array
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), vertices);
+    glVertexAttribPointer(colorAttrib, 4, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), vertices + 3);
+    glVertexAttribPointer(texCoordAttrib, 2, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), vertices + 7);
+
+    // Get the uniform location for the alpha value
+    GLint alphaUniform = glGetUniformLocation(m_shaderProgram, "uAlpha");
+    glUniform1f(alphaUniform, 1.0f);
+
+     // Draw the quad
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
+}
+
+// Function to load a BMP image and place it a texture
+bool PBOGLES::gfxLoadBMPTexture(const char* filename) {
+    std::ifstream file(filename, std::ios::binary);
+    if (!file) {
+        // Fix this error output l
+        std::cout << "Error: Unable to open file " << filename << std::endl;
+        return false;
+    }
+
+     int width, height;
+
+    // Go throught the bitmap header to the width and height
+    file.seekg(18);
+
+    file.read(reinterpret_cast<char*>(&width), 4);
+    file.read(reinterpret_cast<char*>(&height), 4);
+
+    // Calculate the size for data of the bitmap
+    int size = 3 * (width) * (height);
+    unsigned char* data = new unsigned char[size];
+    unsigned char* rgbData = new unsigned char[size];
+   
+    // Go to the image data and put it in the data array
+    file.seekg(54);
+    file.read(reinterpret_cast<char*>(data), size);
+    file.close();
+
+    // Convert BGR to RGB for bitmaps
+    for (int i = 0; i < size; i += 3) {
+        rgbData[i] = data[i + 2];
+        rgbData[i + 1] = data[i + 1];
+        rgbData[i + 2] = data[i];
+    }
+
+    delete[] data;
+
+    // TODO:  The texture data needs to be part of a different structure so that it can be managed
+
+    glGenTextures(1, &m_texture);
+    glBindTexture(GL_TEXTURE_2D, m_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbData);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    return true;
 }
