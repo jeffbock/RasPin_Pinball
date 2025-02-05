@@ -18,11 +18,11 @@ PBOGLES::PBOGLES() {
 PBOGLES::~PBOGLES() {
 
     // Clean up the EGL context
-    gfxCleanup();
+    oglCleanup();
 }
 
 // Clean up the EGL / OGL context
-void PBOGLES::gfxCleanup() {
+void PBOGLES::oglCleanup() {
     if (m_display != EGL_NO_DISPLAY) {
         eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
         if (m_surface != EGL_NO_SURFACE) {
@@ -38,7 +38,7 @@ void PBOGLES::gfxCleanup() {
     }
 }
 
-bool PBOGLES::gfxInit(long width, long height, NativeWindowType nativeWindow) {
+bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
 
     // Start the EGL init process
     // These error messages might not show up if we are running on the RasPi
@@ -103,11 +103,11 @@ bool PBOGLES::gfxInit(long width, long height, NativeWindowType nativeWindow) {
     }
 
     // Compile the quad shader for the sprite system
-    m_shaderProgram = gfxCreateProgram(vertexShaderSource, fragmentShaderSource);
+    m_shaderProgram = oglCreateProgram(vertexShaderSource, fragmentShaderSource);
     glUseProgram(m_shaderProgram);
 
     // Load the test texture - this will get moved...
-    gfxLoadBMPTexture("resources/textures/godzilla.bmp");
+    oglLoadBMPTexture("resources/textures/godzilla.bmp");
 
     // St the internal variables and reflect that the basic rendering engine has been intialized
     m_width = width;
@@ -117,7 +117,7 @@ bool PBOGLES::gfxInit(long width, long height, NativeWindowType nativeWindow) {
 }
 
 // Clear the back buffere with option to flip
-bool PBOGLES::gfxClear(long color, bool doFlip) {
+bool PBOGLES::oglClear(long color, bool doFlip) {
 
         glViewport(0, 0, m_width, m_height);
         if (color == OGLES_BLACKCOLOR) glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -127,21 +127,21 @@ bool PBOGLES::gfxClear(long color, bool doFlip) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         if (doFlip) {
-            if (gfxSwap() == false) return (false);
+            if (oglSwap() == false) return (false);
         }
 
         return (true);
 }
 
 // Clear the back buffer with option to flip
-bool PBOGLES::gfxSwap(){
+bool PBOGLES::oglSwap(){
 
     if (eglSwapBuffers(m_display, m_surface) != EGL_TRUE) return (false);
     return (true);
 }
 
 // Function to compile shader
-GLuint PBOGLES::gfxCompileShader(GLenum type, const char* source) {
+GLuint PBOGLES::oglCompileShader(GLenum type, const char* source) {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, nullptr);
     glCompileShader(shader);
@@ -149,9 +149,9 @@ GLuint PBOGLES::gfxCompileShader(GLenum type, const char* source) {
 }
 
 // Function to create shader program
-GLuint PBOGLES::gfxCreateProgram(const char* vertexSource, const char* fragmentSource) {
-    GLuint vertexShader = gfxCompileShader(GL_VERTEX_SHADER, vertexSource);
-    GLuint fragmentShader = gfxCompileShader(GL_FRAGMENT_SHADER, fragmentSource);
+GLuint PBOGLES::oglCreateProgram(const char* vertexSource, const char* fragmentSource) {
+    GLuint vertexShader = oglCompileShader(GL_VERTEX_SHADER, vertexSource);
+    GLuint fragmentShader = oglCompileShader(GL_FRAGMENT_SHADER, fragmentSource);
     GLuint program = glCreateProgram();
     glAttachShader(program, vertexShader);
     glAttachShader(program, fragmentShader);
@@ -160,7 +160,7 @@ GLuint PBOGLES::gfxCreateProgram(const char* vertexSource, const char* fragmentS
 }
 
 // Renderig a quad to the back buffer 
-void PBOGLES::gfxRenderQuad (){
+void PBOGLES::oglRenderQuad (){
 
     // Define the quad vertices, colors, and texture coordinates
     GLfloat vertices[] = {
@@ -199,7 +199,7 @@ void PBOGLES::gfxRenderQuad (){
 }
 
 // Function to load a BMP image and place it a texture
-bool PBOGLES::gfxLoadBMPTexture(const char* filename) {
+bool PBOGLES::oglLoadBMPTexture(const char* filename) {
     std::ifstream file(filename, std::ios::binary);
     if (!file) {
         // Fix this error output l

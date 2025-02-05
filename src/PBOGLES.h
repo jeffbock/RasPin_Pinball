@@ -20,10 +20,10 @@ public:
     PBOGLES();
     ~PBOGLES();
 
-    bool gfxInit (long width, long height, NativeWindowType nativeWindow) ;
-    bool gfxClear (long color, bool doFlip);
-    void gfxRenderQuad ();
-    bool gfxSwap ();
+    bool oglInit (long width, long height, NativeWindowType nativeWindow) ;
+    bool oglClear (long color, bool doFlip);
+    void oglRenderQuad ();
+    bool oglSwap ();
 
 private:
     long m_width;
@@ -38,11 +38,11 @@ private:
     // This will likely be a vector or something.. need to manage using and freeing textures
     GLuint     m_texture;
 
-    GLuint gfxCompileShader(GLenum type, const char* source);
-    GLuint gfxCreateProgram(const char* vertexSource, const char* fragmentSource);
-    void   gfxCreateShaders();
-    bool   gfxLoadBMPTexture(const char* filename);
-    void   gfxCleanup();
+    GLuint oglCompileShader(GLenum type, const char* source);
+    GLuint oglCreateProgram(const char* vertexSource, const char* fragmentSource);
+    void   oglCreateShaders();
+    bool   oglLoadBMPTexture(const char* filename);
+    void   oglCleanup();
 
     // Shaders used for sprite rendering.  All sprites are quads, with textures and an overall alpha control value
     // Vertex shader source code

@@ -21,7 +21,7 @@ g_WHND = PBInitWinRender (width, height);
 if (g_WHND == NULL) return (false);
 
 // For windows, OGLNativeWindows type is HWND
-if (!g_PBEngine.gfxInit (width, height, g_WHND)) return (false);
+if (!g_PBEngine.oglInit (width, height, g_WHND)) return (false);
 
 return (true);
 }
@@ -83,16 +83,16 @@ int main(int argc, char const *argv[])
         // This eventually becomes a render function....
     
         if (!isBlack) {
-            g_PBEngine.gfxClear (OGLES_BLACKCOLOR, false);
+            g_PBEngine.oglClear (OGLES_BLACKCOLOR, false);
             isBlack = true;
         } else {
-            g_PBEngine.gfxClear (OGLES_WHITECOLOR, false);
+            g_PBEngine.oglClear (OGLES_WHITECOLOR, false);
             isBlack = false;
         }
 
-        g_PBEngine.gfxRenderQuad();
+        g_PBEngine.oglRenderQuad();
 
-        g_PBEngine.gfxSwap();
+        g_PBEngine.oglSwap();
 
         Sleep(500); // Sleep to limit the frame rate to ~60 FPS
     }
