@@ -1,4 +1,5 @@
-// Univerasl OGL ES Code for all platforms
+// PBOGLES - OpenGL ES 3.1 rendering backend for Windows / Rasberry Pi
+// MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
 
 #ifndef PBOGLES_h
 #define PBOGLES_h
@@ -17,13 +18,25 @@ class PBOGLES {
 
 public:
 
+    enum oglTexType {
+        OGL_BMP = 0,
+        OGL_TEXTURE = 1, 
+        OGL_TTEND
+    };
+
     PBOGLES();
     ~PBOGLES();
 
     bool oglInit (long width, long height, NativeWindowType nativeWindow) ;
-    bool oglClear (long color, bool doFlip);
-    void oglRenderQuad ();
+    bool oglClear (float red, float blue, float green, float alpha, bool doFlip);
     bool oglSwap ();
+    unsigned int oglGetScreenHeight();
+    unsigned int oglGetScreenWidth();
+
+protected:
+    GLuint oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height);
+    void oglRenderQuad (float X1, float Y1, float X2, float Y2, float scale, unsigned int rotateDegrees,
+                        unsigned int textureId, float alpha);
 
 private:
     long m_width;
@@ -41,7 +54,6 @@ private:
     GLuint oglCompileShader(GLenum type, const char* source);
     GLuint oglCreateProgram(const char* vertexSource, const char* fragmentSource);
     void   oglCreateShaders();
-    bool   oglLoadBMPTexture(const char* filename);
     void   oglCleanup();
 
     // Shaders used for sprite rendering.  All sprites are quads, with textures and an overall alpha control value
@@ -66,8 +78,9 @@ private:
         varying vec2 fTexCoord;
         uniform sampler2D uTexture;
         uniform float uAlpha;
+        uniform bool useTexture;
         void main() {
-            vec4 texColor = texture2D(uTexture, fTexCoord);
+            vec4 texColor = useTexture ? texture2D(uTexture, fTexCoord) : vec4(1.0);
             gl_FragColor = texColor * fColor * uAlpha;
         }
     )";

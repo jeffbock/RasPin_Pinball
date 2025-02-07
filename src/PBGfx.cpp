@@ -1,3 +1,7 @@
+
+// PBGfx contains all the fundamental graphics management operations and sits on top of PGOGLES
+// MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
+
 #include "PBGfx.h"
 
 // Constructor
@@ -13,16 +17,92 @@ PBGfx::~PBGfx() {
 // Private function to create a sprite
 unsigned int PBGfx::gfxSysCreateSprite(stSpriteInfo spriteInfo, bool bSystem) {
     
-    // TODO:  call the functions to create the intialize all the sprite information
-    
+    GLuint texture=0;
+    oglTexType textureType;
+    unsigned int width=0, height=0;
+
+    // Convert the texture type to OGL type
+    switch (spriteInfo.textureType) {
+        case GFX_BMP:
+            textureType = OGL_BMP;
+            break;
+        case GFX_TEXTURE:
+            textureType = OGL_TEXTURE;
+            break;
+        default:
+            return (NOSPRITE);
+    }
+
+    // If the texture file name is not empty, load the texture
+    if (!spriteInfo.textureFileName.empty()) {
+        texture = oglLoadTexture(spriteInfo.textureFileName.c_str(), textureType, &width, &height);
+        if (texture == 0) return (NOSPRITE);
+        else {
+            spriteInfo.glTextureId = texture;
+            spriteInfo.baseWidth = width;
+            spriteInfo.baseHeight = height;
+        }
+    }
+    else return (NOSPRITE);
+
     unsigned int spriteId = bSystem ? nextSystemSpriteId++ : nextUserSpriteId++;
     spriteMap[spriteId] = spriteInfo;
     return spriteId;
 }
 
+// Overloaded function to create a sprite with individual parameters
+unsigned int PBGfx::gfxCreateSprite(const std::string& spriteName, const std::string& textureFileName, 
+                                    gfxTexType textureType, gfxTexCenter textureCenter, float textureAlpha, 
+                                    bool keepResident, float scaleFactor, int rotateDegrees, bool updateBoundingBox) {
+    stSpriteInfo spriteInfo;
+    spriteInfo.spriteName = spriteName;
+    spriteInfo.textureFileName = textureFileName;
+    spriteInfo.textureType = textureType;
+    spriteInfo.textureCenter = textureCenter;
+    spriteInfo.textureAlpha = textureAlpha;
+    // TODO:  Need to add vertex color values to the sprite info
+    spriteInfo.keepResident = keepResident;
+    spriteInfo.scaleFactor = scaleFactor;
+    spriteInfo.rotateDegrees = rotateDegrees;
+    spriteInfo.updateBoundingBox = updateBoundingBox;
+    spriteInfo.baseWidth = 0; // Default value
+    spriteInfo.baseHeight = 0; // Default value
+    spriteInfo.glTextureId = 0; // Default value
+    spriteInfo.boundingBox = {0, 0, 0, 0}; // Default value
+
+    return gfxCreateSprite(spriteInfo);
+}
+
 // Public function to create a sprite
 unsigned int PBGfx::gfxCreateSprite(stSpriteInfo spriteInfo) {
     return gfxSysCreateSprite(spriteInfo, false);
+}
+
+bool PBGfx::gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int y){
+    
+    auto it = spriteMap.find(spriteId);
+    if (it != spriteMap.end()) {
+        // Convert the integer x and y to float ranging from -1 to 1 based on the ratio of screen size in pixels
+        float x2,y2;
+        float x1 = (float)x / (float) oglGetScreenWidth() * 2.0f - 1.0f;
+        float y1 = (float)y / (float) oglGetScreenHeight() * 2.0f - 1.0f;
+        x2 = x1 + (float)it->second.baseWidth / (float)oglGetScreenWidth() * 2.0f;
+        y2 = y1 + (float)it->second.baseHeight / (float)oglGetScreenHeight() * 2.0f;
+
+        // Render the sprite quad
+        oglRenderQuad(x1, y1, x2, y2, it->second.scaleFactor, it->second.rotateDegrees, it->second.glTextureId, it->second.textureAlpha);
+    }
+    else return (false);
+
+    return (true);
+}
+
+void PBGfx::gfxSwap() {
+    oglSwap();
+}
+
+void PBGfx::gfxClear(float red, float blue, float green, float alpha, bool doFlip){
+    oglClear(red, blue, green, alpha, doFlip);
 }
 
 // Set function for scaleFactor

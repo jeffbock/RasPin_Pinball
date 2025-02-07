@@ -1,4 +1,5 @@
 // Gfx front-end libary based on OpenGL ES 3.1
+// MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
 
 #ifndef PBGfx_h
 #define PBGfx_h
@@ -10,6 +11,7 @@
 #include <fstream>
 #include <string>
 #include <map>
+#include "PBOGLES.h"
 
 #define NOSPRITE 0
 
@@ -40,41 +42,47 @@ struct stSpriteInfo {
     std::string textureFileName;
     gfxTexType textureType;
     gfxTexCenter textureCenter;
+    float textureAlpha;
+    // TODO:  Set sprite color value (white if no modifcation)
     bool keepResident;
     float scaleFactor;
     int rotateDegrees;
     bool updateBoundingBox;
+
     // Internal information for sprites, the system will supply these values and the app can query
     unsigned int baseWidth;
     unsigned int baseHeight;
     unsigned int glTextureId;
     stBoundingBox boundingBox;
-    // TODO:  Set sprite alpha value
-    // TODO:  Set sprite color value (white if no modifcation)
 };
 
 // Define a class for the OGL ES code
-class PBGfx {
+class PBGfx : public PBOGLES {
 
 public:
     PBGfx();
     ~PBGfx();
 
+    unsigned int gfxCreateSprite(const std::string& spriteName, const std::string& textureFileName, 
+                                 gfxTexType textureType, gfxTexCenter textureCenter, float textureAlpha, 
+                                 bool keepResident, float scaleFactor, int rotateDegrees, bool updateBoundingBox);
     unsigned int gfxCreateSprite(stSpriteInfo spriteInfo);
+    bool         gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int y);
+    void         gfxSwap();
+    void         gfxClear(float red, float blue, float green, float alpha, bool doFlip);
     unsigned int gfxSetScaleFactor(unsigned int spriteId, float scaleFactor, bool addFactor);
     unsigned int gfxSetRotateDegrees(unsigned int spriteId, int rotateDegrees, bool addDegrees);
     unsigned int gfxGetBaseHeight(unsigned int spriteId);
     unsigned int gfxGetBaseWidth(unsigned int spriteId);
     stBoundingBox gfxGetBoundingBox(unsigned int spriteId);
+
     /*  Functions to add
-    LoadTexture
+    
     UpdateBoundingBox
-    RenderSprite (location x,y)
     Create a font sprite type
     Write text from font sprite at location x,y (from a string / string array?)
     Create system font(s)
-    Set clear color
-
+    
     */
 
 private:

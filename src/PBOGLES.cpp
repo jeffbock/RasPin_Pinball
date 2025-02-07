@@ -1,3 +1,7 @@
+
+// PBOGLES - OpenGL ES 3.1 rendering backend for Windows / Rasberry Pi
+// MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
+
 #include "PBOGLES.h"
 
 PBOGLES::PBOGLES() {
@@ -106,9 +110,6 @@ bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
     m_shaderProgram = oglCreateProgram(vertexShaderSource, fragmentShaderSource);
     glUseProgram(m_shaderProgram);
 
-    // Load the test texture - this will get moved...
-    oglLoadBMPTexture("resources/textures/godzilla.bmp");
-
     // St the internal variables and reflect that the basic rendering engine has been intialized
     m_width = width;
     m_height = height;
@@ -117,13 +118,11 @@ bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
 }
 
 // Clear the back buffere with option to flip
-bool PBOGLES::oglClear(long color, bool doFlip) {
+bool PBOGLES::oglClear(float red, float blue, float green, float alpha, bool doFlip) {
 
         glViewport(0, 0, m_width, m_height);
-        if (color == OGLES_BLACKCOLOR) glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            else if (color == OGLES_WHITECOLOR) glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-                else return (false);
-            
+        glClearColor(red, green, blue, alpha);
+
         glClear(GL_COLOR_BUFFER_BIT);
 
         if (doFlip) {
@@ -160,15 +159,19 @@ GLuint PBOGLES::oglCreateProgram(const char* vertexSource, const char* fragmentS
 }
 
 // Renderig a quad to the back buffer 
-void PBOGLES::oglRenderQuad (){
+void PBOGLES::oglRenderQuad (float X1, float Y1, float X2, float Y2, float scale, unsigned int rotateDegrees,
+                             unsigned int textureId, float alpha) {
+
+    // Need to use the X1,Y1 and X2,Y2 to create the quad.
+    // The scale is used to scale the quad, the rotateDegrees is used to rotate the quad
 
     // Define the quad vertices, colors, and texture coordinates
     GLfloat vertices[] = {
-    // Pos (3 XYZ)      // Colors (4 RGB)       // Texture Coords
-    -0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, // Top-left
-    -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, // Bottom-left
-     0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, // Bottom-right
-     0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f  // Top-right
+    // Pos (3 XYZ)      // Colors (4 RGBA)      // Texture Coords
+    X1,  Y1, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, // Top-left
+    X1,  Y2, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, // Bottom-left
+    X2,  Y2, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, // Bottom-right
+    X2,  Y1, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f  // Top-right
     };
 
     // Define the indices for the quad
@@ -192,14 +195,19 @@ void PBOGLES::oglRenderQuad (){
 
     // Get the uniform location for the alpha value
     GLint alphaUniform = glGetUniformLocation(m_shaderProgram, "uAlpha");
-    glUniform1f(alphaUniform, 1.0f);
+    glUniform1f(alphaUniform, alpha);
 
+    // Set the boolean of the shader function to use the texture
+    GLint useTexture = glGetUniformLocation(m_shaderProgram, "useTexture");
+    if (textureId == 0) glUniform1i(useTexture, 0);
+        else glUniform1i(useTexture, 1);
+    
      // Draw the quad
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
 }
 
 // Function to load a BMP image and place it a texture
-bool PBOGLES::oglLoadBMPTexture(const char* filename) {
+GLuint PBOGLES::oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height) {
     std::ifstream file(filename, std::ios::binary);
     if (!file) {
         // Fix this error output l
@@ -207,16 +215,16 @@ bool PBOGLES::oglLoadBMPTexture(const char* filename) {
         return false;
     }
 
-     int width, height;
+     int tempWidth, tempHeight;
 
     // Go throught the bitmap header to the width and height
     file.seekg(18);
 
-    file.read(reinterpret_cast<char*>(&width), 4);
-    file.read(reinterpret_cast<char*>(&height), 4);
+    file.read(reinterpret_cast<char*>(&tempWidth), 4);
+    file.read(reinterpret_cast<char*>(&tempHeight), 4);
 
     // Calculate the size for data of the bitmap
-    int size = 3 * (width) * (height);
+    int size = 3 * (tempWidth) * (tempHeight);
     unsigned char* data = new unsigned char[size];
     unsigned char* rgbData = new unsigned char[size];
    
@@ -234,13 +242,29 @@ bool PBOGLES::oglLoadBMPTexture(const char* filename) {
 
     delete[] data;
 
-    // TODO:  The texture data needs to be part of a different structure so that it can be managed
+    // Now create and bind the texture to a texture ID
+    GLuint texture;
 
-    glGenTextures(1, &m_texture);
-    glBindTexture(GL_TEXTURE_2D, m_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbData);
+    glGenTextures(1, &texture);
+    if (texture == 0) return (0);
+
+    // Create the texture.  NOTE:  We don't force power of two textures, nor does the system have ability
+    // to assign UV texture coodiates within a texture (sprites always use full texture).  If non-power of two 
+    // textures start to be a problem, thenwe will need to add code to handle this and pick sub rectagles within 
+    // the texture.
+
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tempWidth, tempHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbData);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+    *width = tempWidth;
+    *height = tempHeight;
+    return (texture);
+}
 
-    return true;
+unsigned int PBOGLES::oglGetScreenHeight(){
+    return m_height;
+}
+unsigned int PBOGLES::oglGetScreenWidth(){
+    return m_width;
 }

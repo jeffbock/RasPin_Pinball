@@ -1,4 +1,5 @@
-// Main Header file for Pinball
+// PInball:  A complete pinball framework for building 1/2 scale phyical pinball machines with Raspberry Pi
+// MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
 
 #ifndef PInball_h
 #define PInball_h
@@ -25,6 +26,7 @@
 #include "include_ogl/gl31.h"
 #include "schrift.h"
 #include "PBOGLES.h"
+#include "PBGfx.h"
 #include <iostream>
 #include <stdio.h>
 
@@ -35,7 +37,7 @@
 bool PBInitRender (long width, long height);
 
 // Make new class named PBGame that inheritis from PBOGLES with just essential functions
-class PBEngine : public PBOGLES {
+class PBEngine : public PBGfx {
 public:
     PBEngine();
     ~PBEngine();

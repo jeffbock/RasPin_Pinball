@@ -1,4 +1,5 @@
-// Window and render code for windows
+// Window and render code for Windows
+// MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
 
 #include <windows.h>
 

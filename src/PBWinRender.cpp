@@ -1,4 +1,7 @@
 
+// Window and render code for Windows
+// MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
+
 #include "PBWinRender.h"
 
 HWND PBInitWinRender (long width, long height) {

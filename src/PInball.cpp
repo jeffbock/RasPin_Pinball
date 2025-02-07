@@ -1,4 +1,7 @@
-// Main entry point into the pinball .exe
+
+// PInball:  A complete pinball framework for building 1/2 scale phyical pinball machines with Raspberry Pi
+// MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
+
 #include "PInball.h"
 
  // Global pinball engine object
@@ -76,25 +79,24 @@ int main(int argc, char const *argv[])
     // Initialize the platform specific render system
     if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
 
+    // Create a background sprites for the bootup screen
+    unsigned int backgroudId = g_PBEngine.gfxCreateSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_UPPERLEFT, 0.2f, false, 1.0f, 0, false);
+    // unsigned int ballId = g_PBEngine.gfxCreateSprite("Pinball", "resources/textures/pinball.bmp", GFX_BMP, GFX_CENTER, 1.0f, false, 1.0f, 0, false);
+
+    // Main loop for the pinball game
+
     while (true) {
         if (!PBProcessInput()) return (0);
 
-        // Just flip the screen back and forth between black and white
-        // This eventually becomes a render function....
-    
-        if (!isBlack) {
-            g_PBEngine.oglClear (OGLES_BLACKCOLOR, false);
-            isBlack = true;
-        } else {
-            g_PBEngine.oglClear (OGLES_WHITECOLOR, false);
-            isBlack = false;
-        }
+         g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 0.0f, false);
 
-        g_PBEngine.oglRenderQuad();
+        // Show the console background
+        g_PBEngine.gfxRenderSprite(backgroudId, 0, 0);
+        // g_PBEngine.gfxRenderSprite(ballId, 400, 240);
 
-        g_PBEngine.oglSwap();
+        g_PBEngine.gfxSwap();
 
-        Sleep(500); // Sleep to limit the frame rate to ~60 FPS
+        Sleep(100); // Sleep to limit the frame rate to ~10 FPS
     }
 
     // create a new instance of the pinball class
