@@ -9,6 +9,7 @@ PBOGLES::PBOGLES() {
     // Key PBOGLES variables
     m_height = 0;
     m_width = 0;
+    m_pixelXYRatio = 0.0f;
     m_started = false;
 
     // OGL ES variables
@@ -113,6 +114,7 @@ bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
     // St the internal variables and reflect that the basic rendering engine has been intialized
     m_width = width;
     m_height = height;
+    m_pixelXYRatio = (float)height / (float)width;
     m_started = true;
     return true;
 }
@@ -159,25 +161,95 @@ GLuint PBOGLES::oglCreateProgram(const char* vertexSource, const char* fragmentS
 }
 
 // Renderig a quad to the back buffer 
-void PBOGLES::oglRenderQuad (float X1, float Y1, float X2, float Y2, float scale, unsigned int rotateDegrees,
-                             unsigned int textureId, float alpha) {
+void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float scale, unsigned int rotateDegrees,
+                             bool useCenter, bool returnBoundingBox, unsigned int textureId, float alpha) {
 
     // Need to use the X1,Y1 and X2,Y2 to create the quad.
     // The scale is used to scale the quad, the rotateDegrees is used to rotate the quad
-
     // Define the quad vertices, colors, and texture coordinates
     GLfloat vertices[] = {
     // Pos (3 XYZ)      // Colors (4 RGBA)      // Texture Coords
-    X1,  Y1, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, // Top-left
-    X1,  Y2, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, // Bottom-left
-    X2,  Y2, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, // Bottom-right
-    X2,  Y1, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f  // Top-right
+    *X1,  *Y1, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, // Top Left
+    *X1,  *Y2, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, // Bottom-left
+    *X2,  *Y1, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, // Top right
+    *X2,  *Y2, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f  // Bottom-right
     };
+
+    // If the scale or rotateDegrees are not the default values, then scale and rotate the quad
+    if ((scale != 1.0f) || (rotateDegrees != 0)) {
+        float aspectRatio = m_pixelXYRatio;
+        float angle = rotateDegrees * 3.14159f / 180.0f;
+
+        if (useCenter) {
+            // Calculate the center of the quad
+            float centerX = (*X1 + *X2) / 2.0f;
+            float centerY = (*Y1 + *Y2) / 2.0f;
+
+            // Scale and rotate the quad around the center
+            for (int i = 0; i < 4; i++) {
+                // Translate to origin
+                float x = vertices[i * 9] - centerX;
+                float y = (vertices[i * 9 + 1] - centerY) * aspectRatio;
+
+                // Scale
+                if (scale != 1.0f) {
+                    x *= scale;
+                    y *= scale;
+                }
+
+                // Rotate
+                float newX = x * cos(angle) - y * sin(angle);
+                float newY = x * sin(angle) + y * cos(angle);
+            
+                // Translate back
+                vertices[i * 9] = newX + centerX;
+                vertices[i * 9 + 1] = (newY / aspectRatio) + centerY;
+            }
+        } else {
+            // Scale and rotate the quad from the upper left corner
+            // Adjust the vertices for a upper left rendering
+            for (int i = 0; i < 4; i++) {
+                // Translate to origin
+                float x = vertices[i * 9] - vertices[0];
+                float y = (vertices[i * 9 + 1] - vertices[1]) * aspectRatio;
+                
+                // Scale
+                x *= scale;
+                y *= scale;
+
+                // Rotate
+                float newX = x * cos(angle) - y * sin(angle);
+                float newY = x * sin(angle) + y * cos(angle);
+
+                // Translate back
+                vertices[i * 9] = vertices[0] + newX;
+                vertices[i * 9 + 1] = vertices[1] + (newY / aspectRatio);
+            }
+        }
+        // if requested, search for the bounding box in the vertices, return then in X1,Y1,X2,Y2
+        // The bounding box is defined maximum X,Y values and minimum X,Y values of the quad.
+        if (returnBoundingBox) {
+            float fminX = vertices[0];
+            float fminY = vertices[1];
+            float fmaxX = vertices[0];
+            float fmaxY = vertices[1];
+            for (int i = 1; i < 4; i++) {
+                if (vertices[i * 9] < fminX) fminX = vertices[i * 9];
+                if (vertices[i * 9] > fmaxX) fmaxX = vertices[i * 9];
+                if (vertices[i * 9 + 1] < fminY) fminY = vertices[i * 9 + 1];
+                if (vertices[i * 9 + 1] > fmaxY) fmaxY = vertices[i * 9 + 1];
+            }
+            *X2 = fminX;
+            *Y2 = fminY;
+            *X1 = fmaxX;
+            *Y1 = fmaxY;
+        }
+    }
 
     // Define the indices for the quad
     GLushort indices[] = {
-        0, 1, 2,
-        0, 2, 3
+        1, 0, 2,
+        1, 2, 3
     };
 
      // Get the attribute locations, enable them
@@ -200,11 +272,55 @@ void PBOGLES::oglRenderQuad (float X1, float Y1, float X2, float Y2, float scale
     // Set the boolean of the shader function to use the texture
     GLint useTexture = glGetUniformLocation(m_shaderProgram, "useTexture");
     if (textureId == 0) glUniform1i(useTexture, 0);
-        else glUniform1i(useTexture, 1);
+        else {
+            glUniform1i(useTexture, 1);
+            glBindTexture(GL_TEXTURE_2D, textureId);
+        }
     
      // Draw the quad
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
 }
+
+/*
+
+ if (useCenter) {
+            // Scale the quad
+            for (int i = 0; i < 4; i++) {
+                vertices[i * 9] *= scale;
+                vertices[i * 9 + 1] *= scale;
+            }
+
+            // Rotate the quad
+            float angle = rotateDegrees * 3.14159f / 180.0f;
+            for (int i = 0; i < 4; i++) {
+                float x = vertices[i * 9];
+                float y = vertices[i * 9 + 1] * m_pixelXYRatio;
+
+                // Rotate the quad around the center 
+                // Factor in pixel scaling with the aspect ratio (m_pixelXYRatio)
+                vertices[i * 9] = (x * cos(angle)) - (y * sin(angle));
+                // Adjust the vertice for the aspect ratio
+                vertices[i * 9 + 1] = (x * sin(angle) + y * cos(angle)) / m_pixelXYRatio;
+                
+            }
+        }
+        else {
+            // Scale and rotate the quad from the upper left corner.  Upper left will remain stationary, and the remaining vertices
+            // will be scaled and rotated around the upper left corner.
+            for (int i = 1; i < 4; i++) {
+                vertices[i * 9] = vertices[0] + (vertices[i * 9] - vertices[0]) * scale;
+                vertices[i * 9 + 1] = vertices[1] + (vertices[i * 9 + 1] - vertices[1]) * scale;
+            }
+            // Rotate the quad aroud the upper left corner
+            float angle = rotateDegrees * 3.14159f / 180.0f;
+            for (int i = 1; i < 4; i++) {
+                float x = vertices[i * 9] - vertices[0];
+                float y = vertices[i * 9 + 1] - vertices[1] * m_pixelXYRatio;
+                vertices[i * 9] = vertices[0] + x * cos(angle) - y * sin(angle);
+                vertices[i * 9 + 1] = vertices[1] + (x * sin(angle) + y * cos(angle)) / m_pixelXYRatio;
+            }
+        }
+*/
 
 // Function to load a BMP image and place it a texture
 GLuint PBOGLES::oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height) {
@@ -254,8 +370,10 @@ GLuint PBOGLES::oglLoadTexture(const char* filename, oglTexType type, unsigned i
     // the texture.
 
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tempWidth, tempHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbData);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tempWidth, tempHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbData);
+   
+    delete[] rgbData;
     
     *width = tempWidth;
     *height = tempHeight;
@@ -268,3 +386,94 @@ unsigned int PBOGLES::oglGetScreenHeight(){
 unsigned int PBOGLES::oglGetScreenWidth(){
     return m_width;
 }
+
+/*
+// Function to load a PNG texture
+bool PBOGLES::oglLoadPNGTexture(const char* filename) {
+    FILE* file = fopen(filename, "rb");
+    if (!file) {
+        std::cerr << "Error: Unable to open file " << filename << std::endl;
+        return false;
+    }
+
+    png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+    if (!png) {
+        std::cerr << "Error: Unable to create PNG read struct" << std::endl;
+        fclose(file);
+        return false;
+    }
+
+    png_infop info = png_create_info_struct(png);
+    if (!info) {
+        std::cerr << "Error: Unable to create PNG info struct" << std::endl;
+        png_destroy_read_struct(&png, nullptr, nullptr);
+        fclose(file);
+        return false;
+    }
+
+    if (setjmp(png_jmpbuf(png))) {
+        std::cerr << "Error: PNG read error" << std::endl;
+        png_destroy_read_struct(&png, &info, nullptr);
+        fclose(file);
+        return false;
+    }
+
+    png_init_io(png, file);
+    png_read_info(png, info);
+
+    int width = png_get_image_width(png, info);
+    int height = png_get_image_height(png, info);
+    png_byte color_type = png_get_color_type(png, info);
+    png_byte bit_depth = png_get_bit_depth(png, info);
+
+    if (bit_depth == 16) {
+        png_set_strip_16(png);
+    }
+
+    if (color_type == PNG_COLOR_TYPE_PALETTE) {
+        png_set_palette_to_rgb(png);
+    }
+
+    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) {
+        png_set_expand_gray_1_2_4_to_8(png);
+    }
+
+    if (png_get_valid(png, info, PNG_INFO_tRNS)) {
+        png_set_tRNS_to_alpha(png);
+    }
+
+    if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY) {
+        png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
+    }
+
+    if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
+        png_set_gray_to_rgb(png);
+    }
+
+    png_read_update_info(png, info);
+
+    png_bytep* row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
+    for (int y = 0; y < height; y++) {
+        row_pointers[y] = (png_byte*)malloc(png_get_rowbytes(png, info));
+    }
+
+    png_read_image(png, row_pointers);
+
+    fclose(file);
+
+    glGenTextures(1, &m_texture);
+    glBindTexture(GL_TEXTURE_2D, m_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, row_pointers[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    for (int y = 0; y < height; y++) {
+        free(row_pointers[y]);
+    }
+    free(row_pointers);
+
+    png_destroy_read_struct(&png, &info, nullptr);
+
+    return true;
+}
+*/

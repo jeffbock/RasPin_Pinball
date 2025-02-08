@@ -35,12 +35,13 @@ public:
 
 protected:
     GLuint oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height);
-    void oglRenderQuad (float X1, float Y1, float X2, float Y2, float scale, unsigned int rotateDegrees,
-                        unsigned int textureId, float alpha);
+    void oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float scale, unsigned int rotateDegrees,
+                        bool useCenter, bool returnBoundingBox, unsigned int textureId, float alpha);
 
 private:
     long m_width;
     long m_height;
+    float m_pixelXYRatio;
     bool m_started;
     
     // OGLES Context variables

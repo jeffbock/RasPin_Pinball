@@ -82,15 +82,46 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int 
     
     auto it = spriteMap.find(spriteId);
     if (it != spriteMap.end()) {
+
+        // Using the center shifts the input
+        bool useCenter = it->second.textureCenter == GFX_CENTER ? true : false;
+
         // Convert the integer x and y to float ranging from -1 to 1 based on the ratio of screen size in pixels
-        float x2,y2;
-        float x1 = (float)x / (float) oglGetScreenWidth() * 2.0f - 1.0f;
-        float y1 = (float)y / (float) oglGetScreenHeight() * 2.0f - 1.0f;
+        float x2, y2;
+        float x1 = (float)x / (float)oglGetScreenWidth() * 2.0f - 1.0f;
+        float y1 = 1.0f - (float)y / (float)oglGetScreenHeight() * 2.0f;
         x2 = x1 + (float)it->second.baseWidth / (float)oglGetScreenWidth() * 2.0f;
-        y2 = y1 + (float)it->second.baseHeight / (float)oglGetScreenHeight() * 2.0f;
+        y2 = y1 - (float)it->second.baseHeight / (float)oglGetScreenHeight() * 2.0f;
+        
+        // If using center, then need to move everything up and left by the right amount
+        if (useCenter){
+        
+            // y2 = y1 + (float)it->second.baseHeight / (float)oglGetScreenHeight() * 2.0f;
+        
+            float shiftleft = (x2-x1)/2;
+            float shiftup = (y2-y1)/2;
+
+            x1 -= shiftleft;
+            x2 -= shiftleft;
+            y1 -= shiftup;
+            y2 -= shiftup;
+        }
+        // else y2 = y1 + (float)it->second.baseHeight / (float)oglGetScreenHeight() * 2.0f;
 
         // Render the sprite quad
-        oglRenderQuad(x1, y1, x2, y2, it->second.scaleFactor, it->second.rotateDegrees, it->second.glTextureId, it->second.textureAlpha);
+        oglRenderQuad(&x1, &y1, &x2, &y2, it->second.scaleFactor, it->second.rotateDegrees, useCenter,it->second.updateBoundingBox, it->second.glTextureId, it->second.textureAlpha);
+
+        // Update the bounding box if needed.  Convert the float X1,Y1,X2,Y2 values to screen space corridates and save them in the bounding box struct
+        if (it->second.updateBoundingBox) {
+
+            float fwidth = (float)oglGetScreenWidth();
+            float fheight = (float)oglGetScreenHeight();
+
+            it->second.boundingBox.x1 = (unsigned int)(((x1 + 1.0f) / 2.0f) * fwidth);
+            it->second.boundingBox.y1 = (unsigned int)(((y1 + 1.0f) / 2.0f) * fheight);
+            it->second.boundingBox.x2 = (unsigned int)(((x2 + 1.0f) / 2.0f) * fwidth);
+            it->second.boundingBox.y2 = (unsigned int)(((y2 + 1.0f) / 2.0f) * fheight);
+        }   
     }
     else return (false);
 
@@ -110,7 +141,10 @@ unsigned int PBGfx::gfxSetScaleFactor(unsigned int spriteId, float scaleFactor, 
     auto it = spriteMap.find(spriteId);
     if (it != spriteMap.end()) {
         if (!addFactor) it->second.scaleFactor = scaleFactor;
-        else it->second.scaleFactor += scaleFactor;
+        else {
+         it->second.scaleFactor += scaleFactor;
+         if (it->second.scaleFactor < 0.1f) it->second.scaleFactor = 0.1f;
+        }
     }
     else return (NOSPRITE);
     return (spriteId);

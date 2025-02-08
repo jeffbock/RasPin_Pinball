@@ -81,18 +81,31 @@ int main(int argc, char const *argv[])
 
     // Create a background sprites for the bootup screen
     unsigned int backgroudId = g_PBEngine.gfxCreateSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_UPPERLEFT, 0.2f, false, 1.0f, 0, false);
-    // unsigned int ballId = g_PBEngine.gfxCreateSprite("Pinball", "resources/textures/pinball.bmp", GFX_BMP, GFX_CENTER, 1.0f, false, 1.0f, 0, false);
+    unsigned int ballId = g_PBEngine.gfxCreateSprite("Ball", "resources/textures/ball.bmp", GFX_BMP, GFX_CENTER, 0.5f, true, 0.4f, 0, true);
 
-    // Main loop for the pinball game
+    // Main loop for the pinball game                                     
+
+    float scaleFactor = 0.02f;
+    unsigned int ball1x = 400;
+    unsigned int ball1y = 400;
+    int ball1dx = 5;
+    int ball1dy = 5;
 
     while (true) {
         if (!PBProcessInput()) return (0);
-
+                
          g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 0.0f, false);
-
+              
         // Show the console background
         g_PBEngine.gfxRenderSprite(backgroudId, 0, 0);
-        // g_PBEngine.gfxRenderSprite(ballId, 400, 240);
+
+        // g_PBEngine.gfxSetRotateDegrees(catId, 10, true);
+        // g_PBEngine.gfxSetScaleFactor(catId, scaleFactor, true);
+        g_PBEngine.gfxRenderSprite(ballId, ball1x, ball1y);
+        ball1x += ball1dx;
+        if (ball1x > 800 || ball1x < 0) ball1dx = -ball1dx;
+        ball1y += ball1dy;
+        if (ball1y > 480 || ball1y < 0) ball1dy = -ball1dy;
 
         g_PBEngine.gfxSwap();
 
