@@ -37,20 +37,28 @@ protected:
     GLuint oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height);
     void oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float scale, unsigned int rotateDegrees,
                         bool useCenter, bool returnBoundingBox, unsigned int textureId, float alpha);
+    void scaleAndRotateVertices(float* x, float* y, float scale, unsigned int rotateDegrees);
 
 private:
     long m_width;
     long m_height;
-    float m_pixelXYRatio;
+    float m_aspectRatio;
+    unsigned int m_lastTextureId;
     bool m_started;
     
     // OGLES Context variables
     EGLDisplay m_display;
     EGLContext m_context;
     EGLSurface m_surface;
+
+    // Shader variables
     GLuint     m_shaderProgram;
-    // This will likely be a vector or something.. need to manage using and freeing textures
     GLuint     m_texture;
+    GLint      m_posAttrib;
+    GLint      m_colorAttrib; 
+    GLint      m_texCoordAttrib; 
+    GLint      m_alphaUniform;
+    GLint      m_useTexture;
 
     GLuint oglCompileShader(GLenum type, const char* source);
     GLuint oglCreateProgram(const char* vertexSource, const char* fragmentSource);

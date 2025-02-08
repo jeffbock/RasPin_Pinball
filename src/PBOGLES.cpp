@@ -9,7 +9,8 @@ PBOGLES::PBOGLES() {
     // Key PBOGLES variables
     m_height = 0;
     m_width = 0;
-    m_pixelXYRatio = 0.0f;
+    m_aspectRatio = 0.0f;
+    m_lastTextureId = 0;
     m_started = false;
 
     // OGL ES variables
@@ -18,6 +19,11 @@ PBOGLES::PBOGLES() {
     m_surface = EGL_NO_SURFACE;
     m_shaderProgram = 0;
     m_texture = 0;
+    m_posAttrib = 0;
+    m_colorAttrib = 0; 
+    m_texCoordAttrib = 0; 
+    m_alphaUniform = 0;
+    m_useTexture = 0;
 }
 
 PBOGLES::~PBOGLES() {
@@ -111,10 +117,20 @@ bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
     m_shaderProgram = oglCreateProgram(vertexShaderSource, fragmentShaderSource);
     glUseProgram(m_shaderProgram);
 
-    // St the internal variables and reflect that the basic rendering engine has been intialized
+    // Set up the shader attributes and input variables
+    m_posAttrib = glGetAttribLocation(m_shaderProgram, "vPosition");
+    glEnableVertexAttribArray(m_posAttrib);
+    m_colorAttrib = glGetAttribLocation(m_shaderProgram, "vColor");
+    glEnableVertexAttribArray(m_colorAttrib);
+    m_texCoordAttrib = glGetAttribLocation(m_shaderProgram, "vTexCoord");
+    glEnableVertexAttribArray(m_texCoordAttrib);
+    m_alphaUniform = glGetUniformLocation(m_shaderProgram, "uAlpha");
+    m_useTexture = glGetUniformLocation(m_shaderProgram, "useTexture");
+    
+    // Set the internal variables and reflect that the basic rendering engine has been intialized
     m_width = width;
     m_height = height;
-    m_pixelXYRatio = (float)height / (float)width;
+    m_aspectRatio = (float)height / (float)width;
     m_started = true;
     return true;
 }
@@ -175,75 +191,60 @@ void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float s
     *X2,  *Y2, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f  // Bottom-right
     };
 
-    // If the scale or rotateDegrees are not the default values, then scale and rotate the quad
+    //  Transfor the quad if rotateDegrees are not the default (no scale / rotate) values
     if ((scale != 1.0f) || (rotateDegrees != 0)) {
-        float aspectRatio = m_pixelXYRatio;
-        float angle = rotateDegrees * 3.14159f / 180.0f;
-
         if (useCenter) {
             // Calculate the center of the quad
             float centerX = (*X1 + *X2) / 2.0f;
             float centerY = (*Y1 + *Y2) / 2.0f;
 
-            // Scale and rotate the quad around the center
+            // Scale and rotate the quad around the center, using aspect ratios to keep the quad at right angles
             for (int i = 0; i < 4; i++) {
                 // Translate to origin
                 float x = vertices[i * 9] - centerX;
-                float y = (vertices[i * 9 + 1] - centerY) * aspectRatio;
+                float y = (vertices[i * 9 + 1] - centerY) * m_aspectRatio;
 
-                // Scale
-                if (scale != 1.0f) {
-                    x *= scale;
-                    y *= scale;
-                }
+                scaleAndRotateVertices(&x, &y, scale, rotateDegrees);
 
-                // Rotate
-                float newX = x * cos(angle) - y * sin(angle);
-                float newY = x * sin(angle) + y * cos(angle);
-            
-                // Translate back
-                vertices[i * 9] = newX + centerX;
-                vertices[i * 9 + 1] = (newY / aspectRatio) + centerY;
+                // Translate back to render location
+                vertices[i * 9] = x + centerX;
+                vertices[i * 9 + 1] = (y / m_aspectRatio) + centerY;
             }
         } else {
-            // Scale and rotate the quad from the upper left corner
-            // Adjust the vertices for a upper left rendering
+           // Scale and rotate the quad around the upper left corner, using aspect ratios to keep the quad at right angles
             for (int i = 0; i < 4; i++) {
                 // Translate to origin
                 float x = vertices[i * 9] - vertices[0];
-                float y = (vertices[i * 9 + 1] - vertices[1]) * aspectRatio;
+                float y = (vertices[i * 9 + 1] - vertices[1]) * m_aspectRatio;
                 
-                // Scale
-                x *= scale;
-                y *= scale;
+                scaleAndRotateVertices(&x, &y, scale, rotateDegrees);
 
-                // Rotate
-                float newX = x * cos(angle) - y * sin(angle);
-                float newY = x * sin(angle) + y * cos(angle);
-
-                // Translate back
-                vertices[i * 9] = vertices[0] + newX;
-                vertices[i * 9 + 1] = vertices[1] + (newY / aspectRatio);
+                // Translate back to render location
+                vertices[i * 9] = vertices[0] + x;
+                vertices[i * 9 + 1] = vertices[1] + (y / m_aspectRatio);
+                
             }
         }
-        // if requested, search for the bounding box in the vertices, return then in X1,Y1,X2,Y2
-        // The bounding box is defined maximum X,Y values and minimum X,Y values of the quad.
-        if (returnBoundingBox) {
-            float fminX = vertices[0];
-            float fminY = vertices[1];
-            float fmaxX = vertices[0];
-            float fmaxY = vertices[1];
-            for (int i = 1; i < 4; i++) {
-                if (vertices[i * 9] < fminX) fminX = vertices[i * 9];
-                if (vertices[i * 9] > fmaxX) fmaxX = vertices[i * 9];
-                if (vertices[i * 9 + 1] < fminY) fminY = vertices[i * 9 + 1];
-                if (vertices[i * 9 + 1] > fmaxY) fmaxY = vertices[i * 9 + 1];
-            }
-            *X2 = fminX;
-            *Y2 = fminY;
-            *X1 = fmaxX;
-            *Y1 = fmaxY;
+    }
+
+    // if requested, search for the bounding box in the vertices, return then in X1,Y1,X2,Y2
+    // The bounding box is defined maximum X,Y values and minimum X,Y values of the quad.
+    // This could be more effecient for non-rotated quads, but for now we will just search through the vertices
+    if (returnBoundingBox) {
+        float fminX = vertices[0];
+        float fminY = vertices[1];
+        float fmaxX = vertices[0];
+        float fmaxY = vertices[1];
+        for (int i = 1; i < 4; i++) {
+            if (vertices[i * 9] < fminX) fminX = vertices[i * 9];
+            if (vertices[i * 9] > fmaxX) fmaxX = vertices[i * 9];
+            if (vertices[i * 9 + 1] < fminY) fminY = vertices[i * 9 + 1];
+            if (vertices[i * 9 + 1] > fmaxY) fmaxY = vertices[i * 9 + 1];
         }
+        *X2 = fminX;
+        *Y2 = fminY;
+        *X1 = fmaxX;
+        *Y1 = fmaxY;
     }
 
     // Define the indices for the quad
@@ -252,75 +253,45 @@ void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float s
         1, 2, 3
     };
 
-     // Get the attribute locations, enable them
-    GLint posAttrib = glGetAttribLocation(m_shaderProgram, "vPosition");
-    glEnableVertexAttribArray(posAttrib);
-    GLint colorAttrib = glGetAttribLocation(m_shaderProgram, "vColor");
-    glEnableVertexAttribArray(colorAttrib);
-    GLint texCoordAttrib = glGetAttribLocation(m_shaderProgram, "vTexCoord");
-    glEnableVertexAttribArray(texCoordAttrib);
-
     // Specify how the data for each attribute is retrieved from the array
-    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), vertices);
-    glVertexAttribPointer(colorAttrib, 4, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), vertices + 3);
-    glVertexAttribPointer(texCoordAttrib, 2, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), vertices + 7);
+    glVertexAttribPointer(m_posAttrib, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), vertices);
+    glVertexAttribPointer(m_colorAttrib, 4, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), vertices + 3);
+    glVertexAttribPointer(m_texCoordAttrib, 2, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), vertices + 7);
 
-    // Get the uniform location for the alpha value
-    GLint alphaUniform = glGetUniformLocation(m_shaderProgram, "uAlpha");
-    glUniform1f(alphaUniform, alpha);
-
-    // Set the boolean of the shader function to use the texture
-    GLint useTexture = glGetUniformLocation(m_shaderProgram, "useTexture");
-    if (textureId == 0) glUniform1i(useTexture, 0);
-        else {
-            glUniform1i(useTexture, 1);
+    // Set the input variable for the alpha and enable/bind the texture if needed
+    glUniform1f(m_alphaUniform, alpha);
+    if (textureId == 0) glUniform1i(m_useTexture, 0);
+    else {
+        if (textureId != m_lastTextureId) {
+            glUniform1i(m_useTexture, 1);
             glBindTexture(GL_TEXTURE_2D, textureId);
+            m_lastTextureId = textureId;
         }
-    
-     // Draw the quad
+    }
+      
+     // Finally, draw the quad!
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
 }
 
-/*
+void PBOGLES::scaleAndRotateVertices(float* x, float* y, float scale, unsigned int rotateDegrees){
+    
+    // Scale
+    if (scale != 1.0f) {
+        *x *= scale;
+        *y *= scale;
+    }
 
- if (useCenter) {
-            // Scale the quad
-            for (int i = 0; i < 4; i++) {
-                vertices[i * 9] *= scale;
-                vertices[i * 9 + 1] *= scale;
-            }
+    // Rotate
+    if (rotateDegrees != 0) {
 
-            // Rotate the quad
-            float angle = rotateDegrees * 3.14159f / 180.0f;
-            for (int i = 0; i < 4; i++) {
-                float x = vertices[i * 9];
-                float y = vertices[i * 9 + 1] * m_pixelXYRatio;
+        float tempX = *x;
+        float tempY = *y;
+        float angle = rotateDegrees * 3.14159f / 180.0f;
 
-                // Rotate the quad around the center 
-                // Factor in pixel scaling with the aspect ratio (m_pixelXYRatio)
-                vertices[i * 9] = (x * cos(angle)) - (y * sin(angle));
-                // Adjust the vertice for the aspect ratio
-                vertices[i * 9 + 1] = (x * sin(angle) + y * cos(angle)) / m_pixelXYRatio;
-                
-            }
-        }
-        else {
-            // Scale and rotate the quad from the upper left corner.  Upper left will remain stationary, and the remaining vertices
-            // will be scaled and rotated around the upper left corner.
-            for (int i = 1; i < 4; i++) {
-                vertices[i * 9] = vertices[0] + (vertices[i * 9] - vertices[0]) * scale;
-                vertices[i * 9 + 1] = vertices[1] + (vertices[i * 9 + 1] - vertices[1]) * scale;
-            }
-            // Rotate the quad aroud the upper left corner
-            float angle = rotateDegrees * 3.14159f / 180.0f;
-            for (int i = 1; i < 4; i++) {
-                float x = vertices[i * 9] - vertices[0];
-                float y = vertices[i * 9 + 1] - vertices[1] * m_pixelXYRatio;
-                vertices[i * 9] = vertices[0] + x * cos(angle) - y * sin(angle);
-                vertices[i * 9 + 1] = vertices[1] + (x * sin(angle) + y * cos(angle)) / m_pixelXYRatio;
-            }
-        }
-*/
+        *x = tempX * cos(angle) - tempY * sin(angle);
+        *y = tempX * sin(angle) + tempY * cos(angle);
+    }
+}
 
 // Function to load a BMP image and place it a texture
 GLuint PBOGLES::oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height) {

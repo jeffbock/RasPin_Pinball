@@ -99,8 +99,8 @@ int main(int argc, char const *argv[])
         // Show the console background
         g_PBEngine.gfxRenderSprite(backgroudId, 0, 0);
 
-        // g_PBEngine.gfxSetRotateDegrees(catId, 10, true);
-        // g_PBEngine.gfxSetScaleFactor(catId, scaleFactor, true);
+        g_PBEngine.gfxSetRotateDegrees(ballId, 10, true);
+        g_PBEngine.gfxSetScaleFactor(ballId, scaleFactor, true);
         g_PBEngine.gfxRenderSprite(ballId, ball1x, ball1y);
         ball1x += ball1dx;
         if (ball1x > 800 || ball1x < 0) ball1dx = -ball1dx;
