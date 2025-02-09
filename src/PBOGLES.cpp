@@ -22,8 +22,15 @@ PBOGLES::PBOGLES() {
     m_posAttrib = 0;
     m_colorAttrib = 0; 
     m_texCoordAttrib = 0; 
-    m_alphaUniform = 0;
+    m_uTexAlpha = 0;
     m_useTexture = 0;
+    m_useTexAlpha = 0;
+
+    // Set quad verex color to while
+    m_quadRed = 1.0f;
+    m_quadGreen = 1.0f; 
+    m_quadBlue = 1.0f;
+    m_quadAlpha = 1.0f;
 }
 
 PBOGLES::~PBOGLES() {
@@ -124,8 +131,14 @@ bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
     glEnableVertexAttribArray(m_colorAttrib);
     m_texCoordAttrib = glGetAttribLocation(m_shaderProgram, "vTexCoord");
     glEnableVertexAttribArray(m_texCoordAttrib);
-    m_alphaUniform = glGetUniformLocation(m_shaderProgram, "uAlpha");
+    m_uTexAlpha = glGetUniformLocation(m_shaderProgram, "uTexAlpha");
     m_useTexture = glGetUniformLocation(m_shaderProgram, "useTexture");
+    m_useTexAlpha = glGetUniformLocation(m_shaderProgram, "useTexAlpha");
+
+    glEnable(GL_BLEND);
+    // glBlendFunc(GL_SRC_COLOR, GL_ONE_MINUS_SRC_COLOR);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    // glBlendFunc(GL_ONE, GL_ONE);
     
     // Set the internal variables and reflect that the basic rendering engine has been intialized
     m_width = width;
@@ -176,19 +189,27 @@ GLuint PBOGLES::oglCreateProgram(const char* vertexSource, const char* fragmentS
     return program;
 }
 
+void  PBOGLES::oglSetQuadColor(float red, float green, float blue, float alpha){
+    // Set the m_quad member variables to their respective inputs
+    m_quadRed = red;
+    m_quadGreen = green;
+    m_quadBlue = blue;
+    m_quadAlpha = alpha;
+}
+
 // Renderig a quad to the back buffer 
 void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float scale, unsigned int rotateDegrees,
-                             bool useCenter, bool returnBoundingBox, unsigned int textureId, float alpha) {
+                             bool useCenter, bool returnBoundingBox, unsigned int textureId, bool useAlpha, float alpha) {
 
     // Need to use the X1,Y1 and X2,Y2 to create the quad.
     // The scale is used to scale the quad, the rotateDegrees is used to rotate the quad
     // Define the quad vertices, colors, and texture coordinates
     GLfloat vertices[] = {
     // Pos (3 XYZ)      // Colors (4 RGBA)      // Texture Coords
-    *X1,  *Y1, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, // Top Left
-    *X1,  *Y2, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, // Bottom-left
-    *X2,  *Y1, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, // Top right
-    *X2,  *Y2, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f  // Bottom-right
+    *X1,  *Y1, 0.0f,      m_quadRed, m_quadGreen, m_quadBlue, m_quadAlpha, 0.0f, 1.0f, // Top Left
+    *X1,  *Y2, 0.0f,      m_quadRed, m_quadGreen, m_quadBlue, m_quadAlpha, 0.0f, 0.0f, // Bottom-left
+    *X2,  *Y1, 0.0f,      m_quadRed, m_quadGreen, m_quadBlue, m_quadAlpha, 1.0f, 1.0f, // Top right
+    *X2,  *Y2, 0.0f,      m_quadRed, m_quadGreen, m_quadBlue, m_quadAlpha, 1.0f, 0.0f  // Bottom-right
     };
 
     //  Transfor the quad if rotateDegrees are not the default (no scale / rotate) values
@@ -259,7 +280,10 @@ void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float s
     glVertexAttribPointer(m_texCoordAttrib, 2, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), vertices + 7);
 
     // Set the input variable for the alpha and enable/bind the texture if needed
-    glUniform1f(m_alphaUniform, alpha);
+    glUniform1f(m_uTexAlpha, alpha);
+    if (useAlpha) glUniform1f(m_useTexAlpha, 1);
+    else glUniform1f(m_useTexAlpha, 0);
+
     if (textureId == 0) glUniform1i(m_useTexture, 0);
     else {
         if (textureId != m_lastTextureId) {
@@ -295,6 +319,28 @@ void PBOGLES::scaleAndRotateVertices(float* x, float* y, float scale, unsigned i
 
 // Function to load a BMP image and place it a texture
 GLuint PBOGLES::oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height) {
+
+    // Picking the loading fucntion depending on the type of texture
+    switch (type)
+    {
+        case OGL_BMP:
+            return (oglLoadBMPTexture (filename, width, height));
+        break;
+
+        case OGL_PNG:
+            return (oglLoadPNGTexture (filename, width, height));
+        break;
+    
+    default:
+        break;
+    }
+
+    // No sprite was created
+    return (0);
+
+}
+
+GLuint PBOGLES::oglLoadBMPTexture (const char* filename, unsigned int* width, unsigned int* height){
     std::ifstream file(filename, std::ios::binary);
     if (!file) {
         // Fix this error output l
@@ -344,7 +390,7 @@ GLuint PBOGLES::oglLoadTexture(const char* filename, oglTexType type, unsigned i
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tempWidth, tempHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbData);
    
-    delete[] rgbData;
+    delete[] rgbData; 
     
     *width = tempWidth;
     *height = tempHeight;
@@ -358,93 +404,28 @@ unsigned int PBOGLES::oglGetScreenWidth(){
     return m_width;
 }
 
-/*
 // Function to load a PNG texture
-bool PBOGLES::oglLoadPNGTexture(const char* filename) {
-    FILE* file = fopen(filename, "rb");
-    if (!file) {
-        std::cerr << "Error: Unable to open file " << filename << std::endl;
-        return false;
+GLuint PBOGLES::oglLoadPNGTexture (const char* filename, unsigned int* width, unsigned int* height){ 
+
+    int texWidth, texHeight, texChannels;
+    unsigned char* data = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    if (!data) {
+        std::cout << "Error: Unable to load image " << filename << std::endl;
+        return 0;
     }
 
-    png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-    if (!png) {
-        std::cerr << "Error: Unable to create PNG read struct" << std::endl;
-        fclose(file);
-        return false;
-    }
-
-    png_infop info = png_create_info_struct(png);
-    if (!info) {
-        std::cerr << "Error: Unable to create PNG info struct" << std::endl;
-        png_destroy_read_struct(&png, nullptr, nullptr);
-        fclose(file);
-        return false;
-    }
-
-    if (setjmp(png_jmpbuf(png))) {
-        std::cerr << "Error: PNG read error" << std::endl;
-        png_destroy_read_struct(&png, &info, nullptr);
-        fclose(file);
-        return false;
-    }
-
-    png_init_io(png, file);
-    png_read_info(png, info);
-
-    int width = png_get_image_width(png, info);
-    int height = png_get_image_height(png, info);
-    png_byte color_type = png_get_color_type(png, info);
-    png_byte bit_depth = png_get_bit_depth(png, info);
-
-    if (bit_depth == 16) {
-        png_set_strip_16(png);
-    }
-
-    if (color_type == PNG_COLOR_TYPE_PALETTE) {
-        png_set_palette_to_rgb(png);
-    }
-
-    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) {
-        png_set_expand_gray_1_2_4_to_8(png);
-    }
-
-    if (png_get_valid(png, info, PNG_INFO_tRNS)) {
-        png_set_tRNS_to_alpha(png);
-    }
-
-    if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY) {
-        png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
-    }
-
-    if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
-        png_set_gray_to_rgb(png);
-    }
-
-    png_read_update_info(png, info);
-
-    png_bytep* row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
-    for (int y = 0; y < height; y++) {
-        row_pointers[y] = (png_byte*)malloc(png_get_rowbytes(png, info));
-    }
-
-    png_read_image(png, row_pointers);
-
-    fclose(file);
-
-    glGenTextures(1, &m_texture);
-    glBindTexture(GL_TEXTURE_2D, m_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, row_pointers[0]);
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texWidth, texHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    for (int y = 0; y < height; y++) {
-        free(row_pointers[y]);
-    }
-    free(row_pointers);
+    stbi_image_free(data);
 
-    png_destroy_read_struct(&png, &info, nullptr);
+    *width = texWidth;
+    *height = texHeight;
+    return texture;
 
-    return true;
+    return (0);
 }
-*/

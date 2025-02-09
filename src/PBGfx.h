@@ -18,7 +18,7 @@
 // Define an enum for different texture sources
 enum gfxTexType {
     GFX_BMP = 0,
-    GFX_TEXTURE = 1, 
+    GFX_PNG = 1, 
     GFX_TTEND
 };
 
@@ -43,7 +43,6 @@ struct stSpriteInfo {
     gfxTexType textureType;
     gfxTexCenter textureCenter;
     float textureAlpha;
-    // TODO:  Set sprite color value (white if no modifcation)
     bool keepResident;
     float scaleFactor;
     int rotateDegrees;
@@ -72,13 +71,15 @@ public:
     void         gfxClear(float red, float blue, float green, float alpha, bool doFlip);
     unsigned int gfxSetScaleFactor(unsigned int spriteId, float scaleFactor, bool addFactor);
     unsigned int gfxSetRotateDegrees(unsigned int spriteId, int rotateDegrees, bool addDegrees);
+    void         gfxSetSpriteColor(unsigned int red, unsigned int green, unsigned int blue, unsigned int alpha);
     unsigned int gfxGetBaseHeight(unsigned int spriteId);
     unsigned int gfxGetBaseWidth(unsigned int spriteId);
     stBoundingBox gfxGetBoundingBox(unsigned int spriteId);
+    void         gfxSetSpriteColor(unsigned int spriteId);
 
     /*  Functions to add
     
-    UpdateBoundingBox
+    Change rotation of sprite to float, need to be able to do fractional rotations, 1 degree is not enough
     Create a font sprite type
     Write text from font sprite at location x,y (from a string / string array?)
     Create system font(s)
@@ -91,6 +92,8 @@ private:
     // User sprites start at 100. System sprites will use lower numbers
     unsigned int nextSystemSpriteId = 1;
     unsigned int nextUserSpriteId = 100;
+    // Color state used for sprite rendering.  These colors are used for the vertex of the sprite quad.
+    unsigned int m_Red = 255, m_Green = 255, m_Blue = 255, m_Alpha = 255;
     std::map<unsigned int, stSpriteInfo> spriteMap;
 };
 

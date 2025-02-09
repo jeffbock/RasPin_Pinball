@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
+#include "stb_image.h"
 
 #define OGLES_BLACKCOLOR 0x0 
 #define OGLES_WHITECOLOR 0x1
@@ -20,7 +21,7 @@ public:
 
     enum oglTexType {
         OGL_BMP = 0,
-        OGL_TEXTURE = 1, 
+        OGL_PNG = 1, 
         OGL_TTEND
     };
 
@@ -35,9 +36,12 @@ public:
 
 protected:
     GLuint oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height);
+    GLuint oglLoadBMPTexture (const char* filename, unsigned int* width, unsigned int* height);
+    GLuint oglLoadPNGTexture (const char* filename, unsigned int* width, unsigned int* height);
     void oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float scale, unsigned int rotateDegrees,
-                        bool useCenter, bool returnBoundingBox, unsigned int textureId, float alpha);
+                        bool useCenter, bool returnBoundingBox, unsigned int textureId, bool useAlpha, float alpha);
     void scaleAndRotateVertices(float* x, float* y, float scale, unsigned int rotateDegrees);
+    void oglSetQuadColor(float red, float green, float blue, float alpha);
 
 private:
     long m_width;
@@ -45,6 +49,7 @@ private:
     float m_aspectRatio;
     unsigned int m_lastTextureId;
     bool m_started;
+    float m_quadRed, m_quadGreen, m_quadBlue, m_quadAlpha;
     
     // OGLES Context variables
     EGLDisplay m_display;
@@ -57,8 +62,9 @@ private:
     GLint      m_posAttrib;
     GLint      m_colorAttrib; 
     GLint      m_texCoordAttrib; 
-    GLint      m_alphaUniform;
+    GLint      m_uTexAlpha;
     GLint      m_useTexture;
+    GLint      m_useTexAlpha;
 
     GLuint oglCompileShader(GLenum type, const char* source);
     GLuint oglCreateProgram(const char* vertexSource, const char* fragmentSource);
@@ -86,11 +92,13 @@ private:
         varying vec4 fColor;
         varying vec2 fTexCoord;
         uniform sampler2D uTexture;
-        uniform float uAlpha;
+        uniform float uTexAlpha;
         uniform bool useTexture;
+        uniform bool useTexAlpha;
         void main() {
             vec4 texColor = useTexture ? texture2D(uTexture, fTexCoord) : vec4(1.0);
-            gl_FragColor = texColor * fColor * uAlpha;
+            texColor.a = useTexAlpha ? uTexAlpha : texColor.a;
+            gl_FragColor = texColor * fColor;
         }
     )";
 };

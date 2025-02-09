@@ -80,36 +80,32 @@ int main(int argc, char const *argv[])
     if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
 
     // Create a background sprites for the bootup screen
-    unsigned int backgroudId = g_PBEngine.gfxCreateSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_UPPERLEFT, 0.2f, false, 1.0f, 0, false);
-    unsigned int ballId = g_PBEngine.gfxCreateSprite("Ball", "resources/textures/ball.bmp", GFX_BMP, GFX_CENTER, 0.5f, true, 0.4f, 0, true);
+    unsigned int backgroudId = g_PBEngine.gfxCreateSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_UPPERLEFT, 0.4f, false, 1.0f, 0, false);
+    unsigned int starsId = g_PBEngine.gfxCreateSprite("Stars", "resources/textures/stars.png", GFX_PNG, GFX_CENTER, 1.0f, true, 2.0f, 0, true);
 
-    // Main loop for the pinball game                                     
-
-    float scaleFactor = 0.02f;
-    unsigned int ball1x = 400;
-    unsigned int ball1y = 400;
-    int ball1dx = 5;
-    int ball1dy = 5;
+    // Main loop for the pinball game
+    int ticksPerRotate = 500, rotateStep = 1;                                    
+    unsigned long currentTick = GetTickCount64();
+    unsigned long LastTick = currentTick;
 
     while (true) {
         if (!PBProcessInput()) return (0);
                 
-         g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 0.0f, false);
+        currentTick = GetTickCount64();
+        if (currentTick - LastTick > ticksPerRotate) {
+            LastTick = currentTick;
+            
+            g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
               
-        // Show the console background
-        g_PBEngine.gfxRenderSprite(backgroudId, 0, 0);
-
-        g_PBEngine.gfxSetRotateDegrees(ballId, 10, true);
-        g_PBEngine.gfxSetScaleFactor(ballId, scaleFactor, true);
-        g_PBEngine.gfxRenderSprite(ballId, ball1x, ball1y);
-        ball1x += ball1dx;
-        if (ball1x > 800 || ball1x < 0) ball1dx = -ball1dx;
-        ball1y += ball1dy;
-        if (ball1y > 480 || ball1y < 0) ball1dy = -ball1dy;
-
-        g_PBEngine.gfxSwap();
-
-        Sleep(100); // Sleep to limit the frame rate to ~10 FPS
+            // Show the console background
+            g_PBEngine.gfxSetSpriteColor(255, 255, 255, 255);
+            g_PBEngine.gfxRenderSprite(backgroudId, 0, 0);
+            g_PBEngine.gfxSetSpriteColor(24, 0, 210, 128);
+            g_PBEngine.gfxSetRotateDegrees(starsId, rotateStep, true);
+            g_PBEngine.gfxRenderSprite(starsId, 400, 240);
+        
+            g_PBEngine.gfxSwap();
+        }
     }
 
     // create a new instance of the pinball class

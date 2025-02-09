@@ -26,8 +26,8 @@ unsigned int PBGfx::gfxSysCreateSprite(stSpriteInfo spriteInfo, bool bSystem) {
         case GFX_BMP:
             textureType = OGL_BMP;
             break;
-        case GFX_TEXTURE:
-            textureType = OGL_TEXTURE;
+        case GFX_PNG:
+            textureType = OGL_PNG;
             break;
         default:
             return (NOSPRITE);
@@ -60,7 +60,6 @@ unsigned int PBGfx::gfxCreateSprite(const std::string& spriteName, const std::st
     spriteInfo.textureType = textureType;
     spriteInfo.textureCenter = textureCenter;
     spriteInfo.textureAlpha = textureAlpha;
-    // TODO:  Need to add vertex color values to the sprite info
     spriteInfo.keepResident = keepResident;
     spriteInfo.scaleFactor = scaleFactor;
     spriteInfo.rotateDegrees = rotateDegrees;
@@ -96,8 +95,6 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int 
         // If using center, then need to move everything up and left by the right amount
         if (useCenter){
         
-            // y2 = y1 + (float)it->second.baseHeight / (float)oglGetScreenHeight() * 2.0f;
-        
             float shiftleft = (x2-x1)/2;
             float shiftup = (y2-y1)/2;
 
@@ -106,10 +103,12 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int 
             y1 -= shiftup;
             y2 -= shiftup;
         }
-        // else y2 = y1 + (float)it->second.baseHeight / (float)oglGetScreenHeight() * 2.0f;
+
+        // Use alpha if the texture is a BMP (eg: use the the supplied alpha value, otherwise it is assumed PNG already has alpha)
+        bool useAlpha = it->second.textureType == GFX_BMP ? true : false;
 
         // Render the sprite quad
-        oglRenderQuad(&x1, &y1, &x2, &y2, it->second.scaleFactor, it->second.rotateDegrees, useCenter,it->second.updateBoundingBox, it->second.glTextureId, it->second.textureAlpha);
+        oglRenderQuad(&x1, &y1, &x2, &y2, it->second.scaleFactor, it->second.rotateDegrees, useCenter,it->second.updateBoundingBox, it->second.glTextureId, useAlpha, it->second.textureAlpha);
 
         // Update the bounding box if needed.  Convert the float X1,Y1,X2,Y2 values to screen space corridates and save them in the bounding box struct
         if (it->second.updateBoundingBox) {
@@ -162,6 +161,23 @@ unsigned int PBGfx::gfxSetRotateDegrees(unsigned int spriteId, int rotateDegrees
     }
     else return (NOSPRITE);
     return (spriteId);
+}
+
+void PBGfx::gfxSetSpriteColor(unsigned int red, unsigned int green, unsigned int blue, unsigned int alpha){
+    
+    // Save these values, although they are not used anywhere
+    m_Red = red;
+    m_Green = green;
+    m_Blue = blue;
+    m_Alpha = alpha;
+
+    // Convert to float, which is what OGL understands
+    float fRed = (float)red / 255.0f;
+    float fGreen = (float)green / 255.0f;
+    float fBlue = (float)blue / 255.0f;
+    float fAlpha = (float)alpha / 255.0f;
+
+    oglSetQuadColor(fRed, fGreen, fBlue, fAlpha);
 }
 
 // Query function for baseHeight
