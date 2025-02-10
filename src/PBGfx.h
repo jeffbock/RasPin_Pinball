@@ -11,6 +11,7 @@
 #include <fstream>
 #include <string>
 #include <map>
+#include <cmath>
 #include "PBOGLES.h"
 
 #define NOSPRITE 0
@@ -45,7 +46,7 @@ struct stSpriteInfo {
     float textureAlpha;
     bool keepResident;
     float scaleFactor;
-    int rotateDegrees;
+    float rotateDegrees;
     bool updateBoundingBox;
 
     // Internal information for sprites, the system will supply these values and the app can query
@@ -64,13 +65,13 @@ public:
 
     unsigned int gfxCreateSprite(const std::string& spriteName, const std::string& textureFileName, 
                                  gfxTexType textureType, gfxTexCenter textureCenter, float textureAlpha, 
-                                 bool keepResident, float scaleFactor, int rotateDegrees, bool updateBoundingBox);
+                                 bool keepResident, float scaleFactor, float rotateDegrees, bool updateBoundingBox);
     unsigned int gfxCreateSprite(stSpriteInfo spriteInfo);
     bool         gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int y);
     void         gfxSwap();
     void         gfxClear(float red, float blue, float green, float alpha, bool doFlip);
     unsigned int gfxSetScaleFactor(unsigned int spriteId, float scaleFactor, bool addFactor);
-    unsigned int gfxSetRotateDegrees(unsigned int spriteId, int rotateDegrees, bool addDegrees);
+    unsigned int gfxSetRotateDegrees(unsigned int spriteId, float rotateDegrees, bool addDegrees);
     void         gfxSetSpriteColor(unsigned int red, unsigned int green, unsigned int blue, unsigned int alpha);
     unsigned int gfxGetBaseHeight(unsigned int spriteId);
     unsigned int gfxGetBaseWidth(unsigned int spriteId);

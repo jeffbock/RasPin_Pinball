@@ -61,15 +61,130 @@ return true;
 // Class functions for PBEngine
  PBEngine::PBEngine() {
 
-    // Code later...
+    m_mainState = PB_BOOTUP;
 
+    m_PBBootupLoaded = false;
+    m_PBStartMenuLoaded = false;
+    m_PBPlayGameLoaded = false;
+    m_PBTestModeLoaded = false;
+    m_PBBenchmarkLoaded = false;
+    m_PBCreditsLoaded = false;
+
+    m_BootUpConsoleId = NOSPRITE; 
+    m_BootUpStarsId = NOSPRITE;
  }
 
  PBEngine::~PBEngine(){
 
     // Code later...
 
- }
+}
+
+// Render the screen based on the main state of the game
+bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick){
+    
+    switch (m_mainState) {
+        case PB_BOOTUP: return pbeRenderBootScreen(currentTick, lastTick); break;
+        case PB_STARTMENU: return pbeRenderStartMenu(currentTick, lastTick); break;
+        case PB_PLAYGAME: return pbeRenderPlayGame(currentTick, lastTick); break;
+        case PB_TESTMODE: return pbeRenderTestMode(currentTick, lastTick); break;
+        case PB_BENCHMARK: return pbeRenderBenchmark(currentTick, lastTick); break;
+        case PB_CREDITS: return pbeRenderCredits(currentTick, lastTick); break;
+        default: return (false); break;
+    }
+
+    return (false);
+}
+
+// Render the bootup screen
+bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick){
+
+   if (!g_PBEngine.pbeLoadScreen (PB_BOOTUP)) return (false); 
+
+   float degreesPerTick = 0.001f, tickDiff = 0.0f;
+           
+   tickDiff = (float)(currentTick - lastTick);
+
+   g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+         
+   // Show the console background - it's a full screen image
+   g_PBEngine.gfxSetSpriteColor(255, 255, 255, 255);
+   g_PBEngine.gfxRenderSprite(m_BootUpConsoleId, 0, 0);
+   // Show the rotating stars
+   g_PBEngine.gfxSetSpriteColor(24, 0, 210, 96);
+   g_PBEngine.gfxSetRotateDegrees(m_BootUpStarsId, (degreesPerTick * (float) tickDiff), true);
+   g_PBEngine.gfxRenderSprite(m_BootUpStarsId, 400, 240);
+
+   return (true);
+}
+
+bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastTick){
+   return (false);   
+}
+
+bool PBEngine::pbeRenderPlayGame(unsigned long currentTick, unsigned long lastTick){
+    return (false);   
+}
+
+bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTick){
+    return (false);   
+}
+
+bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick){
+    return (false);   
+}
+
+bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTick){
+    return (false);   
+}
+ 
+bool PBEngine::pbeLoadScreen (PBMainState state){
+    switch (state) {
+        case PB_BOOTUP: return (pbeLoadBootUp()); break;
+        case PB_STARTMENU: return (pbeLoadStartMenu()); break;
+        case PB_PLAYGAME: return (pbeLoadPlayGame()); break;
+        case PB_TESTMODE: return (pbeLoadTestMode()); break;
+        case PB_BENCHMARK: return (pbeLoadBenchmark()); break;
+        case PB_CREDITS: return (pbeLoadCredits()); break;
+        default: return (false); break;
+    }
+     
+    return (false);
+}
+
+bool PBEngine::pbeLoadBootUp(){
+    if (m_PBBootupLoaded) return (true);
+
+    // Load the bootup screen
+    m_BootUpConsoleId = g_PBEngine.gfxCreateSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_UPPERLEFT, 0.5f, false, 1.0f, 0, false);
+    m_BootUpStarsId = g_PBEngine.gfxCreateSprite("Stars", "resources/textures/stars.png", GFX_PNG, GFX_CENTER, 1.0f, true, 2.0f, 0, true);
+
+    if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE) return (false);
+
+    m_PBBootupLoaded = true;
+
+    return (m_PBBootupLoaded);
+}
+
+bool PBEngine::pbeLoadStartMenu(){
+    return (false);
+}
+
+bool PBEngine::pbeLoadPlayGame(){
+    return (false);
+}
+
+bool PBEngine::pbeLoadTestMode(){
+    return (false);
+}
+
+bool PBEngine::pbeLoadBenchmark(){
+    return (false);
+}
+
+bool PBEngine::pbeLoadCredits(){
+    return (false);
+}
 
 // Main program start
 int main(int argc, char const *argv[])
@@ -83,38 +198,21 @@ int main(int argc, char const *argv[])
     unsigned int backgroudId = g_PBEngine.gfxCreateSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_UPPERLEFT, 0.4f, false, 1.0f, 0, false);
     unsigned int starsId = g_PBEngine.gfxCreateSprite("Stars", "resources/textures/stars.png", GFX_PNG, GFX_CENTER, 1.0f, true, 2.0f, 0, true);
 
-    // Main loop for the pinball game
-    int ticksPerRotate = 500, rotateStep = 1;                                    
+    // Main loop for the pinball game                                
     unsigned long currentTick = GetTickCount64();
-    unsigned long LastTick = currentTick;
+    unsigned long lastTick = currentTick;
 
     while (true) {
         if (!PBProcessInput()) return (0);
-                
+
         currentTick = GetTickCount64();
-        if (currentTick - LastTick > ticksPerRotate) {
-            LastTick = currentTick;
-            
-            g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-              
-            // Show the console background
-            g_PBEngine.gfxSetSpriteColor(255, 255, 255, 255);
-            g_PBEngine.gfxRenderSprite(backgroudId, 0, 0);
-            g_PBEngine.gfxSetSpriteColor(24, 0, 210, 128);
-            g_PBEngine.gfxSetRotateDegrees(starsId, rotateStep, true);
-            g_PBEngine.gfxRenderSprite(starsId, 400, 240);
-        
-            g_PBEngine.gfxSwap();
-        }
+
+        g_PBEngine.pbeRenderScreen(currentTick, lastTick);   
+        g_PBEngine.gfxSwap();
+
+        lastTick = currentTick;
     }
 
-    // create a new instance of the pinball class
-    //PInball pinball;
-
-    // run the pinball game
-    //pinball.run();
-
-    // return 0 to indicate success
     return 0;
 }
 

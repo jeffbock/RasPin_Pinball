@@ -198,7 +198,7 @@ void  PBOGLES::oglSetQuadColor(float red, float green, float blue, float alpha){
 }
 
 // Renderig a quad to the back buffer 
-void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float scale, unsigned int rotateDegrees,
+void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float scale, float rotateDegrees,
                              bool useCenter, bool returnBoundingBox, unsigned int textureId, bool useAlpha, float alpha) {
 
     // Need to use the X1,Y1 and X2,Y2 to create the quad.
@@ -213,7 +213,7 @@ void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float s
     };
 
     //  Transfor the quad if rotateDegrees are not the default (no scale / rotate) values
-    if ((scale != 1.0f) || (rotateDegrees != 0)) {
+    if ((scale != 1.0f) || (rotateDegrees != 0.0f)) {
         if (useCenter) {
             // Calculate the center of the quad
             float centerX = (*X1 + *X2) / 2.0f;
@@ -297,7 +297,7 @@ void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float s
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
 }
 
-void PBOGLES::scaleAndRotateVertices(float* x, float* y, float scale, unsigned int rotateDegrees){
+void PBOGLES::scaleAndRotateVertices(float* x, float* y, float scale, float rotateDegrees){
     
     // Scale
     if (scale != 1.0f) {
@@ -306,7 +306,7 @@ void PBOGLES::scaleAndRotateVertices(float* x, float* y, float scale, unsigned i
     }
 
     // Rotate
-    if (rotateDegrees != 0) {
+    if (rotateDegrees != 0.0f) {
 
         float tempX = *x;
         float tempY = *y;

@@ -38,9 +38,9 @@ protected:
     GLuint oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height);
     GLuint oglLoadBMPTexture (const char* filename, unsigned int* width, unsigned int* height);
     GLuint oglLoadPNGTexture (const char* filename, unsigned int* width, unsigned int* height);
-    void oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float scale, unsigned int rotateDegrees,
+    void oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float scale, float rotateDegrees,
                         bool useCenter, bool returnBoundingBox, unsigned int textureId, bool useAlpha, float alpha);
-    void scaleAndRotateVertices(float* x, float* y, float scale, unsigned int rotateDegrees);
+    void scaleAndRotateVertices(float* x, float* y, float scale, float rotateDegrees);
     void oglSetQuadColor(float red, float green, float blue, float alpha);
 
 private:

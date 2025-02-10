@@ -53,7 +53,7 @@ unsigned int PBGfx::gfxSysCreateSprite(stSpriteInfo spriteInfo, bool bSystem) {
 // Overloaded function to create a sprite with individual parameters
 unsigned int PBGfx::gfxCreateSprite(const std::string& spriteName, const std::string& textureFileName, 
                                     gfxTexType textureType, gfxTexCenter textureCenter, float textureAlpha, 
-                                    bool keepResident, float scaleFactor, int rotateDegrees, bool updateBoundingBox) {
+                                    bool keepResident, float scaleFactor, float rotateDegrees, bool updateBoundingBox) {
     stSpriteInfo spriteInfo;
     spriteInfo.spriteName = spriteName;
     spriteInfo.textureFileName = textureFileName;
@@ -150,13 +150,13 @@ unsigned int PBGfx::gfxSetScaleFactor(unsigned int spriteId, float scaleFactor, 
 }
 
 // Set function for rotateDegrees
-unsigned int PBGfx::gfxSetRotateDegrees(unsigned int spriteId, int rotateDegrees, bool addDegrees) {
+unsigned int PBGfx::gfxSetRotateDegrees(unsigned int spriteId, float rotateDegrees, bool addDegrees) {
     auto it = spriteMap.find(spriteId);
     if (it != spriteMap.end()) {
         if (!addDegrees) it->second.rotateDegrees = rotateDegrees;
         else {
             it->second.rotateDegrees += rotateDegrees;
-            it->second.rotateDegrees %= 360;
+            it->second.rotateDegrees = fmod(it->second.rotateDegrees, 360.0f);
         }
     }
     else return (NOSPRITE);
