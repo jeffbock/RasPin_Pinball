@@ -1,10 +1,9 @@
 This file tracks the various items to do in the pinball project in rough priority
 
-Create basic OGL ES sprite library to load bitmaps / textures w/ transparency and render them
-- Start with standard rects, but could expand to more comprehensive sprite rendering, animation, etc...
 Use the font library to create the text textures (probably should store them off rather than glyph render them continuously)
     -  Fix / align schrift code / headers to windows and PiOS
     -  Need a strategy here.. pre-render and load as textures?  Or just dynamically do it in the app? dynamically is better as a framework
+Create all the basic state screens (but probably on just basic score for the play screen - that one will be extensive)
 Create JSON format for pinball HW definition, along with mapping to test keys in windows
 Create basic score screen
 Create test screen listing items and then activating them through the flipper buttons
@@ -13,3 +12,4 @@ Set up OGL ES code to work w/ PiOS libs / headers
 Set up VS Code to cross compile for PiOS
 Duplicate all the Windows simulation capability in PiOS
 Install git LFS as that large bitmaps, etc.. are expected at some point
+Expand sprites to more comprehensive rendering, animation, etc...

@@ -38,10 +38,9 @@ protected:
     GLuint oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height);
     GLuint oglLoadBMPTexture (const char* filename, unsigned int* width, unsigned int* height);
     GLuint oglLoadPNGTexture (const char* filename, unsigned int* width, unsigned int* height);
-    void oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float scale, float rotateDegrees,
-                        bool useCenter, bool returnBoundingBox, unsigned int textureId, bool useAlpha, float alpha);
-    void scaleAndRotateVertices(float* x, float* y, float scale, float rotateDegrees);
-    void oglSetQuadColor(float red, float green, float blue, float alpha);
+    void   oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, bool useCenter, bool useTexAlpha, float texAlpha, unsigned int textureId, 
+                          float vertRed, float vertGreen, float vertBlue, float vertAlpha, float scale, float rotateDegrees, bool returnBoundingBox);
+    void   scaleAndRotateVertices(float* x, float* y, float scale, float rotateDegrees);
 
 private:
     long m_width;

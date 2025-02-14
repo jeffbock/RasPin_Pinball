@@ -16,17 +16,26 @@
 
 #define NOSPRITE 0
 
-// Define an enum for different texture sources
+// Define an enum for different texture file sources
 enum gfxTexType {
     GFX_BMP = 0,
     GFX_PNG = 1, 
     GFX_TTEND
 };
 
+// Alignment of where the X/Y coordinates are for the sprite
 enum gfxTexCenter {
     GFX_UPPERLEFT = 0,
     GFX_CENTER = 1, 
     GFX_TCEND
+};
+
+// Enum to allow sprites to have a multiple UV maps, useful for text and animated sprites
+enum gfxSpriteMap {
+    GFX_NOMAP = 0,
+    GFX_TEXTMAP = 1, 
+    GFX_SPRITEMAP = 2, 
+    GFX_SMEND
 };
 
 struct stBoundingBox {
@@ -42,16 +51,30 @@ struct stSpriteInfo {
     std::string spriteName;
     std::string textureFileName;
     gfxTexType textureType;
+    gfxSpriteMap mapType;
     gfxTexCenter textureCenter;
-    float textureAlpha;
     bool keepResident;
+    bool useTexture;
+    
+    // Internal information for sprites, the system will supply these values and the app can query
+    unsigned int baseWidth;
+    unsigned int baseHeight;
+    unsigned int glTextureId;
+    bool isLoaded;
+};
+
+// Holds the current rendering information of the sprite instance - all things that can change or be animated
+struct stSpriteInstance {
+    unsigned int parentSpriteId;
+    unsigned int x;
+    unsigned int y;
+    float textureAlpha;
+    float vertRed, vertGreen, vertBlue, vertAlpha;
     float scaleFactor;
     float rotateDegrees;
     bool updateBoundingBox;
 
-    // Internal information for sprites, the system will supply these values and the app can query
-    unsigned int baseWidth;
-    unsigned int baseHeight;
+    // These two will never be set by calling app
     unsigned int glTextureId;
     stBoundingBox boundingBox;
 };
@@ -63,39 +86,59 @@ public:
     PBGfx();
     ~PBGfx();
 
-    unsigned int gfxCreateSprite(const std::string& spriteName, const std::string& textureFileName, 
-                                 gfxTexType textureType, gfxTexCenter textureCenter, float textureAlpha, 
-                                 bool keepResident, float scaleFactor, float rotateDegrees, bool updateBoundingBox);
-    unsigned int gfxCreateSprite(stSpriteInfo spriteInfo);
+    // Sprite creation
+    unsigned int gfxLoadSprite(const std::string& spriteName, const std::string& textureFileName, gfxTexType textureType,
+                               gfxSpriteMap mapType, gfxTexCenter textureCenter, bool keepResident, bool useTexture);
+    unsigned int gfxLoadSprite(stSpriteInfo spriteInfo);
+    
+    unsigned int gfxInstanceSprite (unsigned int parentSpriteId, unsigned int x, unsigned int y, unsigned int textureAlpha, 
+                                    unsigned int vertRed, unsigned int vertGreen, unsigned int vertBlue, unsigned int vertAlpha, float scaleFactor, float rotateDegrees);
+    unsigned int gfxInstanceSprite (unsigned int parentSpriteId, stSpriteInstance instance);
+    unsigned int gfxInstanceSprite (unsigned int parentSpriteId);
+    
+    // Several ways to call the render sprite function - remaining values should be set before calling rendersprite
+    bool         gfxRenderSprite(unsigned int spriteId);
     bool         gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int y);
-    void         gfxSwap();
-    void         gfxClear(float red, float blue, float green, float alpha, bool doFlip);
+    bool         gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int y, float scaleFactor, float rotateDegrees);
+    
+    // Sprite manipulation functions
+    unsigned int gfxSetXY(unsigned int spriteId, unsigned int X, unsigned int Y, bool addXY);
+    unsigned int gfxSetTextureAlpha(unsigned int spriteId, float textureAlpha);
+    unsigned int gfxSetColor(unsigned int spriteId, unsigned int red, unsigned int green, unsigned int blue, unsigned int alpha);
     unsigned int gfxSetScaleFactor(unsigned int spriteId, float scaleFactor, bool addFactor);
     unsigned int gfxSetRotateDegrees(unsigned int spriteId, float rotateDegrees, bool addDegrees);
-    void         gfxSetSpriteColor(unsigned int red, unsigned int green, unsigned int blue, unsigned int alpha);
+    unsigned int gfxSetUpdateBoundingBox(unsigned int spriteId, bool updateBoundingBox);
+    
+    // Sprite Query Functions
     unsigned int gfxGetBaseHeight(unsigned int spriteId);
     unsigned int gfxGetBaseWidth(unsigned int spriteId);
+    unsigned int gfxGetXY(unsigned int spriteId, unsigned int* X, unsigned int* Y);
+    unsigned int gfxGetTextureAlpha(unsigned int spriteId);
+    unsigned int gfxGetColor(unsigned int spriteId, unsigned int* red, unsigned int* green, unsigned int* blue, unsigned int* alpha);
+    float        gfxGetScaleFactor(unsigned int spriteId);
+    float        gfxGetRotateDegrees(unsigned int spriteId);
     stBoundingBox gfxGetBoundingBox(unsigned int spriteId);
-    void         gfxSetSpriteColor(unsigned int spriteId);
+    bool         gfxIsLoaded(unsigned int spriteId);
+
+    // Rendering functions
+    void         gfxSwap();
+    void         gfxClear(float red, float blue, float green, float alpha, bool doFlip);
 
     /*  Functions to add
-    
-    Change rotation of sprite to float, need to be able to do fractional rotations, 1 degree is not enough
     Create a font sprite type
     Write text from font sprite at location x,y (from a string / string array?)
     Create system font(s)
-    
     */
 
 private:
-    unsigned int gfxSysCreateSprite(stSpriteInfo spriteInfo, bool bSystem);
+    unsigned int gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem);
 
     // User sprites start at 100. System sprites will use lower numbers
-    unsigned int nextSystemSpriteId = 1;
-    unsigned int nextUserSpriteId = 100;
+    unsigned int m_nextSystemSpriteId;
+    unsigned int m_nextUserSpriteId;
     // Color state used for sprite rendering.  These colors are used for the vertex of the sprite quad.
-    unsigned int m_Red = 255, m_Green = 255, m_Blue = 255, m_Alpha = 255;
-    std::map<unsigned int, stSpriteInfo> spriteMap;
+    std::map<unsigned int, stSpriteInfo> m_spriteList;
+    std::map<unsigned int, stSpriteInstance> m_instanceList;
 };
 
 #endif // PBGfx_h

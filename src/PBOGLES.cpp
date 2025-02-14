@@ -25,12 +25,6 @@ PBOGLES::PBOGLES() {
     m_uTexAlpha = 0;
     m_useTexture = 0;
     m_useTexAlpha = 0;
-
-    // Set quad verex color to while
-    m_quadRed = 1.0f;
-    m_quadGreen = 1.0f; 
-    m_quadBlue = 1.0f;
-    m_quadAlpha = 1.0f;
 }
 
 PBOGLES::~PBOGLES() {
@@ -189,27 +183,20 @@ GLuint PBOGLES::oglCreateProgram(const char* vertexSource, const char* fragmentS
     return program;
 }
 
-void  PBOGLES::oglSetQuadColor(float red, float green, float blue, float alpha){
-    // Set the m_quad member variables to their respective inputs
-    m_quadRed = red;
-    m_quadGreen = green;
-    m_quadBlue = blue;
-    m_quadAlpha = alpha;
-}
+//void   oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, bool useCenter, bool useTexture, bool useTexAlpha, float texAlpha, unsigned int textureId, 
+//    float vertRed, float vertGreen, float vertBlue, float vertAlpha, float scale, float rotateDegrees, bool returnBoundingBox);
 
 // Renderig a quad to the back buffer 
-void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float scale, float rotateDegrees,
-                             bool useCenter, bool returnBoundingBox, unsigned int textureId, bool useAlpha, float alpha) {
+void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, bool useCenter, bool useTexAlpha, float texAlpha, unsigned int textureId,
+                             float vertRed, float vertGreen, float vertBlue, float vertAlpha, float scale, float rotateDegrees, bool returnBoundingBox) {
 
-    // Need to use the X1,Y1 and X2,Y2 to create the quad.
-    // The scale is used to scale the quad, the rotateDegrees is used to rotate the quad
-    // Define the quad vertices, colors, and texture coordinates
+    // Create the vertices for the quad
     GLfloat vertices[] = {
     // Pos (3 XYZ)      // Colors (4 RGBA)      // Texture Coords
-    *X1,  *Y1, 0.0f,      m_quadRed, m_quadGreen, m_quadBlue, m_quadAlpha, 0.0f, 1.0f, // Top Left
-    *X1,  *Y2, 0.0f,      m_quadRed, m_quadGreen, m_quadBlue, m_quadAlpha, 0.0f, 0.0f, // Bottom-left
-    *X2,  *Y1, 0.0f,      m_quadRed, m_quadGreen, m_quadBlue, m_quadAlpha, 1.0f, 1.0f, // Top right
-    *X2,  *Y2, 0.0f,      m_quadRed, m_quadGreen, m_quadBlue, m_quadAlpha, 1.0f, 0.0f  // Bottom-right
+    *X1,  *Y1, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, 0.0f, 1.0f, // Top Left
+    *X1,  *Y2, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, 0.0f, 0.0f, // Bottom-left
+    *X2,  *Y1, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, 1.0f, 1.0f, // Top right
+    *X2,  *Y2, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, 1.0f, 0.0f  // Bottom-right
     };
 
     //  Transfor the quad if rotateDegrees are not the default (no scale / rotate) values
@@ -280,8 +267,8 @@ void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float s
     glVertexAttribPointer(m_texCoordAttrib, 2, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), vertices + 7);
 
     // Set the input variable for the alpha and enable/bind the texture if needed
-    glUniform1f(m_uTexAlpha, alpha);
-    if (useAlpha) glUniform1f(m_useTexAlpha, 1);
+    glUniform1f(m_uTexAlpha, texAlpha);
+    if (useTexAlpha) glUniform1f(m_useTexAlpha, 1);
     else glUniform1f(m_useTexAlpha, 0);
 
     if (textureId == 0) glUniform1i(m_useTexture, 0);

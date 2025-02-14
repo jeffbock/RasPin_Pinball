@@ -58,7 +58,7 @@ public:
     
     // Member variables for the sprites used in the screens
     // We might switch this to a query by name mechansim, but that would be slower...
-    unsigned int m_BootUpConsoleId, m_BootUpStarsId;
+    unsigned int m_BootUpConsoleId, m_BootUpStarsId, m_BootUpStarsId2, m_BootUpStarsId3, m_BootUpStarsId4;
 
     // bool init (long width, long height, NativeWindowType nativeWindow);
     // bool clear (long color, bool doFlip);

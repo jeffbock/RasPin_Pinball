@@ -72,6 +72,10 @@ return true;
 
     m_BootUpConsoleId = NOSPRITE; 
     m_BootUpStarsId = NOSPRITE;
+    m_BootUpStarsId2 = NOSPRITE;
+    m_BootUpStarsId3 = NOSPRITE;
+    m_BootUpStarsId4 = NOSPRITE;
+
  }
 
  PBEngine::~PBEngine(){
@@ -101,19 +105,30 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
 
    if (!g_PBEngine.pbeLoadScreen (PB_BOOTUP)) return (false); 
 
-   float degreesPerTick = 0.001f, tickDiff = 0.0f;
-           
+   float degreesPerTick = -0.001f, tickDiff = 0.0f;
+   float degreesPerTick2 = -0.005f;
+   float degreesPerTick3 = -0.025f;
+   float degreesPerTick4 = -0.75f;
+            
    tickDiff = (float)(currentTick - lastTick);
 
    g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
          
    // Show the console background - it's a full screen image
-   g_PBEngine.gfxSetSpriteColor(255, 255, 255, 255);
    g_PBEngine.gfxRenderSprite(m_BootUpConsoleId, 0, 0);
-   // Show the rotating stars
-   g_PBEngine.gfxSetSpriteColor(24, 0, 210, 96);
+
+   // Show the rotating stars - tunnel-like effect
    g_PBEngine.gfxSetRotateDegrees(m_BootUpStarsId, (degreesPerTick * (float) tickDiff), true);
    g_PBEngine.gfxRenderSprite(m_BootUpStarsId, 400, 240);
+
+   g_PBEngine.gfxSetRotateDegrees(m_BootUpStarsId2, (degreesPerTick2 * (float) tickDiff), true);
+   g_PBEngine.gfxRenderSprite(m_BootUpStarsId2, 400, 215);
+
+   g_PBEngine.gfxSetRotateDegrees(m_BootUpStarsId3, (degreesPerTick3 * (float) tickDiff), true);
+   g_PBEngine.gfxRenderSprite(m_BootUpStarsId3, 400, 190);
+
+   g_PBEngine.gfxSetRotateDegrees(m_BootUpStarsId4, (degreesPerTick4 * (float) tickDiff), true);
+   g_PBEngine.gfxRenderSprite(m_BootUpStarsId4, 400, 165);
 
    return (true);
 }
@@ -156,10 +171,26 @@ bool PBEngine::pbeLoadBootUp(){
     if (m_PBBootupLoaded) return (true);
 
     // Load the bootup screen
-    m_BootUpConsoleId = g_PBEngine.gfxCreateSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_UPPERLEFT, 0.5f, false, 1.0f, 0, false);
-    m_BootUpStarsId = g_PBEngine.gfxCreateSprite("Stars", "resources/textures/stars.png", GFX_PNG, GFX_CENTER, 1.0f, true, 2.0f, 0, true);
+    m_BootUpConsoleId = g_PBEngine.gfxLoadSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    g_PBEngine.gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 255);
 
-    if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE) return (false);
+    m_BootUpStarsId = g_PBEngine.gfxLoadSprite("Stars", "resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    g_PBEngine.gfxSetColor(m_BootUpStarsId, 24, 0, 210, 96);
+    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId, 2.0, false);
+
+    m_BootUpStarsId2 = g_PBEngine.gfxInstanceSprite(m_BootUpStarsId);
+    g_PBEngine.gfxSetColor(m_BootUpStarsId2, 24, 0, 210, 96);
+    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId2, 0.75, false);
+
+    m_BootUpStarsId3 = g_PBEngine.gfxInstanceSprite(m_BootUpStarsId);
+    g_PBEngine.gfxSetColor(m_BootUpStarsId3, 24, 0, 210, 96);
+    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId3, 0.20, false);
+    
+    m_BootUpStarsId4 = g_PBEngine.gfxInstanceSprite(m_BootUpStarsId);
+    g_PBEngine.gfxSetColor(m_BootUpStarsId4, 24, 0, 210, 96);
+    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId4, 0.05, false);
+
+    if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE) return (false);
 
     m_PBBootupLoaded = true;
 
@@ -193,10 +224,6 @@ int main(int argc, char const *argv[])
     
     // Initialize the platform specific render system
     if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
-
-    // Create a background sprites for the bootup screen
-    unsigned int backgroudId = g_PBEngine.gfxCreateSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_UPPERLEFT, 0.4f, false, 1.0f, 0, false);
-    unsigned int starsId = g_PBEngine.gfxCreateSprite("Stars", "resources/textures/stars.png", GFX_PNG, GFX_CENTER, 1.0f, true, 2.0f, 0, true);
 
     // Main loop for the pinball game                                
     unsigned long currentTick = GetTickCount64();
