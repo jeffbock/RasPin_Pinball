@@ -84,6 +84,21 @@ return true;
 
 }
 
+// Load the screen based on the main state of the game 
+bool PBEngine::pbeLoadScreen (PBMainState state){
+    switch (state) {
+        case PB_BOOTUP: return (pbeLoadBootUp()); break;
+        case PB_STARTMENU: return (pbeLoadStartMenu()); break;
+        case PB_PLAYGAME: return (pbeLoadPlayGame()); break;
+        case PB_TESTMODE: return (pbeLoadTestMode()); break;
+        case PB_BENCHMARK: return (pbeLoadBenchmark()); break;
+        case PB_CREDITS: return (pbeLoadCredits()); break;
+        default: return (false); break;
+    }
+     
+    return (false);
+}
+
 // Render the screen based on the main state of the game
 bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick){
     
@@ -98,6 +113,37 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
     }
 
     return (false);
+}
+
+// Load reasources for the boot up screen
+bool PBEngine::pbeLoadBootUp(){
+    if (m_PBBootupLoaded) return (true);
+
+    // Load the bootup screen
+    m_BootUpConsoleId = g_PBEngine.gfxLoadSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    g_PBEngine.gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 255);
+
+    m_BootUpStarsId = g_PBEngine.gfxLoadSprite("Stars", "resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    g_PBEngine.gfxSetColor(m_BootUpStarsId, 24, 0, 210, 96);
+    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId, 2.0, false);
+
+    m_BootUpStarsId2 = g_PBEngine.gfxInstanceSprite(m_BootUpStarsId);
+    g_PBEngine.gfxSetColor(m_BootUpStarsId2, 24, 0, 210, 96);
+    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId2, 0.75, false);
+
+    m_BootUpStarsId3 = g_PBEngine.gfxInstanceSprite(m_BootUpStarsId);
+    g_PBEngine.gfxSetColor(m_BootUpStarsId3, 24, 0, 210, 96);
+    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId3, 0.20, false);
+    
+    m_BootUpStarsId4 = g_PBEngine.gfxInstanceSprite(m_BootUpStarsId);
+    g_PBEngine.gfxSetColor(m_BootUpStarsId4, 24, 0, 210, 96);
+    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId4, 0.05, false);
+
+    if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE) return (false);
+
+    m_PBBootupLoaded = true;
+
+    return (m_PBBootupLoaded);
 }
 
 // Render the bootup screen
@@ -153,50 +199,6 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
     return (false);   
 }
  
-bool PBEngine::pbeLoadScreen (PBMainState state){
-    switch (state) {
-        case PB_BOOTUP: return (pbeLoadBootUp()); break;
-        case PB_STARTMENU: return (pbeLoadStartMenu()); break;
-        case PB_PLAYGAME: return (pbeLoadPlayGame()); break;
-        case PB_TESTMODE: return (pbeLoadTestMode()); break;
-        case PB_BENCHMARK: return (pbeLoadBenchmark()); break;
-        case PB_CREDITS: return (pbeLoadCredits()); break;
-        default: return (false); break;
-    }
-     
-    return (false);
-}
-
-bool PBEngine::pbeLoadBootUp(){
-    if (m_PBBootupLoaded) return (true);
-
-    // Load the bootup screen
-    m_BootUpConsoleId = g_PBEngine.gfxLoadSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
-    g_PBEngine.gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 255);
-
-    m_BootUpStarsId = g_PBEngine.gfxLoadSprite("Stars", "resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
-    g_PBEngine.gfxSetColor(m_BootUpStarsId, 24, 0, 210, 96);
-    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId, 2.0, false);
-
-    m_BootUpStarsId2 = g_PBEngine.gfxInstanceSprite(m_BootUpStarsId);
-    g_PBEngine.gfxSetColor(m_BootUpStarsId2, 24, 0, 210, 96);
-    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId2, 0.75, false);
-
-    m_BootUpStarsId3 = g_PBEngine.gfxInstanceSprite(m_BootUpStarsId);
-    g_PBEngine.gfxSetColor(m_BootUpStarsId3, 24, 0, 210, 96);
-    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId3, 0.20, false);
-    
-    m_BootUpStarsId4 = g_PBEngine.gfxInstanceSprite(m_BootUpStarsId);
-    g_PBEngine.gfxSetColor(m_BootUpStarsId4, 24, 0, 210, 96);
-    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId4, 0.05, false);
-
-    if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE) return (false);
-
-    m_PBBootupLoaded = true;
-
-    return (m_PBBootupLoaded);
-}
-
 bool PBEngine::pbeLoadStartMenu(){
     return (false);
 }
