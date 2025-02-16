@@ -11,17 +11,18 @@ using json = nlohmann::json;
 
 struct UVRect {
     float u1, v1, u2, v2;
+    int width, height;
 };
 
 int main(int argc, char* argv[]) {
     if (argc < 3 || argc > 4) {
-        std::cerr << "Usage: " << argv[0] << " <font_file.ttf> <font_size (in pixels)> [<PNG pixel X/Y size>]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <font_file.ttf> <font_size> [<buffer_size>]" << std::endl;
         return 1;
     }
 
     const char* fontFile = argv[1];
     int fontSize = std::stoi(argv[2]);
-    int textureSize = (argc == 4) ? std::stoi(argv[3]) : 256;
+    int textureSize = (argc == 4) ? std::stoi(argv[3]) : 512;
 
     // Load the font
     std::ifstream fontStream(fontFile, std::ios::binary);
@@ -40,33 +41,50 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Calculate font metrics
+    int ascent, descent, lineGap;
+    float scale = stbtt_ScaleForPixelHeight(&font, fontSize);
+    stbtt_GetFontVMetrics(&font, &ascent, &descent, &lineGap);
+    ascent = static_cast<int>(ascent * scale);
+    descent = static_cast<int>(descent * scale);
+
     // Create a memory buffer with 8/8/8/8 format
     std::vector<unsigned char> buffer(textureSize * textureSize * 4, 0);
 
     std::map<char, UVRect> uvMap;
-    int x = 0, y = 0, maxHeight = 0;
+    int x = 0, y = ascent, maxHeight = ascent - descent;
 
-    float scale = stbtt_ScaleForPixelHeight(&font, fontSize);
+    // Calculate the maximum height of all characters
+    int maxCharHeight = 0;
+    for (char c = 32; c < 127; ++c) {
+        int width, height, xOffset, yOffset;
+        unsigned char* bitmap = stbtt_GetCodepointBitmap(&font, 0, scale, c, &width, &height, &xOffset, &yOffset);
+        if (height > maxCharHeight) {
+            maxCharHeight = height;
+        }
+        stbtt_FreeBitmap(bitmap, nullptr);
+    }
 
     for (char c = 32; c < 127; ++c) {
         int width, height, xOffset, yOffset;
         unsigned char* bitmap = stbtt_GetCodepointBitmap(&font, 0, scale, c, &width, &height, &xOffset, &yOffset);
 
-        if (x + width > textureSize) {
+        if (x + width + 2 > textureSize) {
             x = 0;
-            y += maxHeight;
-            maxHeight = 0;
+            y += maxCharHeight + 2;
         }
 
-        if (y + height > textureSize) {
+        if (y + maxCharHeight + 2 > textureSize) {
             std::cerr << "Error: Not enough space in the texture buffer" << std::endl;
             stbtt_FreeBitmap(bitmap, nullptr);
             return 1;
         }
 
+        int baseline = y + ascent;
+
         for (int j = 0; j < height; ++j) {
             for (int i = 0; i < width; ++i) {
-                int bufferIndex = ((y + j) * textureSize + (x + i)) * 4;
+                int bufferIndex = ((baseline + yOffset + j) * textureSize + (x + i)) * 4;
                 unsigned char alpha = bitmap[j * width + i];
                 buffer[bufferIndex] = 255; // R
                 buffer[bufferIndex + 1] = 255; // G
@@ -75,17 +93,16 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        uvMap[c] = { x / (float)textureSize, y / (float)textureSize, (x + width) / (float)textureSize, (y + height) / (float)textureSize };
+        uvMap[c] = { x / (float)textureSize, y / (float)textureSize, (x + width) / (float)textureSize, (y + maxCharHeight) / (float)textureSize, width, maxCharHeight };
 
-        x += width;
-        if (height > maxHeight) maxHeight = height;
+        x += width + 2;
 
         stbtt_FreeBitmap(bitmap, nullptr);
     }
 
     // Save the buffer as a PNG file
     std::string baseFileName = std::string(fontFile).substr(0, std::string(fontFile).find_last_of('.'));
-    std::string outputFileName = baseFileName + "_" + std::to_string(fontSize) + ".png";
+    std::string outputFileName = baseFileName + "_" + std::to_string(fontSize) + "_" + std::to_string(textureSize) + ".png";
     if (!stbi_write_png(outputFileName.c_str(), textureSize, textureSize, 4, buffer.data(), textureSize * 4)) {
         std::cerr << "Error: Unable to save PNG file " << outputFileName << std::endl;
         return 1;
@@ -96,10 +113,10 @@ int main(int argc, char* argv[]) {
     // Save the UV map as a JSON file
     json uvJson;
     for (auto it = uvMap.begin(); it != uvMap.end(); ++it) {
-        uvJson[std::string(1, it->first)] = { it->second.u1, it->second.v1, it->second.u2, it->second.v2 };
+        uvJson[std::string(1, it->first)] = { it->second.u1, it->second.v1, it->second.u2, it->second.v2, it->second.width, it->second.height };
     }
 
-    std::string jsonFileName = baseFileName + "_UVMap_" + std::to_string(fontSize) + ".json";
+    std::string jsonFileName = baseFileName + "_" + std::to_string(fontSize) + "_" + std::to_string(textureSize) + ".json";
     std::ofstream jsonFile(jsonFileName);
     if (!jsonFile) {
         std::cerr << "Error: Unable to save JSON file " << jsonFileName << std::endl;
