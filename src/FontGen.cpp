@@ -1,3 +1,12 @@
+
+// FontGen.cpp - utility for generating a font texture and UV map from a TrueType font file
+// The PNG and JSON file can be loaded by PBGfx to load a font and render it on-screen
+// Usage: FontGen <font_file.ttf> <font_size> [<buffer_size>]
+// Example: FontGen Arial.ttf 24 512
+//  <font_file.ttf> - the TrueType font file to use
+//  <font_size> - the size of the font in pixels
+//  [<buffer_size>] - the size of the texture buffer (default is 256)
+
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -22,7 +31,7 @@ int main(int argc, char* argv[]) {
 
     const char* fontFile = argv[1];
     int fontSize = std::stoi(argv[2]);
-    int textureSize = (argc == 4) ? std::stoi(argv[3]) : 512;
+    int textureSize = (argc == 4) ? std::stoi(argv[3]) : 256;
 
     // Load the font
     std::ifstream fontStream(fontFile, std::ios::binary);
