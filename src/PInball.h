@@ -24,7 +24,6 @@
 // Includes for all platforms
 #include "include_ogl/egl.h"
 #include "include_ogl/gl31.h"
-#include "schrift.h"
 #include "PBOGLES.h"
 #include "PBGfx.h"
 #include <iostream>

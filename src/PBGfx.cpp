@@ -21,15 +21,33 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
     
     GLuint texture=0;
     oglTexType textureType;
+    oglMapType mapType;
     unsigned int width=0, height=0;
 
-    // Convert the texture type to OGL type
+    // Convert the texture and map type to OGL type
     switch (spriteInfo.textureType) {
         case GFX_BMP:
             textureType = OGL_BMP;
+            // Text sprites must be PNG because they require alpha
+            if (spriteInfo.mapType == GFX_TEXTMAP) return (NOSPRITE); 
             break;
         case GFX_PNG:
             textureType = OGL_PNG;
+            
+            break;
+        default:
+            return (NOSPRITE);
+    }
+
+    switch (spriteInfo.mapType) {
+        case GFX_NOMAP:
+            mapType = OGL_NOMAP;
+            break;
+        case GFX_TEXTMAP:
+            mapType = OGL_TEXTMAP;
+            break;
+        case GFX_SPRITEMAP:
+            mapType = OGL_SPRITEMAP;
             break;
         default:
             return (NOSPRITE);
@@ -37,7 +55,7 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
 
     // If the texture file name is not empty, load the texture
     if ((!spriteInfo.textureFileName.empty()) && (spriteInfo.useTexture)) {
-        texture = oglLoadTexture(spriteInfo.textureFileName.c_str(), textureType, &width, &height);
+        if (spriteInfo.mapType == GFX_NOMAP) texture = oglLoadTexture(spriteInfo.textureFileName.c_str(), textureType, &width, &height, mapType);
         if (texture == 0) return (NOSPRITE);
         else {
             spriteInfo.glTextureId = texture;
@@ -119,6 +137,9 @@ unsigned int PBGfx::gfxInstanceSprite (unsigned int parentSpriteId,  stSpriteIns
     
     auto it = m_instanceList.find(parentSpriteId);
     if (it != m_instanceList.end()){
+
+        // Cannont make instance sprites from font sprites or sprites with a map (eg: animated sprites)
+        if (m_spriteList[it->second.parentSpriteId].mapType != GFX_NOMAP) return (NOSPRITE);
 
         unsigned int spriteId = m_nextUserSpriteId;
         m_nextUserSpriteId++;

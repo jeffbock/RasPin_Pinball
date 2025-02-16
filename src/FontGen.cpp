@@ -7,6 +7,9 @@
 //  <font_size> - the size of the font in pixels
 //  [<buffer_size>] - the size of the texture buffer (default is 256)
 
+// FontGen.cpp - Font generator for support in the PBGfx library
+// MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
+
 #include <iostream>
 #include <fstream>
 #include <map>

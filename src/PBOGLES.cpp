@@ -305,12 +305,12 @@ void PBOGLES::scaleAndRotateVertices(float* x, float* y, float scale, float rota
 }
 
 // Function to load a BMP image and place it a texture
-GLuint PBOGLES::oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height) {
+GLuint PBOGLES::oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height, oglMapType mapType) {
 
     // Picking the loading fucntion depending on the type of texture
     switch (type)
     {
-        case OGL_BMP:
+        case OGL_BMP: 
             return (oglLoadBMPTexture (filename, width, height));
         break;
 
