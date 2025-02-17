@@ -66,6 +66,7 @@ public:
 private:
 
     PBMainState m_mainState;
+    unsigned int m_systemFontId;
 
     // Load trackers for main screens
     bool m_PBBootupLoaded, m_PBStartMenuLoaded, m_PBPlayGameLoaded, m_PBTestModeLoaded;

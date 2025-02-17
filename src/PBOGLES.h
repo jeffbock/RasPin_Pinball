@@ -10,7 +10,6 @@
 #include <iostream>
 #include <fstream>
 #include "stb_image.h"
-#include "json.hpp"
 
 #define OGLES_BLACKCOLOR 0x0 
 #define OGLES_WHITECOLOR 0x1
@@ -26,13 +25,6 @@ public:
         OGL_TTEND
     };
 
-    enum oglMapType {
-        OGL_NOMAP = 0,
-        OGL_TEXTMAP = 1, 
-        OGL_SPRITEMAP = 2, 
-        OGL_MTEND
-    };
-
     PBOGLES();
     ~PBOGLES();
 
@@ -43,11 +35,13 @@ public:
     unsigned int oglGetScreenWidth();
 
 protected:
-    GLuint oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height, oglMapType mapType);
+    GLuint oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height);
     GLuint oglLoadBMPTexture (const char* filename, unsigned int* width, unsigned int* height);
     GLuint oglLoadPNGTexture (const char* filename, unsigned int* width, unsigned int* height);
-    void   oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, bool useCenter, bool useTexAlpha, float texAlpha, unsigned int textureId, 
-                          float vertRed, float vertGreen, float vertBlue, float vertAlpha, float scale, float rotateDegrees, bool returnBoundingBox);
+    void   oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float U1, float V1, float U2, float V2, 
+                          bool useCenter, bool useTexAlpha, float texAlpha, unsigned int textureId, 
+                          float vertRed, float vertGreen, float vertBlue, float vertAlpha, 
+                          float scale, float rotateDegrees, bool returnBoundingBox);
     void   scaleAndRotateVertices(float* x, float* y, float scale, float rotateDegrees);
 
 private:
@@ -57,6 +51,7 @@ private:
     unsigned int m_lastTextureId;
     bool m_started;
     float m_quadRed, m_quadGreen, m_quadBlue, m_quadAlpha;
+    
     
     // OGLES Context variables
     EGLDisplay m_display;

@@ -1,4 +1,3 @@
-
 // FontGen.cpp - utility for generating a font texture and UV map from a TrueType font file
 // The PNG and JSON file can be loaded by PBGfx to load a font and render it on-screen
 // Usage: FontGen <font_file.ttf> <font_size> [<buffer_size>]
@@ -125,7 +124,14 @@ int main(int argc, char* argv[]) {
     // Save the UV map as a JSON file
     json uvJson;
     for (auto it = uvMap.begin(); it != uvMap.end(); ++it) {
-        uvJson[std::string(1, it->first)] = { it->second.u1, it->second.v1, it->second.u2, it->second.v2, it->second.width, it->second.height };
+        uvJson[std::string(1, it->first)] = {
+            {"u1", it->second.u1},
+            {"v1", it->second.v1},
+            {"u2", it->second.u2},
+            {"v2", it->second.v2},
+            {"width", it->second.width},
+            {"height", it->second.height}
+};
     }
 
     std::string jsonFileName = baseFileName + "_" + std::to_string(fontSize) + "_" + std::to_string(textureSize) + ".json";
@@ -138,7 +144,7 @@ int main(int argc, char* argv[]) {
     jsonFile << uvJson.dump(4);
     jsonFile.close();
 
-    std::cout << "UV map saved as " << jsonFileName << std::endl;
+    std::cout << "Character map saved as " << jsonFileName << std::endl;
 
     return 0;
 }

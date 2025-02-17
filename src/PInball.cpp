@@ -25,6 +25,7 @@ if (g_WHND == NULL) return (false);
 
 // For windows, OGLNativeWindows type is HWND
 if (!g_PBEngine.oglInit (width, height, g_WHND)) return (false);
+if (!g_PBEngine.gfxInit()) return (false);
 
 return (true);
 }
@@ -75,6 +76,8 @@ return true;
     m_BootUpStarsId2 = NOSPRITE;
     m_BootUpStarsId3 = NOSPRITE;
     m_BootUpStarsId4 = NOSPRITE;
+
+    m_systemFontId = NOSPRITE;
 
  }
 
@@ -175,6 +178,8 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
 
    g_PBEngine.gfxSetRotateDegrees(m_BootUpStarsId4, (degreesPerTick4 * (float) tickDiff), true);
    g_PBEngine.gfxRenderSprite(m_BootUpStarsId4, 400, 165);
+
+   // g_PBEngine.gfxRenderString (m_systemFontId, "This is the first text!!!", 10, 10);
 
    return (true);
 }

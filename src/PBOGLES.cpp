@@ -186,17 +186,20 @@ GLuint PBOGLES::oglCreateProgram(const char* vertexSource, const char* fragmentS
 //void   oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, bool useCenter, bool useTexture, bool useTexAlpha, float texAlpha, unsigned int textureId, 
 //    float vertRed, float vertGreen, float vertBlue, float vertAlpha, float scale, float rotateDegrees, bool returnBoundingBox);
 
-// Renderig a quad to the back buffer 
-void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, bool useCenter, bool useTexAlpha, float texAlpha, unsigned int textureId,
-                             float vertRed, float vertGreen, float vertBlue, float vertAlpha, float scale, float rotateDegrees, bool returnBoundingBox) {
+// Renderig a quad to the back buffer - this is a lot of parameters....
+void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float U1, float V1, float U2, float V2, 
+                             bool useCenter, bool useTexAlpha, float texAlpha, unsigned int textureId,
+                             float vertRed, float vertGreen, float vertBlue, float vertAlpha, 
+                             float scale, float rotateDegrees, bool returnBoundingBox) {
 
-    // Create the vertices for the quad
+    // Create the vertices for the quad - something is wrong here even though it works ... XY and UV should somewhat line up but the do not.
+    // We might be looking at the back of the triangles, could explain why positive rotation is counter clockwise?
     GLfloat vertices[] = {
     // Pos (3 XYZ)      // Colors (4 RGBA)      // Texture Coords
-    *X1,  *Y1, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, 0.0f, 1.0f, // Top Left
-    *X1,  *Y2, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, 0.0f, 0.0f, // Bottom-left
-    *X2,  *Y1, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, 1.0f, 1.0f, // Top right
-    *X2,  *Y2, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, 1.0f, 0.0f  // Bottom-right
+    *X1,  *Y1, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, U1, V2, // Top Left
+    *X1,  *Y2, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, U1, V1, // Bottom-left
+    *X2,  *Y1, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, U2, V2, // Top right
+    *X2,  *Y2, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, U2, V1  // Bottom-right
     };
 
     //  Transfor the quad if rotateDegrees are not the default (no scale / rotate) values
@@ -305,25 +308,20 @@ void PBOGLES::scaleAndRotateVertices(float* x, float* y, float scale, float rota
 }
 
 // Function to load a BMP image and place it a texture
-GLuint PBOGLES::oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height, oglMapType mapType) {
+GLuint PBOGLES::oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height) {
+
+    GLuint tempTexture = 0;
 
     // Picking the loading fucntion depending on the type of texture
     switch (type)
     {
-        case OGL_BMP: 
-            return (oglLoadBMPTexture (filename, width, height));
-        break;
-
-        case OGL_PNG:
-            return (oglLoadPNGTexture (filename, width, height));
-        break;
-    
-    default:
-        break;
+        case OGL_BMP: tempTexture = oglLoadBMPTexture (filename, width, height); break;
+        case OGL_PNG: tempTexture = oglLoadPNGTexture (filename, width, height); break;
+        default: break;
     }
 
     // No sprite was created
-    return (0);
+    return (tempTexture);
 
 }
 
