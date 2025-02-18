@@ -44,6 +44,7 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
             if (spriteInfo.mapType == GFX_TEXTMAP) return (NOSPRITE); 
             break;
         case GFX_PNG: textureType = OGL_PNG; break;
+        case GFX_NONE: textureType = OGL_NONE; break;
         default: return (NOSPRITE);
     }
 
@@ -466,6 +467,16 @@ unsigned int PBGfx:: gfxSetUV(unsigned int spriteId, float u1, float v1, float u
     else return (NOSPRITE);
 }
 
+unsigned int PBGfx:: gfxSetWH(unsigned int spriteId, unsigned int width, unsigned int height){
+    auto it = m_instanceList.find(spriteId);
+    if (it != m_instanceList.end()) {
+        it->second.width = width;
+        it->second.height = height;
+        return (spriteId);
+    }
+    else return (NOSPRITE);
+}
+
 // Set fucntion for updatng the texture alpha value (this will allow for texture fade in / out)
 unsigned int PBGfx:: gfxSetTextureAlpha(unsigned int spriteId, float textureAlpha){
     auto it = m_instanceList.find(spriteId);
@@ -503,6 +514,18 @@ unsigned int PBGfx::gfxGetBaseWidth(unsigned int spriteId) {
         return m_spriteList[spriteId].baseWidth;
     }
     return 0; // Default value if spriteId not found
+}
+
+// Query function for text height
+unsigned int PBGfx::gfxGetTextHeight(unsigned int spriteId){
+    auto it = m_instanceList.find(spriteId);
+    if (it != m_instanceList.end()) {
+        // If the sprite isn't a text sprite, then return 0
+        if (m_spriteList[it->second.parentSpriteId].mapType != GFX_TEXTMAP) return NOSPRITE;
+        // Doesn't really matter what we pick because all characters are the same height
+        return m_textMapList[spriteId]["A"].height;
+    }
+    return NOSPRITE; // Default value if spriteId not found
 }
 
 // Query function for XY

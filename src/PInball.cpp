@@ -76,15 +76,44 @@ return true;
     m_BootUpStarsId2 = NOSPRITE;
     m_BootUpStarsId3 = NOSPRITE;
     m_BootUpStarsId4 = NOSPRITE;
+    m_BootUpTitleBarId = NOSPRITE;
 
     m_defaultFontSpriteId = NOSPRITE;
 
+    m_maxConsoleLines = 20;
+    m_consoleTextHeight = 0;
  }
 
  PBEngine::~PBEngine(){
 
     // Code later...
 
+}
+
+// Console functions - basically put strings into the queue
+void PBEngine::pbeSendConsole(std::string output){
+
+    m_consoleQueue.push_back(output);
+
+    // If we have too many lines, remove the oldest
+    if (m_consoleQueue.size() > m_maxConsoleLines) m_consoleQueue.erase(m_consoleQueue.begin());
+}
+
+void PBEngine::pbeClearConsole(){
+    while (!m_consoleQueue.empty()) m_consoleQueue.pop_back();
+}
+
+void PBEngine::pbeRenderConsole(unsigned int startingX, unsigned int startingY){
+    
+     // Starting position for rendering
+     unsigned int x = startingX;
+     unsigned int y = startingY;
+ 
+     // Iterate through the vector and render each string
+     for (const auto& line : m_consoleQueue) {
+         g_PBEngine.gfxRenderString(m_defaultFontSpriteId, line, x, y, 1);
+         y += m_consoleTextHeight + 1; // Move to the next row
+     }
 }
 
 // Load the screen based on the main state of the game 
@@ -142,7 +171,12 @@ bool PBEngine::pbeLoadBootUp(){
     g_PBEngine.gfxSetColor(m_BootUpStarsId4, 24, 0, 210, 96);
     g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId4, 0.05, false);
 
-    if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE) return (false);
+    m_BootUpTitleBarId = g_PBEngine.gfxLoadSprite("Title Bar", "", GFX_NONE, GFX_NOMAP, GFX_UPPERLEFT, false, false);
+    g_PBEngine.gfxSetColor(m_BootUpTitleBarId, 0, 0, 255, 255);
+    g_PBEngine.gfxSetWH(m_BootUpTitleBarId, 800, 40);
+
+    if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  
+        m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE ||  m_BootUpTitleBarId == NOSPRITE) return (false);
 
     m_PBBootupLoaded = true;
 
@@ -179,11 +213,11 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
    g_PBEngine.gfxSetRotateDegrees(m_BootUpStarsId4, (degreesPerTick4 * (float) tickDiff), true);
    g_PBEngine.gfxRenderSprite(m_BootUpStarsId4, 400, 165);
 
-   g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 0, 0, 0, 256);
-   g_PBEngine.gfxRenderString (m_defaultFontSpriteId, "This is the first text!!!", 2, 2, 1);
+   g_PBEngine.gfxRenderSprite(m_BootUpTitleBarId, 0, 0);
+   g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "(PI)nball Engine - Copyright 2024 Jeff Bock", 202, 10, 1);
 
-   g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 210, 0, 210, 256);
-   g_PBEngine.gfxRenderString (m_defaultFontSpriteId, "This is the first text!!!", 0, 0, 1);
+   g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 256, 256, 256, 256);
+   g_PBEngine.pbeRenderConsole(1, 41);
 
    return (true);
 }
@@ -236,9 +270,16 @@ int main(int argc, char const *argv[])
     // Initialize the platform specific render system
     if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
 
-    // Get the system font sprite Id
+    // Get the system font sprite Id and default height for console
     g_PBEngine.m_defaultFontSpriteId = g_PBEngine.gfxGetSystemFontSpriteId();
+    g_PBEngine.m_consoleTextHeight = g_PBEngine.gfxGetTextHeight(g_PBEngine.m_defaultFontSpriteId);
 
+    // Send a few things to the console
+    g_PBEngine.pbeSendConsole("This is the first line of the console");
+    g_PBEngine.pbeSendConsole("This is the second line of the console");
+    g_PBEngine.pbeSendConsole("This is the third line of the console");
+    g_PBEngine.pbeSendConsole("y g j q [ ] { } . , / \\ |");
+    
     // Main loop for the pinball game                                
     unsigned long currentTick = GetTickCount64();
     unsigned long lastTick = currentTick;

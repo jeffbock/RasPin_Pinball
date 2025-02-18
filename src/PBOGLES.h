@@ -22,6 +22,7 @@ public:
     enum oglTexType {
         OGL_BMP = 0,
         OGL_PNG = 1, 
+        OGL_NONE = 2, 
         OGL_TTEND
     };
 

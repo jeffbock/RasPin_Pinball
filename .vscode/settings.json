@@ -71,6 +71,8 @@
         "sstream": "cpp",
         "unordered_map": "cpp",
         "valarray": "cpp",
-        "xhash": "cpp"
+        "xhash": "cpp",
+        "deque": "cpp",
+        "queue": "cpp"
     }
 }

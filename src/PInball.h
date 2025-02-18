@@ -28,6 +28,7 @@
 #include "PBGfx.h"
 #include <iostream>
 #include <stdio.h>
+#include <vector>
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 800
@@ -54,24 +55,28 @@ public:
     // Public funcation for dealing w/ rendering and loading screens by screen state
     bool pbeRenderScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeLoadScreen (PBMainState state);
-    
+
+    // Console functions
+    void pbeSendConsole(std::string output);
+    void pbeClearConsole();
+    void pbeRenderConsole(unsigned int startingX, unsigned int startingY);
+
     // Member variables for the sprites used in the screens
     // We might switch this to a query by name mechansim, but that would be slower...
     unsigned int m_defaultFontSpriteId;
-    unsigned int m_BootUpConsoleId, m_BootUpStarsId, m_BootUpStarsId2, m_BootUpStarsId3, m_BootUpStarsId4;
-
-    // bool init (long width, long height, NativeWindowType nativeWindow);
-    // bool clear (long color, bool doFlip);
-    // void run();
-
+    unsigned int m_consoleTextHeight;
+    unsigned int m_BootUpConsoleId, m_BootUpStarsId, m_BootUpStarsId2, m_BootUpStarsId3, m_BootUpStarsId4, m_BootUpTitleBarId;
+    
 private:
 
     PBMainState m_mainState;
   
-
     // Load trackers for main screens
     bool m_PBBootupLoaded, m_PBStartMenuLoaded, m_PBPlayGameLoaded, m_PBTestModeLoaded;
     bool m_PBBenchmarkLoaded, m_PBCreditsLoaded;
+
+    std::vector<std::string> m_consoleQueue;
+    unsigned int m_maxConsoleLines;
 
     // Private functions for rendering main state screens
     bool pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick);

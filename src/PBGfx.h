@@ -24,6 +24,7 @@ using json = nlohmann::json;
 enum gfxTexType {
     GFX_BMP = 0,
     GFX_PNG = 1, 
+    GFX_NONE = 2, 
     GFX_TTEND
 };
 
@@ -130,6 +131,7 @@ public:
     unsigned int gfxSetXY(unsigned int spriteId, unsigned int X, unsigned int Y, bool addXY);
     unsigned int gfxSetTextureAlpha(unsigned int spriteId, float textureAlpha);
     unsigned int gfxSetUV(unsigned int spriteId, float u1, float v1, float u2, float v2);
+    unsigned int gfxSetWH(unsigned int spriteId, unsigned int width, unsigned int height);
     unsigned int gfxSetColor(unsigned int spriteId, unsigned int red, unsigned int green, unsigned int blue, unsigned int alpha);
     unsigned int gfxSetScaleFactor(unsigned int spriteId, float scaleFactor, bool addFactor);
     unsigned int gfxSetRotateDegrees(unsigned int spriteId, float rotateDegrees, bool addDegrees);
@@ -146,6 +148,7 @@ public:
     float        gfxGetRotateDegrees(unsigned int spriteId);
     stBoundingBox gfxGetBoundingBox(unsigned int spriteId);
     bool         gfxIsLoaded(unsigned int spriteId);
+    unsigned int gfxGetTextHeight(unsigned int spriteId);
 
     // Rendering functions
     void         gfxSwap();
