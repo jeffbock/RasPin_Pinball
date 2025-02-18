@@ -16,7 +16,7 @@
 #include "PBOGLES.h"
  
 #define NOSPRITE 0
-#define SYSTEMFONTSPRITE "resources/fonts/Ubuntu-Regular_32_256.png"
+#define SYSTEMFONTSPRITE "resources/fonts/Ubuntu-Regular_24_256.png"
 
 using json = nlohmann::json;
 
@@ -86,7 +86,13 @@ struct stSpriteInstance {
     stBoundingBox boundingBox;
 };
 
-struct stTextJson {
+struct stTextMapData {
+    unsigned int width;
+    unsigned int height;
+    float U1, V1, U2, V2;
+};
+
+struct stSpriteMapData {
     unsigned int width;
     unsigned int height;
     float U1, V1, U2, V2;
@@ -118,11 +124,12 @@ public:
     bool         gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int y, float scaleFactor, float rotateDegrees);
 
     // Character rendering functions
-    bool         gfxRenderString(unsigned int spriteId,  std::string input, unsigned int x, unsigned int y);
+    bool         gfxRenderString(unsigned int spriteId,  std::string input, unsigned int x, unsigned int y, unsigned int spacingPixels);
     
     // Sprite manipulation functions
     unsigned int gfxSetXY(unsigned int spriteId, unsigned int X, unsigned int Y, bool addXY);
     unsigned int gfxSetTextureAlpha(unsigned int spriteId, float textureAlpha);
+    unsigned int gfxSetUV(unsigned int spriteId, float u1, float v1, float u2, float v2);
     unsigned int gfxSetColor(unsigned int spriteId, unsigned int red, unsigned int green, unsigned int blue, unsigned int alpha);
     unsigned int gfxSetScaleFactor(unsigned int spriteId, float scaleFactor, bool addFactor);
     unsigned int gfxSetRotateDegrees(unsigned int spriteId, float rotateDegrees, bool addDegrees);
@@ -133,7 +140,7 @@ public:
     unsigned int gfxGetBaseWidth(unsigned int spriteId);
     unsigned int gfxGetXY(unsigned int spriteId, unsigned int* X, unsigned int* Y);
     unsigned int gfxGetTextureAlpha(unsigned int spriteId);
-    unsigned int gfxGetSystemSpriteId();
+    unsigned int gfxGetSystemFontSpriteId();
     unsigned int gfxGetColor(unsigned int spriteId, unsigned int* red, unsigned int* green, unsigned int* blue, unsigned int* alpha);
     float        gfxGetScaleFactor(unsigned int spriteId);
     float        gfxGetRotateDegrees(unsigned int spriteId);
@@ -156,12 +163,16 @@ private:
     // User sprites start at 100. System sprites will use lower numbers
     unsigned int m_nextSystemSpriteId;
     unsigned int m_nextUserSpriteId;
-    unsigned int m_systemSpriteId;
+    unsigned int m_systemFontSpriteId;
+
     // Color state used for sprite rendering.  These colors are used for the vertex of the sprite quad.
     std::map<unsigned int, stSpriteInfo> m_spriteList;
     std::map<unsigned int, stSpriteInstance> m_instanceList;
-    std::map<unsigned int, json> m_textMapJSON;
-    std::map<unsigned int, json> m_spriteMapJSON;
+
+    // Text and sprite map data ([spriteId][char or spriteOrderNumber][stTextMapData or stSpriteMapData])
+    std::map<unsigned int, std::map<std::string, stTextMapData>> m_textMapList;
+    std::map<unsigned int, std::map<unsigned int, stSpriteMapData>> m_spriteMapList;
+
 };
 
 #endif // PBGfx_h

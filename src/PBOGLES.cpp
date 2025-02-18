@@ -192,8 +192,7 @@ void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float U
                              float vertRed, float vertGreen, float vertBlue, float vertAlpha, 
                              float scale, float rotateDegrees, bool returnBoundingBox) {
 
-    // Create the vertices for the quad - something is wrong here even though it works ... XY and UV should somewhat line up but the do not.
-    // We might be looking at the back of the triangles, could explain why positive rotation is counter clockwise?
+    // Create the vertices for the quad 
     GLfloat vertices[] = {
     // Pos (3 XYZ)      // Colors (4 RGBA)      // Texture Coords
     *X1,  *Y1, 0.0f,      vertRed, vertGreen, vertBlue, vertAlpha, U1, V2, // Top Left
@@ -359,6 +358,15 @@ GLuint PBOGLES::oglLoadBMPTexture (const char* filename, unsigned int* width, un
     }
 
     delete[] data;
+
+    // Reverse the BMP data in place so that it is in the correct order so that top row is first in memory
+    for (int i = 0; i < tempHeight / 2; i++) {
+        for (int j = 0; j < tempWidth * 3; j++) {
+            unsigned char temp = rgbData[i * tempWidth * 3 + j];
+            rgbData[i * tempWidth * 3 + j] = rgbData[(tempHeight - i - 1) * tempWidth * 3 + j];
+            rgbData[(tempHeight - i - 1) * tempWidth * 3 + j] = temp;
+        }
+    }
 
     // Now create and bind the texture to a texture ID
     GLuint texture;

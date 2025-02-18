@@ -9,7 +9,7 @@ PBGfx::PBGfx() {
     
     m_nextSystemSpriteId = 1;
     m_nextUserSpriteId = 100;
-    m_systemSpriteId = NOSPRITE;
+    m_systemFontSpriteId = NOSPRITE;
 }
 
 // Destructor
@@ -21,9 +21,9 @@ PBGfx::~PBGfx() {
 bool PBGfx::gfxInit(){
 
     // Create the system font sprite
-    m_systemSpriteId = gfxSysLoadSprite({"System Font", SYSTEMFONTSPRITE, GFX_PNG, GFX_TEXTMAP, GFX_UPPERLEFT, true, true}, true);
+    m_systemFontSpriteId = gfxSysLoadSprite({"System Font", SYSTEMFONTSPRITE, GFX_PNG, GFX_TEXTMAP, GFX_UPPERLEFT, true, true}, true);
 
-    if (m_systemSpriteId == NOSPRITE) return (false);
+    if (m_systemFontSpriteId == NOSPRITE) return (false);
     else return (true);
 }
 
@@ -74,7 +74,7 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
         m_nextUserSpriteId++;
     }
 
-    // If the sprite is a text sprite, load the JSON UV map 
+    // If the sprite is a text sprite, load the JSON UV map from the text file into an internal map
     
     if ((spriteInfo.mapType == GFX_TEXTMAP) || (spriteInfo.mapType == GFX_SPRITEMAP)) {
         // Create a file name that has the same name as filename as the texutre (minus the extension), and change extension to .json
@@ -89,11 +89,50 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
 
         unsigned int test = 0;
 
-        if (spriteInfo.mapType == GFX_TEXTMAP) m_textMapJSON[spriteId] = uvJson;
-        else m_spriteMapJSON[spriteId] = uvJson;
+        if (spriteInfo.mapType == GFX_TEXTMAP){
+            // Go through uvJson, and place the values in the m_textMapList map
+            for (auto it = uvJson.begin(); it != uvJson.end(); ++it) {
+                std::string charString = it.key();
 
-        // test = m_textMapJSON[spriteId]["A"]["width"];
+                stTextMapData textMapData;
 
+                textMapData.width = uvJson[charString]["width"];
+                textMapData.height = uvJson[charString]["height"];
+                textMapData.U1 = uvJson[charString]["u1"];
+                textMapData.V1 = uvJson[charString]["v1"];
+                textMapData.U2 = uvJson[charString]["u2"];
+                textMapData.V2 = uvJson[charString]["v2"];
+                
+                m_textMapList[spriteId][charString] = textMapData;
+            }
+
+            // Set the width of space to be the width of the letter "j"
+            m_textMapList[spriteId][" "].width = m_textMapList[spriteId]["j"].width;
+        }
+        else {
+            // Go through uvJson, and place the values in the m_spriteMapList map
+            // This path is not currently implemented, but would be used for animated sprites
+            // Need to change the stuctures, key to integer and come up with a way to generate the JSON file
+            /*
+            for (auto it = uvJson.begin(); it != uvJson.end(); ++it) {
+                auto spriteOrder = it.key();
+
+                stTextMapData textMapData;
+
+                textMapData.width = uvJson[spriteOrder]["width"];
+                textMapData.height = uvJson[spriteOrder]["height"];
+                textMapData.U1 = uvJson[spriteOrder]["u1"];
+                textMapData.V1 = uvJson[spriteOrder]["v1"];
+                textMapData.U2 = uvJson[spriteOrder]["u2"];
+                textMapData.V2 = uvJson[spriteOrder]["v2"];
+                
+                m_spriteMapList[spriteId][] = textMapData;
+            }
+            */
+        } 
+
+        // Release the json file
+        jsonFile.close();
     }
     
     spriteInfo.isLoaded = true;
@@ -110,9 +149,9 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
     instance.width = width;
     instance.height = height;
     instance.u1 = 0.0f;
-    instance.v1 = 0.0f;
+    instance.v1 = 1.0f;
     instance.u2 = 1.0f;
-    instance.v2 = 1.0f;
+    instance.v2 = 0.0f;
     instance.textureAlpha = 1.0f;
     instance.vertRed = 1.0f; instance.vertGreen = 1.0f; instance.vertBlue = 1.0f; instance.vertAlpha = 1.0f;
     instance.scaleFactor = 1.0f;
@@ -294,10 +333,15 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId){
     return (true);
 }
 
-bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, unsigned int x, unsigned int y){
+bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, unsigned int x, unsigned int y, unsigned int spacingPixels) {
+
+     // Find the sprite ID in the m_instanceList, if it isn't a textmap then return false
+     auto it2 = m_instanceList.find(spriteId);
+     if (it2 == m_instanceList.end()) return (false);
+     if (m_spriteList[it2->second.parentSpriteId].mapType != GFX_TEXTMAP) return (false);
 
     unsigned int width=0, height=0;
-    float U1=0.0f, V1=0.0f, U2 = 1.0f, V2 = 1.0f;
+    float u1=0.0f, v1=0.0f, u2 = 1.0f, v2 = 1.0f;
 
     // For each character in the string, set up the rendering info and call the render sprite function
     for (unsigned int i = 0; i < input.length(); i++) {
@@ -309,42 +353,35 @@ bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, unsigned i
         // Convert the character to a string
         std::string charString = std::string(1, input[i]);
 
-        // Check if the character exists in the JSON object
-        if (m_textMapJSON[spriteId].find(charString) == m_textMapJSON[spriteId].end()) {
-            std::cerr << "Error: character " << charString << " not found in JSON" << std::endl;
-            continue;
+        // Check if the character exists in m_textMapList
+        if (m_textMapList[spriteId].find(charString) != m_textMapList[spriteId].end()) {
+
+            // Get the the required info from the font JSON
+            width = m_textMapList[spriteId][charString].width;
+            height = m_textMapList[spriteId][charString].height;
+            u1 = m_textMapList[spriteId][charString].U1;
+            v1 = m_textMapList[spriteId][charString].V1;
+            u2 = m_textMapList[spriteId][charString].U2;
+            v2 = m_textMapList[spriteId][charString].V2;
         }
-
-        // Get the width of character "A" from the font JSON
-        width = m_textMapJSON[spriteId]["A"]["width"];
-
-        // test = m_textMapJSON[spriteId]["A"]["width"];
-
-        // Get the the required info from the font JSON
-        width = m_textMapJSON[spriteId]["T"]["width"];
-        width = m_textMapJSON[spriteId][charString]["width"];
-        height = m_textMapJSON[spriteId][charString]["height"];
-        U1 = m_textMapJSON[spriteId][charString]["U1"];
-        V1 = m_textMapJSON[spriteId][charString]["V1"];
-        U2 = m_textMapJSON[spriteId][charString]["U2"];
-        V2 = m_textMapJSON[spriteId][charString]["V2"];
-
-        // Find the sprite ID in the m_instanceList, if it isn't a textmap then return false
-        auto it2 = m_instanceList.find(spriteId);
-        if (it2 == m_instanceList.end()) return (false);
-        if (m_spriteList[it2->second.parentSpriteId].mapType != GFX_TEXTMAP) return (false);
+        else continue;       
 
         // Set the relevant values in the sprite instance
         m_instanceList[spriteId].width = width;
         m_instanceList[spriteId].height = height;
         m_instanceList[spriteId].x = x;
         m_instanceList[spriteId].y = y;
+        m_instanceList[spriteId].u1 = u1;
+        m_instanceList[spriteId].v1 = v2;
+        m_instanceList[spriteId].u2 = u2;
+        m_instanceList[spriteId].v2 = v1;
 
         // Render the sprite instance using gfxRenderSprite and the parameters from the sprite instance
-        gfxRenderSprite(spriteId);
+        // Skip space since there's nothing to render
+        if (charString != " ") gfxRenderSprite(spriteId);
         
         // Move the x coordinate to the right for the next character
-        x += width;
+        x += (width + spacingPixels);
     }
 
     return (true);
@@ -415,6 +452,18 @@ unsigned int PBGfx::gfxSetXY(unsigned int spriteId, unsigned int X, unsigned int
     }
     else return (NOSPRITE);
     return (spriteId);
+}
+
+unsigned int PBGfx:: gfxSetUV(unsigned int spriteId, float u1, float v1, float u2, float v2){
+    auto it = m_instanceList.find(spriteId);
+    if (it != m_instanceList.end()) {
+        it->second.u1 = u1;
+        it->second.v1 = v1;
+        it->second.u2 = u2;
+        it->second.v2 = v2;
+        return (spriteId);
+    }
+    else return (NOSPRITE);
 }
 
 // Set fucntion for updatng the texture alpha value (this will allow for texture fade in / out)
@@ -529,6 +578,6 @@ bool PBGfx::gfxIsLoaded(unsigned int spriteId){
 }
 
 // PBGfx loads a sprite by default, this allows the caller to get the ID to use for text rendering
-unsigned int PBGfx::gfxGetSystemSpriteId(){
-    return m_systemSpriteId;
+unsigned int PBGfx::gfxGetSystemFontSpriteId(){
+    return m_systemFontSpriteId;
 }

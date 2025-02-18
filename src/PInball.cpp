@@ -77,7 +77,7 @@ return true;
     m_BootUpStarsId3 = NOSPRITE;
     m_BootUpStarsId4 = NOSPRITE;
 
-    m_systemFontId = NOSPRITE;
+    m_defaultFontSpriteId = NOSPRITE;
 
  }
 
@@ -124,7 +124,7 @@ bool PBEngine::pbeLoadBootUp(){
 
     // Load the bootup screen
     m_BootUpConsoleId = g_PBEngine.gfxLoadSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
-    g_PBEngine.gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 255);
+    g_PBEngine.gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 96);
 
     m_BootUpStarsId = g_PBEngine.gfxLoadSprite("Stars", "resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
     g_PBEngine.gfxSetColor(m_BootUpStarsId, 24, 0, 210, 96);
@@ -179,7 +179,11 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
    g_PBEngine.gfxSetRotateDegrees(m_BootUpStarsId4, (degreesPerTick4 * (float) tickDiff), true);
    g_PBEngine.gfxRenderSprite(m_BootUpStarsId4, 400, 165);
 
-   // g_PBEngine.gfxRenderString (m_systemFontId, "This is the first text!!!", 10, 10);
+   g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 0, 0, 0, 256);
+   g_PBEngine.gfxRenderString (m_defaultFontSpriteId, "This is the first text!!!", 2, 2, 1);
+
+   g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 210, 0, 210, 256);
+   g_PBEngine.gfxRenderString (m_defaultFontSpriteId, "This is the first text!!!", 0, 0, 1);
 
    return (true);
 }
@@ -232,6 +236,9 @@ int main(int argc, char const *argv[])
     // Initialize the platform specific render system
     if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
 
+    // Get the system font sprite Id
+    g_PBEngine.m_defaultFontSpriteId = g_PBEngine.gfxGetSystemFontSpriteId();
+
     // Main loop for the pinball game                                
     unsigned long currentTick = GetTickCount64();
     unsigned long lastTick = currentTick;
@@ -249,25 +256,3 @@ int main(int argc, char const *argv[])
 
     return 0;
 }
-
-// Sample code for using the schrift library
-/*
-
-// Load the font
-struct SFT sft;
-sft = (struct SFT){
-    .xScale = 16,
-    .yScale = 16,
-    .flags = SFT_DOWNWARD_Y,
-    .font = schrift_load("path/to/font.ttf")
-};
-
-// Render the Glyph
-struct SFT_Glyph glyph;
-schrift_lookup(&sft, 'A', &glyph);
-
-// Get the bitmap of the glyph
-struct SFT_Image image;
-schrift_render(&sft, &glyph, &image);
-
-*/
