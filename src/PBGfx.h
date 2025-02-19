@@ -16,7 +16,7 @@
 #include "PBOGLES.h"
  
 #define NOSPRITE 0
-#define SYSTEMFONTSPRITE "resources/fonts/Ubuntu-Regular_24_256.png"
+#define SYSTEMFONTSPRITE "src/resources/fonts/Ubuntu-Regular_24_256.png"
 
 using json = nlohmann::json;
 

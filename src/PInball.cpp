@@ -148,14 +148,15 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
 }
 
 // Load reasources for the boot up screen
-bool PBEngine::pbeLoadBootUp(){
-    if (m_PBBootupLoaded) return (true);
+bool PBEngine::pbeLoadDefaultBackground(){
+    if (m_PBDefaultBackgroundLoaded) return (true);
 
-    // Load the bootup screen
-    m_BootUpConsoleId = g_PBEngine.gfxLoadSprite("Console", "resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    g_PBEngine.pbeSendConsole("(PI)nball Engine: Loading default background resources");
+
+    m_BootUpConsoleId = g_PBEngine.gfxLoadSprite("Console", "src/resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     g_PBEngine.gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 96);
 
-    m_BootUpStarsId = g_PBEngine.gfxLoadSprite("Stars", "resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    m_BootUpStarsId = g_PBEngine.gfxLoadSprite("Stars", "src/resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
     g_PBEngine.gfxSetColor(m_BootUpStarsId, 24, 0, 210, 96);
     g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId, 2.0, false);
 
@@ -169,14 +170,32 @@ bool PBEngine::pbeLoadBootUp(){
     
     m_BootUpStarsId4 = g_PBEngine.gfxInstanceSprite(m_BootUpStarsId);
     g_PBEngine.gfxSetColor(m_BootUpStarsId4, 24, 0, 210, 96);
-    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId4, 0.05, false);
+    g_PBEngine.gfxSetScaleFactor(m_BootUpStarsId4, 0.05, false); 
 
+    if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  
+        m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE ) return (false);
+
+    m_PBDefaultBackgroundLoaded = true;
+
+    return (m_PBDefaultBackgroundLoaded);
+}
+
+// Load reasources for the boot up screen
+bool PBEngine::pbeLoadBootUp(){
+    
+    if (!pbeLoadDefaultBackground()) return (false);
+
+    if (m_PBBootupLoaded) return (true);
+
+    g_PBEngine.pbeSendConsole("(PI)nball Engine: Loading boot screen resources");
+
+    // Load the bootup screen items
+    
     m_BootUpTitleBarId = g_PBEngine.gfxLoadSprite("Title Bar", "", GFX_NONE, GFX_NOMAP, GFX_UPPERLEFT, false, false);
     g_PBEngine.gfxSetColor(m_BootUpTitleBarId, 0, 0, 255, 255);
     g_PBEngine.gfxSetWH(m_BootUpTitleBarId, 800, 40);
 
-    if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  
-        m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE ||  m_BootUpTitleBarId == NOSPRITE) return (false);
+    if (m_BootUpTitleBarId == NOSPRITE) return (false);
 
     m_PBBootupLoaded = true;
 
@@ -184,19 +203,15 @@ bool PBEngine::pbeLoadBootUp(){
 }
 
 // Render the bootup screen
-bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick){
+bool PBEngine::pbeRenderDefaultBackground (unsigned long currentTick, unsigned long lastTick){
 
-   if (!g_PBEngine.pbeLoadScreen (PB_BOOTUP)) return (false); 
-
-   float degreesPerTick = -0.001f, tickDiff = 0.0f;
-   float degreesPerTick2 = -0.005f;
-   float degreesPerTick3 = -0.025f;
-   float degreesPerTick4 = -0.75f;
+    float degreesPerTick = -0.001f, tickDiff = 0.0f;
+    float degreesPerTick2 = -0.005f;
+    float degreesPerTick3 = -0.025f;
+    float degreesPerTick4 = -0.75f;
             
-   tickDiff = (float)(currentTick - lastTick);
+    tickDiff = (float)(currentTick - lastTick);
 
-   g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-         
    // Show the console background - it's a full screen image
    g_PBEngine.gfxRenderSprite(m_BootUpConsoleId, 0, 0);
 
@@ -213,11 +228,25 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
    g_PBEngine.gfxSetRotateDegrees(m_BootUpStarsId4, (degreesPerTick4 * (float) tickDiff), true);
    g_PBEngine.gfxRenderSprite(m_BootUpStarsId4, 400, 165);
 
+   return (true);
+
+}
+
+// Render the bootup screen
+bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick){
+
+   if (!g_PBEngine.pbeLoadScreen (PB_BOOTUP)) return (false); 
+
+   g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+
+   // Render the default background
+   pbeRenderDefaultBackground (currentTick, lastTick);
+         
    g_PBEngine.gfxRenderSprite(m_BootUpTitleBarId, 0, 0);
    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "(PI)nball Engine - Copyright 2024 Jeff Bock", 202, 10, 1);
 
    g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 256, 256, 256, 256);
-   g_PBEngine.pbeRenderConsole(1, 41);
+   g_PBEngine.pbeRenderConsole(1, 42);
 
    return (true);
 }
@@ -266,20 +295,29 @@ bool PBEngine::pbeLoadCredits(){
 int main(int argc, char const *argv[])
 {
     bool isBlack = true;
+    std::string temp;
     
+    g_PBEngine.pbeSendConsole("OpenGL ES: Initialize");
+
     // Initialize the platform specific render system
     if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
+
+    g_PBEngine.pbeSendConsole("OpenGL ES: Successful");
+
+    temp = "Screen Width: " + std::to_string(g_PBEngine.oglGetScreenWidth()) + " Screen Height: " + std::to_string(g_PBEngine.oglGetScreenHeight());
+    g_PBEngine.pbeSendConsole(temp);
+
+    g_PBEngine.pbeSendConsole("(PI)nball Engine: Loading system font");
 
     // Get the system font sprite Id and default height for console
     g_PBEngine.m_defaultFontSpriteId = g_PBEngine.gfxGetSystemFontSpriteId();
     g_PBEngine.m_consoleTextHeight = g_PBEngine.gfxGetTextHeight(g_PBEngine.m_defaultFontSpriteId);
 
+    g_PBEngine.pbeSendConsole("(PI)nball Engine: System font ready");
+
     // Send a few things to the console
-    g_PBEngine.pbeSendConsole("This is the first line of the console");
-    g_PBEngine.pbeSendConsole("This is the second line of the console");
-    g_PBEngine.pbeSendConsole("This is the third line of the console");
-    g_PBEngine.pbeSendConsole("y g j q [ ] { } . , / \\ |");
     
+    g_PBEngine.pbeSendConsole("(PI)nball Engine: Starting main processing loop");    
     // Main loop for the pinball game                                
     unsigned long currentTick = GetTickCount64();
     unsigned long lastTick = currentTick;

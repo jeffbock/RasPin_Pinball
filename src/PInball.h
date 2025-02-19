@@ -65,6 +65,7 @@ public:
     // We might switch this to a query by name mechansim, but that would be slower...
     unsigned int m_defaultFontSpriteId;
     unsigned int m_consoleTextHeight;
+
     unsigned int m_BootUpConsoleId, m_BootUpStarsId, m_BootUpStarsId2, m_BootUpStarsId3, m_BootUpStarsId4, m_BootUpTitleBarId;
     
 private:
@@ -72,6 +73,7 @@ private:
     PBMainState m_mainState;
   
     // Load trackers for main screens
+    bool m_PBDefaultBackgroundLoaded;
     bool m_PBBootupLoaded, m_PBStartMenuLoaded, m_PBPlayGameLoaded, m_PBTestModeLoaded;
     bool m_PBBenchmarkLoaded, m_PBCreditsLoaded;
 
@@ -79,6 +81,7 @@ private:
     unsigned int m_maxConsoleLines;
 
     // Private functions for rendering main state screens
+    bool pbeRenderDefaultBackground (unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderStartMenu(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderPlayGame(unsigned long currentTick, unsigned long lastTick);
@@ -87,6 +90,7 @@ private:
     bool pbeRenderCredits(unsigned long currentTick, unsigned long lastTick);
 
     // Private functions for loading main state screens
+    bool pbeLoadDefaultBackground();
     bool pbeLoadBootUp();
     bool pbeLoadStartMenu();
     bool pbeLoadPlayGame();

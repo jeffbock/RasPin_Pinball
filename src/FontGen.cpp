@@ -63,25 +63,14 @@ int main(int argc, char* argv[]) {
     std::vector<unsigned char> buffer(textureSize * textureSize * 4, 0);
 
     std::map<char, UVRect> uvMap;
-    int x = 0, y = ascent, maxHeight = ascent - descent;
-
-    // Calculate the maximum height of all characters
-    int maxCharHeight = 0;
-    for (char c = 32; c < 127; ++c) {
-        int width, height, xOffset, yOffset;
-        unsigned char* bitmap = stbtt_GetCodepointBitmap(&font, 0, scale, c, &width, &height, &xOffset, &yOffset);
-        if (height > maxCharHeight) {
-            maxCharHeight = height;
-        }
-        stbtt_FreeBitmap(bitmap, nullptr);
-    }
+    int x = 0, y = ascent, maxCharHeight = ascent - descent;
 
     for (char c = 32; c < 127; ++c) {
         int width, height, xOffset, yOffset;
         unsigned char* bitmap = stbtt_GetCodepointBitmap(&font, 0, scale, c, &width, &height, &xOffset, &yOffset);
 
         if (x + width + 2 > textureSize) {
-            x = 0;
+            x = 0; 
             y += maxCharHeight + 2;
         }
 
@@ -104,7 +93,8 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        uvMap[c] = { x / (float)textureSize, y / (float)textureSize, (x + width) / (float)textureSize, (y + maxCharHeight) / (float)textureSize, width, maxCharHeight };
+        // Add the character to the UV map - the (-2) for the u1 value is a bit of a hack to get the full descent - it may not be right for all fonts...
+        uvMap[c] = { x / (float)textureSize, (y - descent - 2) / (float)textureSize, (x + width) / (float)textureSize, (y + maxCharHeight) / (float)textureSize, width, maxCharHeight };
 
         x += width + 2;
 
@@ -131,7 +121,7 @@ int main(int argc, char* argv[]) {
             {"v2", it->second.v2},
             {"width", it->second.width},
             {"height", it->second.height}
-};
+        };
     }
 
     std::string jsonFileName = baseFileName + "_" + std::to_string(fontSize) + "_" + std::to_string(textureSize) + ".json";
