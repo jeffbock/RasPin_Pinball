@@ -1,4 +1,4 @@
-// Gfx front-end libary based on OpenGL ES 3.1
+// Gfx front-end sprite / font libary - generic interface, currently using OpenGL ES 3.1 backend
 // MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
 
 #ifndef PBGfx_h

@@ -1,5 +1,4 @@
-
-// PBGfx contains all the fundamental graphics management operations and sits on top of PGOGLES
+ // PBGfx contains all the fundamental graphics management operations and sits on top of PBOGLES
 // MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
 
 #include "PBGfx.h"

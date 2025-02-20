@@ -29,6 +29,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <vector>
+#include <queue>
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 800
@@ -44,6 +45,27 @@ enum PBMainState {
     PB_TESTMODE = 3,
     PB_BENCHMARK = 4,
     PB_CREDITS = 5
+};
+
+// Input message structs and types
+enum PBInputType {
+    PB_INPUT_BUTTON = 0,
+    PB_INPUT_BALLSENSOR = 1,
+    PB_INPUT_TARGET = 2,
+    PB_INPUT_JETBUMPER = 3,
+    PB_INPUT_POPBUMPER = 4,
+};
+
+enum PBInputState {
+    PB_ON = 0,
+    PB_OFF = 1,
+};
+
+struct stInputMessage {
+    PBInputType inputType;
+    unsigned int inputId;
+    PBInputState inputState;
+    unsigned long instanceTick; 
 };
 
 // Make new class named PBGame that inheritis from PBOGLES with just essential functions
@@ -80,6 +102,8 @@ private:
     std::vector<std::string> m_consoleQueue;
     unsigned int m_maxConsoleLines;
 
+    std::queue<stInputMessage> m_inputQueue;
+
     // Private functions for rendering main state screens
     bool pbeRenderDefaultBackground (unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick);
@@ -96,7 +120,10 @@ private:
     bool pbeLoadPlayGame();
     bool pbeLoadTestMode();
     bool pbeLoadBenchmark();
-    bool pbeLoadCredits();    
+    bool pbeLoadCredits();
+
+    // Message functions
+    void pbeInputLoop();
 };
 
 #endif // PInball_h
