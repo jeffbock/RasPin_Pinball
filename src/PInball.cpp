@@ -30,18 +30,47 @@ if (!g_PBEngine.gfxInit()) return (false);
 return (true);
 }
 
+// Tranlates windows keys into PBEngine input messages
+void PBWinSimInput(char character, PBInputState inputState, stInputMessage* inputMessage){
+
+    inputMessage->inputType = PB_INPUT_BUTTON;
+    inputMessage->inputId = 1;
+    inputMessage->inputState = inputState;
+    inputMessage->instanceTick = GetTickCount64();
+
+}
+
 // Process input for Windows
 // Returns true as long as the application should continue running
 // This will be need to be expanding to take input for the windows simluator
 bool PBProcessInput() {
 
+    // Process Windows Messages
     MSG msg;
+    
     while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
         if (msg.message == WM_QUIT) return (false);
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+
+        // Handle WM_KEYDOWN message
+        if ((msg.message == WM_KEYDOWN) || (msg.message == WM_KEYUP)) {
+            // Get the virtual key code
+            WPARAM key = msg.wParam;
+
+            // Convert the virtual key code to a character
+            char character = MapVirtualKey(key, MAPVK_VK_TO_CHAR);
+
+            // Simulate receiving a message
+            stInputMessage inputMessage;
+            // Translate input keys to PBMessages and place on message queue
+            if (msg.message == WM_KEYDOWN) PBWinSimInput(character, PB_ON, &inputMessage);
+            if (msg.message == WM_KEYUP) PBWinSimInput(character, PB_OFF, &inputMessage);
+
+            g_PBEngine.m_inputQueue.push(inputMessage);
         }
-    
+    }
     return (true);
 }
 
@@ -80,7 +109,7 @@ return true;
 
     m_defaultFontSpriteId = NOSPRITE;
 
-    m_maxConsoleLines = 20;
+    m_maxConsoleLines = 18;
     m_consoleTextHeight = 0;
  }
 
@@ -291,6 +320,27 @@ bool PBEngine::pbeLoadCredits(){
     return (false);
 }
 
+void PBEngine::pbeInputLoop(){
+    
+    // Check the input queue.  If it has a message, pop it and output the character via pbeSendConsole
+    while (!m_inputQueue.empty()) {
+        stInputMessage inputMessage = m_inputQueue.front();
+        m_inputQueue.pop();
+
+        if (inputMessage.inputType == PB_INPUT_BUTTON) {
+            if (inputMessage.inputState == PB_ON) {
+                std::string temp = "Button " + std::to_string(inputMessage.inputId) + " pressed";
+                pbeSendConsole(temp);
+            } else {
+                std::string temp = "Button " + std::to_string(inputMessage.inputId) + " released";
+                pbeSendConsole(temp);
+            }
+        }
+    }
+    
+    return;
+}
+
 // Main program start
 int main(int argc, char const *argv[])
 {
@@ -298,8 +348,6 @@ int main(int argc, char const *argv[])
     std::string temp;
     
     g_PBEngine.pbeSendConsole("OpenGL ES: Initialize");
-
-    // Initialize the platform specific render system
     if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
 
     g_PBEngine.pbeSendConsole("OpenGL ES: Successful");
@@ -322,10 +370,20 @@ int main(int argc, char const *argv[])
     unsigned long currentTick = GetTickCount64();
     unsigned long lastTick = currentTick;
 
+    // Start the input thread
+    // std::thread inputThread(&PBProcessInput);
+
+    // The main game engine loop
     while (true) {
-        if (!PBProcessInput()) return (0);
 
         currentTick = GetTickCount64();
+        
+        // PB Process Input will be a thread in the PiOS side since it won't have windows messages
+        // Will need to fix this later...
+        PBProcessInput();
+
+        // Process the input message queue
+        g_PBEngine.pbeInputLoop();
 
         g_PBEngine.pbeRenderScreen(currentTick, lastTick);   
         g_PBEngine.gfxSwap();
@@ -333,5 +391,9 @@ int main(int argc, char const *argv[])
         lastTick = currentTick;
     }
 
-    return 0;
+   // Join the input thread before exiting
+   // inputThread.join();
+
+   return 0;
 }
+

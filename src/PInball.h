@@ -30,6 +30,10 @@
 #include <stdio.h>
 #include <vector>
 #include <queue>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 800
@@ -83,12 +87,20 @@ public:
     void pbeClearConsole();
     void pbeRenderConsole(unsigned int startingX, unsigned int startingY);
 
+     // Message functions
+     void pbeInputLoop();
+
     // Member variables for the sprites used in the screens
     // We might switch this to a query by name mechansim, but that would be slower...
     unsigned int m_defaultFontSpriteId;
     unsigned int m_consoleTextHeight;
 
     unsigned int m_BootUpConsoleId, m_BootUpStarsId, m_BootUpStarsId2, m_BootUpStarsId3, m_BootUpStarsId4, m_BootUpTitleBarId;
+
+    // Message queue variables
+    std::queue<stInputMessage> m_inputQueue;
+    std::mutex m_inputQMutex;
+    // std::condition_variable m_inputQCondVar;
     
 private:
 
@@ -101,8 +113,6 @@ private:
 
     std::vector<std::string> m_consoleQueue;
     unsigned int m_maxConsoleLines;
-
-    std::queue<stInputMessage> m_inputQueue;
 
     // Private functions for rendering main state screens
     bool pbeRenderDefaultBackground (unsigned long currentTick, unsigned long lastTick);
@@ -121,9 +131,6 @@ private:
     bool pbeLoadTestMode();
     bool pbeLoadBenchmark();
     bool pbeLoadCredits();
-
-    // Message functions
-    void pbeInputLoop();
 };
 
 #endif // PInball_h
