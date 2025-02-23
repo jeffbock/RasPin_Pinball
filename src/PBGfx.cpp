@@ -230,7 +230,8 @@ unsigned int PBGfx::gfxLoadSprite(const std::string& spriteName, const std::stri
     spriteInfo.textureFileName = textureFileName;
     spriteInfo.textureType = textureType;
     spriteInfo.mapType = mapType;
-    spriteInfo.textureCenter = textureCenter;
+    if ((mapType == GFX_TEXTMAP) || (mapType == GFX_SPRITEMAP)) spriteInfo.textureCenter = GFX_UPPERLEFT;
+    else spriteInfo.textureCenter = textureCenter;
     spriteInfo.keepResident = keepResident;
     spriteInfo.useTexture = useTexture;
 

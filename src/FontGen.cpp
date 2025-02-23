@@ -5,6 +5,8 @@
 //  <font_file.ttf> - the TrueType font file to use
 //  <font_size> - the size of the font in pixels
 //  [<buffer_size>] - the size of the texture buffer (default is 256)
+//  [<V Pixel bump>] - the number of pixels to bump the V value of UV map (default is 2) - use larger value if
+//                     the font is being clipped on the top when rendering.
 
 // FontGen.cpp - Font generator for support in the PBGfx library
 // MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
@@ -26,14 +28,15 @@ struct UVRect {
 };
 
 int main(int argc, char* argv[]) {
-    if (argc < 3 || argc > 4) {
-        std::cerr << "Usage: " << argv[0] << " <font_file.ttf> <font_size> [<buffer_size>]" << std::endl;
+    if (argc < 2 || argc > 5) {
+        std::cerr << "Usage: " << argv[0] << " <font_file.ttf> <font_size> [<buffer_size>] [<V Pixel bump>]" << std::endl;
         return 1;
     }
 
     const char* fontFile = argv[1];
     int fontSize = std::stoi(argv[2]);
-    int textureSize = (argc == 4) ? std::stoi(argv[3]) : 256;
+    int textureSize = ((argc == 4) || (argc == 5)) ? std::stoi(argv[3]) : 256;
+    int vBump = (argc == 5) ? std::stoi(argv[4]) : 2;
 
     // Load the font
     std::ifstream fontStream(fontFile, std::ios::binary);
@@ -94,7 +97,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Add the character to the UV map - the (-2) for the u1 value is a bit of a hack to get the full descent - it may not be right for all fonts...
-        uvMap[c] = { x / (float)textureSize, (y - descent - 2) / (float)textureSize, (x + width) / (float)textureSize, (y + maxCharHeight) / (float)textureSize, width, maxCharHeight };
+        uvMap[c] = { x / (float)textureSize, (y - descent - vBump) / (float)textureSize, (x + width) / (float)textureSize, (y + maxCharHeight) / (float)textureSize, width, maxCharHeight };
 
         x += width + 2;
 

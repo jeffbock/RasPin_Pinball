@@ -26,6 +26,7 @@
 #include "include_ogl/gl31.h"
 #include "PBOGLES.h"
 #include "PBGfx.h"
+#include "PInball_IO.h"
 #include <iostream>
 #include <stdio.h>
 #include <vector>
@@ -39,6 +40,9 @@
 #define PB_SCREENWIDTH 800
 #define PB_SCREENHEIGHT 480
 
+#define MENUFONT "src/resources/fonts/Baldur_60_512.png"
+#define MENUSWORD "src/resources/textures/MenuSword.png"
+
 bool PBInitRender (long width, long height);
 
 // The main modes / screens for the pinball game.  
@@ -48,27 +52,23 @@ enum PBMainState {
     PB_PLAYGAME = 2,
     PB_TESTMODE = 3,
     PB_BENCHMARK = 4,
-    PB_CREDITS = 5
+    PB_CREDITS = 5,
+    PB_SETTINGS = 6
 };
 
-// Input message structs and types
-enum PBInputType {
-    PB_INPUT_BUTTON = 0,
-    PB_INPUT_BALLSENSOR = 1,
-    PB_INPUT_TARGET = 2,
-    PB_INPUT_JETBUMPER = 3,
-    PB_INPUT_POPBUMPER = 4,
-};
-
-enum PBInputState {
-    PB_ON = 0,
-    PB_OFF = 1,
-};
+#define MenuTitle "Dungeon  Adventure"
+#define Menu1 "Play Pinball"
+#define Menu1Fail "Play Pinball (Disabled)"
+#define Menu2 "Settings"
+#define Menu3 "Test Mode"
+#define Menu4 "Benchmark"
+#define Menu5 "Console"
+#define Menu6 "Credits"
 
 struct stInputMessage {
     PBInputType inputType;
     unsigned int inputId;
-    PBInputState inputState;
+    PBPinState inputState;
     unsigned long instanceTick; 
 };
 
@@ -87,8 +87,8 @@ public:
     void pbeClearConsole();
     void pbeRenderConsole(unsigned int startingX, unsigned int startingY);
 
-     // Message functions
-     void pbeInputLoop();
+    // Functions to manage the game state
+    void pbeUpdateState(stInputMessage inputMessage);
 
     // Member variables for the sprites used in the screens
     // We might switch this to a query by name mechansim, but that would be slower...
@@ -96,6 +96,9 @@ public:
     unsigned int m_consoleTextHeight;
 
     unsigned int m_BootUpConsoleId, m_BootUpStarsId, m_BootUpStarsId2, m_BootUpStarsId3, m_BootUpStarsId4, m_BootUpTitleBarId;
+    unsigned int m_StartMenuFontId, m_StartMenuSwordId, m_currentMenuItem;
+
+    bool m_PassSelfTest;
 
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;
@@ -110,6 +113,9 @@ private:
     bool m_PBDefaultBackgroundLoaded;
     bool m_PBBootupLoaded, m_PBStartMenuLoaded, m_PBPlayGameLoaded, m_PBTestModeLoaded;
     bool m_PBBenchmarkLoaded, m_PBCreditsLoaded;
+
+    // Start Menu variables
+    unsigned int m_activeMenuItem;
 
     std::vector<std::string> m_consoleQueue;
     unsigned int m_maxConsoleLines;

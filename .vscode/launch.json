@@ -9,7 +9,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/winbuild/fontgen.exe", // Path to the compiled executable
-            "args": ["./winbuild/Ubuntu-Regular.ttf", "24", "256"], // Arguments to pass to the program
+            "args": ["./winbuild/IMMORTAL.ttf", "60", "512", "4"], // Arguments to pass to the program
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
