@@ -1,7 +1,6 @@
 This file tracks the various items to do in the pinball project in rough priority
 
 Create all the basic state screens (but probably on just basic score for the play screen - that one will be extensive)
-Create JSON format for pinball HW definition, along with mapping to test keys in windows
 Create basic score screen
 Create test screen listing items and then activating them through the flipper buttons
 Create input / output and sound queue sytems

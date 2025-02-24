@@ -340,57 +340,62 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
     g_PBEngine.gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
     g_PBEngine.gfxRenderString(m_StartMenuFontId, MenuTitle, 205, 13, 2);
 
-    unsigned int swordY = 94;
+    unsigned int swordY = 89;
     // Determine where to put the sword cursor and give blue underline to selected text
     switch (m_currentMenuItem) {
         case (1): {
-            swordY = 94; 
+            swordY = 89; 
             g_PBEngine.gfxSetColor(m_StartMenuFontId, 64, 0, 255, 255);
-            if (!g_PBEngine.m_PassSelfTest)g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1Fail, 293, 93, 1);
-            else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1, 293, 93, 1);
+            if (!g_PBEngine.m_PassSelfTest)g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1Fail, 293, 8, 1);
+            else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1, 293, 88, 1);
             break;
         }
         case (2): {
-            swordY = 159; 
+            swordY = 154; 
             g_PBEngine.gfxSetColor(m_StartMenuFontId, 64, 0, 255, 255);
-            g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu2, 293, 158, 1);
+            g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu2, 293, 153, 1);
             break;
         }
         case (3): {
-            swordY = 224; 
+            swordY = 219; 
             g_PBEngine.gfxSetColor(m_StartMenuFontId, 64, 0, 255, 255);
-            g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu3, 293, 223, 1);
+            g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu3, 293, 218, 1);
             break;
         }
         case (4): {
-            swordY = 289; 
+            swordY = 284; 
             g_PBEngine.gfxSetColor(m_StartMenuFontId, 64, 0, 255, 255);
-            g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu4, 293, 288, 1);
+            g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu4, 293, 283, 1);
             break;
         }
         case (5): {
-            swordY = 354; 
+            swordY = 349; 
             g_PBEngine.gfxSetColor(m_StartMenuFontId, 64, 0, 255, 255);
-            g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu5, 293, 353, 1);
+            g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu5, 293, 348, 1);
             break;
         }
         case (6): {
-            swordY = 419; 
+            swordY = 414; 
             g_PBEngine.gfxSetColor(m_StartMenuFontId, 64, 0, 255, 255);
-            g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu6, 293, 418, 1);
+            g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu6, 293, 413, 1);
             break;
         }
         default: break;
     }
 
-    g_PBEngine.gfxSetColor(m_StartMenuFontId, 200, 200, 200, 255);
-    if (!g_PBEngine.m_PassSelfTest)g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1Fail, 290, 90, 1);
-    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1, 290, 90, 1);
-    g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu2, 290, 155, 1);
-    g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu3, 290, 220, 1);
-    g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu4, 290, 285, 1);
-    g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu5, 290, 350, 1);
-    g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu6, 290, 415, 1);
+    g_PBEngine.gfxSetColor(m_StartMenuFontId, 200, 200, 200, 224);
+    if (!g_PBEngine.m_PassSelfTest)g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1Fail, 290, 85, 1);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1, 290, 85, 1);
+    g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu2, 290, 150, 1);
+    g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu3, 290, 215, 1);
+    g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu4, 290, 280, 1);
+    g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu5, 290, 345, 1);
+    g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu6, 290, 410, 1);
+
+    // Add insturctions to the bottom of the screen
+    g_PBEngine.gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1);
 
     g_PBEngine.gfxRenderSprite(m_StartMenuSwordId, 240, swordY);
           
@@ -401,8 +406,71 @@ bool PBEngine::pbeRenderPlayGame(unsigned long currentTick, unsigned long lastTi
     return (false);   
 }
 
+// Test Mode Screren
+bool PBEngine::pbeLoadTestMode(){
+    // Test mode currently only requires the default background and font
+    if (!pbeLoadDefaultBackground()) return (false);
+
+    m_PBTestModeLoaded = true;
+    return (m_PBTestModeLoaded);
+}
+
 bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTick){
-    return (false);   
+
+    if (!g_PBEngine.pbeLoadScreen (PB_TESTMODE)) return (false); 
+
+    g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    
+    // Render the default background
+    pbeRenderDefaultBackground (currentTick, lastTick);
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    gfxRenderString(m_defaultFontSpriteId, "Test Playfield Inputs/Outputs - Press START to EXIT", 140, 4, 1);
+
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "INPUTS", 10, 30, 1);
+
+    // These input / ouput lists will need to be adjusted if there end up being too many items - add a second row
+    // Hopefully can fit  within two columns each, otherwise, need to shrink font or re-think how to display.
+
+    // Go through each of the input defs and print the state
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        std::string temp = g_inputDef[i].inputName;
+        gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 10, 60 + (i * 22), 1);
+        
+        // Print the state of the input (and highlight in RED) if ON
+        if (g_inputDef[i].lastState == PB_ON) {
+            gfxSetColor(m_defaultFontSpriteId, 255,0, 0, 255);
+            temp = "ON";
+        }
+        else {
+            temp = "OFF";
+            gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
+        };
+        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 160, 60 + (i * 22), 1);
+    }
+
+    // Go through each of the output defs and print the state
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "OUTPUTS", 410, 30, 1);
+
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        std::string temp = g_outputDef[i].outputName;
+        gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 410, 60 + (i * 22), 1);
+        
+        // Print the state of the input (and highlight in RED) if ON
+        if (g_outputDef[i].lastState == PB_ON) {
+            gfxSetColor(m_defaultFontSpriteId, 255,0, 0, 255);
+            temp = "ON";
+        }
+        else {
+            temp = "OFF";
+            gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
+        };
+        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 560, 60 + (i * 22), 1);
+    }
+    
+    return (true);   
 }
 
 bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick){
@@ -414,10 +482,6 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
 }
  
 bool PBEngine::pbeLoadPlayGame(){
-    return (false);
-}
-
-bool PBEngine::pbeLoadTestMode(){
     return (false);
 }
 
@@ -465,10 +529,17 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             }
             break;
         }
+        case PB_TESTMODE: {
+            // If the start button has been pressed, return to the start menu
+            if (inputMessage.inputId == IDI_START && inputMessage.inputState == PB_ON) {
+                m_mainState = PB_STARTMENU;
+            }
+            // Otherwise, need to set the variables that tell the game to test the inputs and outputs
+            break;
+        }
         default: break;
     }
 }
-
 
 // Main program start
 int main(int argc, char const *argv[])

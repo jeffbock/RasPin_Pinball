@@ -77,14 +77,15 @@ struct stOutputDef{
     unsigned int id;
     unsigned int pin;
     PBBoardType boardType;
+    PBPinState lastState;
 };
 
 #define IDO_JETBUMPER 0
 #define IDO_POPBUMPER 1
 
 stOutputDef g_outputDef[] = {
-    {"Jet Bumper", "J", PB_OUTPUT_JETBUMPER, IDO_JETBUMPER, 1, PB_OUTPUT1},
-    {"Pop Bumper", "P", PB_OUTPUT_POPBUMPER, IDO_POPBUMPER, 2, PB_OUTPUT1}
+    {"Jet Bumper", "J", PB_OUTPUT_JETBUMPER, IDO_JETBUMPER, 1, PB_OUTPUT1, PB_OFF},
+    {"Pop Bumper", "P", PB_OUTPUT_POPBUMPER, IDO_POPBUMPER, 2, PB_OUTPUT1, PB_OFF}
 };
 
 #define NUM_OUTPUTS (sizeof(g_outputDef) / sizeof(stOutputDef))
