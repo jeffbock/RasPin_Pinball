@@ -40,6 +40,13 @@ void PBWinSimInput(std::string character, PBPinState inputState, stInputMessage*
             inputMessage->inputId = g_inputDef[i].id;
             inputMessage->inputState = inputState;
             inputMessage->instanceTick = GetTickCount64();
+
+            // Update the various state items for the input, could be used by the progam later
+            if (g_inputDef[i].lastState == inputState) g_inputDef[i].timeInState += (inputMessage->instanceTick - g_inputDef[i].lastStateTick);
+            else g_inputDef[i].timeInState = 0;
+            g_inputDef[i].lastState = inputState;
+            g_inputDef[i].lastStateTick = inputMessage->instanceTick;
+
             return;
         }
     }
@@ -130,6 +137,10 @@ return true;
 
     // Start Menu variables
     m_currentMenuItem = 1;
+
+    // Test Mode variables
+    m_TestMode = PB_TESTINPUT;
+    m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false; 
 
     m_PassSelfTest = true;
  }
@@ -424,7 +435,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
     // Render the default background
     pbeRenderDefaultBackground (currentTick, lastTick);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderString(m_defaultFontSpriteId, "Test Playfield Inputs/Outputs - Press START to EXIT", 140, 4, 1);
+    gfxRenderString(m_defaultFontSpriteId, "Test Playfield I/O: [LF+RF] Toggle I/O, [LA+RA] Exit", 140, 4, 1);
 
     g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "INPUTS", 10, 30, 1);
 
@@ -432,42 +443,38 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
     // Hopefully can fit  within two columns each, otherwise, need to shrink font or re-think how to display.
 
     // Go through each of the input defs and print the state
-    for (int i = 0; i < NUM_INPUTS; i++) {
-        std::string temp = g_inputDef[i].inputName;
-        gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 10, 60 + (i * 22), 1);
-        
-        // Print the state of the input (and highlight in RED) if ON
-        if (g_inputDef[i].lastState == PB_ON) {
-            gfxSetColor(m_defaultFontSpriteId, 255,0, 0, 255);
-            temp = "ON";
-        }
-        else {
-            temp = "OFF";
-            gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
-        };
-        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 160, 60 + (i * 22), 1);
-    }
 
-    // Go through each of the output defs and print the state
-    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "OUTPUTS", 410, 30, 1);
+    int limit = 0;
+    std::string temp;
 
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        std::string temp = g_outputDef[i].outputName;
-        gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 410, 60 + (i * 22), 1);
-        
-        // Print the state of the input (and highlight in RED) if ON
-        if (g_outputDef[i].lastState == PB_ON) {
-            gfxSetColor(m_defaultFontSpriteId, 255,0, 0, 255);
-            temp = "ON";
+    if (m_TestMode == PB_TESTINPUT) limit = NUM_INPUTS;
+    else limit = NUM_OUTPUTS;
+
+    if (m_TestMode == PB_TESTINPUT){
+        for (int i = 0; i < limit; i++) {
+            #ifdef EXE_MODE_WINDOWS
+                if (m_TestMode == PB_TESTINPUT)  temp = g_inputDef[i].inputName + "(" + g_inputDef[i].simMapKey + "): ";
+                else temp = g_outputDef[i].outputName + "(" + g_outputDef[i].simMapKey + "): ";
+            #endif
+            #ifdef EXE_MODE_RASPI
+                if (m_TestMode == PBTESTINPUT) temp = g_inputDef[i].inputName;
+                else = g_outputDef[i].outputName;
+            #endif
+            gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+            g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 10, 60 + (i * 22), 1);
+            
+            // Print the state of the input (and highlight in RED) if ON
+            if (((g_inputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTINPUT)) || 
+                ((g_outputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTOUTPUT))) {
+                gfxSetColor(m_defaultFontSpriteId, 255,0, 0, 255);
+                temp = "ON";
+            }
+            else {
+                temp = "OFF";
+                gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
+            };
+            g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 180, 60 + (i * 22), 1);
         }
-        else {
-            temp = "OFF";
-            gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
-        };
-        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 560, 60 + (i * 22), 1);
     }
     
     return (true);   
@@ -519,7 +526,11 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     switch (m_currentMenuItem) {
                         case (1):  if (m_PassSelfTest) m_mainState = PB_PLAYGAME; break;
                         case (2):  m_mainState = PB_SETTINGS; break;
-                        case (3):  m_mainState = PB_TESTMODE; break;
+                        case (3):  {
+                            m_mainState = PB_TESTMODE; 
+                            m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false; 
+                            break;
+                        }
                         case (4):  m_mainState = PB_BENCHMARK; break;
                         case (5):  m_mainState = PB_BOOTUP; break;
                         case (6):  m_mainState = PB_CREDITS; break;
@@ -531,10 +542,35 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         }
         case PB_TESTMODE: {
             // If the start button has been pressed, return to the start menu
-            if (inputMessage.inputId == IDI_START && inputMessage.inputState == PB_ON) {
+            if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputState == PB_ON) m_LFON = true;
+                else m_LFON = false;
+            }
+            if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputState == PB_ON) m_RFON = true;
+                else m_RFON = false;
+            }
+            if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                if (inputMessage.inputState == PB_ON) m_LAON = true;
+                else m_LAON = false;
+            }
+            if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                if (inputMessage.inputState == PB_ON) m_RAON = true;
+                else m_RAON = false;
+            }
+
+            // If both left and right flippers are pressed, toggle the test mode
+            if (m_LFON && m_RFON) {
+                if (m_TestMode == PB_TESTINPUT) m_TestMode = PB_TESTOUTPUT;
+                else m_TestMode = PB_TESTINPUT;
+                m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false;
+            }
+            // If both left and right activations are pressed, exit test mode
+            if (m_LAON && m_RAON) {
                 m_mainState = PB_STARTMENU;
             }
-            // Otherwise, need to set the variables that tell the game to test the inputs and outputs
+
+            // Send the output message to the output queue - this will be connected to HW
             break;
         }
         default: break;

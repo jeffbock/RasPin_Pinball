@@ -56,6 +56,11 @@ enum PBMainState {
     PB_SETTINGS = 6
 };
 
+enum PBTestModeState{ 
+    PB_TESTINPUT = 0,
+    PB_TESTOUTPUT = 1
+};
+
 #define MenuTitle "Dungeon  Adventure"
 #define Menu1 "Play Pinball"
 #define Menu1Fail "Play Pinball (Disabled)"
@@ -69,6 +74,13 @@ struct stInputMessage {
     PBInputType inputType;
     unsigned int inputId;
     PBPinState inputState;
+    unsigned long instanceTick; 
+};
+
+struct stOutputMessage {
+    PBInputType outputType;
+    unsigned int outputId;
+    PBPinState outputState;
     unsigned long instanceTick; 
 };
 
@@ -97,6 +109,8 @@ public:
 
     unsigned int m_BootUpConsoleId, m_BootUpStarsId, m_BootUpStarsId2, m_BootUpStarsId3, m_BootUpStarsId4, m_BootUpTitleBarId;
     unsigned int m_StartMenuFontId, m_StartMenuSwordId, m_currentMenuItem;
+    PBTestModeState m_TestMode;
+    bool m_LFON, m_RFON, m_LAON, m_RAON;
 
     bool m_PassSelfTest;
 
