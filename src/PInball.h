@@ -78,7 +78,7 @@ struct stInputMessage {
 };
 
 struct stOutputMessage {
-    PBInputType outputType;
+    PBOutputType outputType;
     unsigned int outputId;
     PBPinState outputState;
     unsigned long instanceTick; 
@@ -111,13 +111,15 @@ public:
     unsigned int m_StartMenuFontId, m_StartMenuSwordId, m_currentMenuItem;
     PBTestModeState m_TestMode;
     bool m_LFON, m_RFON, m_LAON, m_RAON;
+    unsigned int m_currentOutputItem;
 
     bool m_PassSelfTest;
 
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;
     std::mutex m_inputQMutex;
-    // std::condition_variable m_inputQCondVar;
+    std::queue<stOutputMessage> m_outputQueue;
+    std::mutex m_outputQMutex;
     
 private:
 

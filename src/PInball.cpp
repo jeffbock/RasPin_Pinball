@@ -141,6 +141,7 @@ return true;
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
     m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false; 
+    m_currentOutputItem = 0;
 
     m_PassSelfTest = true;
  }
@@ -437,8 +438,6 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
     gfxRenderString(m_defaultFontSpriteId, "Test Playfield I/O: [LF+RF] Toggle I/O, [LA+RA] Exit", 140, 4, 1);
 
-    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "INPUTS", 10, 30, 1);
-
     // These input / ouput lists will need to be adjusted if there end up being too many items - add a second row
     // Hopefully can fit  within two columns each, otherwise, need to shrink font or re-think how to display.
 
@@ -450,31 +449,38 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
     if (m_TestMode == PB_TESTINPUT) limit = NUM_INPUTS;
     else limit = NUM_OUTPUTS;
 
-    if (m_TestMode == PB_TESTINPUT){
-        for (int i = 0; i < limit; i++) {
-            #ifdef EXE_MODE_WINDOWS
-                if (m_TestMode == PB_TESTINPUT)  temp = g_inputDef[i].inputName + "(" + g_inputDef[i].simMapKey + "): ";
-                else temp = g_outputDef[i].outputName + "(" + g_outputDef[i].simMapKey + "): ";
-            #endif
-            #ifdef EXE_MODE_RASPI
-                if (m_TestMode == PBTESTINPUT) temp = g_inputDef[i].inputName;
-                else = g_outputDef[i].outputName;
-            #endif
-            gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-            g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 10, 60 + (i * 22), 1);
-            
-            // Print the state of the input (and highlight in RED) if ON
-            if (((g_inputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTINPUT)) || 
-                ((g_outputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTOUTPUT))) {
-                gfxSetColor(m_defaultFontSpriteId, 255,0, 0, 255);
-                temp = "ON";
-            }
-            else {
-                temp = "OFF";
-                gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
-            };
-            g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 180, 60 + (i * 22), 1);
+    gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
+
+    if (m_TestMode == PB_TESTINPUT) g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "INPUTS", 10, 30, 1);
+    else g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "OUTPUTS", 10, 30, 1);  
+    
+    for (int i = 0; i < limit; i++) {
+        #ifdef EXE_MODE_WINDOWS
+            if (m_TestMode == PB_TESTINPUT)  temp = g_inputDef[i].inputName + "(" + g_inputDef[i].simMapKey + "): ";
+            else temp = g_outputDef[i].outputName + ": ";
+        #endif
+        #ifdef EXE_MODE_RASPI
+            if (m_TestMode == PBTESTINPUT) temp = g_inputDef[i].inputName + ": ";
+            else = g_outputDef[i].outputName + ": ";
+        #endif
+        
+        if ((i == m_currentOutputItem) && (m_TestMode == PB_TESTOUTPUT)) gfxSetColor (m_defaultFontSpriteId, 255, 0, 0, 255);
+        else gfxSetColor (m_defaultFontSpriteId, 255, 255, 255, 255);
+
+        int itemp =  ((i % 19) * 40);
+        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 10 + ((i / 19) * 220), 60 + ((i % 19) * 22), 1);
+        
+        // Print the state of the input (and highlight in RED) if ON
+        if (((g_inputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTINPUT)) || 
+            ((g_outputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTOUTPUT))) {
+            gfxSetColor(m_defaultFontSpriteId, 255,0, 0, 255);
+            temp = "ON";
         }
+        else {
+            gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
+            temp = "OFF";
+        };
+        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 180 + ((i / 19) * 220), 60 + ((i % 19) * 22), 1);
     }
     
     return (true);   
@@ -528,7 +534,9 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         case (2):  m_mainState = PB_SETTINGS; break;
                         case (3):  {
                             m_mainState = PB_TESTMODE; 
-                            m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false; 
+                            m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false;
+                            m_currentOutputItem = 0;
+                            m_TestMode = PB_TESTINPUT;
                             break;
                         }
                         case (4):  m_mainState = PB_BENCHMARK; break;
@@ -541,6 +549,34 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             break;
         }
         case PB_TESTMODE: {
+            
+            // Check the mode and send output message if needed
+            if (m_TestMode == PB_TESTOUTPUT) {
+                // Send the output message to the output queue - this will be connected to HW
+                if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+                    if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                        if (m_currentOutputItem > 0) m_currentOutputItem--;
+                    }
+                    // If either right button is pressed, add 1 to m_currentMenuItem
+                    if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                        if (m_currentOutputItem < (NUM_OUTPUTS -1)) m_currentOutputItem++;
+                    }
+                }
+
+                if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                    if (g_outputDef[m_currentOutputItem].lastState == PB_ON) g_outputDef[m_currentOutputItem].lastState = PB_OFF;
+                    else g_outputDef[m_currentOutputItem].lastState = PB_ON;
+                }
+
+                // Send the message to the output queue
+                stOutputMessage outputMessage;        
+                outputMessage.outputType = g_outputDef[m_currentOutputItem].outputType;
+                outputMessage.outputId = g_outputDef[m_currentOutputItem].id;
+                outputMessage.outputState = g_outputDef[m_currentOutputItem].lastState;
+                outputMessage.instanceTick = GetTickCount64();
+                g_PBEngine.m_outputQueue.push(outputMessage);
+            }
+            
             // If the start button has been pressed, return to the start menu
             if (inputMessage.inputId == IDI_LEFTFLIPPER) {
                 if (inputMessage.inputState == PB_ON) m_LFON = true;
@@ -569,8 +605,9 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             if (m_LAON && m_RAON) {
                 m_mainState = PB_STARTMENU;
             }
-
             // Send the output message to the output queue - this will be connected to HW
+
+
             break;
         }
         default: break;
