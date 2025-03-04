@@ -6,7 +6,7 @@ Create automatic sprite animation - starting place, stoping place, time to anima
 Create input / output message processing
 Change sprite X/Y input to allow negatives, since really you can start rendering offscreen since it's just 3D
 Architecture a new thread system - what gameplay, rendering, etc.. elements need their own threads?  Right now it's single threaded...
-Create sound output queue sytem
+Create sound output queue system
 Set up OGL ES code to work w/ PiOS libs / headers
 Set up VS Code to cross compile for PiOS
 Install git LFS as that large bitmaps, etc.. are expected at some point
@@ -14,3 +14,5 @@ Expand sprites to have animated sprites - eg: UV maps within a sprite with diffe
     -  Is there some standard sprite format / program that can be used?
 Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
 Duplicate all the Windows simulation capability in PiOS
+Save settings info in a file and restore from a file
+Create functions for auto text shadowing and centering full text rendering

@@ -136,12 +136,20 @@ return true;
     m_consoleTextHeight = 0;
 
     // Start Menu variables
-    m_currentMenuItem = 1;
+    m_CurrentMenuItem = 1;
+
+    // Setting Menu variables - at some points these should saved to a file and loaded from a file
+    m_CurrentSettingsItem = 1;
+    m_MainVolume = 10; m_MusicVolume = 10; m_BallsPerGame = 3;
+
+    // Credits screen variables
+    m_CreditsScrollY = 480;
+    m_TicksPerPixel = 60;
 
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
     m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false; 
-    m_currentOutputItem = 0;
+    m_CurrentOutputItem = 0;
 
     m_PassSelfTest = true;
  }
@@ -187,6 +195,7 @@ bool PBEngine::pbeLoadScreen (PBMainState state){
         case PB_TESTMODE: return (pbeLoadTestMode()); break;
         case PB_BENCHMARK: return (pbeLoadBenchmark()); break;
         case PB_CREDITS: return (pbeLoadCredits()); break;
+        case PB_SETTINGS: return (pbeLoadSettings()); break;
         default: return (false); break;
     }
      
@@ -203,6 +212,7 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
         case PB_TESTMODE: return pbeRenderTestMode(currentTick, lastTick); break;
         case PB_BENCHMARK: return pbeRenderBenchmark(currentTick, lastTick); break;
         case PB_CREDITS: return pbeRenderCredits(currentTick, lastTick); break;
+        case PB_SETTINGS: return pbeRenderSettings(currentTick, lastTick); break;
         default: return (false); break;
     }
 
@@ -308,7 +318,7 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
    g_PBEngine.gfxRenderSprite(m_BootUpTitleBarId, 0, 0);
    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "(PI)nball Engine - Copyright 2024 Jeff Bock", 202, 10, 1);
 
-   g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 256, 256, 256, 256);
+   g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
    g_PBEngine.pbeRenderConsole(1, 42);
 
    return (true);
@@ -354,11 +364,11 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
 
     unsigned int swordY = 89;
     // Determine where to put the sword cursor and give blue underline to selected text
-    switch (m_currentMenuItem) {
+    switch (m_CurrentMenuItem) {
         case (1): {
             swordY = 89; 
             g_PBEngine.gfxSetColor(m_StartMenuFontId, 64, 0, 255, 255);
-            if (!g_PBEngine.m_PassSelfTest)g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1Fail, 293, 8, 1);
+            if (!g_PBEngine.m_PassSelfTest)g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1Fail, 293, 88, 1);
             else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1, 293, 88, 1);
             break;
         }
@@ -405,7 +415,7 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
     g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu6, 290, 410, 1);
 
     // Add insturctions to the bottom of the screen
-    g_PBEngine.gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+    g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
     g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1);
     g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1);
 
@@ -464,7 +474,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
             else = g_outputDef[i].outputName + ": ";
         #endif
         
-        if ((i == m_currentOutputItem) && (m_TestMode == PB_TESTOUTPUT)) gfxSetColor (m_defaultFontSpriteId, 255, 0, 0, 255);
+        if ((i == m_CurrentOutputItem) && (m_TestMode == PB_TESTOUTPUT)) gfxSetColor (m_defaultFontSpriteId, 255, 0, 0, 255);
         else gfxSetColor (m_defaultFontSpriteId, 255, 255, 255, 255);
 
         int itemp =  ((i % 19) * 40);
@@ -486,23 +496,136 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
     return (true);   
 }
 
+// Settings Menu Screen
+
+bool PBEngine::pbeLoadSettings(){
+
+    if (!g_PBEngine.pbeLoadScreen (PB_STARTMENU)) return (false); 
+
+    return (true);
+}
+
+bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTick){
+
+    if (!g_PBEngine.pbeLoadScreen (PB_SETTINGS)) return (false); 
+
+    g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+ 
+     // Render the default background
+     pbeRenderDefaultBackground (currentTick, lastTick);
+    
+     g_PBEngine.gfxSetColor(m_StartMenuFontId, 0, 0, 0, 255);
+     g_PBEngine.gfxRenderString(m_StartMenuFontId, MenuSettingsTitle, 333, 10, 2);
+ 
+     g_PBEngine.gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
+     g_PBEngine.gfxRenderString(m_StartMenuFontId, MenuSettingsTitle, 330, 13, 2);
+ 
+     std::string Setting1Temp = MenuSettings1 + std::to_string(g_PBEngine.m_MainVolume);
+     std::string Setting2Temp = MenuSettings2 + std::to_string(g_PBEngine.m_MusicVolume);
+     std::string Setting3Temp = MenuSettings3 + std::to_string(g_PBEngine.m_BallsPerGame);
+
+     unsigned int swordY = 89;
+     // Determine where to put the sword cursor and give blue underline to selected text
+     switch (m_CurrentSettingsItem) {
+         case (1): {
+             swordY = 89; 
+             g_PBEngine.gfxSetColor(m_StartMenuFontId, 64, 0, 255, 255);
+             g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting1Temp, 263, 88, 1);
+             break;
+         }
+         case (2): {
+             swordY = 154; 
+             g_PBEngine.gfxSetColor(m_StartMenuFontId, 64, 0, 255, 255);
+             g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting2Temp, 263, 153, 1);
+             break;
+         }
+         case (3): {
+             swordY = 219; 
+             g_PBEngine.gfxSetColor(m_StartMenuFontId, 64, 0, 255, 255);
+             g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting3Temp, 263, 218, 1);
+             break;
+         }
+         default: break;
+     }
+
+     g_PBEngine.gfxSetColor(m_StartMenuFontId, 200, 200, 200, 224);
+     g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting1Temp, 260, 85, 1);
+     g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting2Temp, 260, 150, 1);
+     g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting3Temp, 260, 215, 1);
+ 
+     // Add insturctions to the bottom of the screen
+     g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+     g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Start = exit", 615, 405, 1);
+     g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1);
+     g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1);
+ 
+     g_PBEngine.gfxRenderSprite(m_StartMenuSwordId, 210, swordY);
+           
+     return (true);
+}
+
+// Credits Screen processing
+
+bool PBEngine::pbeLoadCredits(){
+
+    if (!pbeLoadDefaultBackground()) return (false);
+    return (true);
+}
+
+bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTick){
+
+    if (!g_PBEngine.pbeLoadScreen (PB_CREDITS)) return (false);
+
+    g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+ 
+    // Render the default background
+    pbeRenderDefaultBackground (currentTick, lastTick);
+
+    int pixelShiftY = ((currentTick - m_StartTick) / m_TicksPerPixel);
+
+        // Once we fix the ability to render to negative coordinates, we can remove this and let it scroll off the screen
+    if (pixelShiftY > 470) m_CreditsScrollY = 10;
+    else m_CreditsScrollY = 480 - pixelShiftY;
+
+    int spacing = 35;
+
+    g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 0, 0, 0, 255);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Credits", 367, m_CreditsScrollY, 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Dungeon Adventure Pinball", 282, m_CreditsScrollY + (1*spacing) +2, 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Designed and Programmed by: Jeffrey Bock", 207, m_CreditsScrollY + (2*spacing) +2, 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "3D Models and Printing: Tremayne Bock", 232, m_CreditsScrollY + (3*spacing) +2, 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Using Rasberry Pi (PI)nball Engine", 262, m_CreditsScrollY + (4*spacing) +2, 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Full code and 3D models available at:", 242, m_CreditsScrollY + (5*spacing) +2, 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "https://github.com/jeffbock/PInball", 247, m_CreditsScrollY + (6*spacing) +2, 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Thanks to Kim, Ally, Katie and Ruth for inspiration", 177, m_CreditsScrollY + (7*spacing) +2, 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Using STB Libraries: http://nothings.org/stb", 207, m_CreditsScrollY + (8*spacing) +2, 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Developed using AI and Microsoft Copilot tools", 192, m_CreditsScrollY + (9*spacing) +2, 1);
+    
+    g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Credits", 365, m_CreditsScrollY, 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Dungeon Adventure Pinball", 280, m_CreditsScrollY + (1*spacing), 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Designed and Programmed by: Jeffrey Bock", 205, m_CreditsScrollY + (2*spacing), 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "3D Models and Printing: Tremayne Bock", 230, m_CreditsScrollY + (3*spacing), 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Using Rasberry Pi (PI)nball Engine", 260, m_CreditsScrollY + (4*spacing), 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Full code and 3D models available at:", 240, m_CreditsScrollY + (5*spacing), 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "https://github.com/jeffbock/PInball", 245, m_CreditsScrollY + (6*spacing), 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Thanks to Kim, Ally, Katie and Ruth for inspiration", 175, m_CreditsScrollY + (7*spacing), 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Using STB Libraries: http://nothings.org/stb", 205, m_CreditsScrollY + (8*spacing), 1);
+    g_PBEngine.gfxRenderString(m_defaultFontSpriteId, "Developed using AI and Microsoft Copilot tools", 190, m_CreditsScrollY + (9*spacing) +2, 1);
+
+    return (true);   
+}
+
 bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick){
     return (false);   
 }
 
-bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTick){
-    return (false);   
-}
  
 bool PBEngine::pbeLoadPlayGame(){
     return (false);
 }
 
 bool PBEngine::pbeLoadBenchmark(){
-    return (false);
-}
-
-bool PBEngine::pbeLoadCredits(){
     return (false);
 }
 
@@ -520,28 +643,28 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             // If either left button is pressed, subtract 1 from m_currentMenuItem
             if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_LEFTFLIPPER) {
-                    if (m_currentMenuItem > 1) m_currentMenuItem--;
+                    if (m_CurrentMenuItem > 1) m_CurrentMenuItem--;
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                    if (m_currentMenuItem < 6) m_currentMenuItem++;
+                    if (m_CurrentMenuItem < 6) m_CurrentMenuItem++;
                 }
 
                 if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                     // Do something based on the menu item
-                    switch (m_currentMenuItem) {
+                    switch (m_CurrentMenuItem) {
                         case (1):  if (m_PassSelfTest) m_mainState = PB_PLAYGAME; break;
-                        case (2):  m_mainState = PB_SETTINGS; break;
+                        case (2):  m_mainState = PB_SETTINGS; m_CurrentSettingsItem = 1; break;
                         case (3):  {
                             m_mainState = PB_TESTMODE; 
                             m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false;
-                            m_currentOutputItem = 0;
+                            m_CurrentOutputItem = 0;
                             m_TestMode = PB_TESTINPUT;
                             break;
                         }
                         case (4):  m_mainState = PB_BENCHMARK; break;
                         case (5):  m_mainState = PB_BOOTUP; break;
-                        case (6):  m_mainState = PB_CREDITS; break;
+                        case (6):  m_mainState = PB_CREDITS; m_StartTick = GetTickCount64(); break;
                         default: break;
                     }
                 }                
@@ -555,24 +678,24 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 // Send the output message to the output queue - this will be connected to HW
                 if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
                     if (inputMessage.inputId == IDI_LEFTFLIPPER) {
-                        if (m_currentOutputItem > 0) m_currentOutputItem--;
+                        if (m_CurrentOutputItem > 0) m_CurrentOutputItem--;
                     }
                     // If either right button is pressed, add 1 to m_currentMenuItem
                     if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                        if (m_currentOutputItem < (NUM_OUTPUTS -1)) m_currentOutputItem++;
+                        if (m_CurrentOutputItem < (NUM_OUTPUTS -1)) m_CurrentOutputItem++;
                     }
                 }
 
                 if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
-                    if (g_outputDef[m_currentOutputItem].lastState == PB_ON) g_outputDef[m_currentOutputItem].lastState = PB_OFF;
-                    else g_outputDef[m_currentOutputItem].lastState = PB_ON;
+                    if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
+                    else g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
                 }
 
                 // Send the message to the output queue
                 stOutputMessage outputMessage;        
-                outputMessage.outputType = g_outputDef[m_currentOutputItem].outputType;
-                outputMessage.outputId = g_outputDef[m_currentOutputItem].id;
-                outputMessage.outputState = g_outputDef[m_currentOutputItem].lastState;
+                outputMessage.outputType = g_outputDef[m_CurrentOutputItem].outputType;
+                outputMessage.outputId = g_outputDef[m_CurrentOutputItem].id;
+                outputMessage.outputState = g_outputDef[m_CurrentOutputItem].lastState;
                 outputMessage.instanceTick = GetTickCount64();
                 g_PBEngine.m_outputQueue.push(outputMessage);
             }
@@ -609,6 +732,58 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 
 
             break;
+        }
+        case PB_SETTINGS: {
+            if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                    if (m_CurrentSettingsItem > 1) m_CurrentSettingsItem--;
+                }
+                // If either right button is pressed, add 1 to m_currentMenuItem
+                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                    if (m_CurrentSettingsItem < (NUM_SETTINGS)) m_CurrentSettingsItem++;
+                }
+                if (inputMessage.inputId == IDI_START) m_mainState = PB_STARTMENU;
+            }
+
+            if (((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) && inputMessage.inputState == PB_ON){
+                switch (m_CurrentSettingsItem) {
+                    case (1): {
+                        if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                            if (m_MainVolume < 10) m_MainVolume++;
+                        }
+                        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                            if (m_MainVolume > 0) m_MainVolume--;
+                        }
+                        break;
+                    }
+                    case (2): {
+                        if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                            if (m_MusicVolume < 10) m_MusicVolume++;
+                        }
+                        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                            if (m_MusicVolume > 0) m_MusicVolume--;
+                        }
+                        break;
+                    }
+                    case (3): {
+                        if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                            if (m_BallsPerGame < 9) m_BallsPerGame++;
+                        }
+                        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                            if (m_BallsPerGame > 1) m_BallsPerGame--;
+                        }
+                        break;
+                    }
+                    default: break;
+                }
+            }
+            break;
+        }
+        case PB_CREDITS: {
+            if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+                m_mainState = PB_STARTMENU;
+            }
+        break;
         }
         default: break;
     }

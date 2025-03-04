@@ -56,7 +56,7 @@ stInputDef g_inputDef[] = {
     {"Right Flipper", "D", PB_INPUT_BUTTON, IDI_RIGHTFLIPPER, 2, PB_INPUT1, PB_OFF, 0, 0, 10},
     {"Left Activate", "Q", PB_INPUT_BUTTON, IDI_LEFTACTIVATE, 3, PB_INPUT1, PB_OFF, 0, 0, 10},
     {"Right Activate", "E", PB_INPUT_BUTTON, IDI_RIGHTACTIVATE, 4, PB_INPUT1, PB_OFF, 0, 0, 10},
-    {"Start", "Z", PB_INPUT_BUTTON, 5, 4, PB_INPUT1, PB_OFF, 0, 0, 100}
+    {"Start", "Z", PB_INPUT_BUTTON, IDI_START, 5, PB_INPUT1, PB_OFF, 0, 0, 100}
 };
 
 #define NUM_INPUTS (sizeof(g_inputDef) / sizeof(stInputDef))

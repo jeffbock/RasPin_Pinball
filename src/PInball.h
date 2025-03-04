@@ -70,6 +70,13 @@ enum PBTestModeState{
 #define Menu5 "Console"
 #define Menu6 "Credits"
 
+#define MenuSettingsTitle "Settings"
+#define MenuSettings1 "Main Volume: "
+#define MenuSettings2 "Music Volume: "
+#define MenuSettings3 "Balls Per Game: "
+
+#define NUM_SETTINGS 3
+
 struct stInputMessage {
     PBInputType inputType;
     unsigned int inputId;
@@ -108,10 +115,16 @@ public:
     unsigned int m_consoleTextHeight;
 
     unsigned int m_BootUpConsoleId, m_BootUpStarsId, m_BootUpStarsId2, m_BootUpStarsId3, m_BootUpStarsId4, m_BootUpTitleBarId;
-    unsigned int m_StartMenuFontId, m_StartMenuSwordId, m_currentMenuItem;
+    unsigned int m_StartMenuFontId, m_StartMenuSwordId, m_CurrentMenuItem;
     PBTestModeState m_TestMode;
     bool m_LFON, m_RFON, m_LAON, m_RAON;
-    unsigned int m_currentOutputItem;
+    unsigned int m_CurrentOutputItem;
+
+    // Settings screen / game variables
+    unsigned int m_CurrentSettingsItem, m_MainVolume, m_MusicVolume, m_BallsPerGame; 
+
+    // Credits screen
+    unsigned int m_CreditsScrollY, m_TicksPerPixel, m_StartTick;
 
     bool m_PassSelfTest;
 
@@ -128,10 +141,7 @@ private:
     // Load trackers for main screens
     bool m_PBDefaultBackgroundLoaded;
     bool m_PBBootupLoaded, m_PBStartMenuLoaded, m_PBPlayGameLoaded, m_PBTestModeLoaded;
-    bool m_PBBenchmarkLoaded, m_PBCreditsLoaded;
-
-    // Start Menu variables
-    unsigned int m_activeMenuItem;
+    bool m_PBBenchmarkLoaded, m_PBCreditsLoaded, m_PBSettingsLoaded;
 
     std::vector<std::string> m_consoleQueue;
     unsigned int m_maxConsoleLines;
@@ -144,6 +154,7 @@ private:
     bool pbeRenderTestMode(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderCredits(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderSettings(unsigned long currentTick, unsigned long lastTick);
 
     // Private functions for loading main state screens
     bool pbeLoadDefaultBackground();
@@ -153,6 +164,7 @@ private:
     bool pbeLoadTestMode();
     bool pbeLoadBenchmark();
     bool pbeLoadCredits();
+    bool pbeLoadSettings();
 };
 
 #endif // PInball_h
