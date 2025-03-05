@@ -126,6 +126,10 @@ public:
     // Credits screen
     unsigned int m_CreditsScrollY, m_TicksPerPixel, m_StartTick;
 
+    // Benchmark screen
+    unsigned int m_TicksPerScene, m_BenchmarkStartTick, m_CountDownTicks;
+    bool m_BenchmarkDone;
+
     bool m_PassSelfTest;
 
     // Message queue variables

@@ -146,6 +146,9 @@ return true;
     m_CreditsScrollY = 480;
     m_TicksPerPixel = 30;
 
+    // Benchmark varialbes
+    m_TicksPerScene = 10000; m_BenchmarkStartTick = 0;  m_CountDownTicks = 4000; m_BenchmarkDone = false;
+
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
     m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false; 
@@ -573,19 +576,68 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
 
     return (true);   
 }
-
-bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick){
-    return (false);   
-}
-
  
 bool PBEngine::pbeLoadPlayGame(){
     return (false);
 }
 
+// Benchmark Screen
+
 bool PBEngine::pbeLoadBenchmark(){
-    return (false);
+
+    // Benchmark will just use default font and the start menu items
+    if (!g_PBEngine.pbeLoadScreen (PB_STARTMENU)) return (false); 
+    return (true);
 }
+
+bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick){
+
+    if (!g_PBEngine.pbeLoadScreen (PB_BENCHMARK)) return (false); 
+
+    unsigned int elapsedTime = currentTick - m_BenchmarkStartTick;
+
+    g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+
+    std::string temp;
+
+    // m_TicksPerScene = 10000, m_BenchmarkStartTick = 0, m_CountDownTicks;
+    if (elapsedTime < m_CountDownTicks) {
+        
+        temp = "Benchmark Starting in " + std::to_string((m_CountDownTicks - elapsedTime) / 1000);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, 290, 200, 1, 0, 0, 255, 255, 2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "System will be unresponsive", 265, 225, 1, 0, 0, 255, 255, 2);
+        return (true);
+    }
+    
+    if (elapsedTime < (m_TicksPerScene + m_CountDownTicks)) {
+        temp = "Benchmark Scene 1: " + std::to_string(elapsedTime);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, 290, 200, 1, 0, 0, 255, 255, 2);
+        return (true);
+    }
+
+    if (elapsedTime < ((m_TicksPerScene *2) + m_CountDownTicks)) {
+        temp = "Benchmark Scene 2: " + std::to_string(elapsedTime);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, 290, 200, 1, 0, 0, 255, 255, 2);
+        return (true);
+    }
+
+    if (elapsedTime < ((m_TicksPerScene *3) + m_CountDownTicks)) {
+        temp = "Benchmark Scene 3: " + std::to_string(elapsedTime);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, 290, 200, 1, 0, 0, 255, 255, 2);
+        return (true);
+    }
+
+    if (elapsedTime < ((m_TicksPerScene *4) + m_CountDownTicks)) {
+        temp = "Benchmark Scene 4: " + std::to_string(elapsedTime);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, 290, 200, 1, 0, 0, 255, 255, 2);
+        return (true);
+    }
+
+    m_BenchmarkDone = true;
+    return (true);   
+}
+
 
 void PBEngine::pbeUpdateState(stInputMessage inputMessage){
     
@@ -620,7 +672,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             m_TestMode = PB_TESTINPUT;
                             break;
                         }
-                        case (4):  m_mainState = PB_BENCHMARK; break;
+                        case (4):  m_mainState = PB_BENCHMARK; m_BenchmarkStartTick =  GetTickCount64(); m_BenchmarkDone = false; break;
                         case (5):  m_mainState = PB_BOOTUP; break;
                         case (6):  m_mainState = PB_CREDITS; m_StartTick = GetTickCount64(); break;
                         default: break;
@@ -743,6 +795,13 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             }
         break;
         }
+        case PB_BENCHMARK: {
+            if (m_BenchmarkDone && (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON)) {
+                m_mainState = PB_STARTMENU;
+            }
+        break;
+        }
+
         default: break;
     }
 }
