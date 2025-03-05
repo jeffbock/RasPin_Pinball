@@ -166,7 +166,7 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
 }
 
 // Create an instance sprite - can be created from any instance sprite.  
-unsigned int PBGfx::gfxInstanceSprite (unsigned int parentSpriteId, unsigned int x, unsigned int y, unsigned int textureAlpha, 
+unsigned int PBGfx::gfxInstanceSprite (unsigned int parentSpriteId, int x, int y, unsigned int textureAlpha, 
                                        unsigned int vertRed, unsigned int vertGreen, unsigned int vertBlue, unsigned int vertAlpha, float scaleFactor, float rotateDegrees){
 
     stSpriteInstance instance;    
@@ -249,7 +249,7 @@ unsigned int PBGfx::gfxLoadSprite(stSpriteInfo spriteInfo) {
 }
 
 // First two render functions are conveinence functions that will automatically set sprite intance values rather than calling discrete set functions
-bool PBGfx::gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int y){
+bool PBGfx::gfxRenderSprite(unsigned int spriteId, int x, int y){
             
     auto it = m_instanceList.find(spriteId);
     if (it != m_instanceList.end()) {
@@ -263,7 +263,7 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int 
     return (false);
 }
 
-bool PBGfx::gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int y, float scaleFactor, float rotateDegrees){
+bool PBGfx::gfxRenderSprite(unsigned int spriteId, int x, int y, float scaleFactor, float rotateDegrees){
 
 auto it = m_instanceList.find(spriteId);
 if (it != m_instanceList.end()) {
@@ -280,6 +280,9 @@ return (false);
 }
 
 // Primary render function for sprites - this will need to be adjusted for difference sprite map types, but for now it's just basic no-map
+// NOTE:  A few palaces in the code, we swap X1/X2 or U1/U2 values to shift from UV / 3D space to screen space
+//        This may may also may not be right - it may be that we're rendering back facing triangles but it works w/ current render
+
 bool PBGfx::gfxRenderSprite(unsigned int spriteId){
     
     auto it = m_instanceList.find(spriteId);
@@ -323,10 +326,10 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId){
             float fwidth = (float)oglGetScreenWidth();
             float fheight = (float)oglGetScreenHeight();
 
-            it->second.boundingBox.x1 = (unsigned int)(((x1 + 1.0f) / 2.0f) * fwidth);
-            it->second.boundingBox.y1 = (unsigned int)(((y1 + 1.0f) / 2.0f) * fheight);
-            it->second.boundingBox.x2 = (unsigned int)(((x2 + 1.0f) / 2.0f) * fwidth);
-            it->second.boundingBox.y2 = (unsigned int)(((y2 + 1.0f) / 2.0f) * fheight);
+            it->second.boundingBox.x2 = (int)(((x1 + 1.0f) / 2.0f) * fwidth);
+            it->second.boundingBox.y1 = (int)(fheight - (((y1 + 1.0f) / 2.0f) * fheight));
+            it->second.boundingBox.x1 = (int)(((x2 + 1.0f) / 2.0f) * fwidth);
+            it->second.boundingBox.y2 = (int)(fheight - (((y2 + 1.0f) / 2.0f) * fheight));
         }   
     }
     else return (false);
@@ -334,7 +337,23 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId){
     return (true);
 }
 
-bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, unsigned int x, unsigned int y, unsigned int spacingPixels) {
+// This version just uses the X and Y values from the sprite instance
+
+bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, unsigned int spacingPixels) {
+
+    auto it2 = m_instanceList.find(spriteId);
+    if (it2 == m_instanceList.end()) return (false);
+    if (m_spriteList[it2->second.parentSpriteId].mapType != GFX_TEXTMAP) return (false);
+
+    unsigned int x = m_instanceList[spriteId].x;
+    unsigned int y = m_instanceList[spriteId].y;
+
+    return gfxRenderString(spriteId, input, x, y, spacingPixels);
+}
+
+// Full Version of the function that renders a string of text
+
+bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, int x, int y, int spacingPixels) {
 
      // Find the sprite ID in the m_instanceList, if it isn't a textmap then return false
      auto it2 = m_instanceList.find(spriteId);
@@ -388,6 +407,43 @@ bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, unsigned i
     return (true);
 }
 
+// Render a string, except also render a shadow behind the string
+
+bool  PBGfx::gfxRenderShadowString(unsigned int spriteId,  std::string input, int x, int y, unsigned int spacingPixels,
+                                   unsigned int red, unsigned int green, unsigned int blue, unsigned int alpha, unsigned int shadowOffset) {
+
+    // Find the sprite ID in the m_instanceList, if it isn't a textmap then return false
+    auto it2 = m_instanceList.find(spriteId);
+    if (it2 == m_instanceList.end()) return (false);
+
+    // Save the colors, they will need to be set back later
+    float origRed = m_instanceList[spriteId].vertRed;
+    float origGreen = m_instanceList[spriteId].vertGreen;
+    float origBlue = m_instanceList[spriteId].vertBlue;
+    float origAlpha = m_instanceList[spriteId].vertAlpha;
+    bool success = false;
+
+    // Set the shadow color
+    gfxSetColor(spriteId, red, green, blue, alpha);
+
+    // Render the shadow string
+    success = gfxRenderString(spriteId, input, x + shadowOffset, y + shadowOffset, spacingPixels);
+
+    // Restore the old X/Y and color values
+    m_instanceList[spriteId].vertRed = origRed;
+    m_instanceList[spriteId].vertGreen = origGreen;
+    m_instanceList[spriteId].vertBlue = origBlue;
+    m_instanceList[spriteId].vertAlpha = origAlpha;
+
+    if (!success) return (false);
+
+    // Render the original string
+    success = gfxRenderString(spriteId, input, x, y, spacingPixels);
+
+    return (success);
+}
+                                
+
 void PBGfx::gfxSwap() {
     oglSwap();
 }
@@ -439,7 +495,7 @@ unsigned int PBGfx::gfxSetColor(unsigned int spriteId, unsigned int red, unsigne
 }
 
 // Set function for setting XY coordinates of the sprite (can also be handled automatically with the render functions)
-unsigned int PBGfx::gfxSetXY(unsigned int spriteId, unsigned int X, unsigned int Y, bool addXY){
+unsigned int PBGfx::gfxSetXY(unsigned int spriteId, int X, int Y, bool addXY){
     auto it = m_instanceList.find(spriteId);
     if (it != m_instanceList.end()) {
         if (!addXY) {
@@ -529,7 +585,7 @@ unsigned int PBGfx::gfxGetTextHeight(unsigned int spriteId){
 }
 
 // Query function for XY
-unsigned int PBGfx::gfxGetXY(unsigned int spriteId, unsigned int* X, unsigned int* Y){
+unsigned int PBGfx::gfxGetXY(unsigned int spriteId, int* X, int* Y){
     auto it = m_instanceList.find(spriteId);
     if (it != m_instanceList.end()) {
         *X = it->second.x;

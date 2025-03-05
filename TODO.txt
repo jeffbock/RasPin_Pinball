@@ -1,10 +1,10 @@
 This file tracks the various items to do in the pinball project in rough priority
 
 Create all the basic state screens (but probably on just basic score for the play screen - that one will be extensive)
-Create basic score screen
+Create basic score / play screen
 Create automatic sprite animation - starting place, stoping place, time to animate (use standard sprite instance stuff?) 
+
 Create input / output message processing
-Change sprite X/Y input to allow negatives, since really you can start rendering offscreen since it's just 3D
 Architecture a new thread system - what gameplay, rendering, etc.. elements need their own threads?  Right now it's single threaded...
 Create sound output queue system
 Set up OGL ES code to work w/ PiOS libs / headers
@@ -15,4 +15,7 @@ Expand sprites to have animated sprites - eg: UV maps within a sprite with diffe
 Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
 Duplicate all the Windows simulation capability in PiOS
 Save settings info in a file and restore from a file
-Create functions for auto text shadowing and centering full text rendering
+
+Lower Priority
+Centering full text rendering - pre-figure out text size and the adjust x/y to center text
+Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys

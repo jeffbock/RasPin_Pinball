@@ -44,10 +44,10 @@ enum gfxSpriteMap {
 };
 
 struct stBoundingBox {
-    unsigned int x1;  // Upper Left
-    unsigned int y1;  // Upper Left
-    unsigned int x2;  // Lower Right
-    unsigned int y2;  // Lower Right
+    int x1;  // Upper Left
+    int y1;  // Upper Left
+    int x2;  // Lower Right
+    int y2;  // Lower Right
 };
 
 // Define a struct for sprite information
@@ -71,8 +71,8 @@ struct stSpriteInfo {
 // Holds the current rendering information of the sprite instance - all things that can change or be animated
 struct stSpriteInstance {
     unsigned int parentSpriteId;
-    unsigned int x;
-    unsigned int y;
+    int x;
+    int y;
     unsigned int width;
     unsigned int height;
     float u1,v1,u2,v2;
@@ -114,21 +114,24 @@ public:
                                gfxSpriteMap mapType, gfxTexCenter textureCenter, bool keepResident, bool useTexture);
     unsigned int gfxLoadSprite(stSpriteInfo spriteInfo);
     
-    unsigned int gfxInstanceSprite (unsigned int parentSpriteId, unsigned int x, unsigned int y, unsigned int textureAlpha, 
+    unsigned int gfxInstanceSprite (unsigned int parentSpriteId, int x, int y, unsigned int textureAlpha, 
                                     unsigned int vertRed, unsigned int vertGreen, unsigned int vertBlue, unsigned int vertAlpha, float scaleFactor, float rotateDegrees);
     unsigned int gfxInstanceSprite (unsigned int parentSpriteId, stSpriteInstance instance);
     unsigned int gfxInstanceSprite (unsigned int parentSpriteId);
     
     // Several ways to call the render sprite function - remaining values should be set before calling rendersprite
     bool         gfxRenderSprite(unsigned int spriteId);
-    bool         gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int y);
-    bool         gfxRenderSprite(unsigned int spriteId, unsigned int x, unsigned int y, float scaleFactor, float rotateDegrees);
+    bool         gfxRenderSprite(unsigned int spriteId, int x, int y);
+    bool         gfxRenderSprite(unsigned int spriteId, int x, int y, float scaleFactor, float rotateDegrees);
 
     // Character rendering functions
-    bool         gfxRenderString(unsigned int spriteId,  std::string input, unsigned int x, unsigned int y, unsigned int spacingPixels);
+    bool         gfxRenderString(unsigned int spriteId, std::string input, unsigned int spacingPixels);
+    bool         gfxRenderString(unsigned int spriteId, std::string input, int x, int y, int spacingPixels);
+    bool         gfxRenderShadowString(unsigned int spriteId,  std::string input, int x, int y, unsigned int spacingPixels,
+                                       unsigned int red, unsigned int green, unsigned int blue, unsigned int alpha, unsigned int shadowOffset);
     
     // Sprite manipulation functions
-    unsigned int gfxSetXY(unsigned int spriteId, unsigned int X, unsigned int Y, bool addXY);
+    unsigned int gfxSetXY(unsigned int spriteId, int X, int Y, bool addXY);
     unsigned int gfxSetTextureAlpha(unsigned int spriteId, float textureAlpha);
     unsigned int gfxSetUV(unsigned int spriteId, float u1, float v1, float u2, float v2);
     unsigned int gfxSetWH(unsigned int spriteId, unsigned int width, unsigned int height);
@@ -140,7 +143,7 @@ public:
     // Sprite Query Functions
     unsigned int gfxGetBaseHeight(unsigned int spriteId);
     unsigned int gfxGetBaseWidth(unsigned int spriteId);
-    unsigned int gfxGetXY(unsigned int spriteId, unsigned int* X, unsigned int* Y);
+    unsigned int gfxGetXY(unsigned int spriteId, int* X, int* Y);
     unsigned int gfxGetTextureAlpha(unsigned int spriteId);
     unsigned int gfxGetSystemFontSpriteId();
     unsigned int gfxGetColor(unsigned int spriteId, unsigned int* red, unsigned int* green, unsigned int* blue, unsigned int* alpha);
