@@ -43,6 +43,14 @@ enum gfxSpriteMap {
     GFX_SMEND
 };
 
+// Enum for text justification
+enum gfxTextJustify {
+    GFX_TEXTLEFT = 0,
+    GFX_TEXTCENTER = 1, 
+    GFX_TEXTRIGHT = 2, 
+    GFX_TJEND
+};
+
 struct stBoundingBox {
     int x1;  // Upper Left
     int y1;  // Upper Left
@@ -125,10 +133,11 @@ public:
     bool         gfxRenderSprite(unsigned int spriteId, int x, int y, float scaleFactor, float rotateDegrees);
 
     // Character rendering functions
-    bool         gfxRenderString(unsigned int spriteId, std::string input, unsigned int spacingPixels);
-    bool         gfxRenderString(unsigned int spriteId, std::string input, int x, int y, int spacingPixels);
-    bool         gfxRenderShadowString(unsigned int spriteId,  std::string input, int x, int y, unsigned int spacingPixels,
+    bool         gfxRenderString(unsigned int spriteId, std::string input, unsigned int spacingPixels, gfxTextJustify justify);
+    bool         gfxRenderString(unsigned int spriteId, std::string input, int x, int y, int spacingPixels, gfxTextJustify justify);
+    bool         gfxRenderShadowString(unsigned int spriteId,  std::string input, int x, int y, unsigned int spacingPixels, gfxTextJustify justify,
                                        unsigned int red, unsigned int green, unsigned int blue, unsigned int alpha, unsigned int shadowOffset);
+    int          gfxStringWidth(unsigned int spriteId, std::string input, unsigned int spacingPixels);
     
     // Sprite manipulation functions
     unsigned int gfxSetXY(unsigned int spriteId, int X, int Y, bool addXY);

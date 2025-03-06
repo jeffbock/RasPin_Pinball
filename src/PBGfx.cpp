@@ -339,7 +339,7 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId){
 
 // This version just uses the X and Y values from the sprite instance
 
-bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, unsigned int spacingPixels) {
+bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, unsigned int spacingPixels, gfxTextJustify justify) {
 
     auto it2 = m_instanceList.find(spriteId);
     if (it2 == m_instanceList.end()) return (false);
@@ -348,12 +348,12 @@ bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, unsigned i
     unsigned int x = m_instanceList[spriteId].x;
     unsigned int y = m_instanceList[spriteId].y;
 
-    return gfxRenderString(spriteId, input, x, y, spacingPixels);
+    return gfxRenderString(spriteId, input, x, y, spacingPixels, justify);
 }
 
 // Full Version of the function that renders a string of text
 
-bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, int x, int y, int spacingPixels) {
+bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, int x, int y, int spacingPixels, gfxTextJustify justify) {
 
      // Find the sprite ID in the m_instanceList, if it isn't a textmap then return false
      auto it2 = m_instanceList.find(spriteId);
@@ -389,19 +389,28 @@ bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, int x, int
         // Set the relevant values in the sprite instance
         m_instanceList[spriteId].width = width;
         m_instanceList[spriteId].height = height;
-        m_instanceList[spriteId].x = x;
-        m_instanceList[spriteId].y = y;
         m_instanceList[spriteId].u1 = u1;
         m_instanceList[spriteId].v1 = v2;
         m_instanceList[spriteId].u2 = u2;
         m_instanceList[spriteId].v2 = v1;
+        m_instanceList[spriteId].y = y;
+        m_instanceList[spriteId].x = x;
+
+        int stringWidth = gfxStringWidth(spriteId, input, spacingPixels);
+        int oldX = m_instanceList[spriteId].x;
+
+        // Adjust the x coordinate based on the justification
+        if (justify == GFX_TEXTCENTER) m_instanceList[spriteId].x -= stringWidth / 2;
+        else if (justify == GFX_TEXTRIGHT) m_instanceList[spriteId].x -= stringWidth;
 
         // Render the sprite instance using gfxRenderSprite and the parameters from the sprite instance
         // Skip space since there's nothing to render
         if (charString != " ") gfxRenderSprite(spriteId);
         
+        x = oldX;
         // Move the x coordinate to the right for the next character
-        x += (width + spacingPixels);
+        if (m_instanceList[spriteId].scaleFactor != 1.0f) x += (int)((float)(width + spacingPixels) * m_instanceList[spriteId].scaleFactor);
+        else x += (width + spacingPixels);
     }
 
     return (true);
@@ -409,7 +418,7 @@ bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, int x, int
 
 // Render a string, except also render a shadow behind the string
 
-bool  PBGfx::gfxRenderShadowString(unsigned int spriteId,  std::string input, int x, int y, unsigned int spacingPixels,
+bool  PBGfx::gfxRenderShadowString(unsigned int spriteId,  std::string input, int x, int y, unsigned int spacingPixels, gfxTextJustify justify,
                                    unsigned int red, unsigned int green, unsigned int blue, unsigned int alpha, unsigned int shadowOffset) {
 
     // Find the sprite ID in the m_instanceList, if it isn't a textmap then return false
@@ -427,7 +436,7 @@ bool  PBGfx::gfxRenderShadowString(unsigned int spriteId,  std::string input, in
     gfxSetColor(spriteId, red, green, blue, alpha);
 
     // Render the shadow string
-    success = gfxRenderString(spriteId, input, x + shadowOffset, y + shadowOffset, spacingPixels);
+    success = gfxRenderString(spriteId, input, x + shadowOffset, y + shadowOffset, spacingPixels, justify);
 
     // Restore the old X/Y and color values
     m_instanceList[spriteId].vertRed = origRed;
@@ -438,9 +447,37 @@ bool  PBGfx::gfxRenderShadowString(unsigned int spriteId,  std::string input, in
     if (!success) return (false);
 
     // Render the original string
-    success = gfxRenderString(spriteId, input, x, y, spacingPixels);
+    success = gfxRenderString(spriteId, input, x, y, spacingPixels, justify);
 
     return (success);
+}
+
+int  PBGfx::gfxStringWidth(unsigned int spriteId, std::string input, unsigned int spacingPixels){
+     
+    // Find the sprite ID in the m_instanceList, if it isn't a textmap then return false
+     auto it2 = m_instanceList.find(spriteId);
+     if (it2 == m_instanceList.end()) return (NOSPRITE);
+     if (m_spriteList[it2->second.parentSpriteId].mapType != GFX_TEXTMAP) return (NOSPRITE);
+
+     int width = 0;
+     // Go through each character in the string and add the width of the character plus the spacing to the width
+    for (unsigned int i = 0; i < input.length(); i++) {
+        
+        // Convert the character to a string
+        std::string charString = std::string(1, input[i]);
+
+        // Check if the character exists in m_textMapList
+        if (m_textMapList[spriteId].find(charString) != m_textMapList[spriteId].end()) {
+            width += m_textMapList[spriteId][charString].width + spacingPixels;
+        }
+    }
+    // Subtract the last spacing value
+    width -= spacingPixels;
+
+    // If the scale factor is not 1.0, then scale the width
+    if (m_instanceList[spriteId].scaleFactor != 1.0f) width = (int)((float)width * m_instanceList[spriteId].scaleFactor);
+
+    return (width);
 }
                                 
 

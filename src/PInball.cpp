@@ -184,7 +184,7 @@ void PBEngine::pbeRenderConsole(unsigned int startingX, unsigned int startingY){
  
      // Iterate through the vector and render each string
      for (const auto& line : m_consoleQueue) {
-         g_PBEngine.gfxRenderString(m_defaultFontSpriteId, line, x, y, 1);
+         g_PBEngine.gfxRenderString(m_defaultFontSpriteId, line, x, y, 1, GFX_TEXTLEFT);
          y += m_consoleTextHeight + 1; // Move to the next row
      }
 }
@@ -319,7 +319,7 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
    pbeRenderDefaultBackground (currentTick, lastTick);
          
    g_PBEngine.gfxRenderSprite(m_BootUpTitleBarId, 0, 0);
-   g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "(PI)nball Engine - Copyright 2024 Jeff Bock", 202, 10, 1, 0, 0, 0, 255, 2);
+   g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "(PI)nball Engine - Copyright 2024 Jeff Bock", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
 
    g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
    g_PBEngine.pbeRenderConsole(1, 42);
@@ -358,9 +358,13 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
 
     // Render the default background
     pbeRenderDefaultBackground (currentTick, lastTick);
+
+    int tempX = PB_SCREENWIDTH / 2;
    
     g_PBEngine.gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
-    g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, MenuTitle, 205, 13, 2, 0, 0, 0, 255, 3);
+    g_PBEngine.gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
+    g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, MenuTitle, tempX, 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+    g_PBEngine.gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
 
     unsigned int swordY = 89;
     // Determine where to put the sword cursor and give blue underline to selected text
@@ -378,33 +382,33 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
     g_PBEngine.gfxSetColor(m_StartMenuFontId, 200, 200, 200, 224);
     if (!g_PBEngine.m_PassSelfTest)
     {
-        if (m_CurrentMenuItem == 1) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu1Fail, 290, 85, 1, 64, 0, 255, 255, 3);
-        else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1Fail, 290, 85, 1);
+        if (m_CurrentMenuItem == 1) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu1Fail, 290, 85, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+        else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1Fail, 290, 85, 1, GFX_TEXTLEFT);
     }
     else {
-        if (m_CurrentMenuItem == 1) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu1, 290, 85, 1, 64, 0, 255, 255, 3);
-        else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1, 290, 85, 1);
+        if (m_CurrentMenuItem == 1) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu1, 290, 85, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+        else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu1, 290, 85, 1, GFX_TEXTLEFT);
     }
 
-    if (m_CurrentMenuItem == 2) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu2, 290, 150, 1, 64, 0, 255, 255, 3);
-    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu2, 290, 150, 1);
+    if (m_CurrentMenuItem == 2) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu2, 290, 150, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu2, 290, 150, 1, GFX_TEXTLEFT);
 
-    if (m_CurrentMenuItem == 3) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu3, 290, 215, 1, 64, 0, 255, 255, 3);
-    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu3, 290, 215, 1);
+    if (m_CurrentMenuItem == 3) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu3, 290, 215, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu3, 290, 215, 1, GFX_TEXTLEFT);
 
-    if (m_CurrentMenuItem == 4) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu4, 290, 280, 1, 64, 0, 255, 255, 3);
-    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu4, 290, 280, 1);
+    if (m_CurrentMenuItem == 4) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu4, 290, 280, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu4, 290, 280, 1, GFX_TEXTLEFT);
 
-    if (m_CurrentMenuItem == 5) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu5, 290, 345, 1, 64, 0, 255, 255, 3);
-    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu5, 290, 345, 1);
+    if (m_CurrentMenuItem == 5) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu5, 290, 345, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu5, 290, 345, 1, GFX_TEXTLEFT);
 
-    if (m_CurrentMenuItem == 6) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu6, 290, 410, 1, 64, 0, 255, 255, 3);
-    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu6, 290, 410, 1);
+    if (m_CurrentMenuItem == 6) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Menu6, 290, 410, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Menu6, 290, 410, 1, GFX_TEXTLEFT);
 
     // Add insturctions to the bottom of the screen
     g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1, 0,0,0,255,2);
-    g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1, 0,0,0,255,2);
+    g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1, GFX_TEXTLEFT, 0,0,0,255,2);
+    g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
 
     g_PBEngine.gfxRenderSprite(m_StartMenuSwordId, 240, swordY);          
     return (true);
@@ -432,7 +436,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
     // Render the default background
     pbeRenderDefaultBackground (currentTick, lastTick);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Test Playfield I/O: [LF+RF] Toggle I/O, [LA+RA] Exit", 140, 4, 1, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Test Playfield I/O: [LF+RF] Toggle I/O, [LA+RA] Exit", (PB_SCREENWIDTH /2), 4, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
 
     int limit = 0;
     std::string temp;
@@ -442,8 +446,8 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
 
     gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
 
-    if (m_TestMode == PB_TESTINPUT) g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "INPUTS", 10, 30, 1, 0, 0, 0, 255, 2);
-    else g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "OUTPUTS", 10, 30, 1, 0, 0, 0, 255, 2);  
+    if (m_TestMode == PB_TESTINPUT) g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "INPUTS", 10, 30, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    else g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "OUTPUTS", 10, 30, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);  
     
     for (int i = 0; i < limit; i++) {
         #ifdef EXE_MODE_WINDOWS
@@ -459,7 +463,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
         else gfxSetColor (m_defaultFontSpriteId, 255, 255, 255, 255);
 
         int itemp =  ((i % 19) * 40);
-        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 10 + ((i / 19) * 220), 60 + ((i % 19) * 22), 1);
+        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 10 + ((i / 19) * 220), 60 + ((i % 19) * 22), 1, GFX_TEXTLEFT);
         
         // Print the state of the input (and highlight in RED) if ON
         if (((g_inputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTINPUT)) || 
@@ -471,7 +475,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
             gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
             temp = "OFF";
         };
-        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 180 + ((i / 19) * 220), 60 + ((i % 19) * 22), 1);
+        g_PBEngine.gfxRenderString(m_defaultFontSpriteId, temp, 180 + ((i / 19) * 220), 60 + ((i % 19) * 22), 1, GFX_TEXTLEFT);
     }
     
     return (true);   
@@ -496,8 +500,10 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
      pbeRenderDefaultBackground (currentTick, lastTick);
  
      g_PBEngine.gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
-     g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, MenuSettingsTitle, 330, 13, 2, 0, 0, 0, 255, 3);
- 
+     g_PBEngine.gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
+     g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, MenuSettingsTitle, (PB_SCREENWIDTH/2), 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+     g_PBEngine.gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+
      std::string Setting1Temp = MenuSettings1 + std::to_string(g_PBEngine.m_MainVolume);
      std::string Setting2Temp = MenuSettings2 + std::to_string(g_PBEngine.m_MusicVolume);
      std::string Setting3Temp = MenuSettings3 + std::to_string(g_PBEngine.m_BallsPerGame);
@@ -513,20 +519,20 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
     }
 
     g_PBEngine.gfxSetColor(m_StartMenuFontId, 200, 200, 200, 224);
-    if (m_CurrentSettingsItem == 1) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting1Temp, 260, 85, 1, 64, 0, 255, 255, 3);
-    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting1Temp, 260, 85, 1);
+    if (m_CurrentSettingsItem == 1) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting1Temp, 260, 85, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting1Temp, 260, 85, 1, GFX_TEXTLEFT);
 
-    if (m_CurrentSettingsItem == 2) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting2Temp, 260, 150, 1, 64, 0, 255, 255, 3);
-    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting2Temp, 260, 150, 1);
+    if (m_CurrentSettingsItem == 2) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting2Temp, 260, 150, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting2Temp, 260, 150, 1, GFX_TEXTLEFT);
 
-    if (m_CurrentSettingsItem == 3) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting3Temp, 260, 215, 1, 64, 0, 255, 255, 3);
-    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting3Temp, 260, 215, 1);
+    if (m_CurrentSettingsItem == 3) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting3Temp, 260, 215, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting3Temp, 260, 215, 1, GFX_TEXTLEFT);
 
      // Add insturctions to the bottom of the screen
      g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-     g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", 615, 405, 1, 0,0,0,255,2);
-     g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1, 0,0,0,255,2);
-     g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1, 0,0,0,255,2);
+     g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", 615, 405, 1, GFX_TEXTLEFT, 0,0,0,255,2);
+     g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1, GFX_TEXTLEFT, 0,0,0,255,2);
+     g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
  
      g_PBEngine.gfxRenderSprite(m_StartMenuSwordId, 210, swordY);
            
@@ -551,6 +557,7 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
     pbeRenderDefaultBackground (currentTick, lastTick);
 
     int pixelShiftY = ((currentTick - m_StartTick) / m_TicksPerPixel);
+    int tempX = PB_SCREENWIDTH / 2;
 
     // Once we fix the ability to render to negative coordinates, we can remove this and let it scroll off the screen
     if (pixelShiftY < (PB_SCREENHEIGHT * 2)) {
@@ -559,19 +566,19 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
         int spacing = 35;
 
         g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Credits", 365, m_CreditsScrollY, 1, 0,0,0,255,2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Dungeon Adventure Pinball", 280, m_CreditsScrollY + (1*spacing), 1, 0,0,0,255,2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Designed and Programmed by: Jeffrey Bock", 205, m_CreditsScrollY + (2*spacing), 1, 0,0,0,255,2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "3D Models and Printing: Tremayne Bock", 230, m_CreditsScrollY + (3*spacing), 1, 0,0,0,255,2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Using Rasberry Pi (PI)nball Engine", 260, m_CreditsScrollY + (4*spacing), 1, 0,0,0,255,2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Full code and 3D models available at:", 240, m_CreditsScrollY + (5*spacing), 1, 0,0,0,255,2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "https://github.com/jeffbock/PInball", 245, m_CreditsScrollY + (6*spacing), 1, 0,0,0,255,2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Thanks to Kim, Ally, Katie and Ruth for inspiration", 175, m_CreditsScrollY + (7*spacing), 1, 0,0,0,255,2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, " ", 175, m_CreditsScrollY + (8*spacing), 1, 0,0,0,0,2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Thanks to the following Open Source libraries", 190, m_CreditsScrollY + (9*spacing) +2, 1, 0,0,0,255,2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "STB Single Header: http://nothings.org/stb", 205, m_CreditsScrollY + (10*spacing) +2, 1, 0,0,0,255,2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "JSON.hpp https://github.com/nlohmann/json", 195, m_CreditsScrollY + (11*spacing) +2, 1, 0,0,0,255,2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Developed using AI and Microsoft Copilot tools", 190, m_CreditsScrollY + (12*spacing) +2, 1, 0,0,0,255,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Credits", tempX, m_CreditsScrollY, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Dungeon Adventure Pinball", tempX, m_CreditsScrollY + (1*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Designed and Programmed by: Jeffrey Bock", tempX, m_CreditsScrollY + (2*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "3D Models and Printing: Tremayne Bock", tempX, m_CreditsScrollY + (3*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Using Rasberry Pi (PI)nball Engine", tempX, m_CreditsScrollY + (4*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Full code and 3D models available at:", tempX, m_CreditsScrollY + (5*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "https://github.com/jeffbock/PInball", tempX, m_CreditsScrollY + (6*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Thanks to Kim, Ally, Katie and Ruth for inspiration", tempX, m_CreditsScrollY + (7*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, " ", tempX, m_CreditsScrollY + (8*spacing), 1, GFX_TEXTCENTER, 0,0,0,0,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Thanks to the following Open Source libraries", tempX, m_CreditsScrollY + (9*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "STB Single Header: http://nothings.org/stb", tempX, m_CreditsScrollY + (10*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "JSON.hpp https://github.com/nlohmann/json", tempX, m_CreditsScrollY + (11*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Developed using AI and Microsoft Copilot tools", tempX, m_CreditsScrollY + (12*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
     }
 
     return (true);   
@@ -600,37 +607,38 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
 
     std::string temp;
+    int tempX = PB_SCREENWIDTH / 2;
 
     // m_TicksPerScene = 10000, m_BenchmarkStartTick = 0, m_CountDownTicks;
     if (elapsedTime < m_CountDownTicks) {
         
         temp = "Benchmark Starting in " + std::to_string((m_CountDownTicks - elapsedTime) / 1000);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, 290, 200, 1, 0, 0, 255, 255, 2);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "System will be unresponsive", 265, 225, 1, 0, 0, 255, 255, 2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "System will be unresponsive", tempX, 225, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         return (true);
     }
     
     if (elapsedTime < (m_TicksPerScene + m_CountDownTicks)) {
         temp = "Benchmark Scene 1: " + std::to_string(elapsedTime);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, 290, 200, 1, 0, 0, 255, 255, 2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         return (true);
     }
 
     if (elapsedTime < ((m_TicksPerScene *2) + m_CountDownTicks)) {
         temp = "Benchmark Scene 2: " + std::to_string(elapsedTime);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, 290, 200, 1, 0, 0, 255, 255, 2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         return (true);
     }
 
     if (elapsedTime < ((m_TicksPerScene *3) + m_CountDownTicks)) {
         temp = "Benchmark Scene 3: " + std::to_string(elapsedTime);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, 290, 200, 1, 0, 0, 255, 255, 2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         return (true);
     }
 
     if (elapsedTime < ((m_TicksPerScene *4) + m_CountDownTicks)) {
         temp = "Benchmark Scene 4: " + std::to_string(elapsedTime);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, 290, 200, 1, 0, 0, 255, 255, 2);
+        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         return (true);
     }
 
