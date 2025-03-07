@@ -107,6 +107,37 @@ struct stSpriteMapData {
     float U1, V1, U2, V2;
 };
 
+#define ANIMATE_NOMASK 0x0
+#define ANIMATE_X_MASK 0x1
+#define ANIMATE_Y_MASK 0x2
+#define ANIMATE_U_MASK 0x4
+#define ANIMATE_V_MASK 0x8
+#define ANIMATE_TEXALPHA_MASK 0x10
+#define ANIMATE_COLOR_MASK 0x20
+#define ANIMATE_SCALE_MASK 0x40
+#define ANIMATE_ROTATE_MASK 0x80
+#define ANIMATE_ALL_MASK 0xFF
+
+enum gfxLoopType {
+    GFX_NOLOOP = 0,
+    GFX_RESTART = 1,
+    GFX_REVERSE = 2
+};
+
+struct stAnimateData {
+    unsigned int animateSpriteId;
+    unsigned int startSpriteId;
+    unsigned int endSpriteId;
+    unsigned int startTick;
+    unsigned int typeMask;
+    float animateTimeSec;
+    float accelPixPerSec;
+    bool isActive;
+    bool rotateClockwise;
+    gfxLoopType loop;
+    
+};
+
 // Define a class for the OGL ES code
 class PBGfx : public PBOGLES {
 
@@ -126,6 +157,7 @@ public:
                                     unsigned int vertRed, unsigned int vertGreen, unsigned int vertBlue, unsigned int vertAlpha, float scaleFactor, float rotateDegrees);
     unsigned int gfxInstanceSprite (unsigned int parentSpriteId, stSpriteInstance instance);
     unsigned int gfxInstanceSprite (unsigned int parentSpriteId);
+    bool         gfxIsSprite (unsigned int spriteId);
     
     // Several ways to call the render sprite function - remaining values should be set before calling rendersprite
     bool         gfxRenderSprite(unsigned int spriteId);
@@ -162,6 +194,15 @@ public:
     bool         gfxIsLoaded(unsigned int spriteId);
     unsigned int gfxGetTextHeight(unsigned int spriteId);
 
+    // Automatic Sprite Animation Functions
+    bool          gfxCreateAnimation(stAnimateData animateData, bool replaceExisting);
+    bool          gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentTick);
+    bool          gfxAnimateActive(unsigned int animateSpriteId);
+    bool          gfxAnimateClear(unsigned int animateSpriteId);
+    bool          gfxAnimateRestart(unsigned int animateSpriteId);
+    void          gfxLoadAnimateData(stAnimateData *animateData, unsigned int animateSpriteId, unsigned int startSpriteId, unsigned int endSpriteId, unsigned int startTick, 
+                                     unsigned int typeMask, float animateTimeSec, float accelPixPerSec, bool isActive, bool rotateClockwise, gfxLoopType loop);
+
     // Rendering functions
     void         gfxSwap();
     void         gfxClear(float red, float blue, float green, float alpha, bool doFlip);
@@ -187,6 +228,9 @@ private:
     // Text and sprite map data ([spriteId][char or spriteOrderNumber][stTextMapData or stSpriteMapData])
     std::map<unsigned int, std::map<std::string, stTextMapData>> m_textMapList;
     std::map<unsigned int, std::map<unsigned int, stSpriteMapData>> m_spriteMapList;
+
+    // Animation list
+    std::map<unsigned int, stAnimateData> m_animateList; 
 
 };
 

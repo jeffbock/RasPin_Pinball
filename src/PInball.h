@@ -127,7 +127,7 @@ public:
     unsigned int m_CreditsScrollY, m_TicksPerPixel, m_StartTick;
 
     // Benchmark screen
-    unsigned int m_TicksPerScene, m_BenchmarkStartTick, m_CountDownTicks;
+    unsigned int m_TicksPerScene, m_BenchmarkStartTick, m_CountDownTicks, m_aniId;
     bool m_BenchmarkDone;
 
     bool m_PassSelfTest;

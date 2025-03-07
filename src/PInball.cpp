@@ -606,6 +606,9 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
     g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
 
+    gfxAnimateSprite(m_aniId, currentTick);
+    gfxRenderSprite(m_aniId);
+
     std::string temp;
     int tempX = PB_SCREENWIDTH / 2;
 
@@ -680,7 +683,21 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             m_TestMode = PB_TESTINPUT;
                             break;
                         }
-                        case (4):  m_mainState = PB_BENCHMARK; m_BenchmarkStartTick =  GetTickCount64(); m_BenchmarkDone = false; break;
+                        case (4):  m_mainState = PB_BENCHMARK; {
+                            m_BenchmarkStartTick =  GetTickCount64(); 
+                            m_BenchmarkDone = false;
+
+                            stAnimateData animateData;
+                            
+                            unsigned int fromId = gfxInstanceSprite(m_StartMenuSwordId), toId = gfxInstanceSprite(m_StartMenuSwordId);
+                            m_aniId = gfxInstanceSprite(m_StartMenuSwordId); 
+                            gfxSetXY(fromId, 100, 100, false);
+                            gfxSetXY(toId, 700, 380, false);
+
+                            gfxLoadAnimateData(&animateData, m_aniId, fromId, toId, GetTickCount64(), ANIMATE_X_MASK | ANIMATE_Y_MASK, 10, 0, true, true, GFX_REVERSE);
+                            gfxCreateAnimation(animateData, true);                            
+                            break;
+                        }
                         case (5):  m_mainState = PB_BOOTUP; break;
                         case (6):  m_mainState = PB_CREDITS; m_StartTick = GetTickCount64(); break;
                         default: break;
