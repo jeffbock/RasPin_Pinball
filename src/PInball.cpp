@@ -137,22 +137,28 @@ return true;
 
     // Start Menu variables
     m_CurrentMenuItem = 1;
+    m_RestartMenu = true;
 
     // Setting Menu variables - at some points these should saved to a file and loaded from a file
     m_CurrentSettingsItem = 1;
     m_MainVolume = 10; m_MusicVolume = 10; m_BallsPerGame = 3;
+    m_Difficulty = PB_NORMAL;
+    m_RestartSettings = true;
 
     // Credits screen variables
     m_CreditsScrollY = 480;
     m_TicksPerPixel = 30;
+    m_RestartCredits = true;
 
-    // Benchmark varialbes
+    // Benchmark variables
     m_TicksPerScene = 10000; m_BenchmarkStartTick = 0;  m_CountDownTicks = 4000; m_BenchmarkDone = false;
+    m_RestartBenchmark = true;
 
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
     m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false; 
     m_CurrentOutputItem = 0;
+    m_RestartTestMode = true;
 
     m_PassSelfTest = true;
  }
@@ -311,20 +317,24 @@ bool PBEngine::pbeRenderDefaultBackground (unsigned long currentTick, unsigned l
 // Render the bootup screen
 bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick){
 
-   if (!g_PBEngine.pbeLoadScreen (PB_BOOTUP)) return (false); 
+    if (!g_PBEngine.pbeLoadScreen (PB_BOOTUP)) return (false); 
 
-   g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    if (m_RestartBootUp) {
+        m_RestartBootUp = false;
+    }
 
-   // Render the default background
-   pbeRenderDefaultBackground (currentTick, lastTick);
+    g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+
+    // Render the default background
+    pbeRenderDefaultBackground (currentTick, lastTick);
          
-   g_PBEngine.gfxRenderSprite(m_BootUpTitleBarId, 0, 0);
-   g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "(PI)nball Engine - Copyright 2024 Jeff Bock", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
+    g_PBEngine.gfxRenderSprite(m_BootUpTitleBarId, 0, 0);
+    g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "(PI)nball Engine - Copyright 2024 Jeff Bock", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
 
-   g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-   g_PBEngine.pbeRenderConsole(1, 42);
+    g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);   
+    g_PBEngine.pbeRenderConsole(1, 42);
 
-   return (true);
+    return (true);
 }
 
 // Menu Screen
@@ -353,6 +363,13 @@ bool PBEngine::pbeLoadStartMenu(){
 bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastTick){
 
    if (!g_PBEngine.pbeLoadScreen (PB_STARTMENU)) return (false); 
+
+   if (m_RestartMenu) {
+    m_CurrentSettingsItem = 1; 
+    m_RestartMenu = false;
+    g_PBEngine.gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
+    g_PBEngine.gfxSetRotateDegrees(m_StartMenuSwordId, 0.0f, false);
+   } 
 
    g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 
@@ -431,6 +448,13 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
 
     if (!g_PBEngine.pbeLoadScreen (PB_TESTMODE)) return (false); 
 
+    if (m_RestartTestMode) {
+        m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false;
+        m_CurrentOutputItem = 0;
+        m_TestMode = PB_TESTINPUT;
+        m_RestartTestMode = false;
+    }
+
     g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
     
     // Render the default background
@@ -499,15 +523,23 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
      // Render the default background
      pbeRenderDefaultBackground (currentTick, lastTick);
  
-     g_PBEngine.gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
-     g_PBEngine.gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
-     g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, MenuSettingsTitle, (PB_SCREENWIDTH/2), 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
-     g_PBEngine.gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+     gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
+     gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
+     gfxRenderShadowString(m_StartMenuFontId, MenuSettingsTitle, (PB_SCREENWIDTH/2), 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+     gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
 
-     std::string Setting1Temp = MenuSettings1 + std::to_string(g_PBEngine.m_MainVolume);
-     std::string Setting2Temp = MenuSettings2 + std::to_string(g_PBEngine.m_MusicVolume);
-     std::string Setting3Temp = MenuSettings3 + std::to_string(g_PBEngine.m_BallsPerGame);
-
+     std::string Setting1Temp = MenuSettings1 + std::to_string(m_MainVolume);
+     std::string Setting2Temp = MenuSettings2 + std::to_string(m_MusicVolume);
+     std::string Setting3Temp = MenuSettings3 + std::to_string(m_BallsPerGame);
+     std::string Setting4Temp = MenuSettings4;
+     switch (m_Difficulty) {
+        case PB_EASY: Setting4Temp += "Easy"; break;
+        case PB_NORMAL: Setting4Temp += "Normal"; break;
+        case PB_HARD: Setting4Temp += "Hard"; break;
+        case PB_EPIC: Setting4Temp += "Epic"; break;
+     }
+     std::string Setting5Temp = MenuSettings5;
+        
      unsigned int swordY = 89;
 
      // Determine where to put the sword cursor and give blue underline to selected text
@@ -515,18 +547,26 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
         case (1): swordY = 89; break;
         case (2): swordY = 154; break;
         case (3): swordY = 219; break;
+        case (4): swordY = 284; break;
+        case (5): swordY = 349; break;
         default: break;
     }
 
     g_PBEngine.gfxSetColor(m_StartMenuFontId, 200, 200, 200, 224);
-    if (m_CurrentSettingsItem == 1) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting1Temp, 260, 85, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting1Temp, 260, 85, 1, GFX_TEXTLEFT);
+    if (m_CurrentSettingsItem == 1) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting1Temp, 250, 85, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting1Temp, 250, 85, 1, GFX_TEXTLEFT);
 
-    if (m_CurrentSettingsItem == 2) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting2Temp, 260, 150, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting2Temp, 260, 150, 1, GFX_TEXTLEFT);
+    if (m_CurrentSettingsItem == 2) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting2Temp, 250, 150, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting2Temp, 250, 150, 1, GFX_TEXTLEFT);
 
-    if (m_CurrentSettingsItem == 3) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting3Temp, 260, 215, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting3Temp, 260, 215, 1, GFX_TEXTLEFT);
+    if (m_CurrentSettingsItem == 3) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting3Temp, 250, 215, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting3Temp, 250, 215, 1, GFX_TEXTLEFT);
+
+    if (m_CurrentSettingsItem == 4) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting4Temp, 250, 280, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting4Temp, 250, 280, 1, GFX_TEXTLEFT);
+
+    if (m_CurrentSettingsItem == 5) g_PBEngine.gfxRenderShadowString(m_StartMenuFontId, Setting5Temp, 250, 345, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
+    else g_PBEngine.gfxRenderString(m_StartMenuFontId, Setting5Temp, 250, 345, 1, GFX_TEXTLEFT);
 
      // Add insturctions to the bottom of the screen
      g_PBEngine.gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
@@ -534,7 +574,7 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
      g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1, GFX_TEXTLEFT, 0,0,0,255,2);
      g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
  
-     g_PBEngine.gfxRenderSprite(m_StartMenuSwordId, 210, swordY);
+     g_PBEngine.gfxRenderSprite(m_StartMenuSwordId, 200, swordY);
            
      return (true);
 }
@@ -550,6 +590,11 @@ bool PBEngine::pbeLoadCredits(){
 bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTick){
 
     if (!g_PBEngine.pbeLoadScreen (PB_CREDITS)) return (false);
+
+    if (m_RestartCredits) {
+        m_RestartCredits = false;
+        m_StartTick = GetTickCount64(); 
+    }
 
     g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
  
@@ -599,7 +644,17 @@ bool PBEngine::pbeLoadBenchmark(){
 
 bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick){
 
+    static unsigned int FPSSwap, smallSpriteCount, spriteTransformCount, bigSpriteCount;
+    
     if (!g_PBEngine.pbeLoadScreen (PB_BENCHMARK)) return (false); 
+
+    if (m_RestartBenchmark) {
+        m_BenchmarkStartTick =  GetTickCount64(); 
+        m_BenchmarkDone = false;
+        m_RestartBenchmark = false;
+        FPSSwap = 0; smallSpriteCount = 0; spriteTransformCount = 0; bigSpriteCount = 0;
+        m_TicksPerScene = 4000; m_CountDownTicks = 4000;
+    }
 
     unsigned int elapsedTime = currentTick - m_BenchmarkStartTick;
 
@@ -612,7 +667,6 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     std::string temp;
     int tempX = PB_SCREENWIDTH / 2;
 
-    // m_TicksPerScene = 10000, m_BenchmarkStartTick = 0, m_CountDownTicks;
     if (elapsedTime < m_CountDownTicks) {
         
         temp = "Benchmark Starting in " + std::to_string((m_CountDownTicks - elapsedTime) / 1000);
@@ -621,34 +675,94 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         return (true);
     }
     
+    // Clear and Swap rate (may be limited by monitor refresh rate)
     if (elapsedTime < (m_TicksPerScene + m_CountDownTicks)) {
-        temp = "Benchmark Scene 1: " + std::to_string(elapsedTime);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        while ((GetTickCount64() - currentTick) < 1000) {
+            g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+            g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, "Clear and Swap Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+            FPSSwap++;
+            g_PBEngine.gfxSwap();
+        }
         return (true);
     }
 
+    // Number of clears and swaps in one second
+    if (elapsedTime < (m_TicksPerScene + m_CountDownTicks)) {
+        while ((GetTickCount64() - currentTick) < 1000) {
+            g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+            FPSSwap++;
+            g_PBEngine.gfxSwap();
+        }
+        return (true);
+    }
+
+    // Small, untransformed sprites per second (with a clear)
     if (elapsedTime < ((m_TicksPerScene *2) + m_CountDownTicks)) {
-        temp = "Benchmark Scene 2: " + std::to_string(elapsedTime);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+        gfxSetScaleFactor(m_StartMenuSwordId, 0.10, false);
+        while ((GetTickCount64() - currentTick) < 1000) {
+            // Get and random X and Y value, within the screen bounds
+            int x = rand() % PB_SCREENWIDTH;
+            int y = rand() % PB_SCREENHEIGHT;
+            gfxRenderSprite(m_StartMenuSwordId, x, y);
+            smallSpriteCount++;
+        }
+        g_PBEngine.gfxSwap();
         return (true);
     }
 
+    // Big, untransformed sprites per second (with a clear)
     if (elapsedTime < ((m_TicksPerScene *3) + m_CountDownTicks)) {
-        temp = "Benchmark Scene 3: " + std::to_string(elapsedTime);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+        gfxSetScaleFactor(m_StartMenuSwordId, 3.0f, false);
+        while ((GetTickCount64() - currentTick) < 1000) {
+            
+            // Get a ramdom value from -ScreenWidth to +ScreenWidth and -ScreenHeight to +ScreenHeight
+            int x = rand() % (PB_SCREENWIDTH * 2) - PB_SCREENWIDTH;
+            int y = rand() % (PB_SCREENHEIGHT * 2) - PB_SCREENHEIGHT;
+            gfxRenderSprite(m_BootUpConsoleId, x, y);
+            bigSpriteCount++;
+        }
+        g_PBEngine.gfxSwap();
         return (true);
     }
 
+    // Full Transformed, random untransformed sprites per second (with a clear)
     if (elapsedTime < ((m_TicksPerScene *4) + m_CountDownTicks)) {
-        temp = "Benchmark Scene 4: " + std::to_string(elapsedTime);
-        g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+        
+        while ((GetTickCount64() - currentTick) < 1000) {
+            // Get and random X and Y value, within the screen bounds
+            int x = rand() % PB_SCREENWIDTH;
+            int y = rand() % PB_SCREENHEIGHT;
+            // Get a random scale and rotation value
+            float scale = (rand() % 100) / 100.0f;
+            float rotation = (rand() % 360);
+            gfxSetScaleFactor(m_StartMenuSwordId, scale, false);
+            gfxSetRotateDegrees(m_StartMenuSwordId, rotation, false);
+            gfxRenderSprite(m_StartMenuSwordId, x, y);
+            spriteTransformCount++;
+        }
+        g_PBEngine.gfxSwap();
         return (true);
     }
+
+    // Print the final results when done
+    g_PBEngine.gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    temp = "Benchmark Complete - Results";
+    g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 180, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+    temp = "Clear + Swap Rate: " + std::to_string(FPSSwap/(m_TicksPerScene/1000)) + " FPS";
+    g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 230, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+    temp = "Small Sprite Rate: " + std::to_string(smallSpriteCount/((m_TicksPerScene))) + "k SPS";
+    g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 255, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+    temp = "Large Sprite Rate: " + std::to_string(bigSpriteCount/((m_TicksPerScene))) + "k SPS";
+    g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 280, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+    temp = "Transformed Sprite Rate: " + std::to_string(spriteTransformCount/((m_TicksPerScene))) + "k SPS";
+    g_PBEngine.gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 305, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
 
     m_BenchmarkDone = true;
     return (true);   
 }
-
 
 void PBEngine::pbeUpdateState(stInputMessage inputMessage){
     
@@ -657,6 +771,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             // If any button is pressed, move to the start menu
             if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
                 m_mainState = PB_STARTMENU;
+                m_RestartMenu = true;
             }
             break;
         }
@@ -675,31 +790,11 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     // Do something based on the menu item
                     switch (m_CurrentMenuItem) {
                         case (1):  if (m_PassSelfTest) m_mainState = PB_PLAYGAME; break;
-                        case (2):  m_mainState = PB_SETTINGS; m_CurrentSettingsItem = 1; break;
-                        case (3):  {
-                            m_mainState = PB_TESTMODE; 
-                            m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false;
-                            m_CurrentOutputItem = 0;
-                            m_TestMode = PB_TESTINPUT;
-                            break;
-                        }
-                        case (4):  m_mainState = PB_BENCHMARK; {
-                            m_BenchmarkStartTick =  GetTickCount64(); 
-                            m_BenchmarkDone = false;
-
-                            stAnimateData animateData;
-                            
-                            unsigned int fromId = gfxInstanceSprite(m_StartMenuSwordId), toId = gfxInstanceSprite(m_StartMenuSwordId);
-                            m_aniId = gfxInstanceSprite(m_StartMenuSwordId); 
-                            gfxSetXY(fromId, 100, 100, false);
-                            gfxSetXY(toId, 700, 380, false);
-
-                            gfxLoadAnimateData(&animateData, m_aniId, fromId, toId, GetTickCount64(), ANIMATE_X_MASK | ANIMATE_Y_MASK, 10, 0, true, true, GFX_REVERSE);
-                            gfxCreateAnimation(animateData, true);                            
-                            break;
-                        }
-                        case (5):  m_mainState = PB_BOOTUP; break;
-                        case (6):  m_mainState = PB_CREDITS; m_StartTick = GetTickCount64(); break;
+                        case (2):  m_mainState = PB_SETTINGS; m_RestartSettings = true; break;
+                        case (3):  m_mainState = PB_TESTMODE; m_RestartTestMode = true; break;
+                        case (4):  m_mainState = PB_BENCHMARK; m_RestartBenchmark = true; break;
+                        case (5):  m_mainState = PB_BOOTUP; m_RestartBootUp = true; break;
+                        case (6):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
                         default: break;
                     }
                 }                
@@ -762,6 +857,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             // If both left and right activations are pressed, exit test mode
             if (m_LAON && m_RAON) {
                 m_mainState = PB_STARTMENU;
+                m_RestartMenu = true;
             }
             // Send the output message to the output queue - this will be connected to HW
 
@@ -777,7 +873,10 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
                     if (m_CurrentSettingsItem < (NUM_SETTINGS)) m_CurrentSettingsItem++;
                 }
-                if (inputMessage.inputId == IDI_START) m_mainState = PB_STARTMENU;
+                if (inputMessage.inputId == IDI_START) {
+                    m_mainState = PB_STARTMENU;
+                    m_RestartMenu = true;
+                }
             }
 
             if (((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) && inputMessage.inputState == PB_ON){
@@ -809,6 +908,30 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         }
                         break;
                     }
+                    case (4): {
+                        if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                            switch (m_Difficulty) {
+                                case PB_EASY: m_Difficulty = PB_NORMAL; break;
+                                case PB_NORMAL: m_Difficulty = PB_HARD; break;
+                                case PB_HARD: m_Difficulty = PB_EPIC; break;
+                                case PB_EPIC: m_Difficulty = PB_EPIC; break;
+                            }
+                        }
+                        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                            switch (m_Difficulty) {
+                                case PB_EASY: m_Difficulty = PB_EASY; break;
+                                case PB_NORMAL: m_Difficulty = PB_EASY; break;
+                                case PB_HARD: m_Difficulty = PB_NORMAL; break;
+                                case PB_EPIC: m_Difficulty = PB_HARD; break;
+                            }
+                        }
+                        break;
+                    }
+                    case (5): {
+                        if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                            // Erase the high score file here... maybe play a sound
+                        }
+                    }
                     default: break;
                 }
             }
@@ -817,13 +940,22 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_CREDITS: {
             if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
                 m_mainState = PB_STARTMENU;
+                m_RestartMenu = true;
             }
         break;
         }
         case PB_BENCHMARK: {
             if (m_BenchmarkDone && (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON)) {
                 m_mainState = PB_STARTMENU;
+                m_RestartMenu = true;
             }
+        break;
+        }
+
+        case PB_PLAYGAME: {
+                // Just go back to the start menu for now - but this is where the pinball game we actually start
+                m_mainState = PB_STARTMENU;
+                m_RestartMenu = true;    
         break;
         }
 

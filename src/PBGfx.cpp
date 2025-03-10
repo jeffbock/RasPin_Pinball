@@ -773,30 +773,30 @@ bool PBGfx::gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentT
             stAnimateData animateData = it->second;
 
             // Calculate the time since the animation started
-            float timeSinceStart = (float)(currentTick - animateData.startTick) / 1000.0f;
+            float timeSinceStart = (float)(currentTick -  it->second.startTick) / 1000.0f;
 
             // If the animation is active, then update the sprite instance values
-            if (animateData.isActive) {
+            if ( it->second.isActive) {
 
                 // Calculate the percentage of the animation that has been completed.  Ignore aceleration for now, not sure if we should keep it for this type of animation
-                float percentComplete = timeSinceStart / animateData.animateTimeSec;
+                float percentComplete = timeSinceStart / it->second.animateTimeSec;
                 unsigned long temp;
 
                 // If the animation is complete, need to check if it should restart or stop
                 if (percentComplete >= 1.0f) {
                     // m_instanceList[animateData.animateSpriteId] = m_instanceList[animateData.endSpriteId]; 
-                    switch (animateData.loop) {
+                    switch (it->second.loop) {
                     case GFX_RESTART:
-                        animateData.startTick = currentTick;
+                        it->second.startTick = currentTick;
                         break;
                     case GFX_REVERSE:
-                        temp = animateData.startSpriteId;
-                        it->second.startSpriteId = animateData.endSpriteId;
+                        temp = it->second.startSpriteId;
+                        it->second.startSpriteId = it->second.endSpriteId;
                         it->second.endSpriteId = temp;
-                        animateData.startTick = currentTick;
+                        it->second.startTick = currentTick;
                         break;
                     case GFX_NOLOOP:
-                        animateData.isActive = false;
+                        it->second.isActive = false;
                         // Depending on the mask, set the final values so the sprite ends up in the right place - a lot of code but should really only change the items that are masked to be active
                         if (animateData.typeMask & ANIMATE_X_MASK) m_instanceList[animateData.animateSpriteId].x = m_instanceList[animateData.endSpriteId].x;
                         if (animateData.typeMask & ANIMATE_Y_MASK) m_instanceList[animateData.animateSpriteId].y = m_instanceList[animateData.endSpriteId].y;
@@ -834,11 +834,11 @@ bool PBGfx::gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentT
                     // Rotate is a special case.  Depending on rotateClockwise bool, we should rotate clockwise or counter clockwise and make sure to roll over at 360 degrees
                     if (animateData.typeMask & ANIMATE_ROTATE_MASK) {
                         if (animateData.rotateClockwise) {
-                            m_instanceList[animateData.animateSpriteId].rotateDegrees = m_instanceList[animateData.startSpriteId].rotateDegrees + (m_instanceList[animateData.endSpriteId].rotateDegrees - m_instanceList[animateData.startSpriteId].rotateDegrees) * percentComplete;
+                            m_instanceList[animateData.animateSpriteId].rotateDegrees = m_instanceList[animateData.startSpriteId].rotateDegrees - (m_instanceList[animateData.endSpriteId].rotateDegrees - m_instanceList[animateData.startSpriteId].rotateDegrees) * percentComplete;
                             if (m_instanceList[animateData.animateSpriteId].rotateDegrees > 360.0f) m_instanceList[animateData.animateSpriteId].rotateDegrees -= 360.0f;
                         }
                         else {
-                            m_instanceList[animateData.animateSpriteId].rotateDegrees = m_instanceList[animateData.startSpriteId].rotateDegrees - (m_instanceList[animateData.endSpriteId].rotateDegrees - m_instanceList[animateData.startSpriteId].rotateDegrees) * percentComplete;
+                            m_instanceList[animateData.animateSpriteId].rotateDegrees = m_instanceList[animateData.startSpriteId].rotateDegrees + (m_instanceList[animateData.endSpriteId].rotateDegrees - m_instanceList[animateData.startSpriteId].rotateDegrees) * percentComplete;
                             if (m_instanceList[animateData.animateSpriteId].rotateDegrees < 0.0f) m_instanceList[animateData.animateSpriteId].rotateDegrees += 360.0f;
                         }
                     }

@@ -61,6 +61,19 @@ enum PBTestModeState{
     PB_TESTOUTPUT = 1
 };
 
+enum PBDifficultyMode{ 
+    PB_EASY = 0,
+    PB_NORMAL = 1,
+    PB_HARD = 2,
+    PB_EPIC = 3,
+    PB_DMEND
+};
+
+#define PB_EASY_TEXT "Easy"
+#define PB_NORMAL_TEXT "Normal"
+#define PB_HARD_TEXT "Hard"
+#define PB_EPIC_TEXT "Epic"
+
 #define MenuTitle "Dungeon  Adventure"
 #define Menu1 "Play Pinball"
 #define Menu1Fail "Play Pinball (Disabled)"
@@ -74,8 +87,10 @@ enum PBTestModeState{
 #define MenuSettings1 "Main Volume: "
 #define MenuSettings2 "Music Volume: "
 #define MenuSettings3 "Balls Per Game: "
+#define MenuSettings4 "Difficulty: "
+#define MenuSettings5 "Reset High Scores"
 
-#define NUM_SETTINGS 3
+#define NUM_SETTINGS 5
 
 struct stInputMessage {
     PBInputType inputType;
@@ -114,23 +129,31 @@ public:
     unsigned int m_defaultFontSpriteId;
     unsigned int m_consoleTextHeight;
 
+    // Boot Screen variables
     unsigned int m_BootUpConsoleId, m_BootUpStarsId, m_BootUpStarsId2, m_BootUpStarsId3, m_BootUpStarsId4, m_BootUpTitleBarId;
+    bool m_PassSelfTest, m_RestartBootUp;
+
+    // Start Menu Screen variables
     unsigned int m_StartMenuFontId, m_StartMenuSwordId, m_CurrentMenuItem;
+    bool m_RestartMenu;
+
+    // Test Mode Screen variables
     PBTestModeState m_TestMode;
-    bool m_LFON, m_RFON, m_LAON, m_RAON;
+    bool m_LFON, m_RFON, m_LAON, m_RAON,  m_RestartTestMode;
     unsigned int m_CurrentOutputItem;
 
     // Settings screen / game variables
-    unsigned int m_CurrentSettingsItem, m_MainVolume, m_MusicVolume, m_BallsPerGame; 
+    unsigned int m_CurrentSettingsItem, m_MainVolume, m_MusicVolume, m_BallsPerGame;
+    PBDifficultyMode m_Difficulty;
+    bool m_RestartSettings; 
 
     // Credits screen
     unsigned int m_CreditsScrollY, m_TicksPerPixel, m_StartTick;
+    bool m_RestartCredits;
 
     // Benchmark screen
     unsigned int m_TicksPerScene, m_BenchmarkStartTick, m_CountDownTicks, m_aniId;
-    bool m_BenchmarkDone;
-
-    bool m_PassSelfTest;
+    bool m_BenchmarkDone, m_RestartBenchmark;
 
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;
