@@ -1,10 +1,5 @@
 This file tracks the various items to do in the pinball project in rough priority
 
-Create all the basic state screens (but probably on just basic score for the play screen - that one will be extensive)
-Create basic score / play screen
-Two more settings - difficulty and reset high scores
-Create automatic sprite animation - starting place, stoping place, time to animate (use standard sprite instance stuff?) 
-Animation Queue Support
 Create input / output message processing
 Architecture a new thread system - what gameplay, rendering, etc.. elements need their own threads?  Right now it's single threaded...
 Create sound output queue system
@@ -19,7 +14,9 @@ Duplicate all the Windows simulation capability in PiOS
 Save settings info in a file and restore from a file
 
 Lower Priority
+Fix sprite animation acceleration parameter
 Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
+
 
 Basic Pinball Features
 Left Ramp: Tomb - gold and 30s ball save / ressurection
