@@ -1,4 +1,5 @@
 // PInball_IO.h:  Header file to define all the input sensors and buttons in the pinball machine
+// These need to be defined by the user for the specific table
 // MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
 
 #ifndef PInball_IO_h
@@ -42,25 +43,6 @@ struct stInputDef{
     unsigned long debounceTimeMS;
 };
 
-// The actual definition of the input items - the user of the library will need to define these for the specific table
-// The IDs need to be unique, and will be checked during initilization - if there are duplicates, the engine will not start
-
-#define IDI_LEFTFLIPPER 0
-#define IDI_RIGHTFLIPPER 1
-#define IDI_LEFTACTIVATE 2
-#define IDI_RIGHTACTIVATE 3
-#define IDI_START 4
-
-stInputDef g_inputDef[] = {
-    {"Left Flipper", "A", PB_INPUT_BUTTON, IDI_LEFTFLIPPER, 1, PB_INPUT1, PB_OFF, 0, 0, 10},
-    {"Right Flipper", "D", PB_INPUT_BUTTON, IDI_RIGHTFLIPPER, 2, PB_INPUT1, PB_OFF, 0, 0, 10},
-    {"Left Activate", "Q", PB_INPUT_BUTTON, IDI_LEFTACTIVATE, 3, PB_INPUT1, PB_OFF, 0, 0, 10},
-    {"Right Activate", "E", PB_INPUT_BUTTON, IDI_RIGHTACTIVATE, 4, PB_INPUT1, PB_OFF, 0, 0, 10},
-    {"Start", "Z", PB_INPUT_BUTTON, IDI_START, 5, PB_INPUT1, PB_OFF, 0, 0, 100}
-};
-
-#define NUM_INPUTS (sizeof(g_inputDef) / sizeof(stInputDef))
-
 // Output defintions
 // Input message structs and types
 enum PBOutputType {
@@ -78,14 +60,24 @@ struct stOutputDef{
     PBPinState lastState;
 };
 
+// The actual definition of the input items - the user of the library will need to define these for the specific table
+// The IDs need to be unique, and will be checked during initilization - if there are duplicates, the engine will not start
+
+// The actual definition of the output items - the user of the library will need to define these for the specific table
+
 #define IDO_JETBUMPER 0
 #define IDO_POPBUMPER 1
+#define NUM_OUTPUTS 2
 
-stOutputDef g_outputDef[] = {
-    {"Jet Bumper", PB_OUTPUT_JETBUMPER, IDO_JETBUMPER, 1, PB_OUTPUT1, PB_OFF},
-    {"Pop Bumper", PB_OUTPUT_POPBUMPER, IDO_POPBUMPER, 2, PB_OUTPUT1, PB_OFF}
-};
+#define IDI_LEFTFLIPPER 0
+#define IDI_RIGHTFLIPPER 1
+#define IDI_LEFTACTIVATE 2
+#define IDI_RIGHTACTIVATE 3
+#define IDI_START 4
+#define NUM_INPUTS 5
 
-#define NUM_OUTPUTS (sizeof(g_outputDef) / sizeof(stOutputDef))
+// Declare the shared variables for input / output structures.
+extern stInputDef g_inputDef[];
+extern stOutputDef g_outputDef[];
 
-#endif // PInball_IO.h
+#endif

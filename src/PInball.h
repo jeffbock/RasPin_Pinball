@@ -27,6 +27,7 @@
 #include "PBOGLES.h"
 #include "PBGfx.h"
 #include "PInball_IO.h"
+#include "PInball_Table.h"
 #include <iostream>
 #include <stdio.h>
 #include <vector>
