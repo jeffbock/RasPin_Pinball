@@ -36,6 +36,7 @@ public:
     unsigned int oglGetScreenWidth();
 
 protected:
+    bool   oglUnloadTexture(GLuint textureId);
     GLuint oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height);
     GLuint oglLoadBMPTexture (const char* filename, unsigned int* width, unsigned int* height);
     GLuint oglLoadPNGTexture (const char* filename, unsigned int* width, unsigned int* height);

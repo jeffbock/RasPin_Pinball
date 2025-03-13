@@ -26,6 +26,70 @@ bool PBGfx::gfxInit(){
     else return (true);
 }
 
+bool PBGfx::gfxUnloadTexture(unsigned int spriteId) {
+    
+    auto it = m_instanceList.find(spriteId);
+    if (it != m_instanceList.end()) {
+        if (m_spriteList[it->second.parentSpriteId].keepResident) return (false);
+        else {
+            oglUnloadTexture(it->second.glTextureId);
+            m_spriteList[it->second.parentSpriteId].isLoaded = false;
+            return (true);
+        }
+    }
+    else return (false);
+}
+
+bool PBGfx::gfxUnloadAllTextures() {
+
+    // Loop through m_SpriteList and unload all the textures for sprites that should not be kept resident
+    for (auto it = m_spriteList.begin(); it != m_spriteList.end(); ++it) {
+        if (!it->second.keepResident) {
+            oglUnloadTexture(it->second.glTextureId);
+            it->second.isLoaded = false;
+        }
+    }
+
+    return (true);
+}
+
+bool PBGfx::gfxTextureLoaded(unsigned int spriteId)
+{
+    if (spriteId == NOSPRITE) return (false);
+    
+    auto it = m_instanceList.find(spriteId);
+    if (it != m_instanceList.end()) return (m_spriteList[it->second.parentSpriteId].isLoaded);
+    else return (false);
+}
+
+// Reload a texture if it's been freed
+bool PBGfx::gfxReloadTexture(unsigned int spriteId) {
+        
+        unsigned int tempX, tempY;
+
+        auto it = m_instanceList.find(spriteId);
+        if (it != m_instanceList.end()) {
+            if (m_spriteList[it->second.parentSpriteId].isLoaded) return (true);
+            if (it->second.parentSpriteId != spriteId) return (false);
+            else {
+                oglTexType textureType;
+                switch (m_spriteList[it->second.parentSpriteId].textureType) {
+                    case GFX_BMP: textureType = OGL_BMP; break;
+                    case GFX_PNG: textureType = OGL_PNG; break;
+                    case GFX_NONE: textureType = OGL_NONE; break;
+                    default: return (false);
+                }
+                m_spriteList[it->second.parentSpriteId].glTextureId = oglLoadTexture(m_spriteList[it->second.parentSpriteId].textureFileName.c_str(), textureType, &tempX, &tempY);
+                if (m_spriteList[it->second.parentSpriteId].glTextureId != 0) 
+                {
+                    m_spriteList[it->second.parentSpriteId].isLoaded = true;
+                    return (true);
+                }
+            }
+        }
+
+        return (false);
+}
 
 // Private function to create a sprite
 unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {

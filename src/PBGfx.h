@@ -152,6 +152,10 @@ public:
     unsigned int gfxLoadSprite(const std::string& spriteName, const std::string& textureFileName, gfxTexType textureType,
                                gfxSpriteMap mapType, gfxTexCenter textureCenter, bool keepResident, bool useTexture);
     unsigned int gfxLoadSprite(stSpriteInfo spriteInfo);
+    bool         gfxUnloadTexture(unsigned int spriteId);
+    bool         gfxUnloadAllTextures();
+    bool         gfxReloadTexture(unsigned int spriteId);
+    bool         gfxTextureLoaded(unsigned int spriteId);
     
     unsigned int gfxInstanceSprite (unsigned int parentSpriteId, int x, int y, unsigned int textureAlpha, 
                                     unsigned int vertRed, unsigned int vertGreen, unsigned int vertBlue, unsigned int vertAlpha, float scaleFactor, float rotateDegrees);

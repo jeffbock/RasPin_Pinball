@@ -162,6 +162,12 @@ public:
     std::queue<stOutputMessage> m_outputQueue;
     std::mutex m_outputQMutex;
     
+    // Main Table Variables, etc..
+    // Start state
+    unsigned int m_PBTBLStartDoorId, m_PBTBLFlame1Id, m_PBTBLFlame2Id, m_PBTBLFlame3Id; 
+    unsigned int m_PBTBLFlame1StartId, m_PBTBLFlame2StartId, m_PBTBLFlame3StartId;
+    unsigned int m_PBTBLFlame1EndId, m_PBTBLFlame2EndId, m_PBTBLFlame3EndId;
+
 private:
 
     PBMainState m_mainState;
@@ -173,6 +179,9 @@ private:
 
     std::vector<std::string> m_consoleQueue;
     unsigned int m_maxConsoleLines;
+
+    // Main table Variables, etc..
+    bool m_PBTBLStartLoaded; 
 
     // Private functions for rendering main state screens
     bool pbeRenderDefaultBackground (unsigned long currentTick, unsigned long lastTick);
@@ -193,6 +202,11 @@ private:
     bool pbeLoadBenchmark();
     bool pbeLoadCredits();
     bool pbeLoadSettings();
+
+    // Texture release functions
+    void pbeReleaseMenuTextures();
+
+    // Main Table functions - these will need to be modified per table
 };
 
 #endif // PInball_h

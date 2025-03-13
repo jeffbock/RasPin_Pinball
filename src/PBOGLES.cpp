@@ -307,6 +307,12 @@ void PBOGLES::scaleAndRotateVertices(float* x, float* y, float scale, float rota
     }
 }
 
+// Delete a texture from a sprite.  You can keep the sprite, but release the texture
+bool   PBOGLES::oglUnloadTexture(GLuint textureId){
+    glDeleteTextures(1, &textureId);
+    return (true);
+}
+
 // Function to load a BMP image and place it a texture
 GLuint PBOGLES::oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height) {
 

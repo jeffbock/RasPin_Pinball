@@ -161,6 +161,9 @@ return true;
     m_RestartTestMode = true;
 
     m_PassSelfTest = true;
+
+    // Table variables
+    m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
  }
 
  PBEngine::~PBEngine(){
@@ -230,14 +233,26 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
 
 // Load reasources for the boot up screen
 bool PBEngine::pbeLoadDefaultBackground(){
-    if (m_PBDefaultBackgroundLoaded) return (true);
+    
+    // Scene is loaded but maybe the texures are not
+    if (m_PBTBLStartLoaded) 
+    {
+        // Check that the textures are loaded
+        if (!gfxTextureLoaded(m_BootUpConsoleId)) {
+            if (!gfxReloadTexture(m_BootUpConsoleId)) return (false);
+        }
+        if (!gfxTextureLoaded(m_BootUpStarsId)) {
+            if (!gfxReloadTexture(m_BootUpStarsId)) return (false);
+        }
+        return (true);
+    }
 
     pbeSendConsole("(PI)nball Engine: Loading default background resources");
 
-    m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    if (!gfxTextureLoaded(m_BootUpConsoleId)) m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, false, true);
     gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 96);
 
-    m_BootUpStarsId = gfxLoadSprite("Stars", "src/resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    if (!gfxTextureLoaded(m_BootUpStarsId)) m_BootUpStarsId = gfxLoadSprite("Stars", "src/resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
     gfxSetColor(m_BootUpStarsId, 24, 0, 210, 96);
     gfxSetScaleFactor(m_BootUpStarsId, 2.0, false);
 
@@ -341,7 +356,18 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
 
 bool PBEngine::pbeLoadStartMenu(){
 
-    if (m_PBStartMenuLoaded) return (true);
+    if (m_PBStartMenuLoaded) 
+    {
+        // Check that the textures are loaded
+        if (!gfxTextureLoaded(m_StartMenuFontId)) {
+            if (!gfxReloadTexture(m_StartMenuFontId)) return (false);
+        }
+        if (!gfxTextureLoaded(m_StartMenuSwordId)) {
+            if (!gfxReloadTexture(m_StartMenuSwordId)) return (false);
+        }
+
+        return (true);
+    }
 
     // Load the font for the start menu
     m_StartMenuFontId = gfxLoadSprite("Start Menu Font", MENUFONT, GFX_PNG, GFX_TEXTMAP, GFX_UPPERLEFT, true, true);
@@ -349,7 +375,7 @@ bool PBEngine::pbeLoadStartMenu(){
 
     gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
 
-    m_StartMenuSwordId = gfxLoadSprite("Start Menu Sword", MENUSWORD, GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    m_StartMenuSwordId = gfxLoadSprite("Start Menu Sword", MENUSWORD, GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, false, true);
     if (m_StartMenuSwordId == NOSPRITE) return (false);
 
     gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
@@ -755,6 +781,14 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     return (true);   
 }
 
+// Texture management functions
+void PBEngine::pbeReleaseMenuTextures(){
+
+    gfxUnloadTexture(m_BootUpConsoleId);
+    gfxUnloadTexture(m_BootUpStarsId);
+    gfxUnloadTexture(m_StartMenuSwordId);
+}
+
 void PBEngine::pbeUpdateState(stInputMessage inputMessage){
     
     switch (m_mainState) {
@@ -784,7 +818,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         case (2):  m_mainState = PB_SETTINGS; m_RestartSettings = true; break;
                         case (3):  m_mainState = PB_TESTMODE; m_RestartTestMode = true; break;
                         case (4):  m_mainState = PB_BENCHMARK; m_RestartBenchmark = true; break;
-                        case (5):  m_mainState = PB_BOOTUP; m_RestartBootUp = true; break;
+                        case (5):  m_mainState = PB_BOOTUP; m_RestartBootUp = true; gfxUnloadTexture(m_StartMenuSwordId);break;
                         case (6):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
                         default: break;
                     }
@@ -944,10 +978,9 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         }
 
         case PB_PLAYGAME: {
-                // Just go back to the start menu for now - but this is where the pinball game we actually start
-                pbeLoadPlayGame();
-                m_mainState = PB_STARTMENU;
-                m_RestartMenu = true;    
+            pbeReleaseMenuTextures();
+            pbeLoadPlayGame();
+            m_mainState = PB_PLAYGAME;
         break;
         }
 

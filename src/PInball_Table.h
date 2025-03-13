@@ -8,4 +8,17 @@
 
 #include "PInball.h"
 
+enum PBTableState {
+    PBTBL_START = 0,
+    PBTBL_STDPLAY = 1,
+    PBTBL_END
+};
+
+enum PBTableStartState {
+    PBTBL_START_START = 0,
+    PBTBL_START_INST = 1,
+    PBTBL_START_SCORES = 2,
+    PBTBL_START_END
+};
+
 #endif // PInball_Table_h
