@@ -264,8 +264,8 @@ unsigned int PBGfx::gfxInstanceSprite (unsigned int parentSpriteId,  stSpriteIns
     auto it = m_instanceList.find(parentSpriteId);
     if (it != m_instanceList.end()){
 
-        // Cannont make instance sprites from font sprites or sprites with a map (eg: animated sprites)
-        if (m_spriteList[it->second.parentSpriteId].mapType != GFX_NOMAP) return (NOSPRITE);
+        // Cannot make instance sprites from font sprites or sprites with a map (eg: animated sprites)
+        // if (m_spriteList[it->second.parentSpriteId].mapType != GFX_NOMAP) return (NOSPRITE);
 
         unsigned int spriteId = m_nextUserSpriteId;
         m_nextUserSpriteId++;
@@ -795,17 +795,17 @@ bool PBGfx::gfxCreateAnimation(stAnimateData animateData, bool replaceExisting){
     // Check that all instance sprites point the the same parent and have the same map type
     auto it = m_instanceList.find(animateData.startSpriteId);
     if (it == m_instanceList.end()) return (false);
-    if (m_spriteList[it->second.parentSpriteId].mapType != GFX_NOMAP) return (false);
+    // if (m_spriteList[it->second.parentSpriteId].mapType != GFX_NOMAP) return (false);
     unsigned int parentSpriteId = it->second.parentSpriteId;
 
     it = m_instanceList.find(animateData.endSpriteId);
     if (it == m_instanceList.end()) return (false);
-    if (m_spriteList[it->second.parentSpriteId].mapType != GFX_NOMAP) return (false);
+    // if (m_spriteList[it->second.parentSpriteId].mapType != GFX_NOMAP) return (false);
     if (it->second.parentSpriteId != parentSpriteId) return (false);
 
     it = m_instanceList.find(animateData.animateSpriteId);
     if (it == m_instanceList.end()) return (false);
-    if (m_spriteList[it->second.parentSpriteId].mapType != GFX_NOMAP) return (false);
+    // if (m_spriteList[it->second.parentSpriteId].mapType != GFX_NOMAP) return (false);
     if (it->second.parentSpriteId != parentSpriteId) return (false);
 
     // Check to see if there's an active animation for this sprite and then remove it if needed
@@ -918,7 +918,7 @@ bool PBGfx::gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentT
 bool PBGfx::gfxAnimateActive(unsigned int animateSpriteId){
 
     // Case to match a particular spriteId
-    if (animateSpriteId == NOSPRITE)
+    if (animateSpriteId != NOSPRITE)
     {
         auto it = m_animateList.find(animateSpriteId);
         if (it == m_animateList.end()) return (false);

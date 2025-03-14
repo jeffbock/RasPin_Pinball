@@ -14,11 +14,11 @@ enum PBTableState {
     PBTBL_END
 };
 
-enum PBTableStartState {
-    PBTBL_START_START = 0,
-    PBTBL_START_INST = 1,
-    PBTBL_START_SCORES = 2,
-    PBTBL_START_END
+enum PBTBLScreenState {
+    START_START = 0,
+    START_INST = 1,
+    START_SCORES = 2,
+    START_END
 };
 
 #endif // PInball_Table_h

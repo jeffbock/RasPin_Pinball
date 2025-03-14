@@ -37,6 +37,10 @@
 #include <condition_variable>
 #include <chrono>
 
+// Forward declarations for the enums used in the PBEngine class
+enum PBTableState;
+enum PBTBLScreenState;
+
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 800
 #define PB_SCREENHEIGHT 480
@@ -75,7 +79,7 @@ enum PBDifficultyMode{
 #define PB_HARD_TEXT "Hard"
 #define PB_EPIC_TEXT "Epic"
 
-#define MenuTitle "Dungeon  Adventure"
+#define MenuTitle "Dragons of Destiny"
 #define Menu1 "Play Pinball"
 #define Menu1Fail "Play Pinball (Disabled)"
 #define Menu2 "Settings"
@@ -136,7 +140,7 @@ public:
 
     // Start Menu Screen variables
     unsigned int m_StartMenuFontId, m_StartMenuSwordId, m_CurrentMenuItem;
-    bool m_RestartMenu;
+    bool m_RestartMenu,  m_GameStarted;
 
     // Test Mode Screen variables
     PBTestModeState m_TestMode;
@@ -163,10 +167,15 @@ public:
     std::mutex m_outputQMutex;
     
     // Main Table Variables, etc..
+    PBTableState m_tableState; 
+    PBTBLScreenState m_tableScreenState;
+
     // Start state
     unsigned int m_PBTBLStartDoorId, m_PBTBLFlame1Id, m_PBTBLFlame2Id, m_PBTBLFlame3Id; 
     unsigned int m_PBTBLFlame1StartId, m_PBTBLFlame2StartId, m_PBTBLFlame3StartId;
     unsigned int m_PBTBLFlame1EndId, m_PBTBLFlame2EndId, m_PBTBLFlame3EndId;
+    unsigned int m_PBTBLTextStartId, m_PBTBLTextEndId;
+    bool m_RestartTable;
 
 private:
 

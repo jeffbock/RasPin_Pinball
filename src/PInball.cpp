@@ -138,6 +138,7 @@ return true;
     // Start Menu variables
     m_CurrentMenuItem = 1;
     m_RestartMenu = true;
+    m_GameStarted = false;
 
     // Setting Menu variables - at some points these should saved to a file and loaded from a file
     m_CurrentSettingsItem = 1;
@@ -162,8 +163,15 @@ return true;
 
     m_PassSelfTest = true;
 
+    /////////////////////
     // Table variables
+    /////////////////////
+    m_tableState = PBTBL_START; 
+    m_tableScreenState = START_START;
+
+    // Tables start screen variables
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
+    m_RestartTable = true;
  }
 
  PBEngine::~PBEngine(){
@@ -235,7 +243,7 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
 bool PBEngine::pbeLoadDefaultBackground(){
     
     // Scene is loaded but maybe the texures are not
-    if (m_PBTBLStartLoaded) 
+    if (m_PBDefaultBackgroundLoaded) 
     {
         // Check that the textures are loaded
         if (!gfxTextureLoaded(m_BootUpConsoleId)) {
@@ -249,10 +257,10 @@ bool PBEngine::pbeLoadDefaultBackground(){
 
     pbeSendConsole("(PI)nball Engine: Loading default background resources");
 
-    if (!gfxTextureLoaded(m_BootUpConsoleId)) m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, false, true);
+    m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, false, true);
     gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 96);
 
-    if (!gfxTextureLoaded(m_BootUpStarsId)) m_BootUpStarsId = gfxLoadSprite("Stars", "src/resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
+    m_BootUpStarsId = gfxLoadSprite("Stars", "src/resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
     gfxSetColor(m_BootUpStarsId, 24, 0, 210, 96);
     gfxSetScaleFactor(m_BootUpStarsId, 2.0, false);
 
@@ -634,7 +642,7 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
 
         gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
         gfxRenderShadowString(m_defaultFontSpriteId, "Credits", tempX, m_CreditsScrollY, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Dungeon Adventure Pinball", tempX, m_CreditsScrollY + (1*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Dragons of Destiny Pinball", tempX, m_CreditsScrollY + (1*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Designed and Programmed by: Jeffrey Bock", tempX, m_CreditsScrollY + (2*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "3D Models and Printing: Tremayne Bock", tempX, m_CreditsScrollY + (3*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Using Rasberry Pi (PI)nball Engine", tempX, m_CreditsScrollY + (4*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
@@ -724,6 +732,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
             gfxRenderSprite(m_StartMenuSwordId, x, y);
             smallSpriteCount++;
         }
+        gfxRenderShadowString(m_defaultFontSpriteId, "Small Sprite Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         gfxSwap();
         return (true);
     }
@@ -740,6 +749,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
             gfxRenderSprite(m_BootUpConsoleId, x, y);
             bigSpriteCount++;
         }
+        gfxRenderShadowString(m_defaultFontSpriteId, "Large Sprite Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         gfxSwap();
         return (true);
     }
@@ -760,6 +770,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
             gfxRenderSprite(m_StartMenuSwordId, x, y);
             spriteTransformCount++;
         }
+        gfxRenderShadowString(m_defaultFontSpriteId, "Transformed Sprite Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         gfxSwap();
         return (true);
     }
@@ -818,7 +829,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         case (2):  m_mainState = PB_SETTINGS; m_RestartSettings = true; break;
                         case (3):  m_mainState = PB_TESTMODE; m_RestartTestMode = true; break;
                         case (4):  m_mainState = PB_BENCHMARK; m_RestartBenchmark = true; break;
-                        case (5):  m_mainState = PB_BOOTUP; m_RestartBootUp = true; gfxUnloadTexture(m_StartMenuSwordId);break;
+                        case (5):  m_mainState = PB_BOOTUP; m_RestartBootUp = true; break;
                         case (6):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
                         default: break;
                     }
@@ -980,6 +991,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_PLAYGAME: {
             pbeReleaseMenuTextures();
             pbeLoadPlayGame();
+            m_GameStarted = true;
             m_mainState = PB_PLAYGAME;
         break;
         }
