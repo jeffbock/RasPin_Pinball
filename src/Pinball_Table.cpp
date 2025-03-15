@@ -1,9 +1,10 @@
 
 #include "PInball_Table.h"
+#include "PInball_TableStr.h"
 
 // PBEgine Class Fucntions for the main pinball game
 
-bool PBEngine::pbeLoadPlayGame(){
+bool PBEngine::pbeLoadGameStart(){
     
     // Scene is loaded but maybe the texures are not
     if (m_PBTBLStartLoaded) 
@@ -79,7 +80,7 @@ bool PBEngine::pbeLoadPlayGame(){
     gfxSetColor(m_PBTBLTextStartId, 0, 0, 0, 0);
     m_PBTBLTextEndId = gfxInstanceSprite(m_StartMenuFontId);
     gfxSetColor(m_PBTBLTextEndId, 255, 255, 255, 255);
-    gfxLoadAnimateData(&animateData, m_StartMenuFontId, m_PBTBLTextStartId, m_PBTBLTextEndId, 0, ANIMATE_COLOR_MASK, 3.0f, 0.0f, true, true, GFX_NOLOOP);
+    gfxLoadAnimateData(&animateData, m_StartMenuFontId, m_PBTBLTextStartId, m_PBTBLTextEndId, 0, ANIMATE_COLOR_MASK, 2.0f, 0.0f, true, true, GFX_NOLOOP);
     gfxCreateAnimation(animateData, true);
 
     if (m_PBTBLStartDoorId == NOSPRITE || m_PBTBLFlame1Id == NOSPRITE || m_PBTBLFlame2Id == NOSPRITE ||  
@@ -90,7 +91,7 @@ bool PBEngine::pbeLoadPlayGame(){
     return (m_PBTBLStartLoaded);
 }
 
-bool PBEngine::pbeRenderPlayGame(unsigned long currentTick, unsigned long lastTick){
+bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick){
 
     static int timeoutTicks, blinkCountTicks;
     static PBTBLScreenState lastScreenState;
@@ -98,13 +99,13 @@ bool PBEngine::pbeRenderPlayGame(unsigned long currentTick, unsigned long lastTi
 
     if (m_RestartTable) {
         m_RestartTable = false;
-        timeoutTicks = 10000;
+        timeoutTicks = 18000;
         blinkCountTicks = 1000;
         blinkOn = true;
         lastScreenState = m_tableScreenState;
     }
 
-    if (!pbeLoadScreen (PB_PLAYGAME)) return (false); 
+    if (!pbeLoadGameStart ()) return (false); 
     
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 
@@ -130,7 +131,7 @@ bool PBEngine::pbeRenderPlayGame(unsigned long currentTick, unsigned long lastTi
     gfxRenderSprite(m_PBTBLFlame3Id, 665, 240);
 
     if (lastScreenState != m_tableScreenState) {
-        timeoutTicks = 10000; // Reset the timeout if we change screens
+        timeoutTicks = 18000; // Reset the timeout if we change screens
         lastScreenState = m_tableScreenState;
         gfxAnimateRestart(m_StartMenuFontId);
     }
@@ -154,10 +155,19 @@ bool PBEngine::pbeRenderPlayGame(unsigned long currentTick, unsigned long lastTi
             gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
             gfxAnimateSprite(m_StartMenuFontId, currentTick);
             gfxSetScaleFactor(m_StartMenuFontId, 0.5, false);
-            if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, "Instructions", (PB_SCREENWIDTH/2) + 20, 200, 1, GFX_TEXTCENTER);
-            else gfxRenderShadowString (m_StartMenuFontId, "Instructions", (PB_SCREENWIDTH/2) + 20, 200, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+            // loop through PBTableInst and print each string
+            for (int i = 0; i < PBTABLEINSTSIZE; i++) {
+                if (i == 0) {
+                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, PBTableInst[i], (PB_SCREENWIDTH/2) + 20, 130 + (i * 30), 1, GFX_TEXTCENTER);
+                    else gfxRenderShadowString (m_StartMenuFontId, PBTableInst[i], (PB_SCREENWIDTH/2) + 20, 130 + (i * 30), 1, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+                }
+                else {
+                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, PBTableInst[i], 220, 130 + (i * 30), 1, GFX_TEXTLEFT);
+                    else gfxRenderShadowString (m_StartMenuFontId, PBTableInst[i], 220, 130 + (i * 30), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 3);
+                }
+            }
             break;
-
+            
         case START_SCORES:
             gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
             gfxAnimateSprite(m_StartMenuFontId, currentTick);
@@ -171,13 +181,51 @@ bool PBEngine::pbeRenderPlayGame(unsigned long currentTick, unsigned long lastTi
         break;
     }
 
-    if (timeoutTicks > 0) {
+    // If timeout happens, switch back to "Press Start"
+    if ((timeoutTicks > 0) && (m_tableScreenState != START_START)) {
         timeoutTicks -= (currentTick - lastTick);
         if (timeoutTicks <= 0) {
-            m_tableScreenState = START_INST;
+            m_tableScreenState = START_START;
         }
     }
 
     return (true);
+}
+
+bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick){
+    
+    switch (m_tableState) {
+        case PBTBL_START: return pbeRenderGameStart(currentTick, lastTick); break;
+        default: return (false); break;
+    }
+
+    return (false);
+}
+
+// Main State Loop for Pinball Table
+
+void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
+    
+    switch (m_tableState) {
+        case PBTBL_START: {
+
+            if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputId != IDI_START) {
+                    switch (m_tableScreenState) {
+                        case START_START: m_tableScreenState = START_INST; break;
+                        case START_INST: m_tableScreenState = START_SCORES; break;
+                        case START_SCORES: m_tableScreenState = START_START; break;
+                        default: break;
+                    }
+                }
+                else {
+                    // Move to the main gameplay screen
+                }             
+            }
+            break;
+        }
+        
+        default: break;
+    }
 }
 

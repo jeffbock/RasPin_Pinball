@@ -207,11 +207,12 @@ void PBEngine::pbeRenderConsole(unsigned int startingX, unsigned int startingY){
 }
 
 // Load the screen based on the main state of the game 
+// Play Game is final state right now for the menu screens.  If pinball ever exits, then we'd need to change this
 bool PBEngine::pbeLoadScreen (PBMainState state){
     switch (state) {
         case PB_BOOTUP: return (pbeLoadBootUp()); break;
         case PB_STARTMENU: return (pbeLoadStartMenu()); break;
-        case PB_PLAYGAME: return (pbeLoadPlayGame()); break;
+        case PB_PLAYGAME: return (true); break;
         case PB_TESTMODE: return (pbeLoadTestMode()); break;
         case PB_BENCHMARK: return (pbeLoadBenchmark()); break;
         case PB_CREDITS: return (pbeLoadCredits()); break;
@@ -223,12 +224,13 @@ bool PBEngine::pbeLoadScreen (PBMainState state){
 }
 
 // Render the screen based on the main state of the game
+// Play Game is final state right now for the menu screens.  If pinball ever exits, then we'd need to change this
 bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick){
     
     switch (m_mainState) {
         case PB_BOOTUP: return pbeRenderBootScreen(currentTick, lastTick); break;
         case PB_STARTMENU: return pbeRenderStartMenu(currentTick, lastTick); break;
-        case PB_PLAYGAME: return pbeRenderPlayGame(currentTick, lastTick); break;
+        case PB_PLAYGAME: return (true); break;
         case PB_TESTMODE: return pbeRenderTestMode(currentTick, lastTick); break;
         case PB_BENCHMARK: return pbeRenderBenchmark(currentTick, lastTick); break;
         case PB_CREDITS: return pbeRenderCredits(currentTick, lastTick); break;
@@ -258,7 +260,7 @@ bool PBEngine::pbeLoadDefaultBackground(){
     pbeSendConsole("(PI)nball Engine: Loading default background resources");
 
     m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, false, true);
-    gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 96);
+    gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 128);
 
     m_BootUpStarsId = gfxLoadSprite("Stars", "src/resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
     gfxSetColor(m_BootUpStarsId, 24, 0, 210, 96);
@@ -430,7 +432,7 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
     }
 
     // Render the menu items with shadow depending on the selected item
-    gfxSetColor(m_StartMenuFontId, 200, 200, 200, 224);
+    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
     if (!m_PassSelfTest)
     {
         if (m_CurrentMenuItem == 1) gfxRenderShadowString(m_StartMenuFontId, Menu1Fail, 290, 85, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
@@ -582,7 +584,7 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
         default: break;
     }
 
-    gfxSetColor(m_StartMenuFontId, 200, 200, 200, 224);
+    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
     if (m_CurrentSettingsItem == 1) gfxRenderShadowString(m_StartMenuFontId, Setting1Temp, 250, 85, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
     else gfxRenderString(m_StartMenuFontId, Setting1Temp, 250, 85, 1, GFX_TEXTLEFT);
 
@@ -990,8 +992,8 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 
         case PB_PLAYGAME: {
             pbeReleaseMenuTextures();
-            pbeLoadPlayGame();
             m_GameStarted = true;
+            m_RestartTable = true;
             m_mainState = PB_PLAYGAME;
         break;
         }
@@ -1062,16 +1064,19 @@ int main(int argc, char const *argv[])
         // Will need to fix this later...
         PBProcessInput();
 
-        // Process the input message queue
+        // Process all the input message queue and update the game state
         if (!g_PBEngine.m_inputQueue.empty()){
             inputMessage = g_PBEngine.m_inputQueue.front();
             g_PBEngine.m_inputQueue.pop();
 
             // Update the game state based on the input message
-            g_PBEngine.pbeUpdateState (inputMessage); 
+            if (!g_PBEngine.m_GameStarted) g_PBEngine.pbeUpdateState (inputMessage); 
+            else g_PBEngine.pbeUpdateGameState (inputMessage);
         }
         
-        g_PBEngine.pbeRenderScreen(currentTick, lastTick);   
+        if (!g_PBEngine.m_GameStarted)g_PBEngine.pbeRenderScreen(currentTick, lastTick);
+        else g_PBEngine.pbeRenderGameScreen(currentTick, lastTick);
+
         g_PBEngine.gfxSwap();
 
         lastTick = currentTick;

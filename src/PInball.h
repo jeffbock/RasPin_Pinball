@@ -119,15 +119,18 @@ public:
 
     // Public funcation for dealing w/ rendering and loading screens by screen state
     bool pbeRenderScreen(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeLoadScreen (PBMainState state);
+    bool pbeLoadGameScreen (PBMainState state);
 
     // Console functions
     void pbeSendConsole(std::string output);
     void pbeClearConsole();
     void pbeRenderConsole(unsigned int startingX, unsigned int startingY);
 
-    // Functions to manage the game state
+    // Functions to manage the game states (main and pinball game)
     void pbeUpdateState(stInputMessage inputMessage);
+    void pbeUpdateGameState(stInputMessage inputMessage);
 
     // Member variables for the sprites used in the screens
     // We might switch this to a query by name mechansim, but that would be slower...
@@ -166,10 +169,6 @@ public:
     std::queue<stOutputMessage> m_outputQueue;
     std::mutex m_outputQMutex;
     
-    // Main Table Variables, etc..
-    PBTableState m_tableState; 
-    PBTBLScreenState m_tableScreenState;
-
     // Start state
     unsigned int m_PBTBLStartDoorId, m_PBTBLFlame1Id, m_PBTBLFlame2Id, m_PBTBLFlame3Id; 
     unsigned int m_PBTBLFlame1StartId, m_PBTBLFlame2StartId, m_PBTBLFlame3StartId;
@@ -180,6 +179,10 @@ public:
 private:
 
     PBMainState m_mainState;
+
+    // Main Table Variables, etc..
+    PBTableState m_tableState; 
+    PBTBLScreenState m_tableScreenState;
   
     // Load trackers for main screens
     bool m_PBDefaultBackgroundLoaded;
@@ -196,7 +199,7 @@ private:
     bool pbeRenderDefaultBackground (unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderStartMenu(unsigned long currentTick, unsigned long lastTick);
-    bool pbeRenderPlayGame(unsigned long currentTick, unsigned long lastTick);
+    // bool pbeRenderPlayGame(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderTestMode(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderCredits(unsigned long currentTick, unsigned long lastTick);
@@ -206,11 +209,21 @@ private:
     bool pbeLoadDefaultBackground();
     bool pbeLoadBootUp();
     bool pbeLoadStartMenu();
-    bool pbeLoadPlayGame();
+    // bool pbeLoadPlayGame();
     bool pbeLoadTestMode();
     bool pbeLoadBenchmark();
     bool pbeLoadCredits();
     bool pbeLoadSettings();
+
+    ///////////////////////////////
+    // Specfic Game Table Functions
+    ///////////////////////////////
+    
+    // Render functions for the pinball game table
+    bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
+
+    // Load functions for the pinball game table
+    bool pbeLoadGameStart(); // Load the start screen for the pinball game
 
     // Texture release functions
     void pbeReleaseMenuTextures();
