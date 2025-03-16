@@ -10,10 +10,10 @@ std::string PBTableInst[] = {
     "Instructions",
     "Gather your party and defeat the dragon!",
     "Hit ramps and bumpers to earn gold",
-    "Light I-N-N, enter the Inn and hire companions",
+    "Light I N N, enter the Inn to hire heroes",
     "Visit the Tomb for limited time ball save",
     "Visit the Ruins power up your sword",
-    "Light K-E-Y to open the dungeon",
+    "Light K E Y to open the dungeon",
     "Fight through the dungeon to find the dragon",
     "Defeat the dragon for massive multipliers!"
 };

@@ -47,6 +47,7 @@ enum PBTBLScreenState;
 
 #define MENUFONT "src/resources/fonts/Baldur_60_512.png"
 #define MENUSWORD "src/resources/textures/MenuSword.png"
+#define SAVEFILENAME "src/resources/savefile.bin"
 
 bool PBInitRender (long width, long height);
 
@@ -111,6 +112,27 @@ struct stOutputMessage {
     unsigned long instanceTick; 
 };
 
+struct stHighScoreData {
+    unsigned long highScore;
+    std::string playerInitials;
+};
+
+#define NUM_HIGHSCORES 5
+#define MAINVOLUME_DEFAULT 10
+#define MUSICVOLUME_DEFAULT 10
+#define BALLSPERGAME_DEFAULT 3
+#define DIFFICULTY_DEFAULT PB_NORMAL
+
+struct stSaveFileData {
+    unsigned int mainVolume;
+    unsigned int musicVolume;
+    unsigned int ballsPerGame;
+    PBDifficultyMode difficulty;
+    std::array<stHighScoreData, NUM_HIGHSCORES> highScores; 
+};
+
+
+
 // Make new class named PBGame that inheritis from PBOGLES with just essential functions
 class PBEngine : public PBGfx {
 public:
@@ -132,6 +154,11 @@ public:
     void pbeUpdateState(stInputMessage inputMessage);
     void pbeUpdateGameState(stInputMessage inputMessage);
 
+    // Save File Functions
+    bool pbeLoadSaveFile(stSaveFileData &saveData, bool loadDefaults, bool resetScores);
+    bool pbeSaveFile(stSaveFileData &saveData);
+    void resetHighScores();
+
     // Member variables for the sprites used in the screens
     // We might switch this to a query by name mechansim, but that would be slower...
     unsigned int m_defaultFontSpriteId;
@@ -151,8 +178,8 @@ public:
     unsigned int m_CurrentOutputItem;
 
     // Settings screen / game variables
-    unsigned int m_CurrentSettingsItem, m_MainVolume, m_MusicVolume, m_BallsPerGame;
-    PBDifficultyMode m_Difficulty;
+    unsigned int m_CurrentSettingsItem;
+    stSaveFileData m_saveFileData;
     bool m_RestartSettings; 
 
     // Credits screen
@@ -170,10 +197,13 @@ public:
     std::mutex m_outputQMutex;
     
     // Start state
-    unsigned int m_PBTBLStartDoorId, m_PBTBLFlame1Id, m_PBTBLFlame2Id, m_PBTBLFlame3Id; 
-    unsigned int m_PBTBLFlame1StartId, m_PBTBLFlame2StartId, m_PBTBLFlame3StartId;
-    unsigned int m_PBTBLFlame1EndId, m_PBTBLFlame2EndId, m_PBTBLFlame3EndId;
+    unsigned int m_PBTBLStartDoorId, m_PBTBLLeftDoorId, m_PBTBLRightDoorId, m_PBTBLFlame1Id, m_PBTBLFlame2Id, m_PBTBLFlame3Id; 
+    unsigned int m_PBTBLDoorDragonId, m_PBTBLDragonEyesId;
+    unsigned int m_PBTBLFlame1StartId, m_PBTBLFlame2StartId, m_PBTBLFlame3StartId, m_PBTBLeftDoorStartId, m_PBTBRightDoorStartId;
+    unsigned int m_PBTBLFlame1EndId, m_PBTBLFlame2EndId, m_PBTBLFlame3EndId, m_PBTBLeftDoorEndId, m_PBTBRightDoorEndId;
     unsigned int m_PBTBLTextStartId, m_PBTBLTextEndId;
+    bool m_PBTBLStartDoorsDone, m_PBTBLOpenDoors;
+
     bool m_RestartTable;
 
 private:

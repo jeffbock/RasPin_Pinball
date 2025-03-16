@@ -18,6 +18,7 @@ enum PBTBLScreenState {
     START_START = 0,
     START_INST = 1,
     START_SCORES = 2,
+    START_OPENDOOR = 3,
     START_END
 };
 

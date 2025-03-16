@@ -142,8 +142,6 @@ return true;
 
     // Setting Menu variables - at some points these should saved to a file and loaded from a file
     m_CurrentSettingsItem = 1;
-    m_MainVolume = 10; m_MusicVolume = 10; m_BallsPerGame = 3;
-    m_Difficulty = PB_NORMAL;
     m_RestartSettings = true;
 
     // Credits screen variables
@@ -178,6 +176,53 @@ return true;
 
     // Code later...
 
+}
+
+bool PBEngine::pbeLoadSaveFile(stSaveFileData &saveData, bool loadDefaults, bool resetScores){
+    
+    // Try and load the save file - if it exists, load it, place it in the stSaveFileData structure and return true
+    // otherwise load the defaults if not present, or if loadDefaults is true
+
+    bool failed = false;
+
+    std::ifstream saveFile(SAVEFILENAME, std::ios::binary);
+    if (saveFile) {
+        saveFile.read(reinterpret_cast<char*>(&m_saveFileData), sizeof(stSaveFileData));
+        saveFile.close();
+    } else failed = true;
+        
+    if ((loadDefaults) || failed){
+        // Set default values for the saveData structure
+        m_saveFileData.mainVolume = MAINVOLUME_DEFAULT;
+        m_saveFileData.musicVolume = MUSICVOLUME_DEFAULT;
+        m_saveFileData.ballsPerGame = BALLSPERGAME_DEFAULT;
+        m_saveFileData.difficulty = PB_NORMAL;
+    }
+
+    // Set the stHighScoreData array scores to zero and name to "JEF"
+    if ((resetScores) || failed) resetHighScores();
+    
+    return (!failed);
+}
+
+void PBEngine::resetHighScores(){
+    // Reset the high scores to zero and initials to "JEF"
+    for (int i = 0; i < NUM_HIGHSCORES; i++) {
+        m_saveFileData.highScores[i].highScore = 0;
+        m_saveFileData.highScores[i].playerInitials = "JEF";
+    }
+}
+
+bool PBEngine::pbeSaveFile(stSaveFileData &saveData){
+    
+    // Save the current settings and high scores to the save file, overwriting any previous data
+    std::ofstream saveFile(SAVEFILENAME, std::ios::binary);
+    if (!saveFile) return (false); // Failed to open the file for writing
+
+    saveFile.write(reinterpret_cast<const char*>(&m_saveFileData), sizeof(stSaveFileData));
+    saveFile.close();
+
+    return (true);
 }
 
 // Console functions - basically put strings into the queue
@@ -560,11 +605,11 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
      gfxRenderShadowString(m_StartMenuFontId, MenuSettingsTitle, (PB_SCREENWIDTH/2), 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
      gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
 
-     std::string Setting1Temp = MenuSettings1 + std::to_string(m_MainVolume);
-     std::string Setting2Temp = MenuSettings2 + std::to_string(m_MusicVolume);
-     std::string Setting3Temp = MenuSettings3 + std::to_string(m_BallsPerGame);
+     std::string Setting1Temp = MenuSettings1 + std::to_string(m_saveFileData.mainVolume);
+     std::string Setting2Temp = MenuSettings2 + std::to_string(m_saveFileData.musicVolume);
+     std::string Setting3Temp = MenuSettings3 + std::to_string(m_saveFileData.ballsPerGame);
      std::string Setting4Temp = MenuSettings4;
-     switch (m_Difficulty) {
+     switch (m_saveFileData.difficulty) {
         case PB_EASY: Setting4Temp += "Easy"; break;
         case PB_NORMAL: Setting4Temp += "Normal"; break;
         case PB_HARD: Setting4Temp += "Hard"; break;
@@ -912,6 +957,8 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     if (m_CurrentSettingsItem < (NUM_SETTINGS)) m_CurrentSettingsItem++;
                 }
                 if (inputMessage.inputId == IDI_START) {
+                    // Save the values to the settings file and exit the screen
+                    pbeSaveFile(m_saveFileData);
                     m_mainState = PB_STARTMENU;
                     m_RestartMenu = true;
                 }
@@ -921,53 +968,53 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 switch (m_CurrentSettingsItem) {
                     case (1): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
-                            if (m_MainVolume < 10) m_MainVolume++;
+                            if (m_saveFileData.mainVolume < 10) m_saveFileData.mainVolume++;
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
-                            if (m_MainVolume > 0) m_MainVolume--;
+                            if (m_saveFileData.mainVolume > 0) m_saveFileData.mainVolume--;
                         }
                         break;
                     }
                     case (2): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
-                            if (m_MusicVolume < 10) m_MusicVolume++;
+                            if (m_saveFileData.musicVolume < 10) m_saveFileData.musicVolume++;
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
-                            if (m_MusicVolume > 0) m_MusicVolume--;
+                            if (m_saveFileData.musicVolume > 0) m_saveFileData.musicVolume--;
                         }
                         break;
                     }
                     case (3): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
-                            if (m_BallsPerGame < 9) m_BallsPerGame++;
+                            if (m_saveFileData.ballsPerGame < 9) m_saveFileData.ballsPerGame++;
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
-                            if (m_BallsPerGame > 1) m_BallsPerGame--;
+                            if (m_saveFileData.ballsPerGame > 1) m_saveFileData.ballsPerGame--;
                         }
                         break;
                     }
                     case (4): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
-                            switch (m_Difficulty) {
-                                case PB_EASY: m_Difficulty = PB_NORMAL; break;
-                                case PB_NORMAL: m_Difficulty = PB_HARD; break;
-                                case PB_HARD: m_Difficulty = PB_EPIC; break;
-                                case PB_EPIC: m_Difficulty = PB_EPIC; break;
+                            switch (m_saveFileData.difficulty) {
+                                case PB_EASY: m_saveFileData.difficulty = PB_NORMAL; break;
+                                case PB_NORMAL: m_saveFileData.difficulty = PB_HARD; break;
+                                case PB_HARD: m_saveFileData.difficulty = PB_EPIC; break;
+                                case PB_EPIC: m_saveFileData.difficulty = PB_EPIC; break;
                             }
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
-                            switch (m_Difficulty) {
-                                case PB_EASY: m_Difficulty = PB_EASY; break;
-                                case PB_NORMAL: m_Difficulty = PB_EASY; break;
-                                case PB_HARD: m_Difficulty = PB_NORMAL; break;
-                                case PB_EPIC: m_Difficulty = PB_HARD; break;
+                            switch (m_saveFileData.difficulty) {
+                                case PB_EASY: m_saveFileData.difficulty = PB_EASY; break;
+                                case PB_NORMAL: m_saveFileData.difficulty = PB_EASY; break;
+                                case PB_HARD: m_saveFileData.difficulty = PB_NORMAL; break;
+                                case PB_EPIC: m_saveFileData.difficulty = PB_HARD; break;
                             }
                         }
                         break;
                     }
                     case (5): {
                         if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
-                            // Erase the high score file here... maybe play a sound
+                            resetHighScores();
                         }
                     }
                     default: break;
@@ -1046,6 +1093,15 @@ int main(int argc, char const *argv[])
             }
         }
     }
+
+    // Load the saved values for settings and high scores
+    if (!g_PBEngine.pbeLoadSaveFile(g_PBEngine.m_saveFileData, false, false)) {
+        std::string temp2 = SAVEFILENAME;
+        std::string temp = "(PI)nball Engine: ERROR Using settings defaults, failed: " + temp2;
+        g_PBEngine.pbeSendConsole(temp);
+        g_PBEngine.pbeSaveFile (g_PBEngine.m_saveFileData);
+    }
+    else g_PBEngine.pbeSendConsole("(PI)nball Engine: Loaded settings and score file"); 
 
     // Main loop for the pinball game                                
     unsigned long currentTick = GetTickCount64();

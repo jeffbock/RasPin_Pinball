@@ -13,6 +13,18 @@ bool PBEngine::pbeLoadGameStart(){
         if (!gfxTextureLoaded(m_PBTBLStartDoorId)) {
             if (!gfxReloadTexture(m_PBTBLStartDoorId)) return (false);
         }
+        if (!gfxTextureLoaded(m_PBTBLLeftDoorId)) {
+            if (!gfxReloadTexture(m_PBTBLLeftDoorId)) return (false);
+        }
+        if (!gfxTextureLoaded(m_PBTBLRightDoorId)) {
+            if (!gfxReloadTexture(m_PBTBLRightDoorId)) return (false);
+        }
+        if (!gfxTextureLoaded(m_PBTBLDoorDragonId)) {
+            if (!gfxReloadTexture(m_PBTBLDoorDragonId)) return (false);
+        }
+        if (!gfxTextureLoaded(m_PBTBLDragonEyesId)) {
+            if (!gfxReloadTexture(m_PBTBLDragonEyesId)) return (false);
+        }
         if (!gfxTextureLoaded(m_PBTBLFlame1Id)) {
             if (!gfxReloadTexture(m_PBTBLFlame1Id)) return (false);
         }
@@ -27,12 +39,33 @@ bool PBEngine::pbeLoadGameStart(){
 
     stAnimateData animateData;
 
-    m_PBTBLStartDoorId = gfxLoadSprite("Door", "src/resources/textures/startdoor.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
-    gfxSetColor(m_PBTBLStartDoorId, 255, 255, 255, 192);
+    m_PBTBLStartDoorId = gfxLoadSprite("OpenDoor", "src/resources/textures/startdooropen.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLStartDoorId, 255, 255, 255, 255);
+
+    // Load doors and set them up to slide left and right
+    m_PBTBLLeftDoorId = gfxLoadSprite("LeftDoor", "src/resources/textures/DoorLeft.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    m_PBTBLeftDoorStartId = gfxInstanceSprite(m_PBTBLLeftDoorId);
+    gfxSetXY(m_PBTBLeftDoorStartId, 247, 72, false); 
+    m_PBTBLeftDoorEndId = gfxInstanceSprite(m_PBTBLLeftDoorId);
+    gfxSetXY(m_PBTBLeftDoorEndId, 77, 72, false); 
+    gfxLoadAnimateData(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, 0, ANIMATE_X_MASK, 3.0f, 0.0f, false, true, GFX_NOLOOP);
+    gfxCreateAnimation(animateData, true);
+
+    m_PBTBLRightDoorId = gfxLoadSprite("RightDoor", "src/resources/textures/DoorRight.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    m_PBTBRightDoorStartId = gfxInstanceSprite(m_PBTBLRightDoorId);
+    gfxSetXY(m_PBTBRightDoorStartId, 360, 72, false);
+    m_PBTBRightDoorEndId = gfxInstanceSprite(m_PBTBLRightDoorId);
+    gfxSetXY(m_PBTBRightDoorEndId, 600, 72, false);
+    gfxLoadAnimateData(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, 0, ANIMATE_X_MASK, 3.0f, 0.0f, false, true, GFX_NOLOOP);
+    gfxCreateAnimation(animateData, true);
+    
+    m_PBTBLDoorDragonId = gfxLoadSprite("DoorDragon", "src/resources/textures/Dragon.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetScaleFactor(m_PBTBLDoorDragonId, 0.8, false);
+    m_PBTBLDragonEyesId = gfxLoadSprite("DragonEyes", "src/resources/textures/DragonEyes.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
 
     m_PBTBLFlame1Id = gfxLoadSprite("Flame1", "src/resources/textures/flame1.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
     gfxSetColor(m_PBTBLFlame1Id, 255, 255, 255, 92);
-    gfxSetScaleFactor(m_PBTBLFlame1Id, 0.75, false);
+    gfxSetScaleFactor(m_PBTBLFlame1Id, 0.6, false);
 
     m_PBTBLFlame1StartId = gfxInstanceSprite(m_PBTBLFlame1Id);
     gfxSetColor(m_PBTBLFlame1StartId, 255, 255, 255, 92);
@@ -102,6 +135,8 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
         timeoutTicks = 18000;
         blinkCountTicks = 1000;
         blinkOn = true;
+        m_PBTBLOpenDoors = false;
+        m_PBTBLStartDoorsDone = false;
         lastScreenState = m_tableScreenState;
     }
 
@@ -109,14 +144,30 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 
-    // Show the door image with the flames
-    gfxRenderSprite(m_PBTBLStartDoorId, 0, 0);
+    // Hide the dragon behind the doors
+    gfxRenderSprite(m_PBTBLDoorDragonId, 215, 70);
 
+    // Show the door image with the flames - animate if it's opening...
+    if (!m_PBTBLOpenDoors) {
+        gfxRenderSprite(m_PBTBLLeftDoorId, 247, 72);
+        gfxRenderSprite(m_PBTBLRightDoorId, 360, 72);
+    }
+    else{
+        gfxAnimateSprite(m_PBTBLLeftDoorId, currentTick);
+        gfxAnimateSprite(m_PBTBLRightDoorId, currentTick);
+        gfxRenderSprite(m_PBTBLLeftDoorId);
+        gfxRenderSprite(m_PBTBLRightDoorId);
+    }
+
+    gfxRenderSprite(m_PBTBLStartDoorId, 0, 0);
+    
     gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
-    gfxRenderShadowString(m_StartMenuFontId, "Dragons of Destiny", (PB_SCREENWIDTH/2) + 20, 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
-    gfxSetScaleFactor(m_StartMenuFontId, 0.5, false);
-    gfxRenderShadowString(m_StartMenuFontId, "Designed by Jeff Bock", (PB_SCREENWIDTH/2) + 20, 80, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+    if (!m_PBTBLOpenDoors) {
+        gfxRenderShadowString (m_StartMenuFontId, "Dragons of Destiny", (PB_SCREENWIDTH/2) + 20, 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+        gfxSetScaleFactor(m_StartMenuFontId, 0.5, false);
+        gfxRenderShadowString(m_StartMenuFontId, "Designed by Jeff Bock", (PB_SCREENWIDTH/2) + 20, 80, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+    }
     
     gfxAnimateSprite(m_PBTBLFlame1Id, currentTick);
     gfxAnimateSprite(m_PBTBLFlame2Id, currentTick);
@@ -158,12 +209,12 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             // loop through PBTableInst and print each string
             for (int i = 0; i < PBTABLEINSTSIZE; i++) {
                 if (i == 0) {
-                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, PBTableInst[i], (PB_SCREENWIDTH/2) + 20, 130 + (i * 30), 1, GFX_TEXTCENTER);
-                    else gfxRenderShadowString (m_StartMenuFontId, PBTableInst[i], (PB_SCREENWIDTH/2) + 20, 130 + (i * 30), 1, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, PBTableInst[i], (PB_SCREENWIDTH/2) + 20, 130 + (i * 34), 2, GFX_TEXTCENTER);
+                    else gfxRenderShadowString (m_StartMenuFontId, PBTableInst[i], (PB_SCREENWIDTH/2) + 20, 130 + (i * 34), 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
                 }
                 else {
-                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, PBTableInst[i], 220, 130 + (i * 30), 1, GFX_TEXTLEFT);
-                    else gfxRenderShadowString (m_StartMenuFontId, PBTableInst[i], 220, 130 + (i * 30), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 3);
+                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, PBTableInst[i], 220, 130 + (i * 34), 2, GFX_TEXTLEFT);
+                    else gfxRenderShadowString (m_StartMenuFontId, PBTableInst[i], 220, 130 + (i * 34), 2, GFX_TEXTLEFT, 0, 0, 0, 255, 3);
                 }
             }
             break;
@@ -172,8 +223,33 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
             gfxAnimateSprite(m_StartMenuFontId, currentTick);
             gfxSetScaleFactor(m_StartMenuFontId, 0.8, false);
-            if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, "Scores", (PB_SCREENWIDTH/2) + 20, 200, 1, GFX_TEXTCENTER);
-            else gfxRenderShadowString (m_StartMenuFontId, "Scores", (PB_SCREENWIDTH/2) + 20, 200, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+
+            for (int i = 0; i < NUM_HIGHSCORES + 1; i++) {
+                std::string scoreText = std::to_string(m_saveFileData.highScores[i-1].highScore);
+
+                if (i == 0){
+                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, "High Scores", (PB_SCREENWIDTH/2) + 20, 130 + (i * 50), 10, GFX_TEXTCENTER);
+                    else gfxRenderShadowString(m_StartMenuFontId, "High Scores", (PB_SCREENWIDTH/2) + 20, 130 + (i * 50), 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+                }
+                else if (gfxAnimateActive(m_StartMenuFontId)) 
+                {
+                    gfxRenderString(m_StartMenuFontId, m_saveFileData.highScores[i-1].playerInitials, (PB_SCREENWIDTH/2) - 140, 140 + (i * 50), 10, GFX_TEXTLEFT);
+                    gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2) + 150, 140 + (i * 50), 3, GFX_TEXTRIGHT);
+                }
+                else {
+                    gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[i-1].playerInitials, (PB_SCREENWIDTH/2) - 140, 140 + (i * 50), 10, GFX_TEXTLEFT, 0, 0, 0, 255, 3);
+                    gfxRenderShadowString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2) + 150, 140 + (i * 50), 3, GFX_TEXTRIGHT, 0, 0, 0, 255, 3);
+                }
+            }
+            break;
+
+            case START_OPENDOOR:
+
+                if (!m_PBTBLOpenDoors){
+                    gfxAnimateRestart(m_PBTBLLeftDoorId);
+                    gfxAnimateRestart(m_PBTBLRightDoorId);
+                    m_PBTBLOpenDoors = true;
+                }
             break;
 
         default:
@@ -182,7 +258,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     }
 
     // If timeout happens, switch back to "Press Start"
-    if ((timeoutTicks > 0) && (m_tableScreenState != START_START)) {
+    if ((timeoutTicks > 0) && (m_tableScreenState != START_START) && (m_tableScreenState != START_OPENDOOR)) {
         timeoutTicks -= (currentTick - lastTick);
         if (timeoutTicks <= 0) {
             m_tableScreenState = START_START;
@@ -209,19 +285,31 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
     switch (m_tableState) {
         case PBTBL_START: {
 
-            if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId != IDI_START) {
-                    switch (m_tableScreenState) {
-                        case START_START: m_tableScreenState = START_INST; break;
-                        case START_INST: m_tableScreenState = START_SCORES; break;
-                        case START_SCORES: m_tableScreenState = START_START; break;
-                        default: break;
+            if (m_PBTBLOpenDoors) {
+                if ((!gfxAnimateActive(m_PBTBLLeftDoorId)) && (!gfxAnimateActive(m_PBTBLRightDoorId))) m_tableState = PBTBL_STDPLAY; 
+            } 
+            else {
+                if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+                    if (inputMessage.inputId != IDI_START) {
+                        switch (m_tableScreenState) {
+                            case START_START: m_tableScreenState = START_INST; break;
+                            case START_INST: m_tableScreenState = START_SCORES; break;
+                            case START_SCORES: m_tableScreenState = START_START; break;
+                            case START_OPENDOOR: m_tableScreenState = START_OPENDOOR; break;
+                            default: break;
+                        }
                     }
+                    else {
+                        m_tableScreenState = START_OPENDOOR;
+                    }             
                 }
-                else {
-                    // Move to the main gameplay screen
-                }             
             }
+            break;
+        }
+        case PBTBL_STDPLAY: {
+            // Check for input messages and update the game state
+            int temp = 0;
+
             break;
         }
         

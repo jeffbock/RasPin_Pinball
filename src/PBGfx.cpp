@@ -911,7 +911,7 @@ bool PBGfx::gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentT
         }
     }
 
-    return (false);
+    return (true);
 }
 
 // Query to see if any animation is active.  If the animateSpriteId is 0, then it will return true if any animation is active
