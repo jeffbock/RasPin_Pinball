@@ -4,8 +4,10 @@
 #ifndef PBOGLES_h
 #define PBOGLES_h
 
-#include "include_ogl/egl.h"
-#include "include_ogl/gl31.h"
+//#include "include_ogl/egl.h"
+//#include "include_ogl/gl31.h"
+#include <egl.h>
+#include <gl31.h>
 #include <stdio.h>
 #include <iostream>
 #include <fstream>

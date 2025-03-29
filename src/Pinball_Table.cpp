@@ -48,7 +48,7 @@ bool PBEngine::pbeLoadGameStart(){
     gfxSetXY(m_PBTBLeftDoorStartId, 247, 72, false); 
     m_PBTBLeftDoorEndId = gfxInstanceSprite(m_PBTBLLeftDoorId);
     gfxSetXY(m_PBTBLeftDoorEndId, 77, 72, false); 
-    gfxLoadAnimateData(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, 0, ANIMATE_X_MASK, 3.0f, 0.0f, false, true, GFX_NOLOOP);
+    gfxLoadAnimateData(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, 0, ANIMATE_X_MASK, 1.25f, 0.0f, false, true, GFX_NOLOOP);
     gfxCreateAnimation(animateData, true);
 
     m_PBTBLRightDoorId = gfxLoadSprite("RightDoor", "src/resources/textures/DoorRight.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
@@ -56,12 +56,15 @@ bool PBEngine::pbeLoadGameStart(){
     gfxSetXY(m_PBTBRightDoorStartId, 360, 72, false);
     m_PBTBRightDoorEndId = gfxInstanceSprite(m_PBTBLRightDoorId);
     gfxSetXY(m_PBTBRightDoorEndId, 600, 72, false);
-    gfxLoadAnimateData(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, 0, ANIMATE_X_MASK, 3.0f, 0.0f, false, true, GFX_NOLOOP);
+    gfxLoadAnimateData(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, 0, ANIMATE_X_MASK, 1.25f, 0.0f, false, true, GFX_NOLOOP);
     gfxCreateAnimation(animateData, true);
     
     m_PBTBLDoorDragonId = gfxLoadSprite("DoorDragon", "src/resources/textures/Dragon.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetScaleFactor(m_PBTBLDoorDragonId, 0.8, false);
     m_PBTBLDragonEyesId = gfxLoadSprite("DragonEyes", "src/resources/textures/DragonEyes.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+
+    m_PBTBLDoorDungeonId = gfxLoadSprite("DoorDungeon", "src/resources/textures/Dungeon.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetScaleFactor(m_PBTBLDoorDungeonId, 0.8, false);
 
     m_PBTBLFlame1Id = gfxLoadSprite("Flame1", "src/resources/textures/flame1.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
     gfxSetColor(m_PBTBLFlame1Id, 255, 255, 255, 92);
@@ -145,7 +148,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 
     // Hide the dragon behind the doors
-    gfxRenderSprite(m_PBTBLDoorDragonId, 215, 70);
+    gfxRenderSprite(m_PBTBLDoorDungeonId, 215, 80);
 
     // Show the door image with the flames - animate if it's opening...
     if (!m_PBTBLOpenDoors) {

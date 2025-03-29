@@ -22,8 +22,10 @@
 #endif  // Platform include selection
 
 // Includes for all platforms
-#include "include_ogl/egl.h"
-#include "include_ogl/gl31.h"
+#include <egl.h>
+#include <gl31.h>
+//#include "include_ogl/egl.h"
+//#include "include_ogl/gl31.h"
 #include "PBOGLES.h"
 #include "PBGfx.h"
 #include "PInball_IO.h"
@@ -198,7 +200,7 @@ public:
     
     // Start state
     unsigned int m_PBTBLStartDoorId, m_PBTBLLeftDoorId, m_PBTBLRightDoorId, m_PBTBLFlame1Id, m_PBTBLFlame2Id, m_PBTBLFlame3Id; 
-    unsigned int m_PBTBLDoorDragonId, m_PBTBLDragonEyesId;
+    unsigned int m_PBTBLDoorDragonId, m_PBTBLDragonEyesId, m_PBTBLDoorDungeonId;
     unsigned int m_PBTBLFlame1StartId, m_PBTBLFlame2StartId, m_PBTBLFlame3StartId, m_PBTBLeftDoorStartId, m_PBTBRightDoorStartId;
     unsigned int m_PBTBLFlame1EndId, m_PBTBLFlame2EndId, m_PBTBLFlame3EndId, m_PBTBLeftDoorEndId, m_PBTBRightDoorEndId;
     unsigned int m_PBTBLTextStartId, m_PBTBLTextEndId;
@@ -229,7 +231,6 @@ private:
     bool pbeRenderDefaultBackground (unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderStartMenu(unsigned long currentTick, unsigned long lastTick);
-    // bool pbeRenderPlayGame(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderTestMode(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderCredits(unsigned long currentTick, unsigned long lastTick);
@@ -239,7 +240,6 @@ private:
     bool pbeLoadDefaultBackground();
     bool pbeLoadBootUp();
     bool pbeLoadStartMenu();
-    // bool pbeLoadPlayGame();
     bool pbeLoadTestMode();
     bool pbeLoadBenchmark();
     bool pbeLoadCredits();

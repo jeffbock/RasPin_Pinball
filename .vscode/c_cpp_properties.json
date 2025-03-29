@@ -3,7 +3,8 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/src/include_ogl",
+                "${workspaceFolder}/src/include_ogl_win",
+                "C:/Users/jeffd/PInballProj/PInball/src/include_ogl_win",
                 "${workspaceFolder}/**",
                 "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/um",
                 "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/shared",
@@ -19,6 +20,22 @@
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "windows-msvc-x64"
+        },
+        {
+            "name": "RasPi Arm64",
+            "includePath": [
+                "${workspaceFolder}/src/include_ogl_rapspi",
+                "${workspaceFolder}/**",
+                "/usr/include"
+            ],
+            "defines": [
+                "NDEBUG",
+                "ARM_PLATFORM"
+            ],
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-arm"
         }
     ],
     "version": 4
