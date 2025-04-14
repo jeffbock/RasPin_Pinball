@@ -14,7 +14,7 @@
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
-            "preLaunchTask": "C/C++: cl.exe FontGen", // Ensure you have a build task configured
+            "preLaunchTask": "", // Ensure you have a build task configured
             "logging": {
                 "engineLogging": true
             }
@@ -29,7 +29,7 @@
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
-            "preLaunchTask": "C/C++: cl.exe full build PInball", // Ensure you have a build task configured
+            "preLaunchTask": "", // Ensure you have a build task configured
             "logging": {
                 "engineLogging": true
             }

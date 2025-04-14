@@ -15,10 +15,12 @@
 #include "PBWinRender.h"
 
 #else
-#define EXE_MODE_RASPI
 // Rasberry PI specific includes
-// Comment out define below if you want to build / use a PiOS as the simulator instead of windows
-// #define RASPI_SIMULATOR
+#define EXE_MODE_RASPI
+#include "wiringPi.h"
+#include "wiringPiI2C.h"
+#include "PBDebounce.h"
+
 #endif  // Platform include selection
 
 // Includes for all platforms
@@ -207,7 +209,6 @@ public:
     bool m_PBTBLStartDoorsDone, m_PBTBLOpenDoors;
 
     bool m_RestartTable;
-
 private:
 
     PBMainState m_mainState;

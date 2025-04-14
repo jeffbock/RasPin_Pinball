@@ -1,4 +1,4 @@
- // PBGfx contains all the fundamental graphics management operations and sits on top of PBOGLES
+// PBGfx contains all the fundamental graphics management operations and sits on top of PBOGLES
 // MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
 
 #include "PBGfx.h"
@@ -14,6 +14,13 @@ PBGfx::PBGfx() {
 // Destructor
 PBGfx::~PBGfx() {
     // Cleanup code if needed
+}
+
+// Must use std::chrono so tick count can be used in a cross-platform way
+unsigned long PBGfx::GetTickCountGfx() {
+    auto now = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
+    return static_cast<unsigned long>(duration.count());
 }
 
 // Any Gfx specific initialization code
@@ -780,7 +787,7 @@ void PBGfx::gfxLoadAnimateData(stAnimateData *animateData, unsigned int animateS
     animateData->animateSpriteId = animateSpriteId;
     animateData->startSpriteId = startSpriteId;
     animateData->endSpriteId = endSpriteId;
-    animateData->startTick = GetTickCount64();
+    animateData->startTick = GetTickCountGfx();
     animateData->typeMask = typeMask;   
     animateData->animateTimeSec = animateTimeSec;
     animateData->accelPixPerSec = accelPixPerSec;
@@ -960,7 +967,7 @@ bool PBGfx::gfxAnimateRestart(unsigned int animateSpriteId){
 
     auto it = m_animateList.find(animateSpriteId);
     if (it != m_animateList.end()) {
-        it->second.startTick = GetTickCount64();
+        it->second.startTick = GetTickCountGfx();
         it->second.isActive = true;
         return (true);
     }

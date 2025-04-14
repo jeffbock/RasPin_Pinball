@@ -14,6 +14,7 @@
 #include <string>
 #include <map>
 #include <cmath>
+#include <chrono>
 #include "json.hpp"
 #include "PBOGLES.h"
  
@@ -213,12 +214,9 @@ public:
     void         gfxSwap();
     void         gfxClear(float red, float blue, float green, float alpha, bool doFlip);
 
-    /*  Functions to add
-    Create a font sprite type
-    Write text from font sprite at location x,y (from a string / string array?)
-    Create system font(s)
-    */
-
+    // System Clock Function
+    unsigned long GetTickCountGfx();
+    
 private:
     unsigned int gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem);
 

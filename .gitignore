@@ -1,4 +1,8 @@
 # Ignore the build directory and Angle libs, don't want to commmit it
 winbuild/
-src/lib_ogl/libEGL.dll.lib
-src/lib_ogl/libGLESv2.dll.lib
+raspibuild/
+src/lib_ogl_win/libEGL.dll.lib
+src/lib_ogl_win/libGLESv2.dll.lib
+src/lib_ogl_raspi/libEGL.dll.lib
+src/lib_ogl/raspi/libGLESv2.dll.lib
+ 

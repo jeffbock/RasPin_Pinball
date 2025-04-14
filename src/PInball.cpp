@@ -39,7 +39,7 @@ void PBWinSimInput(std::string character, PBPinState inputState, stInputMessage*
             inputMessage->inputType = g_inputDef[i].inputType;
             inputMessage->inputId = g_inputDef[i].id;
             inputMessage->inputState = inputState;
-            inputMessage->instanceTick = GetTickCount64();
+            inputMessage->instanceTick = g_PBEngine.GetTickCountGfx();
 
             // Update the various state items for the input, could be used by the progam later
             if (g_inputDef[i].lastState == inputState) g_inputDef[i].timeInState += (inputMessage->instanceTick - g_inputDef[i].lastStateTick);
@@ -99,6 +99,10 @@ bool PBProcessInput() {
 #ifdef EXE_MODE_RASPI
 #include "PBRasPiRender.h"
 bool PBInitRender (long width, long height) {
+
+// For Rasberry Pi, OGLNativeWindows type is TBD
+if (!g_PBEngine.oglInit (width, height, TBD)) return (false);
+if (!g_PBEngine.gfxInit()) return (false);
 
 return true;
 
@@ -670,7 +674,7 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
 
     if (m_RestartCredits) {
         m_RestartCredits = false;
-        m_StartTick = GetTickCount64(); 
+        m_StartTick = GetTickCountGfx(); 
     }
 
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
@@ -721,7 +725,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     if (!pbeLoadScreen (PB_BENCHMARK)) return (false); 
 
     if (m_RestartBenchmark) {
-        m_BenchmarkStartTick =  GetTickCount64(); 
+        m_BenchmarkStartTick =  GetTickCountGfx(); 
         m_BenchmarkDone = false;
         m_RestartBenchmark = false;
         FPSSwap = 0; smallSpriteCount = 0; spriteTransformCount = 0; bigSpriteCount = 0;
@@ -749,7 +753,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     
     // Clear and Swap rate (may be limited by monitor refresh rate)
     if (elapsedTime < (m_TicksPerScene + m_CountDownTicks)) {
-        while ((GetTickCount64() - currentTick) < 1000) {
+        while ((GetTickCountGfx() - currentTick) < 1000) {
             gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
             gfxRenderShadowString(m_defaultFontSpriteId, "Clear and Swap Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
             FPSSwap++;
@@ -760,7 +764,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
 
     // Number of clears and swaps in one second
     if (elapsedTime < (m_TicksPerScene + m_CountDownTicks)) {
-        while ((GetTickCount64() - currentTick) < 1000) {
+        while ((GetTickCountGfx() - currentTick) < 1000) {
             gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
             FPSSwap++;
             gfxSwap();
@@ -772,7 +776,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     if (elapsedTime < ((m_TicksPerScene *2) + m_CountDownTicks)) {
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
         gfxSetScaleFactor(m_StartMenuSwordId, 0.10, false);
-        while ((GetTickCount64() - currentTick) < 1000) {
+        while ((GetTickCountGfx() - currentTick) < 1000) {
             // Get and random X and Y value, within the screen bounds
             int x = rand() % PB_SCREENWIDTH;
             int y = rand() % PB_SCREENHEIGHT;
@@ -788,7 +792,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     if (elapsedTime < ((m_TicksPerScene *3) + m_CountDownTicks)) {
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
         gfxSetScaleFactor(m_StartMenuSwordId, 3.0f, false);
-        while ((GetTickCount64() - currentTick) < 1000) {
+        while ((GetTickCountGfx() - currentTick) < 1000) {
             
             // Get a ramdom value from -ScreenWidth to +ScreenWidth and -ScreenHeight to +ScreenHeight
             int x = rand() % (PB_SCREENWIDTH * 2) - PB_SCREENWIDTH;
@@ -805,7 +809,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     if (elapsedTime < ((m_TicksPerScene *4) + m_CountDownTicks)) {
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
         
-        while ((GetTickCount64() - currentTick) < 1000) {
+        while ((GetTickCountGfx() - currentTick) < 1000) {
             // Get and random X and Y value, within the screen bounds
             int x = rand() % PB_SCREENWIDTH;
             int y = rand() % PB_SCREENHEIGHT;
@@ -909,7 +913,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 outputMessage.outputType = g_outputDef[m_CurrentOutputItem].outputType;
                 outputMessage.outputId = g_outputDef[m_CurrentOutputItem].id;
                 outputMessage.outputState = g_outputDef[m_CurrentOutputItem].lastState;
-                outputMessage.instanceTick = GetTickCount64();
+                outputMessage.instanceTick = GetTickCountGfx();
                 m_outputQueue.push(outputMessage);
             }
             
@@ -1104,7 +1108,7 @@ int main(int argc, char const *argv[])
     else g_PBEngine.pbeSendConsole("(PI)nball Engine: Loaded settings and score file"); 
 
     // Main loop for the pinball game                                
-    unsigned long currentTick = GetTickCount64();
+    unsigned long currentTick = g_PBEngine.GetTickCountGfx();
     unsigned long lastTick = currentTick;
 
     // Start the input thread
@@ -1113,7 +1117,7 @@ int main(int argc, char const *argv[])
     // The main game engine loop
     while (true) {
 
-        currentTick = GetTickCount64();
+        currentTick = g_PBEngine.GetTickCountGfx();
         stInputMessage inputMessage;
         
         // PB Process Input will be a thread in the PiOS side since it won't have windows messages
