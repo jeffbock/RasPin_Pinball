@@ -1,18 +1,28 @@
 This file tracks the various items to do in the pinball project in rough priority
 
-Create input / output message processing
-Architecture a new thread system - what gameplay, rendering, etc.. elements need their own threads?  Right now it's single threaded...
-Create sound output queue system
+** Getting Raspberry Pi working
+Initialize RasPi inputs from IO cpp structs, using debounce class.  Prepare for multiple I2C devices.
+Create input / output message processing (without threads)
+Debug OGLES build in Raspberry Pi
+Verify button box / full Raspberry Pi operation 
 
-Set up OGL ES code to work w/ PiOS libs / headers
-Set up VS Code to cross compile for PiOS
+** Generic arch improvements
+Make texture load dynamic - will check and load if not currently resident, revamp screen inits to simplify
+Make input / output processing full threaded.
+Create sound output queue system (both Windows and Rasp Pi?  Rasp Pi 1st priority)
+Hook up sound control I2C to volume sliders in settings
+
 Install git LFS as that large bitmaps, etc.. are expected at some point
 Expand sprites to have animated sprites - eg: UV maps within a sprite with different images - base is there but need example to integrate.
     -  Is there some standard sprite format / program that can be used?
-Duplicate all the Windows simulation capability in PiOS
-Save settings info in a file and restore from a file
 
-Lower Priority
+** Gameplay tasks
+Create simple score / gameplay screen
+Generate characters, dungeon screens
+
+** Lower Priority
+Duplicate all the Windows simulation capability in PiOS
+Add some more interesting animation options (Any movement that makes animations better?)
 Fix sprite animation acceleration parameter
 Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
 Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
