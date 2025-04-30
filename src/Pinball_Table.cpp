@@ -191,7 +191,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     }
 
     switch (m_tableScreenState) {
-        case START_START:
+        case PBTBLScreenState::START_START:
             gfxAnimateSprite(m_StartMenuFontId, currentTick);
             gfxSetScaleFactor(m_StartMenuFontId, 0.8, false);
             gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
@@ -205,7 +205,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             if (blinkOn) gfxRenderShadowString(m_StartMenuFontId, "Press Start", (PB_SCREENWIDTH/2) + 20, 200, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
             break;
 
-        case START_INST:
+        case PBTBLScreenState::START_INST:
             gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
             gfxAnimateSprite(m_StartMenuFontId, currentTick);
             gfxSetScaleFactor(m_StartMenuFontId, 0.5, false);
@@ -222,7 +222,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             }
             break;
             
-        case START_SCORES:
+        case PBTBLScreenState::START_SCORES:
             gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
             gfxAnimateSprite(m_StartMenuFontId, currentTick);
             gfxSetScaleFactor(m_StartMenuFontId, 0.8, false);
@@ -246,7 +246,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             }
             break;
 
-            case START_OPENDOOR:
+            case PBTBLScreenState::START_OPENDOOR:
 
                 if (!m_PBTBLOpenDoors){
                     gfxAnimateRestart(m_PBTBLLeftDoorId);
@@ -256,15 +256,15 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             break;
 
         default:
-            m_tableScreenState = START_START;
+            m_tableScreenState = PBTBLScreenState::START_START;
         break;
     }
 
     // If timeout happens, switch back to "Press Start"
-    if ((timeoutTicks > 0) && (m_tableScreenState != START_START) && (m_tableScreenState != START_OPENDOOR)) {
+    if ((timeoutTicks > 0) && (m_tableScreenState != PBTBLScreenState::START_START) && (m_tableScreenState != PBTBLScreenState::START_OPENDOOR)) {
         timeoutTicks -= (currentTick - lastTick);
         if (timeoutTicks <= 0) {
-            m_tableScreenState = START_START;
+            m_tableScreenState = PBTBLScreenState::START_START;
         }
     }
 
@@ -274,7 +274,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
 bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick){
     
     switch (m_tableState) {
-        case PBTBL_START: return pbeRenderGameStart(currentTick, lastTick); break;
+        case PBTableState::PBTBL_START: return pbeRenderGameStart(currentTick, lastTick); break;
         default: return (false); break;
     }
 
@@ -286,30 +286,30 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
 void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
     
     switch (m_tableState) {
-        case PBTBL_START: {
+        case PBTableState::PBTBL_START: {
 
             if (m_PBTBLOpenDoors) {
-                if ((!gfxAnimateActive(m_PBTBLLeftDoorId)) && (!gfxAnimateActive(m_PBTBLRightDoorId))) m_tableState = PBTBL_STDPLAY; 
+                if ((!gfxAnimateActive(m_PBTBLLeftDoorId)) && (!gfxAnimateActive(m_PBTBLRightDoorId))) m_tableState = PBTableState::PBTBL_STDPLAY; 
             } 
             else {
                 if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
                     if (inputMessage.inputId != IDI_START) {
                         switch (m_tableScreenState) {
-                            case START_START: m_tableScreenState = START_INST; break;
-                            case START_INST: m_tableScreenState = START_SCORES; break;
-                            case START_SCORES: m_tableScreenState = START_START; break;
-                            case START_OPENDOOR: m_tableScreenState = START_OPENDOOR; break;
+                            case PBTBLScreenState::START_START: m_tableScreenState = PBTBLScreenState::START_INST; break;
+                            case PBTBLScreenState::START_INST: m_tableScreenState = PBTBLScreenState::START_SCORES; break;
+                            case PBTBLScreenState::START_SCORES: m_tableScreenState = PBTBLScreenState::START_START; break;
+                            case PBTBLScreenState::START_OPENDOOR: m_tableScreenState = PBTBLScreenState::START_OPENDOOR; break;
                             default: break;
                         }
                     }
                     else {
-                        m_tableScreenState = START_OPENDOOR;
+                        m_tableScreenState = PBTBLScreenState::START_OPENDOOR;
                     }             
                 }
             }
             break;
         }
-        case PBTBL_STDPLAY: {
+        case PBTableState::PBTBL_STDPLAY: {
             // Check for input messages and update the game state
             int temp = 0;
 

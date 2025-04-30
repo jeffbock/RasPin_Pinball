@@ -173,8 +173,8 @@ bool PBProcessInput() {
     /////////////////////
     // Table variables
     /////////////////////
-    m_tableState = PBTBL_START; 
-    m_tableScreenState = START_START;
+    m_tableState = PBTableState::PBTBL_START; 
+    m_tableScreenState = PBTBLScreenState::START_START;
 
     // Tables start screen variables
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;

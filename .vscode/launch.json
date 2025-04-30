@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug FontGen",
+            "name": "Windows: Debug FontGen",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/winbuild/fontgen.exe", // Path to the compiled executable
@@ -20,7 +20,7 @@
             }
         },
         {
-            "name": "Debug Pinball",
+            "name": "Windows: Debug Pinball",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/winbuild/pinball.exe", // Path to the compiled executable for pinball.cpp
@@ -29,6 +29,23 @@
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
+            "preLaunchTask": "", // Ensure you have a build task configured
+            "logging": {
+                "engineLogging": true
+            }
+        },
+        {
+            "name": "RasPi: Debug Pinball",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/rpi_build/PInball", // Path to the compiled executable for pinball.cpp
+            "args": [], // Arguments to pass to the program, if any
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
             "preLaunchTask": "", // Ensure you have a build task configured
             "logging": {
                 "engineLogging": true
