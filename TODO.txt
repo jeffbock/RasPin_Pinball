@@ -26,21 +26,3 @@ Add some more interesting animation options (Any movement that makes animations 
 Fix sprite animation acceleration parameter
 Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
 Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
-
-Basic Pinball Features
-Left Ramp: Tomb - gold and 30s ball save / ressurection
-Rigtht Ramp: Ruins - +1 sword power (up to 20) - gold
-Left back path: Trail to town - either to town or to Inn (diverter?)
-Top Lanes: I-N-N, opens the Inn to hire compaions (lock ball) - limited time opening.  Town theme in upper right corner
-If you have enough gold, can hire party member: Wizard, Rogue, Ranger, if not, ball is kicked out
-Dark Forest Pop Bumpers - build up gold
-Right 3 targets: K-E-Y - open door to dungeon - a chance to enter
-Enter dungeon - ball held.  Screen for dungeon.  Random path to Dragon Boss, 4 different rooms
-    Use flippers / activate to pick path
-    Standard: Goblins, # determined by difficulty.  Roll 1d20 > than number to defeat, others fail.  Sword power used automatically (add to roll)
-    Wizard Room: Fireball melts ice
-    Ranger Room: Arrows release ropes / bridge
-    Rogue Room: Traps are disarmed
-    Dragon Room:  Fight dragon.  Each dragon defeat at +1 x multiplier at end of game for score
-                  Any party members come out as multiball.
-                  Ramp / path opens to dragon - hit the target to defeat
