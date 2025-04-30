@@ -22,7 +22,7 @@ Windows development assumes VS Code, along with Visual Stuiod 2022 being install
     - PInball/src/lib_ogl/libEGL.dll.lib
     - PInball/src/lib_ogl/libGLESv2.dll.lib
 
-- In the winows search bar, look for "x64 Native Tools Command Prompt for VS2022" and run it.
+- In the windows search bar, look for "x64 Native Tools Command Prompt for VS2022" and run it.
     - Type "code" and hit enter to launch VS Code.
     - This must be done every time to run / debug in windows as it sets important env variables.
 
