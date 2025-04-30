@@ -134,7 +134,7 @@
             "args": [
                 "-g",
                 "-o",
-                "${workspaceFolder}/rpi_build/PInball",
+                "${workspaceFolder}/raspibuild/PInball",
                 "${workspaceFolder}/src/stb_image.cpp",
                 "${workspaceFolder}/src/PBOGLES.cpp",
                 "${workspaceFolder}/src/PBGfx.cpp",
