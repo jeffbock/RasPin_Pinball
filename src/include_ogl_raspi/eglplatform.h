@@ -15,7 +15,7 @@
  * https://www.github.com/KhronosGroup/EGL-Registry/
  */
 
-#include "include_ogl/khrplatform.h"
+#include <khrplatform.h>
 
 /* Macros used in EGL function prototype declarations.
  *

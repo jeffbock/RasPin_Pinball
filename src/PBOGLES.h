@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
+#include <cmath>
 #include "stb_image.h"
 
 #define OGLES_BLACKCOLOR 0x0 

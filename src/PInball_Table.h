@@ -8,13 +8,13 @@
 
 #include "PInball.h"
 
-enum PBTableState {
+enum class PBTableState {
     PBTBL_START = 0,
     PBTBL_STDPLAY = 1,
     PBTBL_END
 };
 
-enum PBTBLScreenState {
+enum class PBTBLScreenState {
     START_START = 0,
     START_INST = 1,
     START_SCORES = 2,

@@ -302,8 +302,8 @@ void PBOGLES::scaleAndRotateVertices(float* x, float* y, float scale, float rota
         float tempY = *y;
         float angle = rotateDegrees * 3.14159f / 180.0f;
 
-        *x = tempX * cos(angle) - tempY * sin(angle);
-        *y = tempX * sin(angle) + tempY * cos(angle);
+        *x = tempX * std::cos(angle) - tempY * std::sin(angle);
+        *y = tempX * std::sin(angle) + tempY * std::cos(angle);
     }
 }
 

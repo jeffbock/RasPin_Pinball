@@ -1,6 +1,6 @@
 
 #include "PInball_Table.h"
-#include "PInball_TableStr.h"
+#include "Pinball_TableStr.h"
 
 // PBEgine Class Fucntions for the main pinball game
 

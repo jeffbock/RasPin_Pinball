@@ -138,16 +138,16 @@
                 "${workspaceFolder}/src/stb_image.cpp",
                 "${workspaceFolder}/src/PBOGLES.cpp",
                 "${workspaceFolder}/src/PBGfx.cpp",
-                "${workspaceFolder}/src/PBWinRender.cpp",
                 "${workspaceFolder}/src/PBRaspPiRender.cpp",
                 "${workspaceFolder}/src/PInball_IO.cpp",
-                "${workspaceFolder}/src/PInball_Table.cpp",
+                "${workspaceFolder}/src/Pinball_Table.cpp",
                 "${workspaceFolder}/src/PInball.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
                 "-L${workspaceFolder}/src/lib_ogl_raspi",
                 "-lEGL",
                 "-lGLESv2",
-                "-lpthread"
+                "-lpthread",
+                "-lm"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

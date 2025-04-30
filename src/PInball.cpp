@@ -101,12 +101,17 @@ bool PBProcessInput() {
 bool PBInitRender (long width, long height) {
 
 // For Rasberry Pi, OGLNativeWindows type is TBD
-if (!g_PBEngine.oglInit (width, height, TBD)) return (false);
+// if (!g_PBEngine.oglInit (width, height, TBD)) return (false);
 if (!g_PBEngine.gfxInit()) return (false);
 
 return true;
 
 }
+
+bool PBProcessInput() {
+    return (true);
+}
+
 #endif
 
 // End the platform specific code and functions
@@ -560,8 +565,8 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
             else temp = g_outputDef[i].outputName + ": ";
         #endif
         #ifdef EXE_MODE_RASPI
-            if (m_TestMode == PBTESTINPUT) temp = g_inputDef[i].inputName + ": ";
-            else = g_outputDef[i].outputName + ": ";
+            if (m_TestMode == PB_TESTINPUT) temp = g_inputDef[i].inputName + ": ";
+            else temp = g_outputDef[i].outputName + ": ";
         #endif
         
         if ((i == m_CurrentOutputItem) && (m_TestMode == PB_TESTOUTPUT)) gfxSetColor (m_defaultFontSpriteId, 255, 0, 0, 255);
