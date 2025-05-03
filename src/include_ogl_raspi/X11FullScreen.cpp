@@ -1,6 +1,6 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
-#include <X11/extensions/Xinerama.h>
+#include <X11/extensions/Xrandr.h>
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 #include <iostream>
@@ -13,51 +13,62 @@ int main() {
         return -1;
     }
 
-    // Check for Xinerama support
-    if (!XineramaIsActive(display)) {
-        std::cerr << "Xinerama is not active on this display" << std::endl;
+    // Get the default screen
+    int screen = DefaultScreen(display);
+    Window root = RootWindow(display, screen);
+
+    // Query RandR for monitor information
+    XRRScreenResources* screenResources = XRRGetScreenResources(display, root);
+    if (!screenResources) {
+        std::cerr << "Failed to get RandR screen resources" << std::endl;
         XCloseDisplay(display);
         return -1;
     }
 
-    // Get the list of screens
-    int numScreens;
-    XineramaScreenInfo* screens = XineramaQueryScreens(display, &numScreens);
-    if (!screens) {
-        std::cerr << "Failed to query Xinerama screens" << std::endl;
+    // Print available monitors
+    std::cout << "Available monitors:" << std::endl;
+    for (int i = 0; i < screenResources->noutput; ++i) {
+        XRROutputInfo* outputInfo = XRRGetOutputInfo(display, screenResources, screenResources->outputs[i]);
+        if (outputInfo->connection == RR_Connected) {
+            std::cout << "Monitor " << i << ": " << outputInfo->name
+                      << " (" << outputInfo->mm_width << "mm x " << outputInfo->mm_height << "mm)" << std::endl;
+
+            if (outputInfo->crtc) {
+                XRRCrtcInfo* crtcInfo = XRRGetCrtcInfo(display, screenResources, outputInfo->crtc);
+                std::cout << "  Position: (" << crtcInfo->x << ", " << crtcInfo->y << ")"
+                          << ", Resolution: " << crtcInfo->width << "x" << crtcInfo->height << std::endl;
+                XRRFreeCrtcInfo(crtcInfo);
+            }
+        }
+        XRRFreeOutputInfo(outputInfo);
+    }
+
+    // Select a specific monitor (e.g., monitor 1)
+    int selectedMonitor = 1; // Change this to the desired monitor index
+    if (selectedMonitor >= screenResources->noutput) {
+        std::cerr << "Invalid monitor index" << std::endl;
+        XRRFreeScreenResources(screenResources);
         XCloseDisplay(display);
         return -1;
     }
 
-    // Print available screens
-    std::cout << "Available screens:" << std::endl;
-    for (int i = 0; i < numScreens; ++i) {
-        std::cout << "Screen " << i << ": "
-                  << "x=" << screens[i].x_org
-                  << ", y=" << screens[i].y_org
-                  << ", width=" << screens[i].width
-                  << ", height=" << screens[i].height
-                  << std::endl;
-    }
-
-    // Select a specific screen (e.g., screen 1)
-    int selectedScreen = 1; // Change this to the desired screen index
-    if (selectedScreen >= numScreens) {
-        std::cerr << "Invalid screen index" << std::endl;
-        XFree(screens);
+    XRROutputInfo* selectedOutput = XRRGetOutputInfo(display, screenResources, screenResources->outputs[selectedMonitor]);
+    if (!selectedOutput || selectedOutput->connection != RR_Connected || !selectedOutput->crtc) {
+        std::cerr << "Selected monitor is not connected or has no CRTC" << std::endl;
+        XRRFreeOutputInfo(selectedOutput);
+        XRRFreeScreenResources(screenResources);
         XCloseDisplay(display);
         return -1;
     }
 
-    XineramaScreenInfo screen = screens[selectedScreen];
+    XRRCrtcInfo* crtcInfo = XRRGetCrtcInfo(display, screenResources, selectedOutput->crtc);
 
-    // Create a full-screen X11 window on the selected screen
-    Window root = RootWindow(display, DefaultScreen(display));
+    // Create a full-screen X11 window on the selected monitor
     Window window = XCreateSimpleWindow(display, root,
-                                        screen.x_org, screen.y_org,
-                                        screen.width, screen.height,
-                                        0, BlackPixel(display, DefaultScreen(display)),
-                                        BlackPixel(display, DefaultScreen(display)));
+                                        crtcInfo->x, crtcInfo->y,
+                                        crtcInfo->width, crtcInfo->height,
+                                        0, BlackPixel(display, screen),
+                                        BlackPixel(display, screen));
 
     // Set the window to full-screen
     Atom wmState = XInternAtom(display, "_NET_WM_STATE", False);
@@ -137,7 +148,9 @@ cleanup:
     eglDestroyContext(eglDisplay, eglContext);
     eglTerminate(eglDisplay);
     XDestroyWindow(display, window);
-    XFree(screens);
+    XRRFreeCrtcInfo(crtcInfo);
+    XRRFreeOutputInfo(selectedOutput);
+    XRRFreeScreenResources(screenResources);
     XCloseDisplay(display);
 
     return 0;
