@@ -1,5 +1,6 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <X11/extensions/Xinerama.h>
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 #include <iostream>
@@ -12,15 +13,51 @@ int main() {
         return -1;
     }
 
-    int screen = DefaultScreen(display);
-    Window root = RootWindow(display, screen);
+    // Check for Xinerama support
+    if (!XineramaIsActive(display)) {
+        std::cerr << "Xinerama is not active on this display" << std::endl;
+        XCloseDisplay(display);
+        return -1;
+    }
 
-    // Create a full-screen X11 window
-    Window window = XCreateSimpleWindow(display, root, 0, 0,
-                                        DisplayWidth(display, screen),
-                                        DisplayHeight(display, screen),
-                                        0, BlackPixel(display, screen),
-                                        BlackPixel(display, screen));
+    // Get the list of screens
+    int numScreens;
+    XineramaScreenInfo* screens = XineramaQueryScreens(display, &numScreens);
+    if (!screens) {
+        std::cerr << "Failed to query Xinerama screens" << std::endl;
+        XCloseDisplay(display);
+        return -1;
+    }
+
+    // Print available screens
+    std::cout << "Available screens:" << std::endl;
+    for (int i = 0; i < numScreens; ++i) {
+        std::cout << "Screen " << i << ": "
+                  << "x=" << screens[i].x_org
+                  << ", y=" << screens[i].y_org
+                  << ", width=" << screens[i].width
+                  << ", height=" << screens[i].height
+                  << std::endl;
+    }
+
+    // Select a specific screen (e.g., screen 1)
+    int selectedScreen = 1; // Change this to the desired screen index
+    if (selectedScreen >= numScreens) {
+        std::cerr << "Invalid screen index" << std::endl;
+        XFree(screens);
+        XCloseDisplay(display);
+        return -1;
+    }
+
+    XineramaScreenInfo screen = screens[selectedScreen];
+
+    // Create a full-screen X11 window on the selected screen
+    Window root = RootWindow(display, DefaultScreen(display));
+    Window window = XCreateSimpleWindow(display, root,
+                                        screen.x_org, screen.y_org,
+                                        screen.width, screen.height,
+                                        0, BlackPixel(display, DefaultScreen(display)),
+                                        BlackPixel(display, DefaultScreen(display)));
 
     // Set the window to full-screen
     Atom wmState = XInternAtom(display, "_NET_WM_STATE", False);
@@ -100,6 +137,7 @@ cleanup:
     eglDestroyContext(eglDisplay, eglContext);
     eglTerminate(eglDisplay);
     XDestroyWindow(display, window);
+    XFree(screens);
     XCloseDisplay(display);
 
     return 0;
