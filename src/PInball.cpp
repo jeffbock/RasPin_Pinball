@@ -100,8 +100,11 @@ bool PBProcessInput() {
 #include "PBRasPiRender.h"
 bool PBInitRender (long width, long height) {
 
+PBInitPiRender (width, height);
+// if (g_WHND == NULL) return (false);
+
 // For Rasberry Pi, OGLNativeWindows type is TBD
-if (!g_PBEngine.oglInit (width, height, TBD)) return (false);
+// if (!g_PBEngine.oglInit (width, height, TBD)) return (false);
 if (!g_PBEngine.gfxInit()) return (false);
 
 return true;

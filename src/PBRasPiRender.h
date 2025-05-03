@@ -4,6 +4,12 @@
 #ifndef PBRasPiRender_h
 #define PBRasPiRender_h
 
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <EGL/egl.h>
+#include <GLES3/gl31.h>
+#include <iostream>
+
 bool PBInitPiRender (long width, long height);
 
 #endif // PBRasPiRender_h
