@@ -49,4 +49,5 @@ As of this writing Raspberry Pi 5 is running the 12.2 of the GNU compiler toolki
  # Build Natively on Raspberry Pi 5
 Since VS Code should be able to work directly on PiOS, it should be possible to build directly on Raspberry Pi itself.  
 
--  TODO:  No idea how this works yet, will get to it eventually.
+-  Need to add the Xrandr development library to deal w/ multiple screens
+-  (sudo apt install libxrandr-dev)
