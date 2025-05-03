@@ -27,7 +27,9 @@
                 "${workspaceFolder}/**",
                 "/usr/include/EGL",
                 "/usr/include/GLES3",
-                "/usr/include/KHR"
+                "/usr/include/KHR",
+                "/usr/include/X11",
+                "/usr/include/X11/extensions"
             ],
             "defines": [
                 "NDEBUG",

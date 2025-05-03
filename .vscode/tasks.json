@@ -146,10 +146,14 @@
                 "-I/usr/include/EGL",
                 "-I/usr/include/GLES3",
                 "-I/usr/include/KHR",
+                "-I/usr/include/X11",
+                "-I/usr/include/X11/extensions",
                 "-lEGL",
                 "-lGLESv2",
                 "-lpthread",
-                "-lm"
+                "-lm",
+                "-lX11",
+                "-lXrandr"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

@@ -38,7 +38,7 @@
             "name": "RasPi: Debug Pinball",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/rpi_build/PInball", // Path to the compiled executable for pinball.cpp
+            "program": "${workspaceFolder}/raspibuild/PInball", // Path to the compiled executable for pinball.cpp
             "args": [], // Arguments to pass to the program, if any
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

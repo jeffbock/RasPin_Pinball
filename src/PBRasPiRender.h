@@ -6,6 +6,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <X11/extensions/Xrandr.h>
 #include <EGL/egl.h>
 #include <GLES3/gl31.h>
 #include <iostream>
