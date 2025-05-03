@@ -24,7 +24,6 @@
         {
             "name": "RasPi Arm64",
             "includePath": [
-                "${workspaceFolder}/src/include_ogl_rapspi",
                 "${workspaceFolder}/**",
                 "/usr/include/EGL",
                 "/usr/include/GLES3",
