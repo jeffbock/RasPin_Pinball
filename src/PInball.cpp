@@ -319,7 +319,7 @@ bool PBEngine::pbeLoadDefaultBackground(){
 
     pbeSendConsole("(PI)nball Engine: Loading default background resources");
 
-    m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, false, true);
+    m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/Console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, false, true);
     gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 128);
 
     m_BootUpStarsId = gfxLoadSprite("Stars", "src/resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
