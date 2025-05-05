@@ -98,13 +98,16 @@ bool PBProcessInput() {
 // Raspeberry Pi startup and render code
 #ifdef EXE_MODE_RASPI
 #include "PBRasPiRender.h"
+
+EGLNativeWindowType g_PiWindow;
+
 bool PBInitRender (long width, long height) {
 
-PBInitPiRender (width, height);
-// if (g_WHND == NULL) return (false);
+g_PiWindow = PBInitPiRender (width, height);
+if (g_PiWindow == 0) return (false);
 
 // For Rasberry Pi, OGLNativeWindows type is TBD
-// if (!g_PBEngine.oglInit (width, height, TBD)) return (false);
+if (!g_PBEngine.oglInit (width, height, g_PiWindow)) return (false);
 if (!g_PBEngine.gfxInit()) return (false);
 
 return true;

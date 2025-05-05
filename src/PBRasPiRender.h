@@ -11,6 +11,6 @@
 #include <GLES3/gl31.h>
 #include <iostream>
 
-bool PBInitPiRender (long width, long height);
+EGLNativeWindowType PBInitPiRender (long width, long height);
 
 #endif // PBRasPiRender_h

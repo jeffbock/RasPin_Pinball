@@ -4,13 +4,13 @@
 
 #include "PBRasPiRender.h"
 
-bool PBInitPiRender (long width, long height) {
+EGLNativeWindowType PBInitPiRender (long width, long height) {
 
     // Open X11 display
     Display* display = XOpenDisplay(nullptr);
     if (!display) {
         std::cerr << "Failed to open X11 display" << std::endl;
-        return (false);
+        return (0);
     }
 
     // Get the default screen
@@ -22,7 +22,7 @@ bool PBInitPiRender (long width, long height) {
     if (!screenResources) {
         std::cerr << "Failed to get RandR screen resources" << std::endl;
         XCloseDisplay(display);
-        return (false);
+        return (0);
     }
 
     int useMonitor = -1;
@@ -55,7 +55,7 @@ bool PBInitPiRender (long width, long height) {
         std::cerr << "No monitor found with desired resolution" << std::endl;
         XRRFreeScreenResources(screenResources);
         XCloseDisplay(display);
-        return (false);
+        return (0);
     }
 
     // Create a full-screen X11 window
@@ -72,6 +72,5 @@ bool PBInitPiRender (long width, long height) {
     // Map (show) the window
     XMapWindow(display, window);
     
-
-    return (true);
+    return (window);
 }
