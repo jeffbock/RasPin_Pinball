@@ -114,7 +114,30 @@ return true;
 
 }
 
-bool PBProcessInput() {
+bool  PBProcessInput() {
+
+    stInputMessage inputMessage;
+    // Loop through all the inputs in m_inputMapand, read them, check for state change, and send a message if changed
+    for (auto& inputPair : g_PBEngine.m_inputMap) {
+        int inputId = inputPair.first;
+        cDebounceInput& input = inputPair.second;
+
+        // Read the current state of the input
+        int currentState = input.readPin();
+
+        // Check if the state has changed
+        if (currentState != g_inputDef[inputId].lastState) {
+            // Create an input message
+            inputMessage.inputType = g_inputDef[inputId].inputType;
+            inputMessage.inputId = g_inputDef[inputId].id;
+            inputMessage.inputState = currentState;
+            inputMessage.instanceTick = g_PBEngine.GetTickCountGfx();
+
+            g_inputDef[inputId].lastState = currentState;
+            g_PBEngine.m_inputQueue.push(inputMessage);
+        }
+    }
+
     return (true);
 }
 
@@ -1065,7 +1088,76 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
     }
 }
 
-// Main program start
+// Function checks the input / output structures for errors and if Raspberry Pi, sets up the GPIO pins
+bool PBEngine::pbeSetupIO()
+{
+    // Check the input definitions and ensure no duplicates
+    // Need to change this to a self test function - will need to set up Raspberry I/O and breakout boards
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        if (i == 0) g_PBEngine.pbeSendConsole("(PI)nball Engine: Total Inputs: " + std::to_string(NUM_INPUTS)); 
+        for (int j = i + 1; j < NUM_INPUTS; j++) {
+            if (g_inputDef[i].id == g_inputDef[j].id) {
+                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate input ID: " + std::to_string(g_inputDef[i].id));
+                g_PBEngine.m_PassSelfTest = false;
+            }
+            // Check that the board type and pin number are unique
+            if (g_inputDef[i].boardType == g_inputDef[j].boardType && g_inputDef[i].pin == g_inputDef[j].pin) {
+                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate input board/pin: " + std::to_string(g_inputDef[i].id));
+                g_PBEngine.m_PassSelfTest = false;
+            }
+        }
+    }
+
+    // Check the output definitions and ensure no duplicates
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        if (i == 0) g_PBEngine.pbeSendConsole("(PI)nball Engine: Total Outputs: " + std::to_string(NUM_OUTPUTS)); 
+        for (int j = i + 1; j < NUM_OUTPUTS; j++) {
+            if (g_outputDef[i].id == g_outputDef[j].id) {
+                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate output ID: " + std::to_string(g_outputDef[i].id));
+                g_PBEngine.m_PassSelfTest = false;
+            }
+            // Check that the board type and pin number are unique
+            if (g_outputDef[i].boardType == g_outputDef[j].boardType && g_outputDef[i].pin == g_outputDef[j].pin) {
+                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate output board/pin: " + std::to_string(g_outputDef[i].id));
+                g_PBEngine.m_PassSelfTest = false;
+            }
+        }
+    }
+
+    // Set up the GPIO and I2C for Raspberry Pi if in EXE_MODE_RASPI
+    #ifdef EXE_MODE_RASPI
+
+    wiringPiSetupPinType(WPI_PIN_BCM);
+
+    // Setup the devices on the I2C bus (currently only the amplifier)
+    // TODO:  Connect this to the master volume control at some pont.. probably need some I2C write function
+    // TODO:  This will need to be refactored to when more GPIO I2C devices are added
+    int fd = wiringPiI2CSetup(PB_I2C_AMPLIFIER);
+    if (fd > 0) wiringPiI2CRawWrite (fd, 0x20, 1);
+    else (g_PBEngine.m_PassSelfTest = false);
+
+    // Loop through each of the inputs and program the GPIOs and setup the debounce class for each input
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        if (g_inputDef[i].boardType == PB_RASPI){
+            cDebounceInput debounceInput(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS, true, true);
+            g_PBEngine.m_inputMap[g_inputDef[i].id] = debounceInput;
+        }
+    }
+
+    // Repeat for outputs
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        if (g_outputDef[i].boardType == PB_RASPI){
+            pinMode(g_outputDef[i].pin, OUTPUT);
+            digitalWrite(g_outputDef[i].pin, LOW); 
+        }
+    }
+
+    #endif // EXE_MODE_RASPI
+    
+    return (g_PBEngine.m_PassSelfTest);
+}
+
+// Main program start!!   
 int main(int argc, char const *argv[])
 {
     std::string temp;
@@ -1087,28 +1179,8 @@ int main(int argc, char const *argv[])
     g_PBEngine.pbeSendConsole("(PI)nball Engine: System font ready");
     g_PBEngine.pbeSendConsole("(PI)nball Engine: Starting main processing loop");    
    
-    // Check the input definitions and ensure no duplicates
-    // Need to change this to a self test function - will need to set up Raspberry I/O and breakout boards
-    for (int i = 0; i < NUM_INPUTS; i++) {
-        if (i == 0) g_PBEngine.pbeSendConsole("(PI)nball Engine: Total Inputs: " + std::to_string(NUM_INPUTS)); 
-        for (int j = i + 1; j < NUM_INPUTS; j++) {
-            if (g_inputDef[i].id == g_inputDef[j].id) {
-                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate input ID: " + std::to_string(g_inputDef[i].id));
-                g_PBEngine.m_PassSelfTest = false;
-            }
-        }
-    }
-
-    // Check the output definitions and ensure no duplicates
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (i == 0) g_PBEngine.pbeSendConsole("(PI)nball Engine: Total Outputs: " + std::to_string(NUM_OUTPUTS)); 
-        for (int j = i + 1; j < NUM_OUTPUTS; j++) {
-            if (g_outputDef[i].id == g_outputDef[j].id) {
-                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate output ID: " + std::to_string(g_outputDef[i].id));
-                g_PBEngine.m_PassSelfTest = false;
-            }
-        }
-    }
+    // Setup the inputs and outputs
+    g_PBEngine.pbeSetupIO();
 
     // Load the saved values for settings and high scores
     if (!g_PBEngine.pbeLoadSaveFile(g_PBEngine.m_saveFileData, false, false)) {

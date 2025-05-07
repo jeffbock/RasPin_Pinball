@@ -7,6 +7,8 @@
 
 #include <string>
 
+#define PB_I2C_AMPLIFIER 0x4B
+
 // Geneic IO definitions
 enum PBPinState {
     PB_ON = 0,
@@ -48,6 +50,7 @@ struct stInputDef{
 enum PBOutputType {
     PB_OUTPUT_JETBUMPER = 1,
     PB_OUTPUT_POPBUMPER = 2,
+    PB_OUTPUT_LED = 3,
 };
 
 // Placeholder - there are probably items to add here
@@ -67,7 +70,8 @@ struct stOutputDef{
 
 #define IDO_JETBUMPER 0
 #define IDO_POPBUMPER 1
-#define NUM_OUTPUTS 2
+#define IDO_LED1 2
+#define NUM_OUTPUTS 3
 
 #define IDI_LEFTFLIPPER 0
 #define IDI_RIGHTFLIPPER 1

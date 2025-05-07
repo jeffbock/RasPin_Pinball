@@ -89,7 +89,6 @@
                 "${workspaceFolder}/src/PBOGLES.cpp",
                 "${workspaceFolder}/src/PBGfx.cpp",
                 "${workspaceFolder}/src/PBWinRender.cpp",
-                "${workspaceFolder}/src/PBRaspPiRender.cpp",
                 "${workspaceFolder}/src/PInball_IO.cpp",
                 "${workspaceFolder}/src/PInball_Table.cpp",
                 "${workspaceFolder}/src/PInball.cpp",

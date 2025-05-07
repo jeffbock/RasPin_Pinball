@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <vector>
 #include <queue>
+#include <map>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -162,6 +163,12 @@ public:
     bool pbeLoadSaveFile(stSaveFileData &saveData, bool loadDefaults, bool resetScores);
     bool pbeSaveFile(stSaveFileData &saveData);
     void resetHighScores();
+
+    // Setup input / outputs
+    bool pbeSetupIO();
+    #ifdef EXE_MODE_RASPI
+        std::map<int, cDebounceInput> m_inputMap;
+    #endif
 
     // Member variables for the sprites used in the screens
     // We might switch this to a query by name mechansim, but that would be slower...
