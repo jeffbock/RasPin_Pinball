@@ -45,8 +45,8 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
         }
 
         // If the desired size monitor was found, break
-        if (useMonitor != -1) break;
         XRRFreeOutputInfo(outputInfo);
+        if (useMonitor != -1) break;
     }
 
     // Couldn't find the right size monitor
@@ -59,9 +59,19 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
     }
 
     // Create a full-screen X11 window
-    Window window = XCreateSimpleWindow(display, root, xPos, yPos, width, height,0,
-                                        BlackPixel(display, screen),
-                                        BlackPixel(display, screen));
+    XSetWindowAttributes attributes;
+    attributes.override_redirect = True;
+    Window window = XCreateWindow(display, root, xPos, yPos, width, height,0,
+                                  CopyFromParent, InputOutput, CopyFromParent, 
+                                  CWOverrideRedirect, &attributes);
+
+    if(!window)
+    {
+        std::cerr << "Failed to create base X11 Window" << std::endl;
+        XRRFreeScreenResources(screenResources);
+        XCloseDisplay(display);
+        return (0);
+    }
 
     // Set the window to full-screen
     Atom wmState = XInternAtom(display, "_NET_WM_STATE", False);
@@ -71,6 +81,7 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
 
     // Map (show) the window
     XMapWindow(display, window);
+    XFlush(display);
     
     return (window);
 }
