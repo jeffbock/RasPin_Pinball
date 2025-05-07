@@ -41,6 +41,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
+#include "PBDebounce.h"
 
 // Forward declarations for the enums used in the PBEngine class
 enum class PBTableState;

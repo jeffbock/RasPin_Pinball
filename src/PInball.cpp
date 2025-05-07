@@ -130,10 +130,17 @@ bool  PBProcessInput() {
             // Create an input message
             inputMessage.inputType = g_inputDef[inputId].inputType;
             inputMessage.inputId = g_inputDef[inputId].id;
-            inputMessage.inputState = currentState;
+            if (currentState == 0) {
+                inputMessage.inputState = PB_ON;
+                g_inputDef[inputId].lastState = PB_ON;
+            }
+            else{
+                inputMessage.inputState = PB_OFF;
+                g_inputDef[inputId].lastState = PB_OFF;
+            } 
             inputMessage.instanceTick = g_PBEngine.GetTickCountGfx();
 
-            g_inputDef[inputId].lastState = currentState;
+            
             g_PBEngine.m_inputQueue.push(inputMessage);
         }
     }
@@ -1133,14 +1140,16 @@ bool PBEngine::pbeSetupIO()
     // TODO:  Connect this to the master volume control at some pont.. probably need some I2C write function
     // TODO:  This will need to be refactored to when more GPIO I2C devices are added
     int fd = wiringPiI2CSetup(PB_I2C_AMPLIFIER);
-    if (fd > 0) wiringPiI2CRawWrite (fd, 0x20, 1);
+    uint8_t data = 0x20;
+
+    if (fd > 0) wiringPiI2CRawWrite (fd, &data, 1);
     else (g_PBEngine.m_PassSelfTest = false);
 
     // Loop through each of the inputs and program the GPIOs and setup the debounce class for each input
     for (int i = 0; i < NUM_INPUTS; i++) {
         if (g_inputDef[i].boardType == PB_RASPI){
             cDebounceInput debounceInput(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS, true, true);
-            g_PBEngine.m_inputMap[g_inputDef[i].id] = debounceInput;
+            g_PBEngine.m_inputMap.emplace(g_inputDef[i].id, debounceInput);
         }
     }
 
@@ -1148,7 +1157,7 @@ bool PBEngine::pbeSetupIO()
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         if (g_outputDef[i].boardType == PB_RASPI){
             pinMode(g_outputDef[i].pin, OUTPUT);
-            digitalWrite(g_outputDef[i].pin, LOW); 
+            digitalWrite(g_outputDef[i].pin, HIGH); 
         }
     }
 
