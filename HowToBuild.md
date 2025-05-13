@@ -29,6 +29,8 @@ Windows development assumes VS Code and Visual Studio 2022 are already installed
 - Copy your desired ANGLE OGL ES (debug or release) libraries into the PInball structure from where you built ANGLE (angle/out/debug or angle/out/release).  The following libraries shoudl be copied to these locations.
     - PInball/src/lib_ogl/libEGL.dll.lib
     - PInball/src/lib_ogl/libGLESv2.dll.lib
+ 
+-  Imporant NOTE: You must also likely replace the header files in PInball/src/include_ogl with the same files from Angle/include.  These header files must usually be aligned with what was built on the system.
 
 - In the winows search bar, look for "x64 Native Tools Command Prompt for VS2022" and run it.
     - Type "code" and hit enter to launch VS Code.
@@ -41,7 +43,7 @@ Windows development assumes VS Code and Visual Studio 2022 are already installed
 - PInball should now be set up to build in windows and use VS Code as the primary debugger.
     - Hit Crtl-Shift-P to bring up the task menu, select "Windows: Full Pinball Build".
     - Run the EXE either through debug with F5 or by launching the app outside VS Code.
-    - Note: If you have problems with ANGLE / OGLES libraries while building, try and replace the header files in PInball/src/include_ogl with the same files in Angle/include.
+    
  
 - Note: At some point, the Windows setup may be updated to use the headers / libraries directly from the Angle locations, but it does not currently do that, unlike the Raspberry Pi setup.
 
