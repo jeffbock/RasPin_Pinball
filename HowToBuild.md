@@ -1,12 +1,20 @@
+# Why Windows and Raspberry Pi?
+Despite the power of the Rasberry Pi, Windowws remains a faster and more capable development environemnt.  That said, you don't need to use Windows to develop with the PInball engine - you can exclusively use PiOS.  At some point you must move to PiOS since Windows is limited to basic simulaton capabilities and cannot talk to the PInball hardware.  Thankfull, VS Code makes it pretty easy to switch between the two development environments.
+
 # Build Instructions
 The build is set up with VS code, with both Windows and Raspberry Pi 5 build paths.  The assumption is that development and debug is being done on a Windows machine, while final testing will deploy a build to the Raspberry Pi
 
-It is assumed that VS Code is being used as the primary development GUI, so that the development can be portable between Windows and PiOS.
+While using VS Code, by hitting Ctrl-Shift-P, you can bring up the Task Commands.  The following commands exist:
+Windows / Rasberry Pi:  Full Pinball Build - Build the PInball engine and executable to run PInball.
+Windows / Rasberry Pi:  FontGen Build - Builds FontGen.cpp, a utility program takes a truetype font, and generate the files needed to use that font in the PInball engine.
+Windows / Rasberry Pi:  Single file build - used for testing single files
 
 PiOS uses OGL ES 3.1, so this will be the target for the builds and the main display output of the app will be a full-screen OGL ES rendering surface.
 
+The VS code configuration files (eg: tasks.json, launch.json, settings.json, c_cpp_properties.json) are automatically set up correctly depending on your current OS, and per instructions below.
+
 # Building for Windows
-Windows development assumes VS Code, along with Visual Stuiod 2022 being installed to get the MSVC compiler tool chain (cl.exe).  
+Windows development assumes VS Code and Visual Studio 2022 are already installed installed. VS 2022 is required to get the MSVC compiler tool chain (cl.exe).  
 
 - Clone ANGLE repo from GitHub: [ANGLE](https://github.com/google/angle)
 - Follow the ANGLE Dev Instructions: [ANGLE Setup](https://github.com/google/angle/blob/main/doc/DevSetup.md)
@@ -31,20 +39,19 @@ Windows development assumes VS Code, along with Visual Stuiod 2022 being install
     -  Check tasks.json in Pinball/.vscode.  If the versions numbers or location in the linker LIBPATH for your Windows SDK don't match the system, change them to match.
 
 - PInball should now be set up to build in windows and use VS Code as the primary debugger.
-    - To test: Select GLSmall.cpp and hit SHIFT-CTRL-B to build.  This will put an EXE in Pinball/winbuild
+    - Hit Crtl-Shift-P to bring up the task menu, select "Windows: Full Pinball Build".
     - Run the EXE either through debug with F5 or by launching the app outside VS Code.
-    - Note: If you have problems with ANGLE / OGLES libraries while building, try and replace the header files in PInball/src/include_ogl with the same files in Angle/include.  
-
--  TODO:  Final insructions for how to build all of Windows PInball.
+    - Note: If you have problems with ANGLE / OGLES libraries while building, try and replace the header files in PInball/src/include_ogl with the same files in Angle/include.
+ 
+- Note: At some point, the Windows setup may be updated to use the headers / libraries directly from the Angle locations, but it does not currently do that, unlike the Raspberry Pi setup.
 
 # Cross Compile in Windows and running on Raspberry Pi 5
 As of this writing Raspberry Pi 5 is running the 12.2 of the GNU compiler toolkit.  Your cross compiler tools must match to be able to build in Windows but then run the executable on the Raspberry Pi 5.
 
+However, cross compiling on Windows and deploying to Rasberry Pi has proven difficult due to needed libraries, etc.. and is no longer a goal since the Pi 5 has proven quite capable of running VS Code and compiling locally.  That said, if you have other CPP test programs you'd like to build on Windows and send them to the Pi for execution, use the cross-compile toolkit listed below.
+
 -  Install the Arm64 Windows cross-compile toolkit, version 12.2.Rel1   
-
  [AArch64 GNU/Linux target (aarch64-none-linux-gnu) 12.2.Rel](https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-mingw-w64-i686-aarch64-none-linux-gnu.exe?rev=1cb73007050f4e638ba158f2aadcfb81&hash=C2E073917F80FF09C05248CCC5568DDBC99DCC56)
-
- -  TODO:  More steps needed but don't know them yet...  need to include delpoying to Pi as well...
 
  # Build Natively on Raspberry Pi 5
 Since VS Code should be able to work directly on PiOS, it should be possible to build directly on Raspberry Pi itself.  
