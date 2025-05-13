@@ -48,9 +48,9 @@ struct stInputDef{
 // Output defintions
 // Input message structs and types
 enum PBOutputType {
-    PB_OUTPUT_JETBUMPER = 1,
-    PB_OUTPUT_POPBUMPER = 2,
-    PB_OUTPUT_LED = 3,
+    PB_OUTPUT_JETBUMPER = 0,
+    PB_OUTPUT_POPBUMPER = 1,
+    PB_OUTPUT_LED = 2,
 };
 
 // Placeholder - there are probably items to add here

@@ -161,8 +161,8 @@ public:
     void pbeUpdateGameState(stInputMessage inputMessage);
 
     // Save File Functions
-    bool pbeLoadSaveFile(stSaveFileData &saveData, bool loadDefaults, bool resetScores);
-    bool pbeSaveFile(stSaveFileData &saveData);
+    bool pbeLoadSaveFile(bool loadDefaults, bool resetScores);
+    bool pbeSaveFile();
     void resetHighScores();
 
     // Setup input / outputs
