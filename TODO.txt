@@ -27,7 +27,6 @@ Design prototype HW, use test mode to enable
 
 ** Lower Priority
 Duplicate all the Windows simulation capability in PiOS
-
 Fix sprite animation acceleration parameter
 Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
 Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
