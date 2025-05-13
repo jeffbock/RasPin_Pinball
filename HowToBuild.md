@@ -5,9 +5,9 @@ Despite the power of the Rasberry Pi, Windowws remains a faster and more capable
 The build is set up with VS code, with both Windows and Raspberry Pi 5 build paths.  The assumption is that development and debug is being done on a Windows machine, while final testing will deploy a build to the Raspberry Pi
 
 While using VS Code, by hitting Ctrl-Shift-P, you can bring up the Task Commands.  The following commands exist:
-Windows / Rasberry Pi:  Full Pinball Build - Build the PInball engine and executable to run PInball.
-Windows / Rasberry Pi:  FontGen Build - Builds FontGen.cpp, a utility program takes a truetype font, and generate the files needed to use that font in the PInball engine.
-Windows / Rasberry Pi:  Single file build - used for testing single files
+- Windows / Rasberry Pi:  Full Pinball Build - Build the PInball engine and executable to run PInball.
+- Windows / Rasberry Pi:  FontGen Build - Builds FontGen.cpp, a utility program takes a truetype font, and generate the files needed to use that font in the PInball engine.
+- Windows / Rasberry Pi:  Single file build - used for testing single files
 
 PiOS uses OGL ES 3.1, so this will be the target for the builds and the main display output of the app will be a full-screen OGL ES rendering surface.
 
@@ -47,6 +47,20 @@ Windows development assumes VS Code and Visual Studio 2022 are already installed
  
 - Note: At some point, the Windows setup may be updated to use the headers / libraries directly from the Angle locations, but it does not currently do that, unlike the Raspberry Pi setup.
 
+ # Build Natively on Raspberry Pi 5
+
+Install VS Code via your favorite mechanism.
+
+Almost everything that is required to build on Raspberry Pi should be set up by default on in PI OS, assuming your Pi is up to date and libs / headers are in standard locations.
+
+XRandR is required to be installed:  `sudo apt-get install x11-xserver-utils`
+
+PInball is currently designed to run along with X11 and XRandR, and assumes that it will find an 800x480 display to utilize as a full screen display.  The current tested configuration is a 800x480 display on the HDMI1 port, while a larger monitor is used on HDMI2 for running VS Code and full screen debugging.
+
+Of course, to control PInball on PiOS, it is assumed that you also have at least basic breakout box containing left/right flipper, left/right activate and a start button wired up to the Raspberry Pi GPIOs per the design.  The PiOS code does not currently support the simple keyboard simulator used on Windows.
+
+Use the task menu, ctrl-shift-P, to run the build tasks as described at the top of the document.
+
 # Cross Compile in Windows and running on Raspberry Pi 5
 As of this writing Raspberry Pi 5 is running the 12.2 of the GNU compiler toolkit.  Your cross compiler tools must match to be able to build in Windows but then run the executable on the Raspberry Pi 5.
 
@@ -55,16 +69,3 @@ However, cross compiling on Windows and deploying to Rasberry Pi has proven diff
 -  Install the Arm64 Windows cross-compile toolkit, version 12.2.Rel1   
  [AArch64 GNU/Linux target (aarch64-none-linux-gnu) 12.2.Rel](https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-mingw-w64-i686-aarch64-none-linux-gnu.exe?rev=1cb73007050f4e638ba158f2aadcfb81&hash=C2E073917F80FF09C05248CCC5568DDBC99DCC56)
 
- # Build Natively on Raspberry Pi 5
-
-Install VS Code via your favorite mechanism.
-
-Almost everything that is required to build on Raspberry Pi should be set up by default on in PI OS, assuming your Pi is up to date and libs / headers are in standard locations.
-
-XRandR is required to be installed:  sudo apt-get install x11-xserver-utils
-
-PInball is currently designed to run along with X11 and XRandR, and assumes that it will find an 800x480 display to utilize as a full screen display.  The current tested configuration is a 800x480 display on the HDMI1 port, while a larger monitor is used on HDMI2 for running VS Code and full screen debugging.
-
-Of course, to control PInball on PiOS, it is assumed that you also have at least a left/right flipper, left/right activate, start button breakout box wired up to the Raspberry Pi GPIOs per the design.  The PiOS code does not currently support the simple keyboard simulator used on Windows.
-
-Use the task menu, ctrl-shift-P, to run the build tasks as described at the top of the document.
