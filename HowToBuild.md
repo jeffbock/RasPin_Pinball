@@ -56,6 +56,15 @@ However, cross compiling on Windows and deploying to Rasberry Pi has proven diff
  [AArch64 GNU/Linux target (aarch64-none-linux-gnu) 12.2.Rel](https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-mingw-w64-i686-aarch64-none-linux-gnu.exe?rev=1cb73007050f4e638ba158f2aadcfb81&hash=C2E073917F80FF09C05248CCC5568DDBC99DCC56)
 
  # Build Natively on Raspberry Pi 5
-Since VS Code should be able to work directly on PiOS, it should be possible to build directly on Raspberry Pi itself.  
 
--  TODO:  No idea how this works yet, will get to it eventually.
+Install VS Code via your favorite mechanism.
+
+Almost everything that is required to build on Raspberry Pi should be set up by default on in PI OS, assuming your Pi is up to date and libs / headers are in standard locations.
+
+XRandR is required to be installed:  sudo apt-get install x11-xserver-utils
+
+PInball is currently designed to run along with X11 and XRandR, and assumes that it will find an 800x480 display to utilize as a full screen display.  The current tested configuration is a 800x480 display on the HDMI1 port, while a larger monitor is used on HDMI2 for running VS Code and full screen debugging.
+
+Of course, to control PInball on PiOS, it is assumed that you also have at least a left/right flipper, left/right activate, start button breakout box wired up to the Raspberry Pi GPIOs per the design.  The PiOS code does not currently support the simple keyboard simulator used on Windows.
+
+Use the task menu, ctrl-shift-P, to run the build tasks as described at the top of the document.
