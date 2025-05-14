@@ -20,6 +20,6 @@ Half-scale pinball project using Raspberry Pi.  The goal is to fully develop a s
     - IO expanders / driver boards used in conjunction with Pi controller to greatly expand number of elements in the system.
 -  Sound and display using standard HDMI and audio output jacks from the Pi controller.
 -  Allow for flexibility in configuration, eg: standard menus but SW should be architectued to quickly change tables and layouts.
--  Everything should be rougly half-scale compared to a normal pinball machine - which means ~14" W x 28"W play area with a 1/2" ball.
+-  Everything should be rougly half-scale compared to a normal pinball machine - which means ~14" W x 28"H play area with a 1/2" ball.
     -  All custom pinball mechanisms will be developed with 3D models for 3D printing, allowing others to easily duplicate the construction.
     -  Cabinet will be developed using bass wood plywood.
