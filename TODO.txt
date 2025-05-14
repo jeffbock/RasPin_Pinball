@@ -1,6 +1,7 @@
 This file tracks the various items to do in the pinball project in rough priority
 
 ** Raspberry Pi Specific Work
+Fix Menu Benchmark Mode - acts weird in RaspPi, but still mostly generates scores
 Hook up sound control I2C to volume sliders in settings
 Get I2C bus input / output extenders included in I/O
 
