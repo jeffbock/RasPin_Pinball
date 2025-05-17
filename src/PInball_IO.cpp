@@ -1,6 +1,10 @@
 // PInball_IO.cpp:  Shared input / output structures used the pinball engine
 // These need to be defined by the user for the specific table
 
+// Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
+// The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
+// Additional details can also be found in the license file in the root of the project.
+
 #include "PInball_IO.h"
 
 // Output definitions

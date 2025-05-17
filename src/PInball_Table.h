@@ -1,7 +1,10 @@
 // PInball_Table.h:  Header file for the specific functions needed for the pinball table.  
 //                   This includes further PBEngine Class functions and any support functions unique to the table
 //                   These need to be defined by the user for the specific table
-// MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
+
+// Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
+// The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
+// Additional details can also be found in the license file in the root of the project.
 
 #ifndef PInball_Table_h
 #define PInball_Table_h
