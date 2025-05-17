@@ -40,7 +40,7 @@ Windows development assumes VS Code and Visual Studio 2022 are already installed
  
 -  Imporant NOTE: You must also likely replace the header files in PInball/src/include_ogl with the same files from Angle/include.  These header files must usually be aligned with what was built on the system.
 
-- In the winows search bar, look for "x64 Native Tools Command Prompt for VS2022" and run it.
+- In the windows search bar, look for "x64 Native Tools Command Prompt for VS2022" and run it.
     - Type "code" and hit enter to launch VS Code.
     - This must be done every time to run / debug in windows as it sets important env variables.
 
@@ -76,4 +76,3 @@ However, cross compiling on Windows and deploying to Rasberry Pi has proven diff
 
 -  Install the Arm64 Windows cross-compile toolkit, version 12.2.Rel1   
  [AArch64 GNU/Linux target (aarch64-none-linux-gnu) 12.2.Rel](https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-mingw-w64-i686-aarch64-none-linux-gnu.exe?rev=1cb73007050f4e638ba158f2aadcfb81&hash=C2E073917F80FF09C05248CCC5568DDBC99DCC56)
-
