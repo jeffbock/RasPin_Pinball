@@ -93,20 +93,93 @@ bool PBProcessInput() {
     return (true);
 }
 
+bool PBProcessOutput() {
+    return (true);
+}
+
 #endif
 
 // Raspeberry Pi startup and render code
 #ifdef EXE_MODE_RASPI
 #include "PBRasPiRender.h"
+
+EGLNativeWindowType g_PiWindow;
+
 bool PBInitRender (long width, long height) {
 
+g_PiWindow = PBInitPiRender (width, height);
+if (g_PiWindow == 0) return (false);
+
 // For Rasberry Pi, OGLNativeWindows type is TBD
-if (!g_PBEngine.oglInit (width, height, TBD)) return (false);
+if (!g_PBEngine.oglInit (width, height, g_PiWindow)) return (false);
 if (!g_PBEngine.gfxInit()) return (false);
 
 return true;
 
 }
+
+bool  PBProcessInput() {
+
+    stInputMessage inputMessage;
+    // Loop through all the inputs in m_inputMap and, read them, check for state change, and send a message if changed
+    for (auto& inputPair : g_PBEngine.m_inputMap) {
+        int inputId = inputPair.first;
+        cDebounceInput& input = inputPair.second;
+
+        // Read the current state of the input
+        int currentState = input.readPin();
+
+        // Check if the state has changed
+        if (currentState != g_inputDef[inputId].lastState) {
+            // Create an input message
+            inputMessage.inputType = g_inputDef[inputId].inputType;
+            inputMessage.inputId = g_inputDef[inputId].id;
+            if (currentState == 0) {
+                inputMessage.inputState = PB_ON;
+                g_inputDef[inputId].lastState = PB_ON;
+            }
+            else{
+                inputMessage.inputState = PB_OFF;
+                g_inputDef[inputId].lastState = PB_OFF;
+            } 
+            inputMessage.instanceTick = g_PBEngine.GetTickCountGfx();
+            
+            g_PBEngine.m_inputQueue.push(inputMessage);
+        }
+    }
+
+    return (true);
+}
+
+bool PBProcessOutput() {
+
+    // Pop the message from output queue and process it
+    // This is a simple loop for now, but will more complicated later
+    // The message queue should actually automatically manage on/off times and control of LEDs without main loop interaction
+
+    // Pop the entry from the m_outputQueue
+    while (!g_PBEngine.m_outputQueue.empty())
+    {    
+        stOutputMessage tempMessage = g_PBEngine.m_outputQueue.front();
+        g_PBEngine.m_outputQueue.pop();
+
+        // Process the mesage - we only support the one LED right now
+        if (tempMessage.outputId == PB_OUTPUT_LED) {
+            // Set the LED state
+            if (tempMessage.outputState == PB_ON) {
+                // Set the LED on
+                digitalWrite(g_outputDef[PB_OUTPUT_LED].pin,HIGH); 
+            }
+            else {
+                // Set the LED off
+                 digitalWrite(g_outputDef[PB_OUTPUT_LED].pin,LOW); 
+            }
+        }
+        
+    }
+    return (true);
+}
+
 #endif
 
 // End the platform specific code and functions
@@ -168,8 +241,8 @@ return true;
     /////////////////////
     // Table variables
     /////////////////////
-    m_tableState = PBTBL_START; 
-    m_tableScreenState = START_START;
+    m_tableState = PBTableState::PBTBL_START; 
+    m_tableScreenState = PBTBLScreenState::START_START;
 
     // Tables start screen variables
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
@@ -182,7 +255,7 @@ return true;
 
 }
 
-bool PBEngine::pbeLoadSaveFile(stSaveFileData &saveData, bool loadDefaults, bool resetScores){
+bool PBEngine::pbeLoadSaveFile(bool loadDefaults, bool resetScores){
     
     // Try and load the save file - if it exists, load it, place it in the stSaveFileData structure and return true
     // otherwise load the defaults if not present, or if loadDefaults is true
@@ -217,7 +290,7 @@ void PBEngine::resetHighScores(){
     }
 }
 
-bool PBEngine::pbeSaveFile(stSaveFileData &saveData){
+bool PBEngine::pbeSaveFile(){
     
     // Save the current settings and high scores to the save file, overwriting any previous data
     std::ofstream saveFile(SAVEFILENAME, std::ios::binary);
@@ -308,7 +381,7 @@ bool PBEngine::pbeLoadDefaultBackground(){
 
     pbeSendConsole("(PI)nball Engine: Loading default background resources");
 
-    m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, false, true);
+    m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/Console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, false, true);
     gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 128);
 
     m_BootUpStarsId = gfxLoadSprite("Stars", "src/resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
@@ -560,8 +633,8 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
             else temp = g_outputDef[i].outputName + ": ";
         #endif
         #ifdef EXE_MODE_RASPI
-            if (m_TestMode == PBTESTINPUT) temp = g_inputDef[i].inputName + ": ";
-            else = g_outputDef[i].outputName + ": ";
+            if (m_TestMode == PB_TESTINPUT) temp = g_inputDef[i].inputName + ": ";
+            else temp = g_outputDef[i].outputName + ": ";
         #endif
         
         if ((i == m_CurrentOutputItem) && (m_TestMode == PB_TESTOUTPUT)) gfxSetColor (m_defaultFontSpriteId, 255, 0, 0, 255);
@@ -825,9 +898,9 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         gfxRenderShadowString(m_defaultFontSpriteId, "Transformed Sprite Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         gfxSwap();
         return (true);
+        // Print the final results when done
     }
-
-    // Print the final results when done
+    
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
     temp = "Benchmark Complete - Results";
     gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 180, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
@@ -907,15 +980,15 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                     if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
                     else g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
-                }
 
-                // Send the message to the output queue
-                stOutputMessage outputMessage;        
-                outputMessage.outputType = g_outputDef[m_CurrentOutputItem].outputType;
-                outputMessage.outputId = g_outputDef[m_CurrentOutputItem].id;
-                outputMessage.outputState = g_outputDef[m_CurrentOutputItem].lastState;
-                outputMessage.instanceTick = GetTickCountGfx();
-                m_outputQueue.push(outputMessage);
+                     // Send the message to the output queue
+                    stOutputMessage outputMessage;        
+                    outputMessage.outputType = g_outputDef[m_CurrentOutputItem].outputType;
+                    outputMessage.outputId = g_outputDef[m_CurrentOutputItem].id;
+                    outputMessage.outputState = g_outputDef[m_CurrentOutputItem].lastState;
+                    outputMessage.instanceTick = GetTickCountGfx();
+                    m_outputQueue.push(outputMessage);
+                    }
             }
             
             // If the start button has been pressed, return to the start menu
@@ -963,7 +1036,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
                 if (inputMessage.inputId == IDI_START) {
                     // Save the values to the settings file and exit the screen
-                    pbeSaveFile(m_saveFileData);
+                    pbeSaveFile();
                     m_mainState = PB_STARTMENU;
                     m_RestartMenu = true;
                 }
@@ -1054,7 +1127,78 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
     }
 }
 
-// Main program start
+// Function checks the input / output structures for errors and if Raspberry Pi, sets up the GPIO pins
+bool PBEngine::pbeSetupIO()
+{
+    // Check the input definitions and ensure no duplicates
+    // Need to change this to a self test function - will need to set up Raspberry I/O and breakout boards
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        if (i == 0) g_PBEngine.pbeSendConsole("(PI)nball Engine: Total Inputs: " + std::to_string(NUM_INPUTS)); 
+        for (int j = i + 1; j < NUM_INPUTS; j++) {
+            if (g_inputDef[i].id == g_inputDef[j].id) {
+                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate input ID: " + std::to_string(g_inputDef[i].id));
+                g_PBEngine.m_PassSelfTest = false;
+            }
+            // Check that the board type and pin number are unique
+            if (g_inputDef[i].boardType == g_inputDef[j].boardType && g_inputDef[i].pin == g_inputDef[j].pin) {
+                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate input board/pin: " + std::to_string(g_inputDef[i].id));
+                g_PBEngine.m_PassSelfTest = false;
+            }
+        }
+    }
+
+    // Check the output definitions and ensure no duplicates
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        if (i == 0) g_PBEngine.pbeSendConsole("(PI)nball Engine: Total Outputs: " + std::to_string(NUM_OUTPUTS)); 
+        for (int j = i + 1; j < NUM_OUTPUTS; j++) {
+            if (g_outputDef[i].id == g_outputDef[j].id) {
+                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate output ID: " + std::to_string(g_outputDef[i].id));
+                g_PBEngine.m_PassSelfTest = false;
+            }
+            // Check that the board type and pin number are unique
+            if (g_outputDef[i].boardType == g_outputDef[j].boardType && g_outputDef[i].pin == g_outputDef[j].pin) {
+                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate output board/pin: " + std::to_string(g_outputDef[i].id));
+                g_PBEngine.m_PassSelfTest = false;
+            }
+        }
+    }
+
+    // Set up the GPIO and I2C for Raspberry Pi if in EXE_MODE_RASPI
+    #ifdef EXE_MODE_RASPI
+
+    wiringPiSetupPinType(WPI_PIN_BCM);
+
+    // Setup the devices on the I2C bus (currently only the amplifier)
+    // TODO:  Connect this to the master volume control at some pont.. probably need some I2C write function
+    // TODO:  This will need to be refactored to when more GPIO I2C devices are added
+    int fd = wiringPiI2CSetup(PB_I2C_AMPLIFIER);
+    uint8_t data = 0x20;
+
+    if (fd > 0) wiringPiI2CRawWrite (fd, &data, 1);
+    else (g_PBEngine.m_PassSelfTest = false);
+
+    // Loop through each of the inputs and program the GPIOs and setup the debounce class for each input
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        if (g_inputDef[i].boardType == PB_RASPI){
+            cDebounceInput debounceInput(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS, true, true);
+            g_PBEngine.m_inputMap.emplace(g_inputDef[i].id, debounceInput);
+        }
+    }
+
+    // Repeat for outputs
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        if (g_outputDef[i].boardType == PB_RASPI){
+            pinMode(g_outputDef[i].pin, OUTPUT);
+            digitalWrite(g_outputDef[i].pin,LOW); 
+        }
+    }
+
+    #endif // EXE_MODE_RASPI
+    
+    return (g_PBEngine.m_PassSelfTest);
+}
+
+// Main program start!!   
 int main(int argc, char const *argv[])
 {
     std::string temp;
@@ -1074,40 +1218,22 @@ int main(int argc, char const *argv[])
     g_PBEngine.m_consoleTextHeight = g_PBEngine.gfxGetTextHeight(g_PBEngine.m_defaultFontSpriteId);
 
     g_PBEngine.pbeSendConsole("(PI)nball Engine: System font ready");
-    g_PBEngine.pbeSendConsole("(PI)nball Engine: Starting main processing loop");    
-   
-    // Check the input definitions and ensure no duplicates
-    // Need to change this to a self test function - will need to set up Raspberry I/O and breakout boards
-    for (int i = 0; i < NUM_INPUTS; i++) {
-        if (i == 0) g_PBEngine.pbeSendConsole("(PI)nball Engine: Total Inputs: " + std::to_string(NUM_INPUTS)); 
-        for (int j = i + 1; j < NUM_INPUTS; j++) {
-            if (g_inputDef[i].id == g_inputDef[j].id) {
-                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate input ID: " + std::to_string(g_inputDef[i].id));
-                g_PBEngine.m_PassSelfTest = false;
-            }
-        }
-    }
 
-    // Check the output definitions and ensure no duplicates
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (i == 0) g_PBEngine.pbeSendConsole("(PI)nball Engine: Total Outputs: " + std::to_string(NUM_OUTPUTS)); 
-        for (int j = i + 1; j < NUM_OUTPUTS; j++) {
-            if (g_outputDef[i].id == g_outputDef[j].id) {
-                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate output ID: " + std::to_string(g_outputDef[i].id));
-                g_PBEngine.m_PassSelfTest = false;
-            }
-        }
-    }
-
+    // Setup the inputs and outputs
+    g_PBEngine.pbeSendConsole("(PI)nball Engine: Setting up I/O");
+    g_PBEngine.pbeSetupIO();
+    
     // Load the saved values for settings and high scores
-    if (!g_PBEngine.pbeLoadSaveFile(g_PBEngine.m_saveFileData, false, false)) {
+    if (!g_PBEngine.pbeLoadSaveFile(false, false)) {
         std::string temp2 = SAVEFILENAME;
         std::string temp = "(PI)nball Engine: ERROR Using settings defaults, failed: " + temp2;
         g_PBEngine.pbeSendConsole(temp);
-        g_PBEngine.pbeSaveFile (g_PBEngine.m_saveFileData);
+        g_PBEngine.pbeSaveFile ();
     }
     else g_PBEngine.pbeSendConsole("(PI)nball Engine: Loaded settings and score file"); 
 
+    g_PBEngine.pbeSendConsole("(PI)nball Engine: Starting main processing loop");    
+   
     // Main loop for the pinball game                                
     unsigned long currentTick = g_PBEngine.GetTickCountGfx();
     unsigned long lastTick = currentTick;
@@ -1121,9 +1247,10 @@ int main(int argc, char const *argv[])
         currentTick = g_PBEngine.GetTickCountGfx();
         stInputMessage inputMessage;
         
-        // PB Process Input will be a thread in the PiOS side since it won't have windows messages
+        // PB Process Input and Output will be a thread in the PiOS side since it won't have windows messages
         // Will need to fix this later...
         PBProcessInput();
+        PBProcessOutput();
 
         // Process all the input message queue and update the game state
         if (!g_PBEngine.m_inputQueue.empty()){

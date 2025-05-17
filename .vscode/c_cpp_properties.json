@@ -24,9 +24,12 @@
         {
             "name": "RasPi Arm64",
             "includePath": [
-                "${workspaceFolder}/src/include_ogl_rapspi",
                 "${workspaceFolder}/**",
-                "/usr/include"
+                "/usr/include/EGL",
+                "/usr/include/GLES3",
+                "/usr/include/KHR",
+                "/usr/include/X11",
+                "/usr/include/X11/extensions"
             ],
             "defines": [
                 "NDEBUG",

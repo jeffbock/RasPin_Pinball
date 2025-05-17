@@ -5,18 +5,18 @@
 #define PInball_h
 
 // Choose the EXE mode for the code - Windows is used for developent / debug, Rasberry Pi is used for the final build
-// Comment out this line if building for Rasberry Pi
-#define EXE_MODE_WINDOWS
+// Change the PBBuildSwitch.h to change the build mode
+#include "PBBuildSwitch.h"
 
 #ifdef EXE_MODE_WINDOWS
 // Windows specific includes
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "PBWinRender.h"
+#endif
 
-#else
+#ifdef EXE_MODE_RASPI
 // Rasberry PI specific includes
-#define EXE_MODE_RASPI
 #include "wiringPi.h"
 #include "wiringPiI2C.h"
 #include "PBDebounce.h"
@@ -36,14 +36,16 @@
 #include <stdio.h>
 #include <vector>
 #include <queue>
+#include <map>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
+#include "PBDebounce.h"
 
 // Forward declarations for the enums used in the PBEngine class
-enum PBTableState;
-enum PBTBLScreenState;
+enum class PBTableState;
+enum class PBTBLScreenState;
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 800
@@ -159,9 +161,15 @@ public:
     void pbeUpdateGameState(stInputMessage inputMessage);
 
     // Save File Functions
-    bool pbeLoadSaveFile(stSaveFileData &saveData, bool loadDefaults, bool resetScores);
-    bool pbeSaveFile(stSaveFileData &saveData);
+    bool pbeLoadSaveFile(bool loadDefaults, bool resetScores);
+    bool pbeSaveFile();
     void resetHighScores();
+
+    // Setup input / outputs
+    bool pbeSetupIO();
+    #ifdef EXE_MODE_RASPI
+        std::map<int, cDebounceInput> m_inputMap;
+    #endif
 
     // Member variables for the sprites used in the screens
     // We might switch this to a query by name mechansim, but that would be slower...

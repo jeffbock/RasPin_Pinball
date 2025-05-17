@@ -1,28 +1,52 @@
 This file tracks the various items to do in the pinball project in rough priority
 
-** Getting Raspberry Pi working
-Initialize RasPi inputs from IO cpp structs, using debounce class.  Prepare for multiple I2C devices.
-Create input / output message processing (without threads)
-Debug OGLES build in Raspberry Pi
-Verify button box / full Raspberry Pi operation 
+** Raspberry Pi Specific Work
+Fix Menu Benchmark Mode - acts weird in RaspPi, but still mostly generates scores
+Hook up sound control I2C to volume sliders in settings
+Get I2C bus input / output extenders included in I/O
 
 ** Generic arch improvements
 Make texture load dynamic - will check and load if not currently resident, revamp screen inits to simplify
+    Load textures at first time, and check before rendering if loaded.  If not, reload.
+Refactor Menus - make them more standardized and use one menu rendering function
+Refactor asset setup - just load them once, and keep them. 
+Make output system automatic - main loop can set on / off durations, LED patterns, etc.. and out loop will manage
 Make input / output processing full threaded.
 Create sound output queue system (both Windows and Rasp Pi?  Rasp Pi 1st priority)
-Hook up sound control I2C to volume sliders in settings
-
-Install git LFS as that large bitmaps, etc.. are expected at some point
+Add some more interesting animation options (Any movement that makes animations better?)
 Expand sprites to have animated sprites - eg: UV maps within a sprite with different images - base is there but need example to integrate.
     -  Is there some standard sprite format / program that can be used?
 
 ** Gameplay tasks
 Create simple score / gameplay screen
 Generate characters, dungeon screens
+Super complicated state machine for normal gameplay (eg: the game)
+
+** Hardware enabling
+Design prototype HW, use test mode to enable
+    * Flippers, Sligshots, Pop Bumpers, Lane / Ball Detectors, Multiball lock gate
 
 ** Lower Priority
 Duplicate all the Windows simulation capability in PiOS
-Add some more interesting animation options (Any movement that makes animations better?)
 Fix sprite animation acceleration parameter
 Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
 Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
+Install git LFS as that large bitmaps, etc.. are expected at some point
+
+Basic Pinball Features
+Left Ramp: Tomb - gold and 30s ball save / ressurection
+Rigtht Ramp: Ruins - +1 sword power (up to 20) - gold
+Left back path: Trail to town - either to town or to Inn (diverter?)
+Top Lanes: I-N-N, opens the Inn to hire compaions (lock ball) - limited time opening.  Town theme in upper right corner
+If you have enough gold, can hire party member: Wizard, Rogue, Ranger, if not, ball is kicked out
+Dark Forest Pop Bumpers - build up gold
+Right 3 targets: K-E-Y - open door to dungeon - a chance to enter
+Enter dungeon - ball held.  Screen for dungeon.  Random path to Dragon Boss, 4 different rooms
+    Use flippers / activate to pick path
+    Standard: Goblins, # determined by difficulty.  Roll 1d20 > than number to defeat, others fail.  Sword power used automatically (add to roll)
+    Wizard Room: Fireball melts ice
+    Ranger Room: Arrows release ropes / bridge
+    Rogue Room: Traps are disarmed
+    Dragon Room:  Fight dragon.  Each dragon defeat at +1 x multiplier at end of game for score
+                  Any party members come out as multiball.
+                  Ramp / path opens to dragon - hit the target to defeat

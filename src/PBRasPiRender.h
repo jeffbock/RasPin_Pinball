@@ -4,6 +4,13 @@
 #ifndef PBRasPiRender_h
 #define PBRasPiRender_h
 
-bool PBInitPiRender (long width, long height);
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <X11/extensions/Xrandr.h>
+#include <EGL/egl.h>
+#include <GLES3/gl31.h>
+#include <iostream>
+
+EGLNativeWindowType PBInitPiRender (long width, long height);
 
 #endif // PBRasPiRender_h
