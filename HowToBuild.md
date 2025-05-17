@@ -13,6 +13,14 @@ PiOS uses OGL ES 3.1, so this will be the target for the builds and the main dis
 
 The VS code configuration files (eg: tasks.json, launch.json, settings.json, c_cpp_properties.json) are automatically set up correctly depending on your current OS, and per instructions below.
 
+**Important Note**:  You must change the #define in PBBuildSwitch.h depending on which build you want. For example,
+
+    `
+    // #define EXE_MODE_WINDOWS
+    #define EXE_MODE_RASPI
+    `
+    Would be the setting when bulding on a Raspberry Pi.
+
 # Building for Windows
 Windows development assumes VS Code and Visual Studio 2022 are already installed installed. VS 2022 is required to get the MSVC compiler tool chain (cl.exe).  
 
@@ -57,7 +65,7 @@ XRandR is required to be installed:  `sudo apt-get install x11-xserver-utils`
 
 PInball is currently designed to run along with X11 and XRandR, and assumes that it will find an 800x480 display to utilize as a full screen display.  The current tested configuration is a 800x480 display on the HDMI1 port, while a larger monitor is used on HDMI2 for running VS Code and full screen debugging.
 
-Of course, to control PInball on PiOS, it is assumed that you also have at least basic breakout box containing left/right flipper, left/right activate and a start button wired up to the Raspberry Pi GPIOs per the design.  The PiOS code does not currently support the simple keyboard simulator used on Windows.
+Of course, to control PInball on PiOS, it is assumed that you also have at least a basic breakout box containing left/right flipper, left/right activate and a start button wired up to the Raspberry Pi GPIOs per the design.  The PiOS code does not currently support the simple keyboard simulator used on Windows.
 
 Use the task menu, ctrl-shift-P, to run the build tasks as described at the top of the document.
 
