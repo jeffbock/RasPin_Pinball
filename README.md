@@ -2,10 +2,7 @@
 Half-scale pinball project using Raspberry Pi.  The goal is to fully develop a system of SW and HW using Raspberry PI and various easy to source HW pieces to develop a half size machine with all the basic pinball requirements.  
 
 <img src="https://github.com/user-attachments/assets/57f19724-b2ef-4bbc-9d49-0114196ab59f" alt="Screenshot 2025-05-13 224816" width="400">
-<img src="https://github.com/user-attachments/assets/b3703c41-70b1-40f0-bd77-2578b7076be8" alt="Screenshot 2025-05-13 224901" width="400"> 
-
-<img src="https://github.com/user-attachments/assets/57f19724-b2ef-4bbc-9d49-0114196ab59f" alt="Screenshot 2025-05-13 224816" width="400">
-<img src="https://github.com/user-attachments/assets/b3703c41-70b1-40f0-bd77-2578b7076be8" alt="Screenshot 2025-05-13 224901" width="400"> 
+<img src="https://github.com/user-attachments/assets/b3703c41-70b1-40f0-bd77-2578b7076be8" alt="Screenshot 2025-05-13 224901" width="400">  
 
 # Feature Goals
 - Standard piball electro-magnetic devices:  Bumpers, Pop-Bumpers, Slingshots, Lane sensors, flippers
