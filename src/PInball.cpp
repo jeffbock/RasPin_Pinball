@@ -6,6 +6,7 @@
 // Additional details can also be found in the license file in the root of the project.
 
 #include "PInball.h"
+#include "PInballMenus.h"
 
  // Global pinball engine object
 PBEngine g_PBEngine;
@@ -521,6 +522,107 @@ bool PBEngine::pbeLoadStartMenu(){
     return (m_PBStartMenuLoaded);
 }
 
+
+// Function generically renders a menu with a cursor at an x/y location
+
+bool PBEngine::pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int fontSprite, unsigned int selectedItem, 
+                                    int x, int y, int lineSpacing, std::map<unsigned int, std::string>* menuItems,
+                                    bool useShadow, bool useCursor, unsigned int redShadow, 
+                                    unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset){
+
+    // Check that the cursor sprite and font sprite are valid, and fontSprite is actually a font
+    if ((gfxIsSprite(cursorSprite) == false) && (useCursor ==  true)) return (false);
+    if (gfxIsFontSprite(fontSprite) == false) return (false);
+
+    unsigned int cursorX = x, cursorY = y;
+    unsigned int menuX = x, menuY = y;
+    
+    // Get the cursor and font scale factors
+    float cursorScale = 0; 
+    int cursorWidth = 0, cursorHeight  = 0; 
+    unsigned int cursorCenterOffset = 0;
+
+    // If using the cursor, get the metrics, if not using, then scale factors will be 0, but they will not be used anywhere
+    if (useCursor) {
+        cursorScale = gfxGetScaleFactor(cursorSprite);
+        cursorHeight = gfxGetBaseHeight(cursorSprite);
+        cursorWidth = gfxGetBaseWidth(cursorSprite);    
+
+         // Calculate the scaled width and height of the cursor
+        cursorWidth = (int)((float)cursorWidth * cursorScale);
+        cursorHeight = (int)((float)cursorHeight * cursorScale);
+    }
+    
+    // Calculate the scaled max height of the font
+    float fontScale = gfxGetScaleFactor(fontSprite);
+    int fontHeight  = gfxGetTextHeight(fontSprite);
+    fontHeight = (int)((float)fontHeight * fontScale);
+
+    cursorCenterOffset = (fontHeight - cursorHeight) / 2;
+
+    // Get the count of items in the menu, then loop through each of the items and render them.  If the item is selected, render the cursor and make use the shadow text
+    unsigned int itemIndex = 0;
+
+    for (auto& item : *menuItems) {
+        // Get the item text and calculate the width
+        std::string itemText = item.second;
+        unsigned int itemWidth = gfxStringWidth(fontSprite, itemText, 1);
+
+        // Calculate the x position of the menu item
+        menuY += (itemIndex * (fontHeight + lineSpacing));
+
+        // Render the menu item with shadow depending on the selected item
+        if (selectedItem == item.first) {
+            if (useShadow) gfxRenderShadowString(fontSprite, itemText, menuX, menuY, 1, GFX_TEXTLEFT, redShadow, greenShadow, blueShadow, alphaShadow, shadowOffset);
+            else gfxRenderString(fontSprite, itemText, menuX, menuY, 1, GFX_TEXTLEFT);
+
+            if (useCursor) (cursorSprite, cursorX, cursorY + cursorCenterOffset);
+        } else {
+            gfxRenderString(fontSprite, itemText, menuX, menuY, 1, GFX_TEXTLEFT);
+        }
+        itemIndex++;
+    }
+    
+    return (true);
+}
+
+// Renders the main menu
+bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastTick){
+
+   if (!pbeLoadScreen (PB_STARTMENU)) return (false); 
+
+   if (m_RestartMenu) {
+        m_CurrentSettingsItem = 1; 
+        m_RestartMenu = false;
+        gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
+        gfxSetRotateDegrees(m_StartMenuSwordId, 0.0f, false);
+    } 
+
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+
+    // Render the default background
+    pbeRenderDefaultBackground (currentTick, lastTick);
+
+    int tempX = PB_SCREENWIDTH / 2;
+
+    gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
+    gfxRenderShadowString(m_StartMenuFontId, MenuTitle, tempX, 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+
+    gfxSetColor(m_StartMenuFontId, 255 ,255, 255, 255);
+
+    // Render the menu items with shadow depending on the selected item
+    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentMenuItem, 290, 85, 10, &(g_mainMenu), true, true, 64, 0, 255, 255, 3);
+
+    // Add insturctions to the bottom of the screen - calculate the x position based on string length
+    gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1, GFX_TEXTLEFT, 0,0,0,255,2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
+
+    return (true);
+}
+
+/*
 bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastTick){
 
    if (!pbeLoadScreen (PB_STARTMENU)) return (false); 
@@ -591,6 +693,8 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
     gfxRenderSprite(m_StartMenuSwordId, 240, swordY);          
     return (true);
 }
+*/
+
 
 // Test Mode Screren
 bool PBEngine::pbeLoadTestMode(){

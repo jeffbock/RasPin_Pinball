@@ -5,6 +5,9 @@
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
 // Additional details can also be found in the license file in the root of the project.
 
+// NOTE:  This IO file is to be used with the basic PInball breakout box setup, (see HW schematics /hw/SimpleBreakoutSchematic.png)
+// All active connections use the GPIO pins on the Raspberry Pi directily, rather than I2C and expansion ICs
+
 #include "PInball_IO.h"
 
 // Output definitions

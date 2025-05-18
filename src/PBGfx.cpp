@@ -301,6 +301,16 @@ bool PBGfx::gfxIsSprite (unsigned int spriteId){
     else return (false);
 }
 
+// Query function to see if a sprite exists
+bool PBGfx::gfxIsFontSprite (unsigned int spriteId){
+    auto it = m_instanceList.find(spriteId);
+    if (it == m_instanceList.end()) return (false);
+    
+    // Check to make sure it's a font
+    if (m_spriteList[it->second.parentSpriteId].mapType == GFX_TEXTMAP) return (true);
+    else return (false);
+}
+
 // Will load all texture and key info for a base sprite and create the 1st instance of the sprite
 unsigned int PBGfx::gfxLoadSprite(const std::string& spriteName, const std::string& textureFileName, gfxTexType textureType,
                                   gfxSpriteMap mapType, gfxTexCenter textureCenter, bool keepResident, bool useTexture) {

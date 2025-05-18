@@ -167,6 +167,7 @@ public:
     unsigned int gfxInstanceSprite (unsigned int parentSpriteId, stSpriteInstance instance);
     unsigned int gfxInstanceSprite (unsigned int parentSpriteId);
     bool         gfxIsSprite (unsigned int spriteId);
+    bool         gfxIsFontSprite (unsigned int spriteId);
     
     // Several ways to call the render sprite function - remaining values should be set before calling rendersprite
     bool         gfxRenderSprite(unsigned int spriteId);

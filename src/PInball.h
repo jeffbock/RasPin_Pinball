@@ -84,29 +84,6 @@ enum PBDifficultyMode{
     PB_DMEND
 };
 
-#define PB_EASY_TEXT "Easy"
-#define PB_NORMAL_TEXT "Normal"
-#define PB_HARD_TEXT "Hard"
-#define PB_EPIC_TEXT "Epic"
-
-#define MenuTitle "Dragons of Destiny"
-#define Menu1 "Play Pinball"
-#define Menu1Fail "Play Pinball (Disabled)"
-#define Menu2 "Settings"
-#define Menu3 "Test Mode"
-#define Menu4 "Benchmark"
-#define Menu5 "Console"
-#define Menu6 "Credits"
-
-#define MenuSettingsTitle "Settings"
-#define MenuSettings1 "Main Volume: "
-#define MenuSettings2 "Music Volume: "
-#define MenuSettings3 "Balls Per Game: "
-#define MenuSettings4 "Difficulty: "
-#define MenuSettings5 "Reset High Scores"
-
-#define NUM_SETTINGS 5
-
 struct stInputMessage {
     PBInputType inputType;
     unsigned int inputId;
@@ -247,6 +224,10 @@ private:
     bool pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderCredits(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderSettings(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int fontSprite, unsigned int selectedItem, 
+                              int x, int y, int lineSpacing, std::map<unsigned int, std::string>* menuItems,
+                              bool useShadow, bool useCursor, unsigned int redShadow, 
+                              unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset);
 
     // Private functions for loading main state screens
     bool pbeLoadDefaultBackground();
