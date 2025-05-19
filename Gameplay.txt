@@ -1,5 +1,6 @@
 
-Basic Pinball Features
+Current ideas for the gameplay - subject to change
+
 Left Ramp: Tomb - gold and 30s ball save / ressurection
 Rigtht Ramp: Ruins - +1 sword power (up to 20) - gold
 Left back path: Trail to town - either to town or to Inn (diverter?)

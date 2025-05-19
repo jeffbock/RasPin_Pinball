@@ -4,15 +4,19 @@ This file tracks the various items to do in the pinball project in rough priorit
 Fix Menu Benchmark Mode - acts weird in RaspPi, but still mostly generates scores
 Hook up sound control I2C to volume sliders in settings
 Get I2C bus input / output extenders included in I/O
+Create a cmake to build the program in Pi, and put EXE in right place to make paths work vs VS Code builds
+Add info how to install wiringPi into How to Build.
+Debug why game menu delays aren't working and shadows don't seem to be appearing?  Make shadows on instructions more pronounced
 
 ** Generic arch improvements
-Change menu system to be generic - too hardcoded and specific to screen size
-Add menu item to enable output montitor mode - and then replace play screen with output status
-    - Make input / output test screen rendering more generic so it can be used in both places?
 Make texture load dynamic - will check and load if not currently resident, revamp screen inits to simplify
     Load textures at first time, and check before rendering if loaded.  If not, reload.
-Refactor Menus - make them more standardized and use one menu rendering function
-Refactor asset setup - just load them once, and keep them. 
+    Change flow so that system always is successful loading sprites, but texture could fail and try and reload later
+    Refactor asset setup - just load them once, and keep them. 
+Add menu item to enable output montitor mode - and then transparent overlay play screen with output status
+    - Reorganize menus to make all diags under one item, simplify 1st menu
+    - Make input / output test screen rendering more generic so it can be used in both places?
+    - Put menu items to control transparency and turn normal screen on / off
 Make output system automatic - main loop can set on / off durations, LED patterns, etc.. and out loop will manage
 Make input / output processing full threaded.
 Create sound output queue system (both Windows and Rasp Pi?  Rasp Pi 1st priority)
@@ -28,6 +32,12 @@ Super complicated state machine for normal gameplay (eg: the game)
 ** Hardware enabling
 Design prototype HW, use test mode to enable
     * Flippers, Sligshots, Pop Bumpers, Lane / Ball Detectors, Multiball lock gate
+    * Build proto cabinet w/ foam board
+    * Decide to migrate to larger HDMI screen or not?
+
+** Documentation
+Write up arch docs
+Write API / Programmers "How to Use" Docs for system
 
 ** Lower Priority
 Duplicate all the Windows simulation capability in PiOS
@@ -36,20 +46,5 @@ Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3
 Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
 Install git LFS as that large bitmaps, etc.. are expected at some point
 
-Basic Pinball Features
-Left Ramp: Tomb - gold and 30s ball save / ressurection
-Rigtht Ramp: Ruins - +1 sword power (up to 20) - gold
-Left back path: Trail to town - either to town or to Inn (diverter?)
-Top Lanes: I-N-N, opens the Inn to hire compaions (lock ball) - limited time opening.  Town theme in upper right corner
-If you have enough gold, can hire party member: Wizard, Rogue, Ranger, if not, ball is kicked out
-Dark Forest Pop Bumpers - build up gold
-Right 3 targets: K-E-Y - open door to dungeon - a chance to enter
-Enter dungeon - ball held.  Screen for dungeon.  Random path to Dragon Boss, 4 different rooms
-    Use flippers / activate to pick path
-    Standard: Goblins, # determined by difficulty.  Roll 1d20 > than number to defeat, others fail.  Sword power used automatically (add to roll)
-    Wizard Room: Fireball melts ice
-    Ranger Room: Arrows release ropes / bridge
-    Rogue Room: Traps are disarmed
-    Dragon Room:  Fight dragon.  Each dragon defeat at +1 x multiplier at end of game for score
-                  Any party members come out as multiball.
-                  Ramp / path opens to dragon - hit the target to defeat
+** Way in the future stuff
+Add a 3D model sprite - allow for 3D objects on the screens, basic animations, etc.. Tons of work here depending on how complicated
