@@ -38,7 +38,7 @@ std::map<unsigned int, std::string>  g_settingsMenu = {
 #define PB_HARD_TEXT "Hard"
 #define PB_EPIC_TEXT "Epic"
 
-#define NUM_SETTINGS 5
+// #define NUM_SETTINGS 5
 
 #define CURSOR_TO_MENU_SPACING 8
 

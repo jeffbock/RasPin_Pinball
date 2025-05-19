@@ -217,12 +217,12 @@ bool PBProcessOutput() {
     m_consoleTextHeight = 0;
 
     // Start Menu variables
-    m_CurrentMenuItem = 1;
+    m_CurrentMenuItem = 0;
     m_RestartMenu = true;
     m_GameStarted = false;
 
     // Setting Menu variables - at some points these should saved to a file and loaded from a file
-    m_CurrentSettingsItem = 1;
+    m_CurrentSettingsItem = 0;
     m_RestartSettings = true;
 
     // Credits screen variables
@@ -591,7 +591,7 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
    if (!pbeLoadScreen (PB_STARTMENU)) return (false); 
 
    if (m_RestartMenu) {
-        m_CurrentSettingsItem = 1; 
+        m_CurrentSettingsItem = 0; 
         m_RestartMenu = false;
         gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
         gfxSetRotateDegrees(m_StartMenuSwordId, 0.0f, false);
@@ -717,20 +717,6 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
     gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
     gfxSetColor(m_StartMenuFontId, 255 ,255, 255, 255);
 
-    /*
-     std::string Setting1Temp = MenuSettings1 + std::to_string(m_saveFileData.mainVolume);
-     std::string Setting2Temp = MenuSettings2 + std::to_string(m_saveFileData.musicVolume);
-     std::string Setting3Temp = MenuSettings3 + std::to_string(m_saveFileData.ballsPerGame);
-     std::string Setting4Temp = MenuSettings4;
-     switch (m_saveFileData.difficulty) {
-        case PB_EASY: Setting4Temp += "Easy"; break;
-        case PB_NORMAL: Setting4Temp += "Normal"; break;
-        case PB_HARD: Setting4Temp += "Hard"; break;
-        case PB_EPIC: Setting4Temp += "Epic"; break;
-     }
-     std::string Setting5Temp = MenuSettings5;
-     */
-
     // Add the extra data to the menu strings before displaying
     tempMenu[0] += std::to_string(m_saveFileData.mainVolume);
     tempMenu[1] += std::to_string(m_saveFileData.musicVolume);
@@ -743,46 +729,8 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
     }
     
     // Render the menu items with shadow depending on the selected item
-    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentSettingsItem, 255, 85, 6, &tempMenu, true, true, 64, 0, 255, 255, 3);
-
-    /*
-     unsigned int swordY = 89;
-
-     // Determine where to put the sword cursor and give blue underline to selected text
-     switch (m_CurrentSettingsItem) {
-        case (1): swordY = 89; break;
-        case (2): swordY = 154; break;
-        case (3): swordY = 219; break;
-        case (4): swordY = 284; break;
-        case (5): swordY = 349; break;
-        default: break;
-    }
-
-    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
-    if (m_CurrentSettingsItem == 1) gfxRenderShadowString(m_StartMenuFontId, Setting1Temp, 250, 85, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else gfxRenderString(m_StartMenuFontId, Setting1Temp, 250, 85, 1, GFX_TEXTLEFT);
-
-    if (m_CurrentSettingsItem == 2) gfxRenderShadowString(m_StartMenuFontId, Setting2Temp, 250, 150, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else gfxRenderString(m_StartMenuFontId, Setting2Temp, 250, 150, 1, GFX_TEXTLEFT);
-
-    if (m_CurrentSettingsItem == 3) gfxRenderShadowString(m_StartMenuFontId, Setting3Temp, 250, 215, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else gfxRenderString(m_StartMenuFontId, Setting3Temp, 250, 215, 1, GFX_TEXTLEFT);
-
-    if (m_CurrentSettingsItem == 4) gfxRenderShadowString(m_StartMenuFontId, Setting4Temp, 250, 280, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else gfxRenderString(m_StartMenuFontId, Setting4Temp, 250, 280, 1, GFX_TEXTLEFT);
-
-    if (m_CurrentSettingsItem == 5) gfxRenderShadowString(m_StartMenuFontId, Setting5Temp, 250, 345, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else gfxRenderString(m_StartMenuFontId, Setting5Temp, 250, 345, 1, GFX_TEXTLEFT);
-
-     // Add insturctions to the bottom of the screen
-     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-     gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", 615, 405, 1, GFX_TEXTLEFT, 0,0,0,255,2);
-     gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1, GFX_TEXTLEFT, 0,0,0,255,2);
-     gfxRenderShadowString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
- 
-     gfxRenderSprite(m_StartMenuSwordId, 200, swordY);
-     */
-           
+    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentSettingsItem, 200, 95, 6, &tempMenu, true, true, 64, 0, 255, 255, 3);
+        
      return (true);
 }
 
@@ -993,22 +941,24 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             // If either left button is pressed, subtract 1 from m_currentMenuItem
             if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_LEFTFLIPPER) {
-                    if (m_CurrentMenuItem > 1) m_CurrentMenuItem--;
+                    // Get the current menu item count from g_mainMenu
+                    if (m_CurrentMenuItem > 0) m_CurrentMenuItem--;
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                    if (m_CurrentMenuItem < 6) m_CurrentMenuItem++;
+                    int temp = g_mainMenu.size();
+                    if (m_CurrentMenuItem < (temp -1)) m_CurrentMenuItem++;
                 }
 
                 if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                     // Do something based on the menu item
                     switch (m_CurrentMenuItem) {
-                        case (1):  if (m_PassSelfTest) m_mainState = PB_PLAYGAME; break;
-                        case (2):  m_mainState = PB_SETTINGS; m_RestartSettings = true; break;
-                        case (3):  m_mainState = PB_TESTMODE; m_RestartTestMode = true; break;
-                        case (4):  m_mainState = PB_BENCHMARK; m_RestartBenchmark = true; break;
-                        case (5):  m_mainState = PB_BOOTUP; m_RestartBootUp = true; break;
-                        case (6):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
+                        case (0):  if (m_PassSelfTest) m_mainState = PB_PLAYGAME; break;
+                        case (1):  m_mainState = PB_SETTINGS; m_RestartSettings = true; break;
+                        case (2):  m_mainState = PB_TESTMODE; m_RestartTestMode = true; break;
+                        case (3):  m_mainState = PB_BENCHMARK; m_RestartBenchmark = true; break;
+                        case (4):  m_mainState = PB_BOOTUP; m_RestartBootUp = true; break;
+                        case (5):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
                         default: break;
                     }
                 }                
@@ -1081,11 +1031,12 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_SETTINGS: {
             if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_LEFTFLIPPER) {
-                    if (m_CurrentSettingsItem > 1) m_CurrentSettingsItem--;
+                    if (m_CurrentSettingsItem > 0) m_CurrentSettingsItem--;
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                    if (m_CurrentSettingsItem < (NUM_SETTINGS)) m_CurrentSettingsItem++;
+                    int temp = g_settingsMenu.size();
+                    if (m_CurrentSettingsItem < (temp -1)) m_CurrentSettingsItem++;
                 }
                 if (inputMessage.inputId == IDI_START) {
                     // Save the values to the settings file and exit the screen
@@ -1097,7 +1048,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 
             if (((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) && inputMessage.inputState == PB_ON){
                 switch (m_CurrentSettingsItem) {
-                    case (1): {
+                    case (0): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
                             if (m_saveFileData.mainVolume < 10) m_saveFileData.mainVolume++;
                         }
@@ -1106,7 +1057,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         }
                         break;
                     }
-                    case (2): {
+                    case (1): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
                             if (m_saveFileData.musicVolume < 10) m_saveFileData.musicVolume++;
                         }
@@ -1115,7 +1066,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         }
                         break;
                     }
-                    case (3): {
+                    case (2): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
                             if (m_saveFileData.ballsPerGame < 9) m_saveFileData.ballsPerGame++;
                         }
@@ -1124,7 +1075,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         }
                         break;
                     }
-                    case (4): {
+                    case (3): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
                             switch (m_saveFileData.difficulty) {
                                 case PB_EASY: m_saveFileData.difficulty = PB_NORMAL; break;
@@ -1143,7 +1094,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         }
                         break;
                     }
-                    case (5): {
+                    case (4): {
                         if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                             resetHighScores();
                         }
