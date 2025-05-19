@@ -12,6 +12,8 @@
 #include <map>
 #include <string>
 
+// Details for the main menu
+#define MenuTitle "Dragons of Destiny"
 std::map<unsigned int, std::string>  g_mainMenu = {
     {0, "Play Pinball"},
     {1, "Settings"},
@@ -21,7 +23,8 @@ std::map<unsigned int, std::string>  g_mainMenu = {
     {5, "Credits"}
 };
 
-// Make a global variable same as above, but for the settings menu
+// Details for the settings menu
+#define MenuSettingsTitle "Settings"
 std::map<unsigned int, std::string>  g_settingsMenu = {
     {0, "Main Volume: "},
     {1, "Music Volume: "},
@@ -34,22 +37,6 @@ std::map<unsigned int, std::string>  g_settingsMenu = {
 #define PB_NORMAL_TEXT "Normal"
 #define PB_HARD_TEXT "Hard"
 #define PB_EPIC_TEXT "Epic"
-
-#define MenuTitle "Dragons of Destiny"
-#define Menu1 "Play Pinball"
-#define Menu1Fail "Play Pinball (Disabled)"
-#define Menu2 "Settings"
-#define Menu3 "Test Mode"
-#define Menu4 "Benchmark"
-#define Menu5 "Console"
-#define Menu6 "Credits"
-
-#define MenuSettingsTitle "Settings"
-#define MenuSettings1 "Main Volume: "
-#define MenuSettings2 "Music Volume: "
-#define MenuSettings3 "Balls Per Game: "
-#define MenuSettings4 "Difficulty: "
-#define MenuSettings5 "Reset High Scores"
 
 #define NUM_SETTINGS 5
 
