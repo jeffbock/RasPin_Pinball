@@ -488,42 +488,7 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
     return (true);
 }
 
-// Menu Screen
-
-bool PBEngine::pbeLoadStartMenu(){
-
-    if (m_PBStartMenuLoaded) 
-    {
-        // Check that the textures are loaded
-        if (!gfxTextureLoaded(m_StartMenuFontId)) {
-            if (!gfxReloadTexture(m_StartMenuFontId)) return (false);
-        }
-        if (!gfxTextureLoaded(m_StartMenuSwordId)) {
-            if (!gfxReloadTexture(m_StartMenuSwordId)) return (false);
-        }
-
-        return (true);
-    }
-
-    // Load the font for the start menu
-    m_StartMenuFontId = gfxLoadSprite("Start Menu Font", MENUFONT, GFX_PNG, GFX_TEXTMAP, GFX_UPPERLEFT, true, true);
-    if (m_StartMenuFontId == NOSPRITE) return (false);
-
-    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
-
-    m_StartMenuSwordId = gfxLoadSprite("Start Menu Sword", MENUSWORD, GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, false, true);
-    if (m_StartMenuSwordId == NOSPRITE) return (false);
-
-    gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
-    gfxSetColor(m_StartMenuSwordId, 200, 200, 200, 200);
-
-    m_PBStartMenuLoaded = true;
-
-    return (m_PBStartMenuLoaded);
-}
-
-
-// Function generically renders a menu with a cursor at an x/y location
+// Function generically renders a menu with a cursor at an x/y location, simplifies the use of creating new menus
 
 bool PBEngine::pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int fontSprite, unsigned int selectedItem, 
                                     int x, int y, int lineSpacing, std::map<unsigned int, std::string>* menuItems,
@@ -569,21 +534,55 @@ bool PBEngine::pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int font
         unsigned int itemWidth = gfxStringWidth(fontSprite, itemText, 1);
 
         // Calculate the x position of the menu item
-        menuY += (itemIndex * (fontHeight + lineSpacing));
+        menuY = y + (itemIndex * (fontHeight + lineSpacing));
 
         // Render the menu item with shadow depending on the selected item
         if (selectedItem == item.first) {
-            if (useShadow) gfxRenderShadowString(fontSprite, itemText, menuX, menuY, 1, GFX_TEXTLEFT, redShadow, greenShadow, blueShadow, alphaShadow, shadowOffset);
-            else gfxRenderString(fontSprite, itemText, menuX, menuY, 1, GFX_TEXTLEFT);
+            if (useShadow) gfxRenderShadowString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT, redShadow, greenShadow, blueShadow, alphaShadow, shadowOffset);
+            else gfxRenderString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT);
 
-            if (useCursor) (cursorSprite, cursorX, cursorY + cursorCenterOffset);
+            if (useCursor) gfxRenderSprite (cursorSprite, cursorX, menuY + cursorCenterOffset);
         } else {
-            gfxRenderString(fontSprite, itemText, menuX, menuY, 1, GFX_TEXTLEFT);
+            gfxRenderString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT);
         }
         itemIndex++;
     }
     
     return (true);
+}
+
+// Main Menu Screen Setup
+
+bool PBEngine::pbeLoadStartMenu(){
+
+    if (m_PBStartMenuLoaded) 
+    {
+        // Check that the textures are loaded
+        if (!gfxTextureLoaded(m_StartMenuFontId)) {
+            if (!gfxReloadTexture(m_StartMenuFontId)) return (false);
+        }
+        if (!gfxTextureLoaded(m_StartMenuSwordId)) {
+            if (!gfxReloadTexture(m_StartMenuSwordId)) return (false);
+        }
+
+        return (true);
+    }
+
+    // Load the font for the start menu
+    m_StartMenuFontId = gfxLoadSprite("Start Menu Font", MENUFONT, GFX_PNG, GFX_TEXTMAP, GFX_UPPERLEFT, true, true);
+    if (m_StartMenuFontId == NOSPRITE) return (false);
+
+    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+
+    m_StartMenuSwordId = gfxLoadSprite("Start Menu Sword", MENUSWORD, GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, false, true);
+    if (m_StartMenuSwordId == NOSPRITE) return (false);
+
+    gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
+    gfxSetColor(m_StartMenuSwordId, 200, 200, 200, 200);
+
+    m_PBStartMenuLoaded = true;
+
+    return (m_PBStartMenuLoaded);
 }
 
 // Renders the main menu
@@ -613,7 +612,7 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
     gfxSetColor(m_StartMenuFontId, 255 ,255, 255, 255);
 
     // Render the menu items with shadow depending on the selected item
-    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentMenuItem, 290, 85, 10, &(g_mainMenu), true, true, 64, 0, 255, 255, 3);
+    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentMenuItem, 255, 85, 6, &g_mainMenu, true, true, 64, 0, 255, 255, 3);
 
     // Add insturctions to the bottom of the screen - calculate the x position based on string length
     gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1, GFX_TEXTLEFT, 0,0,0,255,2);
@@ -622,81 +621,7 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
     return (true);
 }
 
-/*
-bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastTick){
-
-   if (!pbeLoadScreen (PB_STARTMENU)) return (false); 
-
-   if (m_RestartMenu) {
-    m_CurrentSettingsItem = 1; 
-    m_RestartMenu = false;
-    gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
-    gfxSetRotateDegrees(m_StartMenuSwordId, 0.0f, false);
-   } 
-
-   gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-
-    // Render the default background
-    pbeRenderDefaultBackground (currentTick, lastTick);
-
-    int tempX = PB_SCREENWIDTH / 2;
-   
-    gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
-    gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
-    gfxRenderShadowString(m_StartMenuFontId, MenuTitle, tempX, 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
-    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
-
-    unsigned int swordY = 89;
-    // Determine where to put the sword cursor and give blue underline to selected text
-    switch (m_CurrentMenuItem) {
-        case (1): swordY = 89; break;
-        case (2): swordY = 154; break;
-        case (3): swordY = 219; break;
-        case (4): swordY = 284; break;
-        case (5): swordY = 349; break;
-        case (6): swordY = 414; break;
-        default: break;
-    }
-
-    // Render the menu items with shadow depending on the selected item
-    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
-    if (!m_PassSelfTest)
-    {
-        if (m_CurrentMenuItem == 1) gfxRenderShadowString(m_StartMenuFontId, Menu1Fail, 290, 85, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-        else gfxRenderString(m_StartMenuFontId, Menu1Fail, 290, 85, 1, GFX_TEXTLEFT);
-    }
-    else {
-        if (m_CurrentMenuItem == 1) gfxRenderShadowString(m_StartMenuFontId, Menu1, 290, 85, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-        else gfxRenderString(m_StartMenuFontId, Menu1, 290, 85, 1, GFX_TEXTLEFT);
-    }
-
-    if (m_CurrentMenuItem == 2) gfxRenderShadowString(m_StartMenuFontId, Menu2, 290, 150, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else gfxRenderString(m_StartMenuFontId, Menu2, 290, 150, 1, GFX_TEXTLEFT);
-
-    if (m_CurrentMenuItem == 3) gfxRenderShadowString(m_StartMenuFontId, Menu3, 290, 215, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else gfxRenderString(m_StartMenuFontId, Menu3, 290, 215, 1, GFX_TEXTLEFT);
-
-    if (m_CurrentMenuItem == 4) gfxRenderShadowString(m_StartMenuFontId, Menu4, 290, 280, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else gfxRenderString(m_StartMenuFontId, Menu4, 290, 280, 1, GFX_TEXTLEFT);
-
-    if (m_CurrentMenuItem == 5) gfxRenderShadowString(m_StartMenuFontId, Menu5, 290, 345, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else gfxRenderString(m_StartMenuFontId, Menu5, 290, 345, 1, GFX_TEXTLEFT);
-
-    if (m_CurrentMenuItem == 6) gfxRenderShadowString(m_StartMenuFontId, Menu6, 290, 410, 1, GFX_TEXTLEFT, 64, 0, 255, 255, 3);
-    else gfxRenderString(m_StartMenuFontId, Menu6, 290, 410, 1, GFX_TEXTLEFT);
-
-    // Add insturctions to the bottom of the screen
-    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1, GFX_TEXTLEFT, 0,0,0,255,2);
-    gfxRenderShadowString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
-
-    gfxRenderSprite(m_StartMenuSwordId, 240, swordY);          
-    return (true);
-}
-*/
-
-
-// Test Mode Screren
+// Test Mode Screen
 bool PBEngine::pbeLoadTestMode(){
     // Test mode currently only requires the default background and font
     if (!pbeLoadDefaultBackground()) return (false);
@@ -779,16 +704,20 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
 
     if (!pbeLoadScreen (PB_SETTINGS)) return (false); 
 
+    std::map<unsigned int, std::string> tempMenu = g_settingsMenu;
+
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
  
-     // Render the default background
-     pbeRenderDefaultBackground (currentTick, lastTick);
+    // Render the default background
+    pbeRenderDefaultBackground (currentTick, lastTick);
  
-     gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
-     gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
-     gfxRenderShadowString(m_StartMenuFontId, MenuSettingsTitle, (PB_SCREENWIDTH/2), 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
-     gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
+    gfxRenderShadowString(m_StartMenuFontId, MenuSettingsTitle, (PB_SCREENWIDTH/2), 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    gfxSetColor(m_StartMenuFontId, 255 ,255, 255, 255);
 
+    /*
      std::string Setting1Temp = MenuSettings1 + std::to_string(m_saveFileData.mainVolume);
      std::string Setting2Temp = MenuSettings2 + std::to_string(m_saveFileData.musicVolume);
      std::string Setting3Temp = MenuSettings3 + std::to_string(m_saveFileData.ballsPerGame);
@@ -800,7 +729,23 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
         case PB_EPIC: Setting4Temp += "Epic"; break;
      }
      std::string Setting5Temp = MenuSettings5;
-        
+     */
+
+    // Add the extra data to the menu strings before displaying
+    tempMenu[0] += std::to_string(m_saveFileData.mainVolume);
+    tempMenu[1] += std::to_string(m_saveFileData.musicVolume);
+    tempMenu[2] += std::to_string(m_saveFileData.ballsPerGame);
+    switch (m_saveFileData.difficulty) {
+        case PB_EASY: tempMenu[3] += "Easy"; break;
+        case PB_NORMAL: tempMenu[3] += "Normal"; break;
+        case PB_HARD: tempMenu[3] += "Hard"; break;
+        case PB_EPIC: tempMenu[3] += "Epic"; break;
+    }
+    
+    // Render the menu items with shadow depending on the selected item
+    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentSettingsItem, 255, 85, 6, &tempMenu, true, true, 64, 0, 255, 255, 3);
+
+    /*
      unsigned int swordY = 89;
 
      // Determine where to put the sword cursor and give blue underline to selected text
@@ -836,6 +781,7 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
      gfxRenderShadowString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
  
      gfxRenderSprite(m_StartMenuSwordId, 200, swordY);
+     */
            
      return (true);
 }

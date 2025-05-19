@@ -13,21 +13,21 @@
 #include <string>
 
 std::map<unsigned int, std::string>  g_mainMenu = {
-    {1, "Play Pinball"},
-    {2, "Settings"},
-    {3, "Test Mode"},
-    {4, "Benchmark"},
-    {5, "Console"},
-    {6, "Credits"}
+    {0, "Play Pinball"},
+    {1, "Settings"},
+    {2, "Test Mode"},
+    {3, "Benchmark"},
+    {4, "Console"},
+    {5, "Credits"}
 };
 
 // Make a global variable same as above, but for the settings menu
 std::map<unsigned int, std::string>  g_settingsMenu = {
-    {1, "Main Volume: "},
-    {2, "Music Volume: "},
-    {3, "Balls Per Game: "},
-    {4, "Difficulty: "},
-    {5, "Reset High Scores"}
+    {0, "Main Volume: "},
+    {1, "Music Volume: "},
+    {2, "Balls Per Game: "},
+    {3, "Difficulty: "},
+    {4, "Reset High Scores"}
 };
 
 #define PB_EASY_TEXT "Easy"
@@ -52,5 +52,7 @@ std::map<unsigned int, std::string>  g_settingsMenu = {
 #define MenuSettings5 "Reset High Scores"
 
 #define NUM_SETTINGS 5
+
+#define CURSOR_TO_MENU_SPACING 8
 
 #endif // PInballMenus_h  
