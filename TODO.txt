@@ -18,6 +18,7 @@ Add menu item to enable output montitor mode - and then transparent overlay play
     - Make input / output test screen rendering more generic so it can be used in both places?
     - Put menu items to control transparency and turn normal screen on / off
 Make output system automatic - main loop can set on / off durations, LED patterns, etc.. and out loop will manage
+    - Look a neo-pixel support - can we have multi-color strips on individual addressed LEDs?
 Make input / output processing full threaded.
 Create sound output queue system (both Windows and Rasp Pi?  Rasp Pi 1st priority)
 Add some more interesting animation options (Any movement that makes animations better?)
@@ -36,6 +37,8 @@ Design prototype HW, use test mode to enable
     * Flippers, Sligshots, Pop Bumpers, Lane / Ball Detectors, Multiball lock gate
     * Build proto cabinet w/ foam board
     * Decide to migrate to larger HDMI screen or not?
+Build input and output breakout boards.  Output boards likely FET controlled, opto-isolated and support multiple voltage output ranges.
+Build multi-voltage power supply system - determine coil voltages, etc.. 
 
 ** Documentation
 Write up arch docs
