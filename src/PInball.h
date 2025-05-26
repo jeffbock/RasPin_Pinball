@@ -128,7 +128,6 @@ public:
     // Public funcation for dealing w/ rendering and loading screens by screen state
     bool pbeRenderScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick);
-    bool pbeLoadScreen (PBMainState state);
     bool pbeLoadGameScreen (PBMainState state);
 
     // Console functions
@@ -204,12 +203,8 @@ private:
     // Main Table Variables, etc..
     PBTableState m_tableState; 
     PBTBLScreenState m_tableScreenState;
-  
-    // Load trackers for main screens
-    bool m_PBDefaultBackgroundLoaded;
-    bool m_PBBootupLoaded, m_PBStartMenuLoaded, m_PBPlayGameLoaded, m_PBTestModeLoaded;
-    bool m_PBBenchmarkLoaded, m_PBCreditsLoaded, m_PBSettingsLoaded;
 
+    // Console variables
     std::vector<std::string> m_consoleQueue;
     unsigned int m_maxConsoleLines;
 
@@ -230,13 +225,13 @@ private:
                               unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset);
 
     // Private functions for loading main state screens
-    bool pbeLoadDefaultBackground();
-    bool pbeLoadBootUp();
-    bool pbeLoadStartMenu();
-    bool pbeLoadTestMode();
-    bool pbeLoadBenchmark();
-    bool pbeLoadCredits();
-    bool pbeLoadSettings();
+    bool pbeLoadDefaultBackground(bool forceReload);
+    bool pbeLoadBootUp(bool forceReload);
+    bool pbeLoadStartMenu(bool forceReload);
+    bool pbeLoadTestMode(bool forceReload);
+    bool pbeLoadBenchmark(bool forceReload);
+    bool pbeLoadCredits(bool forceReload);
+    bool pbeLoadSettings(bool forceReload);
 
     ///////////////////////////////
     // Specfic Game Table Functions
@@ -246,7 +241,7 @@ private:
     bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
 
     // Load functions for the pinball game table
-    bool pbeLoadGameStart(); // Load the start screen for the pinball game
+    bool pbeLoadGameStart(bool forceReload); // Load the start screen for the pinball game
 
     // Texture release functions
     void pbeReleaseMenuTextures();

@@ -10,38 +10,11 @@
 
 // PBEgine Class Fucntions for the main pinball game
 
-bool PBEngine::pbeLoadGameStart(){
+bool PBEngine::pbeLoadGameStart(bool forceReload){
     
-    // Scene is loaded but maybe the texures are not
-    if (m_PBTBLStartLoaded) 
-    {
-        // Check that the textures are loaded
-        if (!gfxTextureLoaded(m_PBTBLStartDoorId)) {
-            if (!gfxReloadTexture(m_PBTBLStartDoorId)) return (false);
-        }
-        if (!gfxTextureLoaded(m_PBTBLLeftDoorId)) {
-            if (!gfxReloadTexture(m_PBTBLLeftDoorId)) return (false);
-        }
-        if (!gfxTextureLoaded(m_PBTBLRightDoorId)) {
-            if (!gfxReloadTexture(m_PBTBLRightDoorId)) return (false);
-        }
-        if (!gfxTextureLoaded(m_PBTBLDoorDragonId)) {
-            if (!gfxReloadTexture(m_PBTBLDoorDragonId)) return (false);
-        }
-        if (!gfxTextureLoaded(m_PBTBLDragonEyesId)) {
-            if (!gfxReloadTexture(m_PBTBLDragonEyesId)) return (false);
-        }
-        if (!gfxTextureLoaded(m_PBTBLFlame1Id)) {
-            if (!gfxReloadTexture(m_PBTBLFlame1Id)) return (false);
-        }
-        if (!gfxTextureLoaded(m_PBTBLFlame2Id)) {
-            if (!gfxReloadTexture(m_PBTBLFlame2Id)) return (false);
-        }
-        if (!gfxTextureLoaded(m_PBTBLFlame3Id)) {
-            if (!gfxReloadTexture(m_PBTBLFlame3Id)) return (false);
-        }
-        return (true);
-    }
+    static bool gameStartLoaded = false;
+    if (forceReload) gameStartLoaded = false;
+    if (gameStartLoaded) return (true);
 
     stAnimateData animateData;
 
@@ -125,12 +98,11 @@ bool PBEngine::pbeLoadGameStart(){
     gfxLoadAnimateData(&animateData, m_StartMenuFontId, m_PBTBLTextStartId, m_PBTBLTextEndId, 0, ANIMATE_COLOR_MASK, 2.0f, 0.0f, true, true, GFX_NOLOOP);
     gfxCreateAnimation(animateData, true);
 
-    if (m_PBTBLStartDoorId == NOSPRITE || m_PBTBLFlame1Id == NOSPRITE || m_PBTBLFlame2Id == NOSPRITE ||  
-        m_PBTBLFlame3Id == NOSPRITE) return (false);
+    // Note:  So many things to check for loading, it's not worth doing.  Assume the sprites will be loaded.  If texture fails, it will just render incorrectly.
 
-    m_PBTBLStartLoaded = true;
+    gameStartLoaded = true;
 
-    return (m_PBTBLStartLoaded);
+    return (gameStartLoaded);
 }
 
 bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick){
@@ -149,7 +121,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
         lastScreenState = m_tableScreenState;
     }
 
-    if (!pbeLoadGameStart ()) return (false); 
+    if (!pbeLoadGameStart (false)) return (false); 
     
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 

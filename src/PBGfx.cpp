@@ -404,9 +404,17 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId){
         // Use alpha if the texture is a BMP (eg: use the the supplied alpha value, otherwise it is assumed PNG already has alpha)
         bool useTexAlpha = m_spriteList[it->second.parentSpriteId].textureType == GFX_BMP ? true : false;
 
-        // Change the textureID if 
+        // Change the textureID to no texture if the sprite is not using a texture
         unsigned int tempTextureId = it->second.glTextureId;
         if (!m_spriteList[it->second.parentSpriteId].useTexture) tempTextureId = 0;
+
+        // Check if a texture is being used, if it is, make sure the texture is loaded
+        // If the load fails, simply don't use a texture, which at least allows the render to continue, but the sprite will not be textured
+        if (m_spriteList[it->second.parentSpriteId].useTexture) {
+            if (!m_spriteList[it->second.parentSpriteId].isLoaded) {
+                if (!gfxReloadTexture(it->second.parentSpriteId)) return (tempTextureId == 0);
+            }
+        }
 
         // Render the sprite quad
         oglRenderQuad(&x1, &y1, &x2, &y2, it->second.u1, it->second.v1, it->second.u2, it->second.v2, useCenter, useTexAlpha, it->second.textureAlpha, tempTextureId, it->second.vertRed, it->second.vertGreen, it->second.vertBlue, it->second.vertAlpha, it->second.scaleFactor, it->second.rotateDegrees, it->second.updateBoundingBox);

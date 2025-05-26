@@ -193,13 +193,6 @@ bool PBProcessOutput() {
 
     m_mainState = PB_BOOTUP;
 
-    m_PBBootupLoaded = false;
-    m_PBStartMenuLoaded = false;
-    m_PBPlayGameLoaded = false;
-    m_PBTestModeLoaded = false;
-    m_PBBenchmarkLoaded = false;
-    m_PBCreditsLoaded = false;
-
     m_BootUpConsoleId = NOSPRITE; 
     m_BootUpStarsId = NOSPRITE;
     m_BootUpStarsId2 = NOSPRITE;
@@ -332,23 +325,6 @@ void PBEngine::pbeRenderConsole(unsigned int startingX, unsigned int startingY){
      }
 }
 
-// Load the screen based on the main state of the game 
-// Play Game is final state right now for the menu screens.  If pinball ever exits, then we'd need to change this
-bool PBEngine::pbeLoadScreen (PBMainState state){
-    switch (state) {
-        case PB_BOOTUP: return (pbeLoadBootUp()); break;
-        case PB_STARTMENU: return (pbeLoadStartMenu()); break;
-        case PB_PLAYGAME: return (true); break;
-        case PB_TESTMODE: return (pbeLoadTestMode()); break;
-        case PB_BENCHMARK: return (pbeLoadBenchmark()); break;
-        case PB_CREDITS: return (pbeLoadCredits()); break;
-        case PB_SETTINGS: return (pbeLoadSettings()); break;
-        default: return (false); break;
-    }
-     
-    return (false);
-}
-
 // Render the screen based on the main state of the game
 // Play Game is final state right now for the menu screens.  If pinball ever exits, then we'd need to change this
 bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick){
@@ -368,20 +344,11 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
 }
 
 // Load reasources for the boot up screen
-bool PBEngine::pbeLoadDefaultBackground(){
+bool PBEngine::pbeLoadDefaultBackground(bool forceReload){
     
-    // Scene is loaded but maybe the texures are not
-    if (m_PBDefaultBackgroundLoaded) 
-    {
-        // Check that the textures are loaded
-        if (!gfxTextureLoaded(m_BootUpConsoleId)) {
-            if (!gfxReloadTexture(m_BootUpConsoleId)) return (false);
-        }
-        if (!gfxTextureLoaded(m_BootUpStarsId)) {
-            if (!gfxReloadTexture(m_BootUpStarsId)) return (false);
-        }
-        return (true);
-    }
+    static bool defaultBackgroundLoaded = false;
+    if (forceReload) defaultBackgroundLoaded = false;
+    if (defaultBackgroundLoaded) return (true);
 
     pbeSendConsole("(PI)nball Engine: Loading default background resources");
 
@@ -407,17 +374,19 @@ bool PBEngine::pbeLoadDefaultBackground(){
     if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  
         m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE ) return (false);
 
-    m_PBDefaultBackgroundLoaded = true;
+    defaultBackgroundLoaded = true;
 
-    return (m_PBDefaultBackgroundLoaded);
+    return (defaultBackgroundLoaded);
 }
 
 // Load reasources for the boot up screen
-bool PBEngine::pbeLoadBootUp(){
+bool PBEngine::pbeLoadBootUp(bool forceReload){
     
-    if (!pbeLoadDefaultBackground()) return (false);
+    static bool bootUpLoaded = false;
+    if (forceReload) bootUpLoaded = false;
+    if (bootUpLoaded) return (true);
 
-    if (m_PBBootupLoaded) return (true);
+    if (!pbeLoadDefaultBackground(forceReload)) return (false);
 
     pbeSendConsole("(PI)nball Engine: Loading boot screen resources");
     
@@ -429,11 +398,10 @@ bool PBEngine::pbeLoadBootUp(){
 
     if (m_BootUpTitleBarId == NOSPRITE) return (false);
 
-    m_PBBootupLoaded = true;
-
     pbeSendConsole("(PI)nball Engine: Ready - Press any button to continue");
 
-    return (m_PBBootupLoaded);
+    bootUpLoaded = true;
+    return (bootUpLoaded);
 }
 
 // Render the bootup screen
@@ -467,8 +435,8 @@ bool PBEngine::pbeRenderDefaultBackground (unsigned long currentTick, unsigned l
 
 // Render the bootup screen
 bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick){
-
-    if (!pbeLoadScreen (PB_BOOTUP)) return (false); 
+        
+    if (!pbeLoadBootUp(false)) return (false);
 
     if (m_RestartBootUp) {
         m_RestartBootUp = false;
@@ -553,20 +521,11 @@ bool PBEngine::pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int font
 
 // Main Menu Screen Setup
 
-bool PBEngine::pbeLoadStartMenu(){
+bool PBEngine::pbeLoadStartMenu(bool forceReload){
 
-    if (m_PBStartMenuLoaded) 
-    {
-        // Check that the textures are loaded
-        if (!gfxTextureLoaded(m_StartMenuFontId)) {
-            if (!gfxReloadTexture(m_StartMenuFontId)) return (false);
-        }
-        if (!gfxTextureLoaded(m_StartMenuSwordId)) {
-            if (!gfxReloadTexture(m_StartMenuSwordId)) return (false);
-        }
-
-        return (true);
-    }
+    static bool startMenuLoaded = false;
+    if (forceReload) startMenuLoaded = false;
+    if (startMenuLoaded) return (true);
 
     // Load the font for the start menu
     m_StartMenuFontId = gfxLoadSprite("Start Menu Font", MENUFONT, GFX_PNG, GFX_TEXTMAP, GFX_UPPERLEFT, true, true);
@@ -580,15 +539,15 @@ bool PBEngine::pbeLoadStartMenu(){
     gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
     gfxSetColor(m_StartMenuSwordId, 200, 200, 200, 200);
 
-    m_PBStartMenuLoaded = true;
+    startMenuLoaded = true;
 
-    return (m_PBStartMenuLoaded);
+    return (startMenuLoaded);
 }
 
 // Renders the main menu
 bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastTick){
 
-   if (!pbeLoadScreen (PB_STARTMENU)) return (false); 
+   if (!pbeLoadStartMenu (false)) return (false); 
 
    if (m_RestartMenu) {
         m_CurrentSettingsItem = 0; 
@@ -622,17 +581,16 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
 }
 
 // Test Mode Screen
-bool PBEngine::pbeLoadTestMode(){
+bool PBEngine::pbeLoadTestMode(bool forceReload){
     // Test mode currently only requires the default background and font
-    if (!pbeLoadDefaultBackground()) return (false);
+    if (!pbeLoadDefaultBackground(false)) return (false);
 
-    m_PBTestModeLoaded = true;
-    return (m_PBTestModeLoaded);
+    return (true);
 }
 
 bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadScreen (PB_TESTMODE)) return (false); 
+    if (!pbeLoadTestMode (false)) return (false); 
 
     if (m_RestartTestMode) {
         m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false;
@@ -693,16 +651,16 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
 
 // Settings Menu Screen
 
-bool PBEngine::pbeLoadSettings(){
+bool PBEngine::pbeLoadSettings(bool forceReload){
 
-    if (!pbeLoadScreen (PB_STARTMENU)) return (false); 
+    if (!pbeLoadStartMenu (false)) return (false); 
 
     return (true);
 }
 
 bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadScreen (PB_SETTINGS)) return (false); 
+    if (!pbeLoadSettings(false)) return (false); 
 
     std::map<unsigned int, std::string> tempMenu = g_settingsMenu;
 
@@ -736,15 +694,15 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
 
 // Credits Screen processing
 
-bool PBEngine::pbeLoadCredits(){
+bool PBEngine::pbeLoadCredits(bool forceReload){
 
-    if (!pbeLoadDefaultBackground()) return (false);
+    if (!pbeLoadDefaultBackground(false)) return (false);
     return (true);
 }
 
 bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadScreen (PB_CREDITS)) return (false);
+    if (!pbeLoadCredits (false)) return (false);
 
     if (m_RestartCredits) {
         m_RestartCredits = false;
@@ -786,10 +744,10 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
 }
  
 // Benchmark Screen
-bool PBEngine::pbeLoadBenchmark(){
+bool PBEngine::pbeLoadBenchmark(bool forceReload){
 
     // Benchmark will just use default font and the start menu items
-    if (!pbeLoadScreen (PB_STARTMENU)) return (false); 
+    if (!pbeLoadStartMenu (false)) return (false); 
     return (true);
 }
 
@@ -797,7 +755,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
 
     static unsigned int FPSSwap, smallSpriteCount, spriteTransformCount, bigSpriteCount;
     
-    if (!pbeLoadScreen (PB_BENCHMARK)) return (false); 
+    if (!pbeLoadBenchmark (false)) return (false); 
 
     if (m_RestartBenchmark) {
         m_BenchmarkStartTick =  GetTickCountGfx(); 

@@ -9,10 +9,6 @@ Add info how to install wiringPi into How to Build.
 Debug why game menu delays aren't working and shadows don't seem to be appearing?  Make shadows on instructions more pronounced
 
 ** Generic arch improvements
-Make texture load dynamic - will check and load if not currently resident, revamp screen inits to simplify
-    Load textures at first time, and check before rendering if loaded.  If not, reload.
-    Change flow so that system always is successful loading sprites, but texture could fail and try and reload later
-    Refactor asset setup - just load them once, and keep them. 
 Add menu item to enable output montitor mode - and then transparent overlay play screen with output status
     - Reorganize menus to make all diags under one item, simplify 1st menu
     - Make input / output test screen rendering more generic so it can be used in both places?
