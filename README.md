@@ -7,7 +7,7 @@ Half-scale pinball project using Raspberry Pi.  The goal is to fully develop a s
 # Feature Goals
 - Standard piball electro-magnetic devices:  Bumpers, Pop-Bumpers, Slingshots, Lane sensors, flippers
 - Full lighting and sound effects, including reasonably large display
-- Interactive mix between pinball and electronic screen for both physical and video-game like experiences.
+- Interactive mix between pinball and electronic screen for both physical and screen based experiences.
 
 # Design and Development guidelines
 -  Actual machine based on Raspberry Pi 5 and PiOS for ease of development and debug.
@@ -19,7 +19,7 @@ Half-scale pinball project using Raspberry Pi.  The goal is to fully develop a s
     - Allows for complete decoupling of inputs and outputs - maximum flexibility of how to respond to inputs.
     - IO expanders / driver boards used in conjunction with Pi controller to greatly expand number of elements in the system.
 -  Sound and display using standard HDMI and audio output jacks from the Pi controller.
--  Allow for flexibility in configuration, eg: standard menus but SW should be architectued to quickly change tables and layouts.
+-  Allow for flexibility in configuration, eg: standard menus but SW should be architected to quickly change tables and layouts.
 -  Everything should be rougly half-scale compared to a normal pinball machine - which means ~14" W x 28"H play area with a 1/2" ball.
     -  All custom pinball mechanisms will be developed with 3D models for 3D printing, allowing others to easily duplicate the construction.
     -  Cabinet will be developed using bass wood plywood.
