@@ -218,6 +218,11 @@ bool PBProcessOutput() {
     m_CurrentSettingsItem = 0;
     m_RestartSettings = true;
 
+    // Diagnostics Menu variables
+    m_CurrentDiagnosticsItem = 0;
+    m_EnableOverlay = false;
+    m_RestartDiagnostics = true;
+
     // Credits screen variables
     m_CreditsScrollY = 480;
     m_TicksPerPixel = 30;
@@ -337,6 +342,7 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
         case PB_BENCHMARK: return pbeRenderBenchmark(currentTick, lastTick); break;
         case PB_CREDITS: return pbeRenderCredits(currentTick, lastTick); break;
         case PB_SETTINGS: return pbeRenderSettings(currentTick, lastTick); break;
+        case PB_DIAGNOSTICS: return pbeRenderDiagnostics(currentTick, lastTick); break;
         default: return (false); break;
     }
 
@@ -571,7 +577,7 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
     gfxSetColor(m_StartMenuFontId, 255 ,255, 255, 255);
 
     // Render the menu items with shadow depending on the selected item
-    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentMenuItem, 255, 85, 6, &g_mainMenu, true, true, 64, 0, 255, 255, 3);
+    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentMenuItem, 245, 120, 15, &g_mainMenu, true, true, 64, 0, 255, 255, 3);
 
     // Add insturctions to the bottom of the screen - calculate the x position based on string length
     gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1, GFX_TEXTLEFT, 0,0,0,255,2);
@@ -671,9 +677,12 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
  
     gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
-    gfxRenderShadowString(m_StartMenuFontId, MenuSettingsTitle, (PB_SCREENWIDTH/2), 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+    gfxRenderShadowString(m_StartMenuFontId, MenuSettings, (PB_SCREENWIDTH/2), 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
     gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
     gfxSetColor(m_StartMenuFontId, 255 ,255, 255, 255);
+
+    gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
+    gfxSetRotateDegrees(m_StartMenuSwordId, 0.0f, false);
 
     // Add the extra data to the menu strings before displaying
     tempMenu[0] += std::to_string(m_saveFileData.mainVolume);
@@ -687,7 +696,48 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
     }
     
     // Render the menu items with shadow depending on the selected item
-    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentSettingsItem, 200, 95, 6, &tempMenu, true, true, 64, 0, 255, 255, 3);
+    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentSettingsItem, 200, 95, 15, &tempMenu, true, true, 64, 0, 255, 255, 3);
+
+    // Add insturctions how to exit
+    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", 680, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
+        
+     return (true);
+}
+
+bool PBEngine::pbeLoadDiagnostics(bool forceReload){
+    if (!pbeLoadStartMenu(false)) return (false); 
+
+    return (true);
+}
+
+bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long lastTick){
+
+    if (!pbeLoadDiagnostics(false)) return (false); 
+
+    std::map<unsigned int, std::string> tempMenu = g_diagnosticsMenu;
+
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+ 
+    // Render the default background
+    pbeRenderDefaultBackground (currentTick, lastTick);
+ 
+    gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
+    gfxRenderShadowString(m_StartMenuFontId, MenuDiagnostics, (PB_SCREENWIDTH/2), 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    gfxSetColor(m_StartMenuFontId, 255 ,255, 255, 255);
+
+    gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
+    gfxSetRotateDegrees(m_StartMenuSwordId, 0.0f, false);
+
+    // Add the extra data to the menu strings before displaying
+    if (m_EnableOverlay) tempMenu[2] += PB_OVERLAY_ON_TEXT;
+    else tempMenu[2] += PB_OVERLAY_OFF_TEXT;
+        
+    // Render the menu items with shadow depending on the selected item
+    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentDiagnosticsItem, 180, 125, 15, &tempMenu, true, true, 64, 0, 255, 255, 3);
+
+    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", 680, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
         
      return (true);
 }
@@ -913,16 +963,49 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     switch (m_CurrentMenuItem) {
                         case (0):  if (m_PassSelfTest) m_mainState = PB_PLAYGAME; break;
                         case (1):  m_mainState = PB_SETTINGS; m_RestartSettings = true; break;
-                        case (2):  m_mainState = PB_TESTMODE; m_RestartTestMode = true; break;
-                        case (3):  m_mainState = PB_BENCHMARK; m_RestartBenchmark = true; break;
-                        case (4):  m_mainState = PB_BOOTUP; m_RestartBootUp = true; break;
-                        case (5):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
+                        case (2):  m_mainState = PB_DIAGNOSTICS; m_RestartDiagnostics = true; break;
+                        case (3):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
                         default: break;
                     }
                 }                
             }
             break;
         }
+        case PB_DIAGNOSTICS: {
+
+            if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                    // Get the current menu item count from g_mainMenu
+                    if (m_CurrentDiagnosticsItem > 0) m_CurrentDiagnosticsItem--;
+                }
+                // If either right button is pressed, add 1 to m_currentMenuItem
+                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                    int temp = g_diagnosticsMenu.size();
+                    if (m_CurrentDiagnosticsItem < (temp -1)) m_CurrentDiagnosticsItem++;
+                }
+            }
+
+            if (((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) && inputMessage.inputState == PB_ON){
+                switch (m_CurrentDiagnosticsItem) {
+                    case (0): m_mainState = PB_TESTMODE; m_RestartTestMode = true; break;
+                    case (1): m_mainState = PB_BENCHMARK; m_RestartBenchmark = true; break;
+                    case (2): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                        if (m_EnableOverlay) m_EnableOverlay = false;
+                        else m_EnableOverlay = true;
+                    }
+                    default: break;
+                }
+            }
+
+            if (inputMessage.inputId == IDI_START) {
+                // Save the values to the settings file and exit the screen
+                m_mainState = PB_STARTMENU;
+                m_RestartMenu = true;
+            }
+
+            break;
+        }
+
         case PB_TESTMODE: {
             
             // Check the mode and send output message if needed
@@ -978,8 +1061,8 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             }
             // If both left and right activations are pressed, exit test mode
             if (m_LAON && m_RAON) {
-                m_mainState = PB_STARTMENU;
-                m_RestartMenu = true;
+                m_mainState = PB_DIAGNOSTICS;
+                m_RestartDiagnostics = true;
             }
             // Send the output message to the output queue - this will be connected to HW
 
@@ -1071,8 +1154,8 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         }
         case PB_BENCHMARK: {
             if (m_BenchmarkDone && (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON)) {
-                m_mainState = PB_STARTMENU;
-                m_RestartMenu = true;
+                m_mainState = PB_DIAGNOSTICS;
+                m_RestartDiagnostics = true;
             }
         break;
         }

@@ -17,14 +17,12 @@
 std::map<unsigned int, std::string>  g_mainMenu = {
     {0, "Play Pinball"},
     {1, "Settings"},
-    {2, "Test Mode"},
-    {3, "Benchmark"},
-    {4, "Console"},
-    {5, "Credits"}
+    {2, "Diagnostics"},
+    {3, "Credits"}
 };
 
 // Details for the settings menu
-#define MenuSettingsTitle "Settings"
+#define MenuSettings "Settings"
 std::map<unsigned int, std::string>  g_settingsMenu = {
     {0, "Main Volume: "},
     {1, "Music Volume: "},
@@ -37,6 +35,17 @@ std::map<unsigned int, std::string>  g_settingsMenu = {
 #define PB_NORMAL_TEXT "Normal"
 #define PB_HARD_TEXT "Hard"
 #define PB_EPIC_TEXT "Epic"
+
+// Details for the diagnotic menu
+#define MenuDiagnostics "Diagnostics"
+std::map<unsigned int, std::string>  g_diagnosticsMenu = {
+    {0, "Test Input/Output"},
+    {1, "Run Benchmark"},
+    {2, "Output Overlay: "}
+};
+
+#define PB_OVERLAY_ON_TEXT "On"
+#define PB_OVERLAY_OFF_TEXT "Off"
 
 // #define NUM_SETTINGS 5
 

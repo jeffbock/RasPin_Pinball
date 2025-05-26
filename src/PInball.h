@@ -68,7 +68,8 @@ enum PBMainState {
     PB_TESTMODE = 3,
     PB_BENCHMARK = 4,
     PB_CREDITS = 5,
-    PB_SETTINGS = 6
+    PB_SETTINGS = 6,
+    PB_DIAGNOSTICS = 7
 };
 
 enum PBTestModeState{ 
@@ -173,6 +174,11 @@ public:
     stSaveFileData m_saveFileData;
     bool m_RestartSettings; 
 
+    // Diagnostics Menu
+    unsigned int m_CurrentDiagnosticsItem;
+    bool m_EnableOverlay;
+    bool m_RestartDiagnostics; 
+
     // Credits screen
     unsigned int m_CreditsScrollY, m_TicksPerPixel, m_StartTick;
     bool m_RestartCredits;
@@ -219,6 +225,9 @@ private:
     bool pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderCredits(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderSettings(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderDiagnostics(unsigned long currentTick, unsigned long lastTick);
+
+    // Generic menu rendering function
     bool pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int fontSprite, unsigned int selectedItem, 
                               int x, int y, int lineSpacing, std::map<unsigned int, std::string>* menuItems,
                               bool useShadow, bool useCursor, unsigned int redShadow, 
@@ -232,6 +241,7 @@ private:
     bool pbeLoadBenchmark(bool forceReload);
     bool pbeLoadCredits(bool forceReload);
     bool pbeLoadSettings(bool forceReload);
+    bool pbeLoadDiagnostics(bool forceReload);
 
     ///////////////////////////////
     // Specfic Game Table Functions
