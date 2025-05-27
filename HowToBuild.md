@@ -15,11 +15,12 @@ The VS code configuration files (eg: tasks.json, launch.json, settings.json, c_c
 
 **Important Note**:  You must change the #define in PBBuildSwitch.h depending on which build you want. For example,
 
-    `
-    // #define EXE_MODE_WINDOWS
-    #define EXE_MODE_RASPI
-    `
-    Would be the setting when bulding on a Raspberry Pi.
+```
+// #define EXE_MODE_WINDOWS
+#define EXE_MODE_RASPI
+```
+
+Would be the setting when bulding on a Raspberry Pi.
 
 # Building for Windows
 Windows development assumes VS Code and Visual Studio 2022 are already installed installed. VS 2022 is required to get the MSVC compiler tool chain (cl.exe).  
@@ -61,7 +62,11 @@ Install VS Code via your favorite mechanism.
 
 Almost everything that is required to build on Raspberry Pi should be set up by default on in PI OS, assuming your Pi is up to date and libs / headers are in standard locations.
 
-XRandR is required to be installed:  `sudo apt-get install x11-xserver-utils`
+Required Installations
+
+XRandR - Multi-monitor support:  `sudo apt-get install x11-xserver-utils`
+
+WiringPi - I/O and I2C: `sudo apt install ./wiringpi-3.0-1.deb`
 
 PInball is currently designed to run along with X11 and XRandR, and assumes that it will find an 800x480 display to utilize as a full screen display.  The current tested configuration is a 800x480 display on the HDMI1 port, while a larger monitor is used on HDMI2 for running VS Code and full screen debugging.
 
