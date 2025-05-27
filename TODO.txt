@@ -5,7 +5,6 @@ Fix Menu Benchmark Mode - acts weird in RaspPi, but still mostly generates score
 Hook up sound control I2C to volume sliders in settings
 Get I2C bus input / output extenders included in I/O
 Create a cmake to build the program in Pi, and put EXE in right place to make paths work vs VS Code builds
-Add info how to install wiringPi into How to Build.
 Debug why game menu delays aren't working and shadows don't seem to be appearing?  Make shadows on instructions more pronounced
 
 ** Generic arch improvements
