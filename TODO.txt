@@ -8,6 +8,7 @@ Create a cmake to build the program in Pi, and put EXE in right place to make pa
 Debug why game menu delays aren't working and shadows don't seem to be appearing?  Make shadows on instructions more pronounced
 
 ** Generic arch improvements
+Fix new "start = exit" color to correct white before rendering (can show up red)
 Add menu item to enable output montitor mode - and then transparent overlay play screen with output status
     - Reorganize menus to make all diags under one item, simplify 1st menu
     - Make input / output test screen rendering more generic so it can be used in both places?
