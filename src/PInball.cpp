@@ -580,6 +580,7 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
     pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentMenuItem, 245, 120, 15, &g_mainMenu, true, true, 64, 0, 255, 255, 3);
 
     // Add insturctions to the bottom of the screen - calculate the x position based on string length
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1, GFX_TEXTLEFT, 0,0,0,255,2);
     gfxRenderShadowString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
 
@@ -699,6 +700,7 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
     pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentSettingsItem, 200, 95, 15, &tempMenu, true, true, 64, 0, 255, 255, 3);
 
     // Add insturctions how to exit
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", 680, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
         
      return (true);
@@ -737,6 +739,7 @@ bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long las
     // Render the menu items with shadow depending on the selected item
     pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentDiagnosticsItem, 180, 125, 15, &tempMenu, true, true, 64, 0, 255, 255, 3);
 
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", 680, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
         
      return (true);

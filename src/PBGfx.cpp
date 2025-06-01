@@ -123,7 +123,17 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
     // If the texture file name is not empty, load the texture
     if ((!spriteInfo.textureFileName.empty()) && (spriteInfo.useTexture)) {
         texture = oglLoadTexture(spriteInfo.textureFileName.c_str(), textureType, &width, &height);
-        if (texture == 0) return (NOSPRITE);
+        if (texture == 0) 
+        {
+            // Code won't fail on a texture load, but it will update the sprite to make it no texture
+            // This is more of a debug feature since if you specified a texture, it should load.
+            // But we don't want to crash the app - quads will be rendered without a texture
+            spriteInfo.useTexture = false;
+            spriteInfo.glTextureId = 0;
+            spriteInfo.baseWidth = 0;
+            spriteInfo.baseHeight = 0;
+            spriteInfo.isLoaded = false;
+        }
         else {
             spriteInfo.glTextureId = texture;
             spriteInfo.baseWidth = width;
@@ -147,9 +157,8 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
         m_nextUserSpriteId++;
     }
 
-    // If the sprite is a text sprite, load the JSON UV map from the text file into an internal map
-    
-    if ((spriteInfo.mapType == GFX_TEXTMAP) || (spriteInfo.mapType == GFX_SPRITEMAP)) {
+    // If the sprite is a text sprite (and the texture load worked), load the JSON UV map from the text file into an internal map
+    if (((spriteInfo.mapType == GFX_TEXTMAP) || (spriteInfo.mapType == GFX_SPRITEMAP)) && spriteInfo.useTexture) {
         // Create a file name that has the same name as filename as the texutre (minus the extension), and change extension to .json
         std::string jsonFileName = spriteInfo.textureFileName;
         jsonFileName = jsonFileName.substr(0, jsonFileName.find_last_of(".")) + ".json";
@@ -208,7 +217,8 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
         jsonFile.close();
     }
     
-    spriteInfo.isLoaded = true;
+    // Only set isLoaded if it's a texture sprite and the texture was loaded successfully
+    if (spriteInfo.useTexture) spriteInfo.isLoaded = true;
 
     // Create the Sprite Info struct and add it to the map
     m_spriteList[spriteId] = spriteInfo;

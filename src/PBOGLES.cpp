@@ -276,7 +276,10 @@ void PBOGLES::oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float U
     if (useTexAlpha) glUniform1f(m_useTexAlpha, 1);
     else glUniform1f(m_useTexAlpha, 0);
 
-    if (textureId == 0) glUniform1i(m_useTexture, 0);
+    if (textureId == 0) {
+        glUniform1i(m_useTexture, 0);
+        m_lastTextureId = textureId;
+    }
     else {
         if (textureId != m_lastTextureId) {
             glUniform1i(m_useTexture, 1);

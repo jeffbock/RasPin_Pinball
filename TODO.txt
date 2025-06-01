@@ -2,15 +2,13 @@ This file tracks the various items to do in the pinball project in rough priorit
 
 ** Raspberry Pi Specific Work
 Fix Menu Benchmark Mode - acts weird in RaspPi, but still mostly generates scores
+Debug why game menu delays aren't working and shadows don't seem to be appearing?  Make shadows on instructions more pronounced
 Hook up sound control I2C to volume sliders in settings
 Get I2C bus input / output extenders included in I/O
 Create a cmake to build the program in Pi, and put EXE in right place to make paths work vs VS Code builds
-Debug why game menu delays aren't working and shadows don't seem to be appearing?  Make shadows on instructions more pronounced
 
 ** Generic arch improvements
-Fix new "start = exit" color to correct white before rendering (can show up red)
 Add menu item to enable output montitor mode - and then transparent overlay play screen with output status
-    - Reorganize menus to make all diags under one item, simplify 1st menu
     - Make input / output test screen rendering more generic so it can be used in both places?
     - Put menu items to control transparency and turn normal screen on / off
 Make output system automatic - main loop can set on / off durations, LED patterns, etc.. and out loop will manage
