@@ -12,8 +12,7 @@ Add menu item to enable output montitor mode - and then transparent overlay play
     - Make input / output test screen rendering more generic so it can be used in both places?
     - Put menu items to control transparency and turn normal screen on / off
 Make output system automatic - main loop can set on / off durations, LED patterns, etc.. and out loop will manage
-    - Look a neo-pixel support - can we have multi-color strips on individual addressed LEDs?
-Make input / output processing full threaded.
+Make input / output processing fully threaded.
 Create sound output queue system (both Windows and Rasp Pi?  Rasp Pi 1st priority)
 Add some more interesting animation options (Any movement that makes animations better?)
 Expand sprites to have animated sprites - eg: UV maps within a sprite with different images - base is there but need example to integrate.
@@ -45,5 +44,6 @@ Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3
 Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
 Install git LFS as that large bitmaps, etc.. are expected at some point
 
-** Way in the future stuff
+** Maybe future stuff
+Look a neo-pixel support - can we have multi-color strips on individual addressed LEDs?
 Add a 3D model sprite - allow for 3D objects on the screens, basic animations, etc.. Tons of work here depending on how complicated
