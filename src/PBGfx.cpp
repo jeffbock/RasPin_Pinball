@@ -130,8 +130,8 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
             // But we don't want to crash the app - quads will be rendered without a texture
             spriteInfo.useTexture = false;
             spriteInfo.glTextureId = 0;
-            spriteInfo.baseWidth = 0;
-            spriteInfo.baseHeight = 0;
+            spriteInfo.baseWidth = 64;
+            spriteInfo.baseHeight = 64;
             spriteInfo.isLoaded = false;
         }
         else {
