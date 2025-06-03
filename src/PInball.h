@@ -89,14 +89,14 @@ struct stInputMessage {
     PBInputType inputType;
     unsigned int inputId;
     PBPinState inputState;
-    unsigned long instanceTick; 
+    unsigned long sentTick; 
 };
 
 struct stOutputMessage {
     PBOutputType outputType;
     unsigned int outputId;
     PBPinState outputState;
-    unsigned long instanceTick; 
+    unsigned long sentTick;
 };
 
 struct stHighScoreData {

@@ -43,13 +43,13 @@ void PBWinSimInput(std::string character, PBPinState inputState, stInputMessage*
             inputMessage->inputType = g_inputDef[i].inputType;
             inputMessage->inputId = g_inputDef[i].id;
             inputMessage->inputState = inputState;
-            inputMessage->instanceTick = g_PBEngine.GetTickCountGfx();
+            inputMessage->sentTick = g_PBEngine.GetTickCountGfx();
 
             // Update the various state items for the input, could be used by the progam later
-            if (g_inputDef[i].lastState == inputState) g_inputDef[i].timeInState += (inputMessage->instanceTick - g_inputDef[i].lastStateTick);
+            if (g_inputDef[i].lastState == inputState) g_inputDef[i].timeInState += (inputMessage->sentTick - g_inputDef[i].lastStateTick);
             else g_inputDef[i].timeInState = 0;
             g_inputDef[i].lastState = inputState;
-            g_inputDef[i].lastStateTick = inputMessage->instanceTick;
+            g_inputDef[i].lastStateTick = inputMessage->sentTick;
 
             return;
         }
@@ -146,7 +146,7 @@ bool  PBProcessInput() {
                 inputMessage.inputState = PB_OFF;
                 g_inputDef[inputId].lastState = PB_OFF;
             } 
-            inputMessage.instanceTick = g_PBEngine.GetTickCountGfx();
+            inputMessage.sentTick = g_PBEngine.GetTickCountGfx();
             
             g_PBEngine.m_inputQueue.push(inputMessage);
         }
@@ -1033,7 +1033,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     outputMessage.outputType = g_outputDef[m_CurrentOutputItem].outputType;
                     outputMessage.outputId = g_outputDef[m_CurrentOutputItem].id;
                     outputMessage.outputState = g_outputDef[m_CurrentOutputItem].lastState;
-                    outputMessage.instanceTick = GetTickCountGfx();
+                    outputMessage.sentTick = GetTickCountGfx();
                     m_outputQueue.push(outputMessage);
                     }
             }

@@ -56,6 +56,13 @@ enum PBOutputType {
     PB_OUTPUT_LED = 2,
 };
 
+enum PBOutputControl {
+    PB_OUTCNTL_STATIC = 0,
+    PB_OUTCNTL_BLINK = 1,
+    PB_OUTCNTL_STATICSEQ = 2,
+    PB_OUTCNTL_BLINKSEQ = 3,
+};
+
 // Placeholder - there are probably items to add here
 struct stOutputDef{
     std::string outputName; 
