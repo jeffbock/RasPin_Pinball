@@ -358,24 +358,25 @@ bool PBEngine::pbeLoadDefaultBackground(bool forceReload){
 
     pbeSendConsole("(PI)nball Engine: Loading default background resources");
 
-    m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/Console.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, false, true);
-    gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 128);
+    m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/ConsoleLarge.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, false, true);
+    gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 196);
+    gfxSetScaleFactor(m_BootUpConsoleId, 2.0, false);
 
     m_BootUpStarsId = gfxLoadSprite("Stars", "src/resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
     gfxSetColor(m_BootUpStarsId, 24, 0, 210, 96);
-    gfxSetScaleFactor(m_BootUpStarsId, 2.0, false);
+    gfxSetScaleFactor(m_BootUpStarsId, 4.0, false);
 
     m_BootUpStarsId2 = gfxInstanceSprite(m_BootUpStarsId);
     gfxSetColor(m_BootUpStarsId2, 24, 0, 210, 96);
-    gfxSetScaleFactor(m_BootUpStarsId2, 0.75, false);
+    gfxSetScaleFactor(m_BootUpStarsId2, 1.5, false);
 
     m_BootUpStarsId3 = gfxInstanceSprite(m_BootUpStarsId);
     gfxSetColor(m_BootUpStarsId3, 24, 0, 210, 96);
-    gfxSetScaleFactor(m_BootUpStarsId3, 0.20, false);
+    gfxSetScaleFactor(m_BootUpStarsId3, 0.4, false);
     
     m_BootUpStarsId4 = gfxInstanceSprite(m_BootUpStarsId);
     gfxSetColor(m_BootUpStarsId4, 24, 0, 210, 96);
-    gfxSetScaleFactor(m_BootUpStarsId4, 0.05, false); 
+    gfxSetScaleFactor(m_BootUpStarsId4, 0.1, false); 
 
     if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  
         m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE ) return (false);
@@ -400,7 +401,7 @@ bool PBEngine::pbeLoadBootUp(bool forceReload){
     
     m_BootUpTitleBarId = gfxLoadSprite("Title Bar", "", GFX_NONE, GFX_NOMAP, GFX_UPPERLEFT, false, false);
     gfxSetColor(m_BootUpTitleBarId, 0, 0, 255, 255);
-    gfxSetWH(m_BootUpTitleBarId, 800, 40);
+    gfxSetWH(m_BootUpTitleBarId, PB_SCREENWIDTH, 40);
 
     if (m_BootUpTitleBarId == NOSPRITE) return (false);
 
@@ -416,7 +417,7 @@ bool PBEngine::pbeRenderDefaultBackground (unsigned long currentTick, unsigned l
     float degreesPerTick = -0.001f, tickDiff = 0.0f;
     float degreesPerTick2 = -0.005f;
     float degreesPerTick3 = -0.025f;
-    float degreesPerTick4 = -0.75f;
+    float degreesPerTick4 = -0.075f;
             
     tickDiff = (float)(currentTick - lastTick);
 
@@ -425,16 +426,17 @@ bool PBEngine::pbeRenderDefaultBackground (unsigned long currentTick, unsigned l
 
    // Show the rotating stars - tunnel-like effect
    gfxSetRotateDegrees(m_BootUpStarsId, (degreesPerTick * (float) tickDiff), true);
-   gfxRenderSprite(m_BootUpStarsId, 400, 240);
+   gfxRenderSprite(m_BootUpStarsId, PB_SCREENWIDTH/2 - 15, (PB_SCREENHEIGHT / 2) + 190
+);
 
    gfxSetRotateDegrees(m_BootUpStarsId2, (degreesPerTick2 * (float) tickDiff), true);
-   gfxRenderSprite(m_BootUpStarsId2, 400, 215);
+   gfxRenderSprite(m_BootUpStarsId2, PB_SCREENWIDTH/2 - 15, (PB_SCREENHEIGHT / 2) + 175);
 
    gfxSetRotateDegrees(m_BootUpStarsId3, (degreesPerTick3 * (float) tickDiff), true);
-   gfxRenderSprite(m_BootUpStarsId3, 400, 190);
+   gfxRenderSprite(m_BootUpStarsId3, PB_SCREENWIDTH/2 - 15, (PB_SCREENHEIGHT / 2) + 140);
 
    gfxSetRotateDegrees(m_BootUpStarsId4, (degreesPerTick4 * (float) tickDiff), true);
-   gfxRenderSprite(m_BootUpStarsId4, 400, 165);
+   gfxRenderSprite(m_BootUpStarsId4, PB_SCREENWIDTH/2 - 15, (PB_SCREENHEIGHT / 2) + 115);
 
    return (true);
 }

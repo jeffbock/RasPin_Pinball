@@ -51,8 +51,8 @@ enum class PBTableState;
 enum class PBTBLScreenState;
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
-#define PB_SCREENWIDTH 800
-#define PB_SCREENHEIGHT 480
+#define PB_SCREENWIDTH 1920
+#define PB_SCREENHEIGHT 1080
 
 #define MENUFONT "src/resources/fonts/Baldur_60_512.png"
 #define MENUSWORD "src/resources/textures/MenuSword.png"
