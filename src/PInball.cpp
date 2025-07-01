@@ -560,10 +560,10 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
    if (m_RestartMenu) {
         m_CurrentSettingsItem = 0; 
         m_RestartMenu = false;
-        gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
+        gfxSetScaleFactor(m_StartMenuSwordId, 0.9, false);
         gfxSetRotateDegrees(m_StartMenuSwordId, 0.0f, false);
     } 
-
+    
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 
     // Render the default background
@@ -572,19 +572,19 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
     int tempX = PB_SCREENWIDTH / 2;
 
     gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
-    gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
-    gfxRenderShadowString(m_StartMenuFontId, MenuTitle, tempX, 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
-    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    gfxSetScaleFactor(m_StartMenuFontId, 2.0, false);
+    gfxRenderShadowString(m_StartMenuFontId, MenuTitle, tempX, 15, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 6);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.5, false);
 
     gfxSetColor(m_StartMenuFontId, 255 ,255, 255, 255);
 
     // Render the menu items with shadow depending on the selected item
-    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentMenuItem, 245, 120, 15, &g_mainMenu, true, true, 64, 0, 255, 255, 3);
+    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentMenuItem, 620, 260, 25, &g_mainMenu, true, true, 64, 0, 255, 255, 8);
 
     // Add insturctions to the bottom of the screen - calculate the x position based on string length
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", 615, 430, 1, GFX_TEXTLEFT, 0,0,0,255,2);
-    gfxRenderShadowString(m_defaultFontSpriteId, "L/R active = select", 615, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "L/R flip = move", PB_SCREENWIDTH - 200, PB_SCREENHEIGHT - 50, 1, GFX_TEXTLEFT, 0,0,0,255,2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "L/R active = select", PB_SCREENWIDTH - 200, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0,0,0,255,2);
 
     return (true);
 }
@@ -679,12 +679,12 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
     pbeRenderDefaultBackground (currentTick, lastTick);
  
     gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
-    gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
-    gfxRenderShadowString(m_StartMenuFontId, MenuSettings, (PB_SCREENWIDTH/2), 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
-    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    gfxSetScaleFactor(m_StartMenuFontId, 2.0, false);
+    gfxRenderShadowString(m_StartMenuFontId, MenuSettings, (PB_SCREENWIDTH/2), 15, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 6);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.5, false);
     gfxSetColor(m_StartMenuFontId, 255 ,255, 255, 255);
 
-    gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
+    gfxSetScaleFactor(m_StartMenuSwordId, 0.9, false);
     gfxSetRotateDegrees(m_StartMenuSwordId, 0.0f, false);
 
     // Add the extra data to the menu strings before displaying
@@ -699,11 +699,11 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
     }
     
     // Render the menu items with shadow depending on the selected item
-    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentSettingsItem, 200, 95, 15, &tempMenu, true, true, 64, 0, 255, 255, 3);
+    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentSettingsItem, (PB_SCREENWIDTH/2) - 470, 250, 15, &tempMenu, true, true, 64, 0, 255, 255, 8);
 
     // Add insturctions how to exit
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", 680, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", PB_SCREENWIDTH - 100, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0,0,0,255,2);
         
      return (true);
 }
@@ -726,12 +726,12 @@ bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long las
     pbeRenderDefaultBackground (currentTick, lastTick);
  
     gfxSetColor(m_StartMenuFontId, 255 ,165, 0, 255);
-    gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
-    gfxRenderShadowString(m_StartMenuFontId, MenuDiagnostics, (PB_SCREENWIDTH/2), 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
-    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    gfxSetScaleFactor(m_StartMenuFontId, 2.0, false);
+    gfxRenderShadowString(m_StartMenuFontId, MenuDiagnostics, (PB_SCREENWIDTH/2), 5, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 6);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.5, false);
     gfxSetColor(m_StartMenuFontId, 255 ,255, 255, 255);
 
-    gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
+    gfxSetScaleFactor(m_StartMenuSwordId, 0.9, false);
     gfxSetRotateDegrees(m_StartMenuSwordId, 0.0f, false);
 
     // Add the extra data to the menu strings before displaying
@@ -739,10 +739,10 @@ bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long las
     else tempMenu[2] += PB_OVERLAY_OFF_TEXT;
         
     // Render the menu items with shadow depending on the selected item
-    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentDiagnosticsItem, 180, 125, 15, &tempMenu, true, true, 64, 0, 255, 255, 3);
+    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentDiagnosticsItem, (PB_SCREENWIDTH/2) - 500, 250, 25, &tempMenu, true, true, 64, 0, 255, 255, 8);
 
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", 680, 455, 1, GFX_TEXTLEFT, 0,0,0,255,2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", PB_SCREENWIDTH - 100, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0,0,0,255,2);
         
      return (true);
 }
@@ -775,10 +775,11 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
     // Once we fix the ability to render to negative coordinates, we can remove this and let it scroll off the screen
     if (pixelShiftY < (PB_SCREENHEIGHT * 2)) {
 
-        m_CreditsScrollY = 480 - pixelShiftY;
-        int spacing = 35;
+        m_CreditsScrollY = PB_SCREENHEIGHT - pixelShiftY;
+        int spacing = 45;
 
         gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+        gfxSetScaleFactor(m_defaultFontSpriteId, 1.5, false);
         gfxRenderShadowString(m_defaultFontSpriteId, "Credits", tempX, m_CreditsScrollY, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Dragons of Destiny Pinball", tempX, m_CreditsScrollY + (1*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Designed and Programmed by: Jeffrey Bock", tempX, m_CreditsScrollY + (2*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
@@ -793,6 +794,7 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
         gfxRenderShadowString(m_defaultFontSpriteId, "JSON.hpp https://github.com/nlohmann/json", tempX, m_CreditsScrollY + (11*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "WiringPi https://github.com/WiringPi/WiringPi", tempX, m_CreditsScrollY + (12*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Developed using AI and Microsoft Copilot tools", tempX, m_CreditsScrollY + (13*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
     }
 
     return (true);   

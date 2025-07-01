@@ -54,7 +54,7 @@ enum class PBTBLScreenState;
 #define PB_SCREENWIDTH 1920
 #define PB_SCREENHEIGHT 1080
 
-#define MENUFONT "src/resources/fonts/Baldur_60_512.png"
+#define MENUFONT "src/resources/fonts/Baldur_96_768.png"
 #define MENUSWORD "src/resources/textures/MenuSword.png"
 #define SAVEFILENAME "src/resources/savefile.bin"
 
