@@ -8,6 +8,8 @@ Get I2C bus input / output extenders included in I/O
 Create a cmake to build the program in Pi, and put EXE in right place to make paths work vs VS Code builds
 
 ** Generic arch improvements
+Change code to support a larger screen / backglass / mini-display within backglass
+Add glscissor support to turn on / off rendering to the score screen, that way sprites and clip at score screen edges
 Add menu item to enable output montitor mode - and then transparent overlay play screen with output status
     - Make input / output test screen rendering more generic so it can be used in both places?
     - Put menu items to control transparency and turn normal screen on / off
