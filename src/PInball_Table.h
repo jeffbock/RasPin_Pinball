@@ -25,4 +25,7 @@ enum class PBTBLScreenState {
     START_END
 };
 
+#define ACTIVEDISPX 448
+#define ACTIVEDISPY 268
+
 #endif // PInball_Table_h

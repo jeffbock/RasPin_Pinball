@@ -193,6 +193,9 @@ public:
     std::queue<stOutputMessage> m_outputQueue;
     std::mutex m_outputQMutex;
     
+    // Main Backglass Variables
+    unsigned int m_PBTBLBackglassId;
+
     // Start state
     unsigned int m_PBTBLStartDoorId, m_PBTBLLeftDoorId, m_PBTBLRightDoorId, m_PBTBLFlame1Id, m_PBTBLFlame2Id, m_PBTBLFlame3Id; 
     unsigned int m_PBTBLDoorDragonId, m_PBTBLDragonEyesId, m_PBTBLDoorDungeonId;
