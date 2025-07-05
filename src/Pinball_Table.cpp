@@ -25,19 +25,19 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetColor(m_PBTBLStartDoorId, 255, 255, 255, 255);
 
     // Load doors and set them up to slide left and right
-    m_PBTBLLeftDoorId = gfxLoadSprite("LeftDoor", "src/resources/textures/DoorLeft.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    m_PBTBLLeftDoorId = gfxLoadSprite("LeftDoor", "src/resources/textures/DoorLeft2.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     m_PBTBLeftDoorStartId = gfxInstanceSprite(m_PBTBLLeftDoorId);
-    gfxSetXY(m_PBTBLeftDoorStartId, 247, 72, false); 
+    gfxSetXY(m_PBTBLeftDoorStartId, ACTIVEDISPX + 315, ACTIVEDISPY + 112, false); 
     m_PBTBLeftDoorEndId = gfxInstanceSprite(m_PBTBLLeftDoorId);
-    gfxSetXY(m_PBTBLeftDoorEndId, 77, 72, false); 
+    gfxSetXY(m_PBTBLeftDoorEndId, ACTIVEDISPX + 90, ACTIVEDISPY + 112, false); 
     gfxLoadAnimateData(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, 0, ANIMATE_X_MASK, 1.25f, 0.0f, false, true, GFX_NOLOOP);
     gfxCreateAnimation(animateData, true);
 
-    m_PBTBLRightDoorId = gfxLoadSprite("RightDoor", "src/resources/textures/DoorRight.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    m_PBTBLRightDoorId = gfxLoadSprite("RightDoor", "src/resources/textures/DoorRight2.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     m_PBTBRightDoorStartId = gfxInstanceSprite(m_PBTBLRightDoorId);
-    gfxSetXY(m_PBTBRightDoorStartId, 360, 72, false);
+    gfxSetXY(m_PBTBRightDoorStartId, ACTIVEDISPX + 460, ACTIVEDISPY + 112, false);
     m_PBTBRightDoorEndId = gfxInstanceSprite(m_PBTBLRightDoorId);
-    gfxSetXY(m_PBTBRightDoorEndId, 600, 72, false);
+    gfxSetXY(m_PBTBRightDoorEndId, ACTIVEDISPX + 754, ACTIVEDISPY + 112, false);
     gfxLoadAnimateData(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, 0, ANIMATE_X_MASK, 1.25f, 0.0f, false, true, GFX_NOLOOP);
     gfxCreateAnimation(animateData, true);
     
@@ -137,8 +137,8 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
 
     // Show the door image with the flames - animate if it's opening...
     if (!m_PBTBLOpenDoors) {
-        gfxRenderSprite(m_PBTBLLeftDoorId, ACTIVEDISPX + 247, ACTIVEDISPY + 72);
-        gfxRenderSprite(m_PBTBLRightDoorId, ACTIVEDISPX + 360, ACTIVEDISPY + 72);
+        gfxRenderSprite(m_PBTBLLeftDoorId, ACTIVEDISPX + 315, ACTIVEDISPY + 112);
+        gfxRenderSprite(m_PBTBLRightDoorId, ACTIVEDISPX + 460, ACTIVEDISPY + 112);
     }
     else{
         gfxAnimateSprite(m_PBTBLLeftDoorId, currentTick);
