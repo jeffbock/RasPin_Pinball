@@ -128,10 +128,6 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 
-    // Load the backglass 
-    // Eventually make this more part of the normal flow - should show up on every screen
-    gfxRenderSprite(m_PBTBLBackglassId, 0, 0);
-
     // Hide the Dungeon behind the door
     gfxRenderSprite(m_PBTBLDoorDungeonId, ACTIVEDISPX, ACTIVEDISPY);
 
@@ -252,12 +248,18 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
 
 bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick){
     
+    bool success = false;
+
     switch (m_tableState) {
-        case PBTableState::PBTBL_START: return pbeRenderGameStart(currentTick, lastTick); break;
-        default: return (false); break;
+        case PBTableState::PBTBL_START: success = pbeRenderGameStart(currentTick, lastTick); break;
+        default: success = false; break;
     }
 
-    return (false);
+    // Render the backglass all the time (this will cover any other sprites and hide anything that's off the mini-screen)
+    // It's got a transparent mini screen which wil show the mini render.
+    gfxRenderSprite(m_PBTBLBackglassId, 0, 0);
+
+    return (success);
 }
 
 // Main State Loop for Pinball Table
