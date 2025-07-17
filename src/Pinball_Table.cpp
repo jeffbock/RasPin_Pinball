@@ -46,7 +46,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     m_PBTBLDragonEyesId = gfxLoadSprite("DragonEyes", "src/resources/textures/DragonEyes.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
 
     m_PBTBLDoorDungeonId = gfxLoadSprite("DoorDungeon", "src/resources/textures/Dungeon2.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
-    gfxSetScaleFactor(m_PBTBLDoorDungeonId, 1.0, false);
+    gfxSetScaleFactor(m_PBTBLDoorDungeonId, 0.94, false);
 
     m_PBTBLFlame1Id = gfxLoadSprite("Flame1", "src/resources/textures/flame1.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
     gfxSetColor(m_PBTBLFlame1Id, 255, 255, 255, 92);
@@ -129,17 +129,17 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 
     // Hide the Dungeon behind the door
-    gfxRenderSprite(m_PBTBLDoorDungeonId, ACTIVEDISPX, ACTIVEDISPY);
+    gfxRenderSprite(m_PBTBLDoorDungeonId, ACTIVEDISPX+50, ACTIVEDISPY+60);
 
-    // Show the door image with the flames - animate if it's opening...
+    // Show the door images - animate if it's opening...
     if (!m_PBTBLOpenDoors) {
         gfxRenderSprite(m_PBTBLLeftDoorId, ACTIVEDISPX + 315, ACTIVEDISPY + 112);
         gfxRenderSprite(m_PBTBLRightDoorId, ACTIVEDISPX + 460, ACTIVEDISPY + 112);
     }
     else{
         gfxAnimateSprite(m_PBTBLLeftDoorId, currentTick);
-        gfxAnimateSprite(m_PBTBLRightDoorId, currentTick);
         gfxRenderSprite(m_PBTBLLeftDoorId);
+        gfxAnimateSprite(m_PBTBLRightDoorId, currentTick);
         gfxRenderSprite(m_PBTBLRightDoorId);
     }
 
@@ -164,13 +164,16 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
         timeoutTicks = 18000; // Reset the timeout if we change screens
         lastScreenState = m_tableScreenState;
         gfxAnimateRestart(m_StartMenuFontId);
+
+        // Return early if we've restarted the animation here, we'll catch the text on the next pass
+        return (true);
     }
 
     switch (m_tableScreenState) {
         case PBTBLScreenState::START_START:
-            gfxAnimateSprite(m_StartMenuFontId, currentTick);
-            gfxSetScaleFactor(m_StartMenuFontId, 0.8, false);
             gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+            gfxAnimateSprite(m_StartMenuFontId, currentTick);
+            gfxSetScaleFactor(m_StartMenuFontId, 0.9, false);
             if (blinkCountTicks <= 0) {
                 blinkOn = !blinkOn; 
                 if (blinkOn) blinkCountTicks = 2000;
@@ -178,22 +181,28 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             } else {
                 blinkCountTicks -= (currentTick - lastTick);
             }
-            if (blinkOn) gfxRenderShadowString(m_StartMenuFontId, "Press Start", (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 200, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+            if (blinkOn) 
+            {
+                if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, "Press Start", (PB_SCREENWIDTH/2) + 30, ACTIVEDISPY + 250, 1, GFX_TEXTCENTER);
+                else gfxRenderShadowString(m_StartMenuFontId, "Press Start", (PB_SCREENWIDTH/2) + 30, ACTIVEDISPY + 250, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+            }
             break;
 
         case PBTBLScreenState::START_INST:
             gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
             gfxAnimateSprite(m_StartMenuFontId, currentTick);
-            gfxSetScaleFactor(m_StartMenuFontId, 0.5, false);
+            gfxSetScaleFactor(m_StartMenuFontId, 0.7, false);
             // loop through PBTableInst and print each string
             for (int i = 0; i < PBTABLEINSTSIZE; i++) {
                 if (i == 0) {
-                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, PBTableInst[i], (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 130 + (i * 34), 2, GFX_TEXTCENTER);
-                    else gfxRenderShadowString (m_StartMenuFontId, PBTableInst[i], (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 130 + (i * 34), 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, PBTableInst[i], (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 105, 2, GFX_TEXTCENTER);
+                    else gfxRenderShadowString (m_StartMenuFontId, PBTableInst[i], (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 105, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
                 }
                 else {
-                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, PBTableInst[i],  (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 130 + (i * 34), 2, GFX_TEXTLEFT);
+                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, PBTableInst[i],  (PB_SCREENWIDTH/2) - 400, ACTIVEDISPY + 120 + (i * 65), 2, GFX_TEXTLEFT);
+                    else gfxRenderShadowString(m_StartMenuFontId, PBTableInst[i], (PB_SCREENWIDTH/2) - 400, ACTIVEDISPY + 120 + (i * 65), 2, GFX_TEXTLEFT, 0, 0, 0, 255, 3); 
                 }
+                    
             }
             break;
             
@@ -206,17 +215,17 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                 std::string scoreText = std::to_string(m_saveFileData.highScores[i-1].highScore);
 
                 if (i == 0){
-                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, "High Scores", (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 130 + (i * 60), 10, GFX_TEXTCENTER);
-                    else gfxRenderShadowString(m_StartMenuFontId, "High Scores", (PB_SCREENWIDTH/2) +  20, ACTIVEDISPY + 130 + (i * 60), 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, "High Scores", (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 120, 10, GFX_TEXTCENTER);
+                    else gfxRenderShadowString(m_StartMenuFontId, "High Scores", (PB_SCREENWIDTH/2) +  20, ACTIVEDISPY + 120, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
                 }
                 else if (gfxAnimateActive(m_StartMenuFontId)) 
                 {
-                    gfxRenderString(m_StartMenuFontId, m_saveFileData.highScores[i-1].playerInitials, (PB_SCREENWIDTH/2) - 140, ACTIVEDISPY + 140 + (i * 60), 10, GFX_TEXTLEFT);
-                    gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2) + 150, ACTIVEDISPY + 140 + (i * 50), 3, GFX_TEXTRIGHT);
+                    gfxRenderString(m_StartMenuFontId, m_saveFileData.highScores[i-1].playerInitials, (PB_SCREENWIDTH/2) - 220, ACTIVEDISPY + 140 + (i * 75), 10, GFX_TEXTLEFT);
+                    gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2) + 220, ACTIVEDISPY + 140 + (i * 75), 3, GFX_TEXTRIGHT);
                 }
                 else {
-                    gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[i-1].playerInitials, (PB_SCREENWIDTH/2) - 140, ACTIVEDISPY + 140 + (i * 60), 10, GFX_TEXTLEFT, 0, 0, 0, 255, 3);
-                    gfxRenderShadowString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2) + 150, ACTIVEDISPY + 140 + (i * 60), 3, GFX_TEXTRIGHT, 0, 0, 0, 255, 3);
+                    gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[i-1].playerInitials, (PB_SCREENWIDTH/2) - 220, ACTIVEDISPY + 140 + (i * 75), 10, GFX_TEXTLEFT, 0, 0, 0, 255, 3);
+                    gfxRenderShadowString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2) + 220, ACTIVEDISPY + 140 + (i * 75), 3, GFX_TEXTRIGHT, 0, 0, 0, 255, 3);
                 }
             }
             break;

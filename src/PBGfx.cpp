@@ -877,8 +877,7 @@ bool PBGfx::gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentT
             float timeSinceStart = (float)(currentTick -  it->second.startTick) / 1000.0f;
 
             // If the animation is active, then update the sprite instance values
-            if ( it->second.isActive) {
-
+            if (( it->second.isActive) && (timeSinceStart > 0.0f)) {
                 // Calculate the percentage of the animation that has been completed.  Ignore aceleration for now, not sure if we should keep it for this type of animation
                 float percentComplete = timeSinceStart / it->second.animateTimeSec;
                 unsigned long temp;
@@ -993,14 +992,21 @@ return (false);
 }
 
 // Restarts an animation from the beginning
-bool PBGfx::gfxAnimateRestart(unsigned int animateSpriteId){
+// Allows Animate Restart to use a passed in tick count for the start tick
+bool PBGfx::gfxAnimateRestart(unsigned int animateSpriteId, unsigned long startTick){
 
     auto it = m_animateList.find(animateSpriteId);
     if (it != m_animateList.end()) {
-        it->second.startTick = GetTickCountGfx();
+        it->second.startTick = startTick;
         it->second.isActive = true;
         return (true);
     }
 
     return (false);
+}
+
+// Restarts an animation from the beginning, automatically using the current tick count
+// This can cause issues if a given rendering function is using a saved value for the current tick, but then also trying to animate during the same frame after restarting the animation.
+bool PBGfx::gfxAnimateRestart(unsigned int animateSpriteId){
+    return gfxAnimateRestart(animateSpriteId, GetTickCountGfx());
 }

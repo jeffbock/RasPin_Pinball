@@ -210,6 +210,7 @@ public:
     bool          gfxAnimateActive(unsigned int animateSpriteId);
     bool          gfxAnimateClear(unsigned int animateSpriteId);
     bool          gfxAnimateRestart(unsigned int animateSpriteId);
+    bool          gfxAnimateRestart(unsigned int animateSpriteId, unsigned long startTick);
     void          gfxLoadAnimateData(stAnimateData *animateData, unsigned int animateSpriteId, unsigned int startSpriteId, unsigned int endSpriteId, unsigned int startTick, 
                                      unsigned int typeMask, float animateTimeSec, float accelPixPerSec, bool isActive, bool rotateClockwise, gfxLoopType loop);
 
