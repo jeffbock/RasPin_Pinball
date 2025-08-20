@@ -36,7 +36,18 @@ Final Dimension Plans:
 Width: ~15 inches 
 Depth: TBD (maybey 28-30")
 Depth Playfield: 24"
-Box Front Height: 9.75, Back Box Height: 15"
+Box Front Height: 6.5, Back Box Height: 11.5"
+
+AI calculations:
+
+Component	Dimension (inches)	Reasoning
+Playfield Size	15" × 24"	Your specified dimensions
+Cabinet Width	~17"	Adds ~1" clearance on each side for rails and wall thickness
+Cabinet Depth	~26"–27"	24" playfield + ~2–3" for apron and front panel
+Front Height	~9.5"	Scaled down from full-size (~15") using width ratio ≈ 0.63
+Back Height	~15"	Maintains slope ratio of ~0.625 for good ball flow
+Playfield Slope	~6.5° recommended	Standard slope for visibility and gameplay feel
+Glass Cover Size	~15" × 24"	Matches playfield, with slight overhang for framing
 
 Backbase size: 12x12x6 - this is a little smaller than typical backbase 1/2 scale, but should fit on the machine ok
 
