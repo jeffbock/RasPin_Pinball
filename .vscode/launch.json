@@ -16,7 +16,7 @@
             "externalConsole": false,
             "preLaunchTask": "", // Ensure you have a build task configured
             "logging": {
-                "engineLogging": true
+                "engineLogging": false
             }
         },
         {
@@ -31,7 +31,7 @@
             "externalConsole": false,
             "preLaunchTask": "", // Ensure you have a build task configured
             "logging": {
-                "engineLogging": true
+                "engineLogging": false
             }
         },
         {
@@ -48,7 +48,7 @@
             "miDebuggerPath": "/usr/bin/gdb",
             "preLaunchTask": "", // Ensure you have a build task configured
             "logging": {
-                "engineLogging": true
+                "engineLogging": false
             }
         }
     ]
