@@ -812,7 +812,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
 
     static unsigned int FPSSwap, smallSpriteCount, spriteTransformCount, bigSpriteCount;
     static unsigned int msForSwapTest, msForSmallSprite, msForTransformSprite, msForBigSprite;
-    unsigned int msRender = 120;
+    unsigned int msRender = 25;
     
     if (!pbeLoadBenchmark (false)) return (false); 
 
@@ -822,7 +822,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         m_RestartBenchmark = false;
         FPSSwap = 0; smallSpriteCount = 0; spriteTransformCount = 0; bigSpriteCount = 0;
         msForSwapTest = 0; msForSmallSprite = 0; msForTransformSprite = 0; msForBigSprite = 0;
-        m_TicksPerScene = 4000; m_CountDownTicks = 4000;
+        m_TicksPerScene = 3000; m_CountDownTicks = 4000;
     }
 
     unsigned int elapsedTime = currentTick - m_BenchmarkStartTick;
@@ -853,8 +853,8 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
             gfxRenderShadowString(m_defaultFontSpriteId, temp , tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
             FPSSwap++;
         }
-        msForSwapTest += GetTickCountGfx() - currentTick;
 
+        msForSwapTest += GetTickCountGfx() - currentTick;
         return (true);
     }
 
@@ -869,6 +869,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
             gfxRenderSprite(m_StartMenuSwordId, x, y);
             smallSpriteCount++;
         }
+
         msForSmallSprite += GetTickCountGfx() - currentTick;
         gfxRenderShadowString(m_defaultFontSpriteId, "Small Sprite Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         return (true);
@@ -877,7 +878,6 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     // Big, untransformed sprites per second (with a clear)
     if (elapsedTime < ((m_TicksPerScene *3) + m_CountDownTicks)) {
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-        // gfxSetScaleFactor(m_StartMenuSwordId, 3.0f, false);
         
         while ((GetTickCountGfx() - currentTick) < msRender ){
             // Get a ramdom value from -ScreenWidth  to +ScreenWidth and -ScreenHeight to +ScreenHeight
@@ -886,8 +886,8 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
             gfxRenderSprite(m_BootUpConsoleId, x, y);
             bigSpriteCount++;
         }
-        msForBigSprite += GetTickCountGfx() - currentTick;
 
+        msForBigSprite += GetTickCountGfx() - currentTick;
         gfxRenderShadowString(m_defaultFontSpriteId, "Large Sprite Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         return (true);
     }
@@ -1315,7 +1315,9 @@ int main(int argc, char const *argv[])
         if (!g_PBEngine.m_GameStarted)g_PBEngine.pbeRenderScreen(currentTick, lastTick);
         else g_PBEngine.pbeRenderGameScreen(currentTick, lastTick);
 
-        g_PBEngine.gfxSwap();
+        // Flush the swap when running the benchmark
+        if (g_PBEngine.pbeGetMainState() == PB_BENCHMARK) g_PBEngine.gfxSwap(true);
+        else g_PBEngine.gfxSwap(false);
 
         lastTick = currentTick;
     }

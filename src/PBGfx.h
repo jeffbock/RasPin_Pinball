@@ -216,6 +216,7 @@ public:
 
     // Rendering functions
     void         gfxSwap();
+    void         gfxSwap(bool flush);
     void         gfxClear(float red, float blue, float green, float alpha, bool doFlip);
 
     // System Clock Function

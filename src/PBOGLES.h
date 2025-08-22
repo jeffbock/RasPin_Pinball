@@ -37,7 +37,7 @@ public:
 
     bool oglInit (long width, long height, NativeWindowType nativeWindow) ;
     bool oglClear (float red, float blue, float green, float alpha, bool doFlip);
-    bool oglSwap ();
+    bool oglSwap (bool flush);
     unsigned int oglGetScreenHeight();
     unsigned int oglGetScreenWidth();
 

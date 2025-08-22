@@ -154,15 +154,20 @@ bool PBOGLES::oglClear(float red, float blue, float green, float alpha, bool doF
         glClear(GL_COLOR_BUFFER_BIT);
 
         if (doFlip) {
-            if (oglSwap() == false) return (false);
+            if (oglSwap(false) == false) return (false);
         }
 
         return (true);
 }
 
 // Clear the back buffer with option to flip
-bool PBOGLES::oglSwap(){
+bool PBOGLES::oglSwap(bool flush){
 
+    // Add ability to flush pipeline before swap
+    // if (flush) glFlush();
+    // glFinish(); // This is an alternative to glFlush, but it waits for all commands to complete
+    if (flush) glFinish();  
+    
     if (eglSwapBuffers(m_display, m_surface) != EGL_TRUE) return (false);
     return (true);
 }

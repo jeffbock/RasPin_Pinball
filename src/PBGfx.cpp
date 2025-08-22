@@ -591,7 +591,11 @@ int  PBGfx::gfxStringWidth(unsigned int spriteId, std::string input, unsigned in
                                 
 
 void PBGfx::gfxSwap() {
-    oglSwap();
+    oglSwap(false);
+}
+
+void PBGfx::gfxSwap(bool flush) {
+    oglSwap(flush);
 }
 
 void PBGfx::gfxClear(float red, float blue, float green, float alpha, bool doFlip){
