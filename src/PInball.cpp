@@ -823,9 +823,10 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         FPSSwap = 0; smallSpriteCount = 0; spriteTransformCount = 0; bigSpriteCount = 0;
         msForSwapTest = 0; msForSmallSprite = 0; msForTransformSprite = 0; msForBigSprite = 0;
         m_TicksPerScene = 3000; m_CountDownTicks = 4000;
+        return (true);
     }
 
-    unsigned int elapsedTime = currentTick - m_BenchmarkStartTick;
+    unsigned long elapsedTime = (currentTick - m_BenchmarkStartTick);
 
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
