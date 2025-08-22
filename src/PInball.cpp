@@ -915,19 +915,23 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         // Print the final results when done
     }
     
-    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-    temp = "Benchmark Complete - Results";
-    gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 180, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-    temp = "Clear + Swap Rate: " + std::to_string(FPSSwap/(msForSwapTest/1000)) + " FPS";
-    gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 230, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-    temp = "Small Sprite Rate: " + std::to_string(smallSpriteCount/((msForSmallSprite))) + "k SPS";
-    gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 255, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-    temp = "Large Sprite Rate: " + std::to_string(bigSpriteCount/((msForBigSprite))) + "k SPS";
-    gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 280, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-    temp = "Transformed Sprite Rate: " + std::to_string(spriteTransformCount/((msForTransformSprite))) + "k SPS";
-    gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 305, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+    if (elapsedTime >= ((m_TicksPerScene *4) + m_CountDownTicks)) {
 
-    m_BenchmarkDone = true;
+        gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+        temp = "Benchmark Complete - Results";
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 180, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        temp = "Clear + Swap Rate: " + std::to_string(FPSSwap/(msForSwapTest/1000)) + " FPS";
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 230, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        temp = "Small Sprite Rate: " + std::to_string(smallSpriteCount/((msForSmallSprite))) + "k SPS";
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 255, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        temp = "Large Sprite Rate: " + std::to_string(bigSpriteCount/((msForBigSprite))) + "k SPS";
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 280, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        temp = "Transformed Sprite Rate: " + std::to_string(spriteTransformCount/((msForTransformSprite))) + "k SPS";
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 305, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+
+        m_BenchmarkDone = true;
+    }
+
     return (true);   
 }
 
