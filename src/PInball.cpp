@@ -742,7 +742,7 @@ bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long las
     pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentDiagnosticsItem, (PB_SCREENWIDTH/2) - 500, 250, 25, &tempMenu, true, true, 64, 0, 255, 255, 8);
 
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", PB_SCREENWIDTH - 100, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0,0,0,255,2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", PB_SCREENWIDTH - 130, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0,0,0,255,2);
         
      return (true);
 }
@@ -811,6 +811,8 @@ bool PBEngine::pbeLoadBenchmark(bool forceReload){
 bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick){
 
     static unsigned int FPSSwap, smallSpriteCount, spriteTransformCount, bigSpriteCount;
+    static unsigned int msForSwapTest, msForSmallSprite, msForTransformSprite, msForBigSprite;
+    unsigned int msRender = 120;
     
     if (!pbeLoadBenchmark (false)) return (false); 
 
@@ -819,6 +821,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         m_BenchmarkDone = false;
         m_RestartBenchmark = false;
         FPSSwap = 0; smallSpriteCount = 0; spriteTransformCount = 0; bigSpriteCount = 0;
+        msForSwapTest = 0; msForSmallSprite = 0; msForTransformSprite = 0; msForBigSprite = 0;
         m_TicksPerScene = 4000; m_CountDownTicks = 4000;
     }
 
@@ -844,13 +847,14 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     
     // Clear and Swap rate (may be limited by monitor refresh rate)
     if (elapsedTime < (m_TicksPerScene + m_CountDownTicks)) {
-        while ((GetTickCountGfx() - currentTick) < 1000) {
+        while ((GetTickCountGfx() - currentTick) < msRender) {
             gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
             temp = "Clear and Swap Test: Swap " + std::to_string(FPSSwap);
             gfxRenderShadowString(m_defaultFontSpriteId, temp , tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
             FPSSwap++;
-            // gfxSwap();
         }
+        msForSwapTest += GetTickCountGfx() - currentTick;
+
         return (true);
     }
 
@@ -858,15 +862,15 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     if (elapsedTime < ((m_TicksPerScene *2) + m_CountDownTicks)) {
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
         gfxSetScaleFactor(m_StartMenuSwordId, 0.10, false);
-        while ((GetTickCountGfx() - currentTick) < 1000) {
+        while ((GetTickCountGfx() - currentTick) < msRender) {
             // Get and random X and Y value, within the screen bounds
             x = rand() % PB_SCREENWIDTH;
             y = rand() % PB_SCREENHEIGHT;
             gfxRenderSprite(m_StartMenuSwordId, x, y);
             smallSpriteCount++;
         }
+        msForSmallSprite += GetTickCountGfx() - currentTick;
         gfxRenderShadowString(m_defaultFontSpriteId, "Small Sprite Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-        // gfxSwap();
         return (true);
     }
 
@@ -875,16 +879,16 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
         // gfxSetScaleFactor(m_StartMenuSwordId, 3.0f, false);
         
-        while ((GetTickCountGfx() - currentTick) < 1000 ){
+        while ((GetTickCountGfx() - currentTick) < msRender ){
             // Get a ramdom value from -ScreenWidth  to +ScreenWidth and -ScreenHeight to +ScreenHeight
             x = rand() % (PB_SCREENWIDTH * 2) - PB_SCREENWIDTH;
             y = rand() % (PB_SCREENHEIGHT * 2) - PB_SCREENHEIGHT;
             gfxRenderSprite(m_BootUpConsoleId, x, y);
             bigSpriteCount++;
         }
+        msForBigSprite += GetTickCountGfx() - currentTick;
 
         gfxRenderShadowString(m_defaultFontSpriteId, "Large Sprite Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-        // gfxSwap();
         return (true);
     }
 
@@ -892,7 +896,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     if (elapsedTime < ((m_TicksPerScene *4) + m_CountDownTicks)) {
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
         
-        while ((GetTickCountGfx() - currentTick) < 250) {
+        while ((GetTickCountGfx() - currentTick) < msRender) {
             // Get and random X and Y value, within the screen bounds
             x = rand() % PB_SCREENWIDTH;
             y = rand() % PB_SCREENHEIGHT;
@@ -904,8 +908,9 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
             gfxRenderSprite(m_StartMenuSwordId, x, y);
             spriteTransformCount++;
         }
+
+        msForTransformSprite += GetTickCountGfx() - currentTick;
         gfxRenderShadowString(m_defaultFontSpriteId, "Transformed Sprite Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-        // gfxSwap();
         return (true);
         // Print the final results when done
     }
@@ -913,13 +918,13 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
     temp = "Benchmark Complete - Results";
     gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 180, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-    temp = "Clear + Swap Rate: " + std::to_string(FPSSwap/(m_TicksPerScene/1000)) + " FPS";
+    temp = "Clear + Swap Rate: " + std::to_string(FPSSwap/(msForSwapTest/1000)) + " FPS";
     gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 230, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-    temp = "Small Sprite Rate: " + std::to_string(smallSpriteCount/((m_TicksPerScene))) + "k SPS";
+    temp = "Small Sprite Rate: " + std::to_string(smallSpriteCount/((msForSmallSprite))) + "k SPS";
     gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 255, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-    temp = "Large Sprite Rate: " + std::to_string(bigSpriteCount/((m_TicksPerScene))) + "k SPS";
+    temp = "Large Sprite Rate: " + std::to_string(bigSpriteCount/((msForBigSprite))) + "k SPS";
     gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 280, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-    temp = "Transformed Sprite Rate: " + std::to_string(spriteTransformCount/((m_TicksPerScene))) + "k SPS";
+    temp = "Transformed Sprite Rate: " + std::to_string(spriteTransformCount/((msForTransformSprite))) + "k SPS";
     gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 305, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
 
     m_BenchmarkDone = true;
