@@ -832,6 +832,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
 
     std::string temp;
     int tempX = PB_SCREENWIDTH / 2;
+    int x, y;
 
     if (elapsedTime < m_CountDownTicks) {
         
@@ -845,19 +846,10 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     if (elapsedTime < (m_TicksPerScene + m_CountDownTicks)) {
         while ((GetTickCountGfx() - currentTick) < 1000) {
             gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-            gfxRenderShadowString(m_defaultFontSpriteId, "Clear and Swap Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+            temp = "Clear and Swap Test: Swap " + std::to_string(FPSSwap);
+            gfxRenderShadowString(m_defaultFontSpriteId, temp , tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
             FPSSwap++;
-            gfxSwap();
-        }
-        return (true);
-    }
-
-    // Number of clears and swaps in one second
-    if (elapsedTime < (m_TicksPerScene + m_CountDownTicks)) {
-        while ((GetTickCountGfx() - currentTick) < 1000) {
-            gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-            FPSSwap++;
-            gfxSwap();
+            // gfxSwap();
         }
         return (true);
     }
@@ -868,30 +860,31 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         gfxSetScaleFactor(m_StartMenuSwordId, 0.10, false);
         while ((GetTickCountGfx() - currentTick) < 1000) {
             // Get and random X and Y value, within the screen bounds
-            int x = rand() % PB_SCREENWIDTH;
-            int y = rand() % PB_SCREENHEIGHT;
+            x = rand() % PB_SCREENWIDTH;
+            y = rand() % PB_SCREENHEIGHT;
             gfxRenderSprite(m_StartMenuSwordId, x, y);
             smallSpriteCount++;
         }
         gfxRenderShadowString(m_defaultFontSpriteId, "Small Sprite Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-        gfxSwap();
+        // gfxSwap();
         return (true);
     }
 
     // Big, untransformed sprites per second (with a clear)
     if (elapsedTime < ((m_TicksPerScene *3) + m_CountDownTicks)) {
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-        gfxSetScaleFactor(m_StartMenuSwordId, 3.0f, false);
-        while ((GetTickCountGfx() - currentTick) < 1000) {
-            
-            // Get a ramdom value from -ScreenWidth to +ScreenWidth and -ScreenHeight to +ScreenHeight
-            int x = rand() % (PB_SCREENWIDTH * 2) - PB_SCREENWIDTH;
-            int y = rand() % (PB_SCREENHEIGHT * 2) - PB_SCREENHEIGHT;
+        // gfxSetScaleFactor(m_StartMenuSwordId, 3.0f, false);
+        
+        while ((GetTickCountGfx() - currentTick) < 1000 ){
+            // Get a ramdom value from -ScreenWidth  to +ScreenWidth and -ScreenHeight to +ScreenHeight
+            x = rand() % (PB_SCREENWIDTH * 2) - PB_SCREENWIDTH;
+            y = rand() % (PB_SCREENHEIGHT * 2) - PB_SCREENHEIGHT;
             gfxRenderSprite(m_BootUpConsoleId, x, y);
             bigSpriteCount++;
         }
+
         gfxRenderShadowString(m_defaultFontSpriteId, "Large Sprite Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-        gfxSwap();
+        // gfxSwap();
         return (true);
     }
 
@@ -899,10 +892,10 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     if (elapsedTime < ((m_TicksPerScene *4) + m_CountDownTicks)) {
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
         
-        while ((GetTickCountGfx() - currentTick) < 1000) {
+        while ((GetTickCountGfx() - currentTick) < 250) {
             // Get and random X and Y value, within the screen bounds
-            int x = rand() % PB_SCREENWIDTH;
-            int y = rand() % PB_SCREENHEIGHT;
+            x = rand() % PB_SCREENWIDTH;
+            y = rand() % PB_SCREENHEIGHT;
             // Get a random scale and rotation value
             float scale = (rand() % 100) / 100.0f;
             float rotation = (rand() % 360);
@@ -912,7 +905,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
             spriteTransformCount++;
         }
         gfxRenderShadowString(m_defaultFontSpriteId, "Transformed Sprite Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-        gfxSwap();
+        // gfxSwap();
         return (true);
         // Print the final results when done
     }
