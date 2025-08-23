@@ -169,6 +169,8 @@ public:
         LEDDriver(PB_ADD_LED2)
     };
 
+    AmpDriver m_ampDriver = AmpDriver(PB_I2C_AMPLIFIER);
+
     // Member variables for the sprites used in the screens
     // We might switch this to a query by name mechansim, but that would be slower...
     unsigned int m_defaultFontSpriteId;

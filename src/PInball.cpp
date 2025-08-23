@@ -703,7 +703,7 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
 
     // Add insturctions how to exit
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", PB_SCREENWIDTH - 100, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0,0,0,255,2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", PB_SCREENWIDTH - 130, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0,0,0,255,2);
         
      return (true);
 }
@@ -1101,10 +1101,16 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 switch (m_CurrentSettingsItem) {
                     case (0): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
-                            if (m_saveFileData.mainVolume < 10) m_saveFileData.mainVolume++;
+                            if (m_saveFileData.mainVolume < 10) {
+                                m_saveFileData.mainVolume++;
+                                m_ampDriver.SetVolume(m_saveFileData.mainVolume * 10);  // Convert 0-10 to 0-100%
+                            }
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
-                            if (m_saveFileData.mainVolume > 0) m_saveFileData.mainVolume--;
+                            if (m_saveFileData.mainVolume > 0) {
+                                m_saveFileData.mainVolume--;
+                                m_ampDriver.SetVolume(m_saveFileData.mainVolume * 10);  // Convert 0-10 to 0-100%
+                            }
                         }
                         break;
                     }
@@ -1185,8 +1191,6 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 // Function checks the input / output structures for errors and if Raspberry Pi, sets up the GPIO pins
 bool PBEngine::pbeSetupIO()
 {
-
-
     // Check the input definitions and ensure no duplicates
     // Need to change this to a self test function - will need to set up Raspberry I/O and breakout boards
     for (int i = 0; i < NUM_INPUTS; i++) {
@@ -1197,8 +1201,10 @@ bool PBEngine::pbeSetupIO()
                 g_PBEngine.m_PassSelfTest = false;
             }
             // Check that the board type and pin number are unique
-            if (g_inputDef[i].boardType == g_inputDef[j].boardType && g_inputDef[i].pin == g_inputDef[j].pin) {
-                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate input board/pin: " + std::to_string(g_inputDef[i].id));
+            if (g_inputDef[i].boardType == g_inputDef[j].boardType && 
+                g_inputDef[i].boardIndex == g_inputDef[j].boardIndex && 
+                g_inputDef[i].pin == g_inputDef[j].pin) {
+                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate input board/board index/pin: " + std::to_string(g_inputDef[i].id));
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
@@ -1213,14 +1219,18 @@ bool PBEngine::pbeSetupIO()
                 g_PBEngine.m_PassSelfTest = false;
             }
             // Check that the board type and pin number are unique
-            if (g_outputDef[i].boardType == g_outputDef[j].boardType && g_outputDef[i].pin == g_outputDef[j].pin) {
-                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate output board/pin: " + std::to_string(g_outputDef[i].id));
+            if (g_outputDef[i].boardType == g_outputDef[j].boardType && 
+                g_outputDef[i].boardIndex == g_outputDef[j].boardIndex && 
+                g_outputDef[i].pin == g_outputDef[j].pin) {
+                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate output board/board index/pin: " + std::to_string(g_outputDef[i].id));
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
     }
 
     // Loop through each of the inputs and program the GPIOs and setup the debounce class for each input
+     g_PBEngine.pbeSendConsole("(PI)nball Engine: Intializing Inputs");
+
     for (int i = 0; i < NUM_INPUTS; i++) {
         if (g_inputDef[i].boardType == PB_RASPI){
             #ifdef EXE_MODE_RASPI
@@ -1238,6 +1248,8 @@ bool PBEngine::pbeSetupIO()
     }
 
     // Repeat for outputs
+     g_PBEngine.pbeSendConsole("(PI)nball Engine: Intializing Outputs");
+
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         if (g_outputDef[i].boardType == PB_RASPI){
             #ifdef EXE_MODE_RASPI
@@ -1261,6 +1273,8 @@ bool PBEngine::pbeSetupIO()
     }
 
     // Send all staged changes to IO and LED chips
+    g_PBEngine.pbeSendConsole("(PI)nball Engine: Sending programmed outputs to pins (LED and IO)");
+
     for (int i = 0; i < NUM_IO_CHIPS; i++) {
         g_PBEngine.m_IOChip[i].SendStagedOutput();
     }
@@ -1268,18 +1282,45 @@ bool PBEngine::pbeSetupIO()
         g_PBEngine.m_LEDChip[i].SendStagedLED();
     }
 
-    // Set up the GPIO and I2C for Raspberry Pi if in EXE_MODE_RASPI
+    // Hardware validation checks (only do this for actual Raspberry Pi HW)
+
+    #ifdef EXE_MODE_RASPI
+    g_PBEngine.pbeSendConsole("(PI)nball Engine: Verifying HW LED and IO Setup");
+    
+    // Check LEDDriver MODE1 registers - bit 4 should be 0 (normal operation)
+    for (int i = 0; i < NUM_LED_CHIPS; i++) {
+        uint8_t mode1 = g_PBEngine.m_LEDChip[i].ReadModeRegister(1);
+        if ((mode1 & 0x10) != 0) {  // Check bit 4
+            uint8_t address = g_PBEngine.m_LEDChip[i].GetAddress();
+            g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: LED chip " + std::to_string(i) + " (address 0x" + std::to_string(address) + ") not detected");
+            g_PBEngine.m_PassSelfTest = false;
+        }
+    }
+    
+    // Check IODriver POLARITY_PORT0 registers - should return 0x00 (normal polarity)
+    for (int i = 0; i < NUM_IO_CHIPS; i++) {
+        uint8_t polarity0 = g_PBEngine.m_IOChip[i].ReadPolarityPort(0);
+        if (polarity0 != 0x00) {  // Should be 0x00, not 0xFF
+            uint8_t address = g_PBEngine.m_IOChip[i].GetAddress();
+            g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: IO chip " + std::to_string(i) + " (address 0x" + std::to_string(address) + ") not detected");
+            g_PBEngine.m_PassSelfTest = false;
+        }
+    }
+    #endif // EXE_MODE_RASPI
+
     #ifdef EXE_MODE_RASPI
     wiringPiSetupPinType(WPI_PIN_BCM);
-    // Setup the devices on the I2C bus (currently only the amplifier)
-    // TODO:  Connect this to the master volume control at some pont.. probably need some I2C write function
-    // TODO:  This will need to be refactored to when more GPIO I2C devices are added
-    int fd = wiringPiI2CSetup(PB_I2C_AMPLIFIER);
-    uint8_t data = 0x20;
-
-    if (fd > 0) wiringPiI2CRawWrite (fd, &data, 1);
-    else (g_PBEngine.m_PassSelfTest = false);
     #endif // EXE_MODE_RASPI
+    
+    // Setup and verify the amplifier
+    g_PBEngine.pbeSendConsole("(PI)nball Engine: Initializing amplifier");
+    g_PBEngine.m_ampDriver.SetVolume(50);  // Set initial volume to 50%
+    
+    if (!g_PBEngine.m_ampDriver.IsConnected()) {
+        uint8_t address = g_PBEngine.m_ampDriver.GetAddress();
+        g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Amplifier (address 0x" + std::to_string(address) + ") not detected");
+        g_PBEngine.m_PassSelfTest = false;
+    } 
     
     return (g_PBEngine.m_PassSelfTest);
 }
@@ -1317,6 +1358,10 @@ int main(int argc, char const *argv[])
         g_PBEngine.pbeSaveFile ();
     }
     else g_PBEngine.pbeSendConsole("(PI)nball Engine: Loaded settings and score file"); 
+
+    // Set amplifier volume from saved settings (convert 0-10 range to 0-100%)
+    g_PBEngine.m_ampDriver.SetVolume(g_PBEngine.m_saveFileData.mainVolume * 10);
+    g_PBEngine.pbeSendConsole("(PI)nball Engine: Set amplifier volume to " + std::to_string(g_PBEngine.m_saveFileData.mainVolume * 10) + "%");
 
     g_PBEngine.pbeSendConsole("(PI)nball Engine: Starting main processing loop");    
    

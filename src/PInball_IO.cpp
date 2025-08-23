@@ -220,6 +220,10 @@ LEDGroupMode LEDDriver::GetGroupMode() const {
     return m_groupMode;
 }
 
+uint8_t LEDDriver::GetAddress() const {
+    return m_address;
+}
+
 bool LEDDriver::HasStagedChanges() const {
     // Check if any PWM registers have staged changes
     for (int i = 0; i < 16; i++) {
@@ -236,6 +240,58 @@ bool LEDDriver::HasStagedChanges() const {
     }
     
     return false;  // No changes staged
+}
+
+uint8_t LEDDriver::ReadModeRegister(uint8_t modeRegister) const {
+    uint8_t value = 0;
+#ifdef EXE_MODE_RASPI
+    if (m_i2cFd >= 0) {
+        if (modeRegister == 1 || modeRegister == 2) {
+            value = wiringPiI2CReadReg8(m_i2cFd, TLC59116_MODE1 + (modeRegister - 1));
+        }
+    }
+#endif
+    return value;
+}
+
+uint8_t LEDDriver::ReadPWMRegister(uint8_t pwmIndex) const {
+    uint8_t value = 0;
+#ifdef EXE_MODE_RASPI
+    if (m_i2cFd >= 0 && pwmIndex < 16) {
+        value = wiringPiI2CReadReg8(m_i2cFd, TLC59116_PWM0 + pwmIndex);
+    }
+#endif
+    return value;
+}
+
+uint8_t LEDDriver::ReadLEDOutRegister(uint8_t ledOutIndex) const {
+    uint8_t value = 0;
+#ifdef EXE_MODE_RASPI
+    if (m_i2cFd >= 0 && ledOutIndex < 4) {
+        value = wiringPiI2CReadReg8(m_i2cFd, TLC59116_LEDOUT0 + ledOutIndex);
+    }
+#endif
+    return value;
+}
+
+uint8_t LEDDriver::ReadGroupPWM() const {
+    uint8_t value = 0;
+#ifdef EXE_MODE_RASPI
+    if (m_i2cFd >= 0) {
+        value = wiringPiI2CReadReg8(m_i2cFd, TLC59116_GRPPWM);
+    }
+#endif
+    return value;
+}
+
+uint8_t LEDDriver::ReadGroupFreq() const {
+    uint8_t value = 0;
+#ifdef EXE_MODE_RASPI
+    if (m_i2cFd >= 0) {
+        value = wiringPiI2CReadReg8(m_i2cFd, TLC59116_GRPFREQ);
+    }
+#endif
+    return value;
 }
 
 //==============================================================================
@@ -357,6 +413,10 @@ bool IODriver::HasStagedChanges() const {
     return false;  // No changes staged
 }
 
+uint8_t IODriver::GetAddress() const {
+    return m_address;
+}
+
 void IODriver::ConfigurePin(uint8_t pinIndex, PBPinDirection direction) {
     if (pinIndex >= 16) {
         return;  // Invalid pin index
@@ -389,4 +449,116 @@ void IODriver::ConfigurePin(uint8_t pinIndex, PBPinDirection direction) {
         wiringPiI2CWriteReg8(m_i2cFd, configReg, currentConfig);
     }
 #endif
+}
+
+uint8_t IODriver::ReadOutputPort(uint8_t portIndex) const {
+    uint8_t value = 0;
+#ifdef EXE_MODE_RASPI
+    if (m_i2cFd >= 0 && portIndex < 2) {
+        value = wiringPiI2CReadReg8(m_i2cFd, TCA9555_OUTPUT_PORT0 + portIndex);
+    }
+#endif
+    return value;
+}
+
+uint8_t IODriver::ReadPolarityPort(uint8_t portIndex) const {
+    uint8_t value = 0;
+#ifdef EXE_MODE_RASPI
+    if (m_i2cFd >= 0 && portIndex < 2) {
+        value = wiringPiI2CReadReg8(m_i2cFd, TCA9555_POLARITY_PORT0 + portIndex);
+    }
+#endif
+    return value;
+}
+
+uint8_t IODriver::ReadConfigPort(uint8_t portIndex) const {
+    uint8_t value = 0;
+#ifdef EXE_MODE_RASPI
+    if (m_i2cFd >= 0 && portIndex < 2) {
+        value = wiringPiI2CReadReg8(m_i2cFd, TCA9555_CONFIG_PORT0 + portIndex);
+    }
+#endif
+    return value;
+}
+
+//==============================================================================
+// AmpDriver Class Implementation for MAX9744 Amplifier Chip
+//==============================================================================
+
+AmpDriver::AmpDriver(uint8_t address) : m_address(address), m_i2cFd(-1), m_currentVolume(0) {
+#ifdef EXE_MODE_RASPI
+    // Initialize the MAX9744 amplifier chip
+    m_i2cFd = wiringPiI2CSetup(m_address);
+    if (m_i2cFd >= 0) {
+        // Set initial volume to 0 (mute)
+        SetVolume(0);
+    }
+#endif
+}
+
+AmpDriver::~AmpDriver() {
+#ifdef EXE_MODE_RASPI
+    // Mute the amplifier before cleanup
+    if (m_i2cFd >= 0) {
+        SetVolume(0);
+        // Note: wiringPi doesn't provide an explicit close function for I2C
+        // The file descriptor will be cleaned up when the process ends
+        m_i2cFd = -1;
+    }
+#endif
+}
+
+void AmpDriver::SetVolume(uint8_t volumePercent) {
+    // Clamp volume to 0-100%
+    if (volumePercent > 100) {
+        volumePercent = 100;
+    }
+    
+    m_currentVolume = volumePercent;
+    
+#ifdef EXE_MODE_RASPI
+    if (m_i2cFd >= 0) {
+        uint8_t registerValue = PercentToRegisterValue(volumePercent);
+        wiringPiI2CRawWrite(m_i2cFd, &registerValue, 1);
+    }
+#endif
+}
+
+uint8_t AmpDriver::GetAddress() const {
+    return m_address;
+}
+
+bool AmpDriver::IsConnected() const {
+#ifdef EXE_MODE_RASPI
+    if (m_i2cFd < 0) {
+        return false;  // I2C setup failed
+    }
+    
+    // Try to read from the device to verify it's responding
+    uint8_t readValue = 0;
+    int result = wiringPiI2CRawRead(m_i2cFd, &readValue, 1);
+    
+    // Device is connected if read succeeds and doesn't return 0xFF (typical I2C error value)
+    return (result >= 0 && readValue != 0xFF);
+#else
+    return true;  // Always return true for Windows builds
+#endif
+}
+
+uint8_t AmpDriver::PercentToRegisterValue(uint8_t percent) const {
+    if (percent == 0) {
+        return 0x00;  // Mute
+    }
+    
+    // MAX9744 has 64 volume levels (0x00 to 0x3F)
+    // Map 1-100% to 0x01-0x3F
+    // Formula: ((percent * 63) / 100) + 1
+    uint8_t value = ((percent * 63) / 100) + 1;
+    
+    // Ensure we don't exceed 0x3F (63 decimal)
+    if (value > 0x3F) {
+        value = 0x3F;
+    }
+    
+    return value;
 }

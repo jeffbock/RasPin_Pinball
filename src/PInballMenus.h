@@ -41,7 +41,7 @@ std::map<unsigned int, std::string>  g_settingsMenu = {
 std::map<unsigned int, std::string>  g_diagnosticsMenu = {
     {0, "Test Input/Output"},
     {1, "Run Benchmark"},
-    {2, "Output Overlay: "}
+    {2, "I/O Overlay: "}
 };
 
 #define PB_OVERLAY_ON_TEXT "On"

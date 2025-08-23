@@ -148,6 +148,14 @@ public:
     void SendStagedLED();
     LEDGroupMode GetGroupMode() const;
     bool HasStagedChanges() const;
+    uint8_t GetAddress() const;                               // Get I2C address
+
+    // Register reading functions
+    uint8_t ReadModeRegister(uint8_t modeRegister) const;     // Read MODE1 or MODE2
+    uint8_t ReadPWMRegister(uint8_t pwmIndex) const;          // Read PWM0-PWM15 (pwmIndex 0-15)
+    uint8_t ReadLEDOutRegister(uint8_t ledOutIndex) const;    // Read LEDOUT0-LEDOUT3 (ledOutIndex 0-3)
+    uint8_t ReadGroupPWM() const;                             // Read GRPPWM register
+    uint8_t ReadGroupFreq() const;                            // Read GRPFREQ register
 
 private:
     uint8_t m_address;
@@ -195,6 +203,12 @@ public:
     uint16_t ReadInputs();
     bool HasStagedChanges() const;
     void ConfigurePin(uint8_t pinIndex, PBPinDirection direction);  
+    uint8_t GetAddress() const;                               // Get I2C address
+
+    // Register reading functions
+    uint8_t ReadOutputPort(uint8_t portIndex) const;     // Read OUTPUT_PORT0 or OUTPUT_PORT1 (portIndex 0-1)
+    uint8_t ReadPolarityPort(uint8_t portIndex) const;   // Read POLARITY_PORT0 or PORT1 (portIndex 0-1)
+    uint8_t ReadConfigPort(uint8_t portIndex) const;     // Read CONFIG_PORT0 or PORT1 (portIndex 0-1)
 
 private:
     uint8_t m_address;
@@ -202,6 +216,25 @@ private:
     bool m_outputStaged[2];       // Track which output ports have staged changes
     int m_i2cFd;
     uint16_t m_inputMask;         // Bit mask indicating which pins are inputs (1=input, 0=output)
+};
+
+// Simple Amplifier Driver class for controlling a single MAX9744 chip
+class AmpDriver {
+public:
+    AmpDriver(uint8_t address);
+    ~AmpDriver();
+
+    void SetVolume(uint8_t volumePercent);  // Set volume 0-100% (0 = mute)
+    uint8_t GetAddress() const;             // Get I2C address
+    bool IsConnected() const;               // Check if amplifier is responding
+
+private:
+    uint8_t m_address;
+    int m_i2cFd;
+    uint8_t m_currentVolume;               // Track current volume setting
+    
+    // Helper function to convert percentage to MAX9744 register value
+    uint8_t PercentToRegisterValue(uint8_t percent) const;
 };
 
 
