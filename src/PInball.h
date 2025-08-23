@@ -118,7 +118,9 @@ struct stSaveFileData {
     std::array<stHighScoreData, NUM_HIGHSCORES> highScores; 
 };
 
-
+// Hardware configuration defines
+#define NUM_IO_CHIPS    3
+#define NUM_LED_CHIPS   3
 
 // Make new class named PBGame that inheritis from PBOGLES with just essential functions
 class PBEngine : public PBGfx {
@@ -151,6 +153,21 @@ public:
     #ifdef EXE_MODE_RASPI
         std::map<int, cDebounceInput> m_inputMap;
     #endif
+
+    // Member variables for LED and IO chips - in Windows they are just faked
+    // This would need to changed if there are more or less IO chips in the system
+    
+    IODriverDebounce m_IOChip[NUM_IO_CHIPS] = {
+        IODriverDebounce(PB_ADD_IO0, 0xFF, 1),
+        IODriverDebounce(PB_ADD_IO1, 0xFF, 1),
+        IODriverDebounce(PB_ADD_IO2, 0xFF, 1)
+    };
+
+    LEDDriver m_LEDChip[NUM_LED_CHIPS] = {
+        LEDDriver(PB_ADD_LED0),
+        LEDDriver(PB_ADD_LED1),
+        LEDDriver(PB_ADD_LED2)
+    };
 
     // Member variables for the sprites used in the screens
     // We might switch this to a query by name mechansim, but that would be slower...

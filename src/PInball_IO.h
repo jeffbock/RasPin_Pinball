@@ -20,9 +20,8 @@ enum PBPinState {
 
 enum PBBoardType {
     PB_RASPI = 0,
-    PB_INPUT1 = 1,
-    PB_OUTPUT1 = 2,
-    PB_OUTPUT2 = 3,
+    PB_IO = 1,
+    PB_LED = 2,
     PB_NOBOARD
 };
 
@@ -40,8 +39,9 @@ struct stInputDef{
     std::string simMapKey;
     PBInputType inputType; 
     unsigned int id;
-    unsigned int pin;
+    unsigned int pin;  // GPIO pin number, or the pin index for IODriver Chips
     PBBoardType boardType;
+    unsigned int boardIndex;
     PBPinState lastState;
     unsigned long lastStateTick;
     unsigned long timeInState;
@@ -51,9 +51,10 @@ struct stInputDef{
 // Output defintions
 // Input message structs and types
 enum PBOutputType {
-    PB_OUTPUT_JETBUMPER = 0,
+    PB_OUTPUT_SLINGSHOT = 0,
     PB_OUTPUT_POPBUMPER = 1,
     PB_OUTPUT_LED = 2,
+    PB_OUTPUT_BALLEJECT = 3,
 };
 
 enum PBOutputControl {
@@ -68,8 +69,9 @@ struct stOutputDef{
     std::string outputName; 
     PBOutputType outputType; 
     unsigned int id;
-    unsigned int pin;
+    unsigned int pin; // GPIO pin number, or the pin index for IODriver and LED Chips
     PBBoardType boardType;
+    unsigned int boardIndex;
     PBPinState lastState;
 };
 
@@ -78,20 +80,129 @@ struct stOutputDef{
 
 // The actual definition of the output items - the user of the library will need to define these for the specific table
 
-#define IDO_JETBUMPER 0
+#define IDO_SLINGSHOT 0
 #define IDO_POPBUMPER 1
 #define IDO_LED1 2
-#define NUM_OUTPUTS 3
+#define IDO_BALLEJECT 3
+#define NUM_OUTPUTS 4
 
 #define IDI_LEFTFLIPPER 0
 #define IDI_RIGHTFLIPPER 1
 #define IDI_LEFTACTIVATE 2
 #define IDI_RIGHTACTIVATE 3
 #define IDI_START 4
-#define NUM_INPUTS 5
+#define IDI_SENSOR1 5
+#define IDI_SENSOR2 6
+#define IDI_SENSOR3 7
+#define NUM_INPUTS 8
 
 // Declare the shared variables for input / output structures.
 extern stInputDef g_inputDef[];
 extern stOutputDef g_outputDef[];
+
+// TLC59116 Register Definitions
+#define TLC59116_MODE1      0x00
+#define TLC59116_MODE2      0x01
+#define TLC59116_PWM0       0x02
+#define TLC59116_PWM15      0x11
+#define TLC59116_GRPPWM     0x12
+#define TLC59116_GRPFREQ    0x13
+#define TLC59116_LEDOUT0    0x14
+#define TLC59116_LEDOUT1    0x15
+#define TLC59116_LEDOUT2    0x16
+#define TLC59116_LEDOUT3    0x17
+
+// TLC59116 Constants
+#define TLC59116_AUTO_INCREMENT 0x80
+#define TLC59116_RESET_VAL      0x00
+#define TLC59116_MODE1_NORMAL   0x00
+#define TLC59116_MODE2_DMBLNK   0x20
+
+// TLC5916 Addresses
+#define PB_ADD_LED0 0x60
+#define PB_ADD_LED1 0x61
+#define PB_ADD_LED2 0x62
+
+// Simple LED Driver class for controlling a single tlc59116 chip
+enum LEDState {
+    LEDOn,
+    LEDOff,
+    LEDDimming,
+    LEDGroup
+};
+
+enum LEDGroupMode {
+    GroupModeDimming,   // Group mode set to dimming only
+    GroupModeBlinking   // Group mode set to blinking
+};
+
+// LED Driver class for controlling a single tlc59116 chip
+class LEDDriver {
+public:
+    LEDDriver(uint8_t address);
+    ~LEDDriver();
+
+    void SetGroupMode(LEDGroupMode groupMode, unsigned int brightness, unsigned int msTimeOn, unsigned int msTimeOff);
+    void StageLEDControl(bool setAll, unsigned int LEDIndex, LEDState state);
+    void StageLEDBrightness(bool setAll, unsigned int LEDIndex, uint8_t brightness);
+    void SendStagedLED();
+    LEDGroupMode GetGroupMode() const;
+    bool HasStagedChanges() const;
+
+private:
+    uint8_t m_address;
+    uint8_t m_ledBrightness[16];
+    uint8_t m_ledControl[4];
+    int m_i2cFd;
+    LEDGroupMode m_groupMode;  // Track current group mode state
+    bool m_pwmStaged[16];      // Track which PWM registers (PWM0-PWM15) have changes
+    bool m_ledOutStaged[4];    // Track which LEDOUT registers (LEDOUT0-LEDOUT3) have changes
+    
+    // Helper function to convert LEDState to control value
+    uint8_t GetControlValue(LEDState state) const;
+};
+
+// TCA9555 Register Definitions
+#define TCA9555_INPUT_PORT0     0x00
+#define TCA9555_INPUT_PORT1     0x01
+#define TCA9555_OUTPUT_PORT0    0x02
+#define TCA9555_OUTPUT_PORT1    0x03
+#define TCA9555_POLARITY_PORT0  0x04
+#define TCA9555_POLARITY_PORT1  0x05
+#define TCA9555_CONFIG_PORT0    0x06
+#define TCA9555_CONFIG_PORT1    0x07
+
+// TCA9555 Addresses
+#define PB_ADD_IO0              0x20
+#define PB_ADD_IO1              0x21
+#define PB_ADD_IO2              0x22
+
+// Pin direction enum for IODriver
+enum PBPinDirection {
+    PB_OUTPUT = 0,  // Pin configured as output
+    PB_INPUT = 1    // Pin configured as input
+};
+
+// Simple IO Driver class for controlling a single TCA9555 chip
+class IODriver {
+public:
+    IODriver(uint8_t address, uint16_t inputMask);
+    ~IODriver();
+
+    void StageOutput(uint16_t value);  // 16-bit value for both ports
+    void StageOutputPin(uint8_t pinIndex, bool value);  // Set individual pin (0-15)
+    void SendStagedOutput();
+    uint16_t ReadInputs();
+    bool HasStagedChanges() const;
+    void ConfigurePin(uint8_t pinIndex, PBPinDirection direction);  
+
+private:
+    uint8_t m_address;
+    uint8_t m_outputValues[2];    // Output values for port 0 and port 1
+    bool m_outputStaged[2];       // Track which output ports have staged changes
+    int m_i2cFd;
+    uint16_t m_inputMask;         // Bit mask indicating which pins are inputs (1=input, 0=output)
+};
+
 
 #endif

@@ -1185,6 +1185,8 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 // Function checks the input / output structures for errors and if Raspberry Pi, sets up the GPIO pins
 bool PBEngine::pbeSetupIO()
 {
+
+
     // Check the input definitions and ensure no duplicates
     // Need to change this to a self test function - will need to set up Raspberry I/O and breakout boards
     for (int i = 0; i < NUM_INPUTS; i++) {
@@ -1218,11 +1220,57 @@ bool PBEngine::pbeSetupIO()
         }
     }
 
+    // Loop through each of the inputs and program the GPIOs and setup the debounce class for each input
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        if (g_inputDef[i].boardType == PB_RASPI){
+            #ifdef EXE_MODE_RASPI
+                cDebounceInput debounceInput(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS, true, true);
+                g_PBEngine.m_inputMap.emplace(g_inputDef[i].id, debounceInput);
+            #endif
+        }
+        else if (g_inputDef[i].boardType == PB_IO) {
+            // Configure the pin as input on the appropriate IO chip
+            if (g_inputDef[i].boardIndex < NUM_IO_CHIPS) {
+                g_PBEngine.m_IOChip[g_inputDef[i].boardIndex].ConfigurePin(g_inputDef[i].pin, PB_INPUT);
+                g_PBEngine.m_IOChip[g_inputDef[i].boardIndex].SetPinDebounceTime(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS);
+            }
+        }
+    }
+
+    // Repeat for outputs
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        if (g_outputDef[i].boardType == PB_RASPI){
+            #ifdef EXE_MODE_RASPI
+                pinMode(g_outputDef[i].pin, OUTPUT);
+                digitalWrite(g_outputDef[i].pin,LOW); 
+            #endif
+        }
+        else if (g_outputDef[i].boardType == PB_IO) {
+            // Configure the pin as output on the appropriate IO chip
+            if (g_outputDef[i].boardIndex < NUM_IO_CHIPS) {
+                g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].ConfigurePin(g_outputDef[i].pin, PB_OUTPUT);
+                g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].StageOutputPin(g_outputDef[i].pin, false);  // Initialize to LOW
+            }
+        }
+        else if (g_outputDef[i].boardType == PB_LED) {
+            // Configure the LED on the appropriate LED chip
+            if (g_outputDef[i].boardIndex < NUM_LED_CHIPS) {
+                g_PBEngine.m_LEDChip[g_outputDef[i].boardIndex].StageLEDControl(false, g_outputDef[i].pin, LEDOff);  // Initialize to OFF
+            }
+        }
+    }
+
+    // Send all staged changes to IO and LED chips
+    for (int i = 0; i < NUM_IO_CHIPS; i++) {
+        g_PBEngine.m_IOChip[i].SendStagedOutput();
+    }
+    for (int i = 0; i < NUM_LED_CHIPS; i++) {
+        g_PBEngine.m_LEDChip[i].SendStagedLED();
+    }
+
     // Set up the GPIO and I2C for Raspberry Pi if in EXE_MODE_RASPI
     #ifdef EXE_MODE_RASPI
-
     wiringPiSetupPinType(WPI_PIN_BCM);
-
     // Setup the devices on the I2C bus (currently only the amplifier)
     // TODO:  Connect this to the master volume control at some pont.. probably need some I2C write function
     // TODO:  This will need to be refactored to when more GPIO I2C devices are added
@@ -1231,23 +1279,6 @@ bool PBEngine::pbeSetupIO()
 
     if (fd > 0) wiringPiI2CRawWrite (fd, &data, 1);
     else (g_PBEngine.m_PassSelfTest = false);
-
-    // Loop through each of the inputs and program the GPIOs and setup the debounce class for each input
-    for (int i = 0; i < NUM_INPUTS; i++) {
-        if (g_inputDef[i].boardType == PB_RASPI){
-            cDebounceInput debounceInput(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS, true, true);
-            g_PBEngine.m_inputMap.emplace(g_inputDef[i].id, debounceInput);
-        }
-    }
-
-    // Repeat for outputs
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (g_outputDef[i].boardType == PB_RASPI){
-            pinMode(g_outputDef[i].pin, OUTPUT);
-            digitalWrite(g_outputDef[i].pin,LOW); 
-        }
-    }
-
     #endif // EXE_MODE_RASPI
     
     return (g_PBEngine.m_PassSelfTest);

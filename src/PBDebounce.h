@@ -8,6 +8,7 @@
 
 #include "wiringPi.h"
 #include "wiringPiI2C.h"
+#include "PInball_IO.h"
 #include <chrono>
 
 class cDebounceInput {
@@ -30,5 +31,34 @@ class cDebounceInput {
     pinState m_lastPinState, m_lastValidPinState; 
     bool m_firstRead;
   };
+
+// IODriverDebounce class - inherits from IODriver and adds debouncing for input pins
+class IODriverDebounce : public IODriver {
+public:
+    enum pinState {
+        pinLow = 0,
+        pinHigh = 1
+    };
+
+    IODriverDebounce(uint8_t address, uint16_t inputMask, int defaultDebounceTimeMS);
+    ~IODriverDebounce();
+
+    void SetPinDebounceTime(uint8_t pinIndex, int debounceTimeMS);
+    uint16_t ReadInputsDB();
+    int ReadPinDB(uint8_t pinIndex);
+
+private:
+    struct PinDebounceData {
+        int debounceTimeMS;
+        unsigned long timeInStateMS;
+        std::chrono::steady_clock::time_point lastClock;
+        pinState lastPinState;
+        pinState lastValidPinState;
+        bool firstRead;
+    };
+
+    PinDebounceData m_pinData[16];  // Debounce data for each of the 16 pins
+    uint16_t m_debouncedValues;     // Current debounced state of all pins
+};
 
 #endif
