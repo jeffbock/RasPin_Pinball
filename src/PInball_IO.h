@@ -84,7 +84,10 @@ struct stOutputDef{
 #define IDO_POPBUMPER 1
 #define IDO_LED1 2
 #define IDO_BALLEJECT 3
-#define NUM_OUTPUTS 4
+#define IDO_LED2 4
+#define IDO_LED3 5
+#define IDO_LED4 6
+#define NUM_OUTPUTS 7
 
 #define IDI_LEFTFLIPPER 0
 #define IDI_RIGHTFLIPPER 1

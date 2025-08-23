@@ -640,7 +640,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
         else gfxSetColor (m_defaultFontSpriteId, 255, 255, 255, 255);
 
         int itemp =  ((i % 19) * 40);
-        gfxRenderString(m_defaultFontSpriteId, temp, 10 + ((i / 19) * 220), 60 + ((i % 19) * 22), 1, GFX_TEXTLEFT);
+        gfxRenderString(m_defaultFontSpriteId, temp, 10 + ((i / 24) * 220), 60 + ((i % 24) * 26), 1, GFX_TEXTLEFT);
         
         // Print the state of the input (and highlight in RED) if ON
         if (((g_inputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTINPUT)) || 
@@ -652,7 +652,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
             gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
             temp = "OFF";
         };
-        gfxRenderString(m_defaultFontSpriteId, temp, 180 + ((i / 19) * 220), 60 + ((i % 19) * 22), 1, GFX_TEXTLEFT);
+        gfxRenderString(m_defaultFontSpriteId, temp, 210 + ((i / 24) * 220), 60 + ((i % 24) * 26), 1, GFX_TEXTLEFT);
     }
     
     return (true);   
