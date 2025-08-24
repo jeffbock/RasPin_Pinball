@@ -151,7 +151,9 @@ public:
     // Setup input / outputs
     bool pbeSetupIO();
     #ifdef EXE_MODE_RASPI
-        std::map<int, cDebounceInput> m_inputMap;
+        // This map is used for whatever arbitrary Raspberry Pi inputs are used (from the main board)
+        // Note: IO expansion chips are not included in the structure
+        std::map<int, cDebounceInput> m_inputPiMap;
     #endif
 
     // Member variables for LED and IO chips - in Windows they are just faked

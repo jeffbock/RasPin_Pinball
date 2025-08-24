@@ -18,9 +18,9 @@
 
 // Output definitions
 stOutputDef g_outputDef[] = {
-    {"IO0P7 Sling Shot", PB_OUTPUT_SLINGSHOT, IDO_SLINGSHOT, 7, PB_IO, 0, PB_OFF},
-    {"IO1P7 Pop Bumper", PB_OUTPUT_POPBUMPER, IDO_POPBUMPER, 7, PB_IO, 1, PB_OFF},
-    {"IO2P7 Ball Eject", PB_OUTPUT_BALLEJECT, IDO_BALLEJECT, 7, PB_IO, 2, PB_OFF},
+    {"IO0P8 Sling Shot", PB_OUTPUT_SLINGSHOT, IDO_SLINGSHOT, 8, PB_IO, 0, PB_OFF},
+    {"IO1P8 Pop Bumper", PB_OUTPUT_POPBUMPER, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF},
+    {"IO2P8 Ball Eject", PB_OUTPUT_BALLEJECT, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF},
     {"Start LED", PB_OUTPUT_LED, IDO_LED1, 23, PB_RASPI, 0, PB_OFF},
     {"LED0P8 LED", PB_OUTPUT_LED, IDO_LED2, 8, PB_LED, 0, PB_ON},
     {"LED1P8 LED", PB_OUTPUT_LED, IDO_LED3, 8, PB_LED, 1, PB_ON},
@@ -34,9 +34,9 @@ stInputDef g_inputDef[] = {
     {"Left Activate", "Q", PB_INPUT_BUTTON, IDI_LEFTACTIVATE, 5, PB_RASPI, 0, PB_OFF, 0, 0, 4},
     {"Right Activate", "E", PB_INPUT_BUTTON, IDI_RIGHTACTIVATE,22, PB_RASPI, 0, PB_OFF, 0, 0, 4},
     {"Start", "Z", PB_INPUT_BUTTON, IDI_START, 6, PB_RASPI, 0, PB_OFF, 0, 0, 4},
-    {"IO0P8", "1", PB_INPUT_BUTTON, IDI_SENSOR1, 8, PB_IO, 0, PB_OFF, 0, 0, 4},
-    {"IO1P8", "2", PB_INPUT_BUTTON, IDI_SENSOR2, 8, PB_IO, 1, PB_OFF, 0, 0, 4},
-    {"IO2P8", "3", PB_INPUT_BUTTON, IDI_SENSOR3, 8, PB_IO, 2, PB_OFF, 0, 0, 4},
+    {"IO0P7", "1", PB_INPUT_BUTTON, IDI_SENSOR1, 7, PB_IO, 0, PB_OFF, 0, 0, 4},
+    {"IO1P7", "2", PB_INPUT_BUTTON, IDI_SENSOR2, 7, PB_IO, 1, PB_OFF, 0, 0, 4},
+    {"IO2P7", "3", PB_INPUT_BUTTON, IDI_SENSOR3, 7, PB_IO, 2, PB_OFF, 0, 0, 4},
 };
 
 // LEDDriver Class Implementation for TLC59116 LED Driver Chip
@@ -99,21 +99,21 @@ void LEDDriver::SetGroupMode(LEDGroupMode groupMode, unsigned int brightness, un
 #ifdef EXE_MODE_RASPI
     if (m_i2cFd >= 0) {
         
+        uint8_t groupBrightness = (brightness > 255) ? 255 : (uint8_t)brightness;
+        uint8_t grpFreq = 0;
         // Handle different group modes
         switch (groupMode) {
             case GroupModeDimming:
-                // Set group brightness (0-255)
-                uint8_t groupBrightness = (brightness > 255) ? 255 : (uint8_t)brightness;
+                // Set group brightness (0-255
                 wiringPiI2CWriteReg8(m_i2cFd, TLC59116_GRPPWM, groupBrightness);
                 // Disable group mode - set frequency to 0 (no blinking)
                 wiringPiI2CWriteReg8(m_i2cFd, TLC59116_GRPFREQ, 0x00);
-                break;
+            break;
     
             case GroupModeBlinking:
                 // Enable blinking - calculate and set frequency
                 unsigned int totalTimeMs = msTimeOn + msTimeOff;
-                uint8_t grpFreq = 0;
-
+                
                 // Program GRPPWM with duty cycle percent (ON/OFF Ratio)
                 uint8_t groupDutyCycle = (msTimeOn * 255 / totalTimeMs);
                 wiringPiI2CWriteReg8(m_i2cFd, TLC59116_GRPPWM, groupDutyCycle);
@@ -137,7 +137,7 @@ void LEDDriver::SetGroupMode(LEDGroupMode groupMode, unsigned int brightness, un
                 }
                 
                 wiringPiI2CWriteReg8(m_i2cFd, TLC59116_GRPFREQ, grpFreq);
-                break;
+            break;
         }
     }
 #endif
@@ -314,7 +314,7 @@ IODriver::IODriver(uint8_t address, uint16_t inputMask) : m_address(address), m_
         uint8_t configPort0 = (uint8_t)(m_inputMask & 0xFF);         // Lower 8 bits
         uint8_t configPort1 = (uint8_t)((m_inputMask >> 8) & 0xFF);  // Upper 8 bits
         
-        // Set all pins to inputs as default
+        // Set pins based on input mask
         wiringPiI2CWriteReg8(m_i2cFd, TCA9555_CONFIG_PORT0, configPort0);
         wiringPiI2CWriteReg8(m_i2cFd, TCA9555_CONFIG_PORT1, configPort1);
         
@@ -353,12 +353,12 @@ void IODriver::StageOutput(uint16_t value) {
     m_outputStaged[1] = true;
 }
 
-void IODriver::StageOutputPin(uint8_t pinIndex, bool value) {
+void IODriver::StageOutputPin(uint8_t pinIndex, PBPinState value) {
     if (pinIndex < 16) {
         uint8_t port = pinIndex / 8;      // Which port (0 or 1)
         uint8_t bitPos = pinIndex % 8;    // Bit position within port (0-7)
         
-        if (value) {
+        if (value == PB_ON) {
             // Set the bit
             m_outputValues[port] |= (1 << bitPos);
         } else {

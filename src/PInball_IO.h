@@ -201,7 +201,7 @@ public:
     ~IODriver();
 
     void StageOutput(uint16_t value);  // 16-bit value for both ports
-    void StageOutputPin(uint8_t pinIndex, bool value);  // Set individual pin (0-15)
+    void StageOutputPin(uint8_t pinIndex, PBPinState value);  // Set individual pin (0-15)
     void SendStagedOutput();
     uint16_t ReadInputs();
     bool HasStagedChanges() const;

@@ -125,8 +125,9 @@ return true;
 bool  PBProcessInput() {
 
     stInputMessage inputMessage;
-    // Loop through all the inputs in m_inputMap and, read them, check for state change, and send a message if changed
-    for (auto& inputPair : g_PBEngine.m_inputMap) {
+    // Loop through all the inputs in m_inputPiMap and, read them, check for state change, and send a message if changed
+    // Read the Raspberry Pi inputs first
+    for (auto& inputPair : g_PBEngine.m_inputPiMap) {
         int inputId = inputPair.first;
         cDebounceInput& input = inputPair.second;
 
@@ -150,6 +151,11 @@ bool  PBProcessInput() {
             
             g_PBEngine.m_inputQueue.push(inputMessage);
         }
+    }
+
+    // Do a debounce read for all IODriver chips and construct a messages as needed (similar to above)
+    for (int i = 0; i < NUM_IO_CHIPS; i++) {
+        // Figure out read logic here... 
     }
 
     return (true);
@@ -206,7 +212,7 @@ bool PBProcessOutput() {
     m_StartMenuSwordId = NOSPRITE;
 
     // This size is dependent on the font size and the size of the screen
-    m_maxConsoleLines = 18;
+    m_maxConsoleLines = 40;
     m_consoleTextHeight = 0;
 
     // Start Menu variables
@@ -1231,11 +1237,15 @@ bool PBEngine::pbeSetupIO()
     // Loop through each of the inputs and program the GPIOs and setup the debounce class for each input
      g_PBEngine.pbeSendConsole("(PI)nball Engine: Intializing Inputs");
 
+    #ifdef EXE_MODE_RASPI
+    wiringPiSetupPinType(WPI_PIN_BCM);
+    #endif // EXE_MODE_RASPI
+
     for (int i = 0; i < NUM_INPUTS; i++) {
         if (g_inputDef[i].boardType == PB_RASPI){
             #ifdef EXE_MODE_RASPI
                 cDebounceInput debounceInput(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS, true, true);
-                g_PBEngine.m_inputMap.emplace(g_inputDef[i].id, debounceInput);
+                g_PBEngine.m_inputPiMap.emplace(g_inputDef[i].id, debounceInput);
             #endif
         }
         else if (g_inputDef[i].boardType == PB_IO) {
@@ -1261,7 +1271,7 @@ bool PBEngine::pbeSetupIO()
             // Configure the pin as output on the appropriate IO chip
             if (g_outputDef[i].boardIndex < NUM_IO_CHIPS) {
                 g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].ConfigurePin(g_outputDef[i].pin, PB_OUTPUT);
-                g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].StageOutputPin(g_outputDef[i].pin, false);  // Initialize to LOW
+                g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].StageOutputPin(g_outputDef[i].pin, PB_OFF);  // Initialize to LOW
             }
         }
         else if (g_outputDef[i].boardType == PB_LED) {
@@ -1308,10 +1318,6 @@ bool PBEngine::pbeSetupIO()
     }
     #endif // EXE_MODE_RASPI
 
-    #ifdef EXE_MODE_RASPI
-    wiringPiSetupPinType(WPI_PIN_BCM);
-    #endif // EXE_MODE_RASPI
-    
     // Setup and verify the amplifier
     g_PBEngine.pbeSendConsole("(PI)nball Engine: Initializing amplifier");
     g_PBEngine.m_ampDriver.SetVolume(50);  // Set initial volume to 50%
