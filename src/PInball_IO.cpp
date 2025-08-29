@@ -34,9 +34,9 @@ stInputDef g_inputDef[] = {
     {"Left Activate", "Q", PB_INPUT_BUTTON, IDI_LEFTACTIVATE, 5, PB_RASPI, 0, PB_OFF, 0, 4},
     {"Right Activate", "E", PB_INPUT_BUTTON, IDI_RIGHTACTIVATE,22, PB_RASPI, 0, PB_OFF, 0, 4},
     {"Start", "Z", PB_INPUT_BUTTON, IDI_START, 6, PB_RASPI, 0, PB_OFF, 0, 4},
-    {"IO0P7", "1", PB_INPUT_BUTTON, IDI_SENSOR1, 7, PB_IO, 0, PB_OFF, 0, 4},
-    {"IO1P7", "2", PB_INPUT_BUTTON, IDI_SENSOR2, 7, PB_IO, 1, PB_OFF, 0, 4},
-    {"IO2P7", "3", PB_INPUT_BUTTON, IDI_SENSOR3, 7, PB_IO, 2, PB_OFF, 0, 4},
+    {"IO0P7", "1", PB_INPUT_SENSOR, IDI_SENSOR1, 7, PB_IO, 0, PB_OFF, 0, 4},
+    {"IO1P7", "2", PB_INPUT_SENSOR, IDI_SENSOR2, 7, PB_IO, 1, PB_OFF, 0, 4},
+    {"IO2P7", "3", PB_INPUT_SENSOR, IDI_SENSOR3, 7, PB_IO, 2, PB_OFF, 0, 4},
 };
 
 // LEDDriver Class Implementation for TLC59116 LED Driver Chip

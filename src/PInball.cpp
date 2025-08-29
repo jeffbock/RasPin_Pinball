@@ -136,6 +136,7 @@ bool  PBProcessInput() {
 
         // Read the current state of the input
         int currentState = input.readPin();
+        inputMessage.sentTick = g_PBEngine.GetTickCountGfx();
 
         // Check if the state has changed
         if (currentState != g_inputDef[inputId].lastState) {
@@ -149,8 +150,7 @@ bool  PBProcessInput() {
             else{
                 inputMessage.inputState = PB_OFF;
                 g_inputDef[inputId].lastState = PB_OFF;
-            } 
-            inputMessage.sentTick = g_PBEngine.GetTickCountGfx();
+            }
             
             g_PBEngine.m_inputQueue.push(inputMessage);
         }
@@ -158,8 +158,10 @@ bool  PBProcessInput() {
     
     // Read each IODriver and place it in the array value
     for (int i = 0; i < NUM_IO_CHIPS; i++) {
-        IOReadValue[i] = g_PBEngine.m_inputPiMap[i].readPin();
+        IOReadValue[i] = g_PBEngine.m_IOChip[i].ReadInputsDB();
     }
+
+    inputMessage.sentTick = g_PBEngine.GetTickCountGfx();
 
     // Loop through the g_inputDef values, and for each PB_IO input, check the corresponding read value and pin
     for (int i = 0; i < NUM_INPUTS; i++) {
@@ -167,7 +169,7 @@ bool  PBProcessInput() {
             int chip = g_inputDef[i].boardIndex;
             int pin = g_inputDef[i].pin;
             int mask = 1 << pin;
-            int pinState = (IOReadValue[chip] & mask) ? PB_OFF : PB_ON;
+            PBPinState pinState = (IOReadValue[chip] & mask) ? PB_OFF : PB_ON;
 
             // Check if the state has changed
             if (pinState != g_inputDef[i].lastState) {
@@ -175,8 +177,7 @@ bool  PBProcessInput() {
                 inputMessage.inputType = g_inputDef[i].inputType;
                 inputMessage.inputId = g_inputDef[i].id;
                 inputMessage.inputState = pinState;
-                inputMessage.sentTick = g_PBEngine.GetTickCountGfx();
-
+                
                 // Update the last state
                 g_inputDef[i].lastState = pinState;
 
@@ -185,7 +186,7 @@ bool  PBProcessInput() {
             }
         }
     }
-
+            
     return (true);
 }
 
@@ -1411,22 +1412,28 @@ int main(int argc, char const *argv[])
 
         currentTick = g_PBEngine.GetTickCountGfx();
         stInputMessage inputMessage;
+        static bool firstLoop = true;
         
         // PB Process Input and Output will be a thread in the PiOS side since it won't have windows messages
         // Will need to fix this later...
-        PBProcessInput();
-        PBProcessOutput();
+        // Don't want to do it on the first render loop since all the state may not be set up yet
+        if (!firstLoop){
 
-        // Process all the input message queue and update the game state
-        if (!g_PBEngine.m_inputQueue.empty()){
-            inputMessage = g_PBEngine.m_inputQueue.front();
-            g_PBEngine.m_inputQueue.pop();
+            PBProcessInput();
+            PBProcessOutput();
 
-            // Update the game state based on the input message
-            if (!g_PBEngine.m_GameStarted) g_PBEngine.pbeUpdateState (inputMessage); 
-            else g_PBEngine.pbeUpdateGameState (inputMessage);
+            // Process all the input message queue and update the game state
+            if (!g_PBEngine.m_inputQueue.empty()){
+                inputMessage = g_PBEngine.m_inputQueue.front();
+                g_PBEngine.m_inputQueue.pop();
+
+                // Update the game state based on the input message
+                if (!g_PBEngine.m_GameStarted) g_PBEngine.pbeUpdateState (inputMessage); 
+                else g_PBEngine.pbeUpdateGameState (inputMessage);
+            }
         }
-        
+        else firstLoop = false;
+
         if (!g_PBEngine.m_GameStarted)g_PBEngine.pbeRenderScreen(currentTick, lastTick);
         else g_PBEngine.pbeRenderGameScreen(currentTick, lastTick);
 
