@@ -139,6 +139,11 @@ enum LEDGroupMode {
     GroupModeBlinking   // Group mode set to blinking
 };
 
+// Max Volume for MAX9744 IC
+// Max is 0x3F but that is so sensitive, even small changes can be very loud.
+#define MAX9744_VOLUME_MAX 0x26
+#define MAX9744_VOLUME_MIN 0x14
+
 // LED Driver class for controlling a single tlc59116 chip
 class LEDDriver {
 public:

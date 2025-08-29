@@ -1320,7 +1320,7 @@ bool PBEngine::pbeSetupIO()
 
     // Setup and verify the amplifier
     g_PBEngine.pbeSendConsole("(PI)nball Engine: Initializing amplifier");
-    g_PBEngine.m_ampDriver.SetVolume(20);  // Set initial volume to 20%
+    g_PBEngine.m_ampDriver.SetVolume(0);  
     
     if (!g_PBEngine.m_ampDriver.IsConnected()) {
         uint8_t address = g_PBEngine.m_ampDriver.GetAddress();
@@ -1366,7 +1366,7 @@ int main(int argc, char const *argv[])
     else g_PBEngine.pbeSendConsole("(PI)nball Engine: Loaded settings and score file"); 
 
     // Set amplifier volume from saved settings (convert 0-10 range to 0-100%)
-    // g_PBEngine.m_ampDriver.SetVolume(g_PBEngine.m_saveFileData.mainVolume * 10);
+    g_PBEngine.m_ampDriver.SetVolume(g_PBEngine.m_saveFileData.mainVolume * 10);
     g_PBEngine.pbeSendConsole("(PI)nball Engine: Set amplifier volume to " + std::to_string(g_PBEngine.m_saveFileData.mainVolume * 10) + "%");
 
     g_PBEngine.pbeSendConsole("(PI)nball Engine: Starting main processing loop");    

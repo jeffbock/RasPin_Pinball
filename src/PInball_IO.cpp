@@ -548,16 +548,22 @@ bool AmpDriver::IsConnected() const {
 uint8_t AmpDriver::PercentToRegisterValue(uint8_t percent) const {
     if (percent == 0) {
         return 0x00;  // Mute
-    }
-    
+    } 
+
+    uint8_t range = MAX9744_VOLUME_MAX - MAX9744_VOLUME_MIN;
+
     // MAX9744 has 64 volume levels (0x00 to 0x3F)
-    // Map 1-100% to 0x01-0x3F
-    // Formula: ((percent * 63) / 100) + 1
-    uint8_t value = ((percent * 63) / 100) + 1;
+    // Map 1-100% to MAX9744_VOLUME_MIN-MAX9744_VOLUME_MAX
     
-    // Ensure we don't exceed 0x3F (63 decimal)
-    if (value > 0x3F) {
-        value = 0x3F;
+    uint8_t value = ((percent * range) / 100) + MAX9744_VOLUME_MIN;
+
+    // Ensure we don't exceed MAX9744_VOLUME_MAX
+    if (value > MAX9744_VOLUME_MAX) {
+        value = MAX9744_VOLUME_MAX;
+    }
+
+    if (value < MAX9744_VOLUME_MIN) {
+        value = MAX9744_VOLUME_MIN;
     }
     
     return value;
