@@ -44,7 +44,6 @@ struct stInputDef{
     unsigned int boardIndex;
     PBPinState lastState;
     unsigned long lastStateTick;
-    unsigned long timeInState;
     unsigned long debounceTimeMS;
 };
 

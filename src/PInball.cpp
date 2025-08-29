@@ -46,8 +46,6 @@ void PBWinSimInput(std::string character, PBPinState inputState, stInputMessage*
             inputMessage->sentTick = g_PBEngine.GetTickCountGfx();
 
             // Update the various state items for the input, could be used by the progam later
-            if (g_inputDef[i].lastState == inputState) g_inputDef[i].timeInState += (inputMessage->sentTick - g_inputDef[i].lastStateTick);
-            else g_inputDef[i].timeInState = 0;
             g_inputDef[i].lastState = inputState;
             g_inputDef[i].lastStateTick = inputMessage->sentTick;
 
@@ -122,10 +120,15 @@ return true;
 
 }
 
+// Reads all the inputs as defined by the input map from Raspberry Pi and any I/O chips and returns the values.
+
 bool  PBProcessInput() {
 
-    stInputMessage inputMessage;
+    static stInputMessage inputMessage;
+    static int IOReadValue[NUM_IO_CHIPS] = {0};
+
     // Loop through all the inputs in m_inputPiMap and, read them, check for state change, and send a message if changed
+
     // Read the Raspberry Pi inputs first
     for (auto& inputPair : g_PBEngine.m_inputPiMap) {
         int inputId = inputPair.first;
@@ -152,10 +155,35 @@ bool  PBProcessInput() {
             g_PBEngine.m_inputQueue.push(inputMessage);
         }
     }
-
-    // Do a debounce read for all IODriver chips and construct a messages as needed (similar to above)
+    
+    // Read each IODriver and place it in the array value
     for (int i = 0; i < NUM_IO_CHIPS; i++) {
-        // Figure out read logic here... 
+        IOReadValue[i] = g_PBEngine.m_inputPiMap[i].readPin();
+    }
+
+    // Loop through the g_inputDef values, and for each PB_IO input, check the corresponding read value and pin
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        if (g_inputDef[i].boardType == PB_IO) {
+            int chip = g_inputDef[i].boardIndex;
+            int pin = g_inputDef[i].pin;
+            int mask = 1 << pin;
+            int pinState = (IOReadValue[chip] & mask) ? PB_OFF : PB_ON;
+
+            // Check if the state has changed
+            if (pinState != g_inputDef[i].lastState) {
+                // Create an input message
+                inputMessage.inputType = g_inputDef[i].inputType;
+                inputMessage.inputId = g_inputDef[i].id;
+                inputMessage.inputState = pinState;
+                inputMessage.sentTick = g_PBEngine.GetTickCountGfx();
+
+                // Update the last state
+                g_inputDef[i].lastState = pinState;
+
+                // Push the message to the queue
+                g_PBEngine.m_inputQueue.push(inputMessage);
+            }
+        }
     }
 
     return (true);
