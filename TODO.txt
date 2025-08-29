@@ -1,8 +1,7 @@
 This file tracks the various items to do in the pinball project in rough priority
 
 ** Raspberry Pi Specific Work
-Hook up sound control I2C to volume sliders in settings
-Get I2C bus input / output extenders included in I/O
+Get I2C bus output (IO chips and LED chips) included in I/O and diagnostics functionality
 Create a cmake to build the program in Pi, and put EXE in right place to make paths work vs VS Code builds
 
 ** Generic arch improvements
@@ -29,8 +28,7 @@ Design prototype HW, use test mode to enable
     * Flippers, Sligshots, Pop Bumpers, Lane / Ball Detectors, Multiball lock gate
     * Build proto cabinet w/ foam board
     * Decide to migrate to larger HDMI screen or not?
-Build input and output breakout boards.  Output boards likely FET controlled, opto-isolated and support multiple voltage output ranges.
-Build multi-voltage power supply system - determine coil voltages, etc.. 
+Build relay output boards that connect to output IO chips.  Likely FET controlled, opto-isolated and support multiple voltage output ranges
 
 ** Documentation
 Write up arch docs
