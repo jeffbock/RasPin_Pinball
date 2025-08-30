@@ -62,6 +62,7 @@ enum class PBTBLScreenState;
 // Sound files
 #define MUSICFANTASY "src/resources/sound/fantasymusic.mp3"
 #define EFFECTSWORDHIT "src/resources/sound/swordcut.mp3"
+#define EFFECTCLICK "src/resources/sound/click.mp3"
 
 bool PBInitRender (long width, long height);
 

@@ -1055,6 +1055,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     case (2): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                         if (m_EnableOverlay) m_EnableOverlay = false;
                         else m_EnableOverlay = true;
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
                     }
                     default: break;
                 }
@@ -1163,12 +1164,14 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             if (m_saveFileData.mainVolume < 10) {
                                 m_saveFileData.mainVolume++;
                                 m_ampDriver.SetVolume(m_saveFileData.mainVolume * 10);  // Convert 0-10 to 0-100%
+                                g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
                             }
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
                             if (m_saveFileData.mainVolume > 0) {
                                 m_saveFileData.mainVolume--;
                                 m_ampDriver.SetVolume(m_saveFileData.mainVolume * 10);  // Convert 0-10 to 0-100%
+                                g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
                             }
                         }
                         break;
@@ -1177,37 +1180,45 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
                             if (m_saveFileData.musicVolume < 10) m_saveFileData.musicVolume++;
                             g_PBEngine.m_soundSystem.pbsSetMusicVolume(m_saveFileData.musicVolume * 10);
+                            g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
                             if (m_saveFileData.musicVolume > 0) m_saveFileData.musicVolume--;
                             g_PBEngine.m_soundSystem.pbsSetMusicVolume(m_saveFileData.musicVolume * 10);
+                            g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
                         }
                         break;
                     }
                     case (2): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
-                            if (m_saveFileData.ballsPerGame < 9) m_saveFileData.ballsPerGame++;
+                            if (m_saveFileData.ballsPerGame < 9) {
+                                m_saveFileData.ballsPerGame++;
+                                g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                            }
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
-                            if (m_saveFileData.ballsPerGame > 1) m_saveFileData.ballsPerGame--;
+                            if (m_saveFileData.ballsPerGame > 1) {
+                                m_saveFileData.ballsPerGame--;
+                                g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                            }
                         }
                         break;
                     }
                     case (3): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
                             switch (m_saveFileData.difficulty) {
-                                case PB_EASY: m_saveFileData.difficulty = PB_NORMAL; break;
-                                case PB_NORMAL: m_saveFileData.difficulty = PB_HARD; break;
-                                case PB_HARD: m_saveFileData.difficulty = PB_EPIC; break;
+                                case PB_EASY: m_saveFileData.difficulty = PB_NORMAL; g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);break;
+                                case PB_NORMAL: m_saveFileData.difficulty = PB_HARD; g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);break;
+                                case PB_HARD: m_saveFileData.difficulty = PB_EPIC; g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);break;
                                 case PB_EPIC: m_saveFileData.difficulty = PB_EPIC; break;
                             }
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
                             switch (m_saveFileData.difficulty) {
                                 case PB_EASY: m_saveFileData.difficulty = PB_EASY; break;
-                                case PB_NORMAL: m_saveFileData.difficulty = PB_EASY; break;
-                                case PB_HARD: m_saveFileData.difficulty = PB_NORMAL; break;
-                                case PB_EPIC: m_saveFileData.difficulty = PB_HARD; break;
+                                case PB_NORMAL: m_saveFileData.difficulty = PB_EASY; g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);break;
+                                case PB_HARD: m_saveFileData.difficulty = PB_NORMAL; g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);break;
+                                case PB_EPIC: m_saveFileData.difficulty = PB_HARD; g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);break;
                             }
                         }
                         break;
@@ -1215,6 +1226,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     case (4): {
                         if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                             resetHighScores();
+                            g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
                         }
                     }
                     default: break;
