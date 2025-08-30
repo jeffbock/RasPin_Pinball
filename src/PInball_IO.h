@@ -28,7 +28,7 @@ enum PBBoardType {
 // Input message structs and types
 enum PBInputType {
     PB_INPUT_BUTTON = 0,
-    PB_INPUT_BALLSENSOR = 1,
+    PB_INPUT_SENSOR = 1,
     PB_INPUT_TARGET = 2,
     PB_INPUT_JETBUMPER = 3,
     PB_INPUT_POPBUMPER = 4,
