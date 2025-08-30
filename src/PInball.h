@@ -59,6 +59,10 @@ enum class PBTBLScreenState;
 #define MENUSWORD "src/resources/textures/MenuSword.png"
 #define SAVEFILENAME "src/resources/savefile.bin"
 
+// Sound files
+#define MUSICFANTASY "src/resources/sound/fantasymusic.mp3"
+#define EFFECTSWORDHIT "src/resources/sound/swordcut.mp3"
+
 bool PBInitRender (long width, long height);
 
 // The main modes / screens for the pinball game.  

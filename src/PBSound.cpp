@@ -66,7 +66,7 @@ void PBSound::pbsShutdown() {
     }
     
     // Stop all effects and free chunks
-    stopAllEffects();
+    pbsStopAllEffects();
     
     // Free cached effects
     for (auto& pair : loadedEffects) {

@@ -1001,12 +1001,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_LEFTFLIPPER) {
                     // Get the current menu item count from g_mainMenu
-                    if (m_CurrentMenuItem > 0) m_CurrentMenuItem--;
+                    if (m_CurrentMenuItem > 0) {
+                        m_CurrentMenuItem--;
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTSWORDHIT);
+                    }
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
                     int temp = g_mainMenu.size();
-                    if (m_CurrentMenuItem < (temp -1)) m_CurrentMenuItem++;
+                    if (m_CurrentMenuItem < (temp -1)) {
+                        m_CurrentMenuItem++;
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTSWORDHIT);
+                    }
                 }
 
                 if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
@@ -1027,12 +1033,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_LEFTFLIPPER) {
                     // Get the current menu item count from g_mainMenu
-                    if (m_CurrentDiagnosticsItem > 0) m_CurrentDiagnosticsItem--;
+                    if (m_CurrentDiagnosticsItem > 0) {
+                        m_CurrentDiagnosticsItem--;
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTSWORDHIT);
+                    }
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
                     int temp = g_diagnosticsMenu.size();
-                    if (m_CurrentDiagnosticsItem < (temp -1)) m_CurrentDiagnosticsItem++;
+                    if (m_CurrentDiagnosticsItem < (temp -1)) {
+                        m_CurrentDiagnosticsItem++;
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTSWORDHIT);
+                    }
                 }
             }
 
@@ -1123,12 +1135,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_SETTINGS: {
             if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_LEFTFLIPPER) {
-                    if (m_CurrentSettingsItem > 0) m_CurrentSettingsItem--;
+                    if (m_CurrentSettingsItem > 0) {
+                        m_CurrentSettingsItem--;
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTSWORDHIT);
+                    }
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
                     int temp = g_settingsMenu.size();
-                    if (m_CurrentSettingsItem < (temp -1)) m_CurrentSettingsItem++;
+                    if (m_CurrentSettingsItem < (temp -1)) {
+                        m_CurrentSettingsItem++;
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTSWORDHIT);
+                    }
                 }
                 if (inputMessage.inputId == IDI_START) {
                     // Save the values to the settings file and exit the screen
@@ -1158,9 +1176,11 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     case (1): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
                             if (m_saveFileData.musicVolume < 10) m_saveFileData.musicVolume++;
+                            g_PBEngine.m_soundSystem.pbsSetMusicVolume(m_saveFileData.musicVolume * 10);
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
                             if (m_saveFileData.musicVolume > 0) m_saveFileData.musicVolume--;
+                            g_PBEngine.m_soundSystem.pbsSetMusicVolume(m_saveFileData.musicVolume * 10);
                         }
                         break;
                     }
@@ -1403,6 +1423,12 @@ int main(int argc, char const *argv[])
     // Set amplifier volume from saved settings (convert 0-10 range to 0-100%)
     g_PBEngine.m_ampDriver.SetVolume(g_PBEngine.m_saveFileData.mainVolume * 10);
     g_PBEngine.pbeSendConsole("(PI)nball Engine: Set amplifier volume to " + std::to_string(g_PBEngine.m_saveFileData.mainVolume * 10) + "%");
+
+    // Set the mixer volumes and start the background music
+    g_PBEngine.pbeSendConsole("(PI)nball Engine: Starting main menu music");    
+    g_PBEngine.m_soundSystem.pbsSetMasterVolume(100);
+    g_PBEngine.m_soundSystem.pbsSetMusicVolume(g_PBEngine.m_saveFileData.musicVolume * 10);
+    g_PBEngine.m_soundSystem.pbsPlayMusic(MUSICFANTASY);
 
     g_PBEngine.pbeSendConsole("(PI)nball Engine: Starting main processing loop");    
    
