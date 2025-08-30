@@ -92,6 +92,7 @@
                 "${workspaceFolder}/src/PBDebounce.cpp",
                 "${workspaceFolder}/src/PInball_IO.cpp",
                 "${workspaceFolder}/src/PInball_Table.cpp",
+                "${workspaceFolder}/src/PBSound.cpp",
                 "${workspaceFolder}/src/PInball.cpp",
                 "/I${workspaceFolder}/src/include_ogl_win",
                 "/link",
@@ -142,6 +143,7 @@
                 "${workspaceFolder}/src/PBDebounce.cpp",
                 "${workspaceFolder}/src/PInball_IO.cpp",
                 "${workspaceFolder}/src/Pinball_Table.cpp",
+                "${workspaceFolder}/src/PBSound.cpp",
                 "${workspaceFolder}/src/PInball.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
                 "-I/usr/include/EGL",
@@ -155,7 +157,9 @@
                 "-lm",
                 "-lX11",
                 "-lXrandr",
-                "-lwiringPi"
+                "-lwiringPi",
+                "-lSDL2",
+                "-lSDL2_mixer"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

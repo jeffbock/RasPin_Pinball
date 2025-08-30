@@ -31,6 +31,9 @@ if (g_WHND == NULL) return (false);
 if (!g_PBEngine.oglInit (width, height, g_WHND)) return (false);
 if (!g_PBEngine.gfxInit()) return (false);
 
+// Initialize sound system
+g_PBEngine.m_soundSystem.pbsInitialize();
+
 return (true);
 }
 
@@ -115,6 +118,9 @@ if (g_PiWindow == 0) return (false);
 // For Rasberry Pi, OGLNativeWindows type is TBD
 if (!g_PBEngine.oglInit (width, height, g_PiWindow)) return (false);
 if (!g_PBEngine.gfxInit()) return (false);
+
+// Initialize sound system
+g_PBEngine.m_soundSystem.pbsInitialize();
 
 return true;
 

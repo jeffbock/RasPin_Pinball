@@ -35,6 +35,7 @@
 #include "PBGfx.h"
 #include "PInball_IO.h"
 #include "PInball_Table.h"
+#include "PBSound.h"
 #include <iostream>
 #include <stdio.h>
 #include <vector>
@@ -172,6 +173,9 @@ public:
     };
 
     AmpDriver m_ampDriver = AmpDriver(PB_I2C_AMPLIFIER);
+
+    // Sound system for background music and effects
+    PBSound m_soundSystem;
 
     // Member variables for the sprites used in the screens
     // We might switch this to a query by name mechansim, but that would be slower...
