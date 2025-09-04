@@ -2,6 +2,8 @@ This file tracks the various items to do in the pinball project in rough priorit
 
 ** Raspberry Pi Specific Work
 Get I2C bus output (IO chips and LED chips) included in I/O and diagnostics functionality
+Add fucntionality to process Outputs to automatically pulse based outputs when required - need some on going queue and what to do if new message
+Add message functionality to update LED control values (go through messaging to we can thread later if we want..all IO in one spot)
 Create a cmake to build the program in Pi, and put EXE in right place to make paths work vs VS Code builds
 
 ** Generic arch improvements
@@ -10,8 +12,9 @@ Add menu item to enable output montitor mode - and then transparent overlay play
     - Make input / output test screen rendering more generic so it can be used in both places?
     - Put menu items to control transparency and turn normal screen on / off
 Make output system automatic - main loop can set on / off durations, LED patterns, etc.. and out loop will manage
+    -  Add layer for presentation control on LED chips - series of full LED values sent at once with intervals on / off, etc.. specify a presentation array
+    -  Put flow to either enable LED message control or presentation control 
 Make input / output processing fully threaded.
-Create sound output queue system (both Windows and Rasp Pi?  Rasp Pi 1st priority)
 Add some more interesting animation options (Any movement that makes animations better?)
 Expand sprites to have animated sprites - eg: UV maps within a sprite with different images - base is there but need example to integrate.
     -  Is there some standard sprite format / program that can be used?
@@ -40,6 +43,7 @@ Fix sprite animation acceleration parameter
 Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
 Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
 Install git LFS as that large bitmaps, etc.. are expected at some point
+Align sounds to less popping - increase buffer size, align sample modes, use WAV?
 
 ** Maybe future stuff
 Look a neo-pixel support - can we have multi-color strips on individual addressed LEDs?
