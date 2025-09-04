@@ -156,6 +156,13 @@ public:
 
     // Setup input / outputs
     bool pbeSetupIO();
+    
+    // Output message functions
+    void SendOutputMsg(PBOutputType outputType, unsigned int outputId, PBPinState outputState);
+    
+    // Input configuration functions
+    bool SetAutoOutput(unsigned int index, bool autoOutputEnabled);
+    
     #ifdef EXE_MODE_RASPI
         // This map is used for whatever arbitrary Raspberry Pi inputs are used (from the main board)
         // Note: IO expansion chips are not included in the structure

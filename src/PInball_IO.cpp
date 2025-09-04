@@ -17,26 +17,28 @@
 #endif
 
 // Output definitions
+// Fields: outputName, outputType, id, pin, boardType, boardIndex, lastState, onTimeMS, offTimeMS
 stOutputDef g_outputDef[] = {
-    {"IO0P8 Sling Shot", PB_OUTPUT_SLINGSHOT, IDO_SLINGSHOT, 8, PB_IO, 0, PB_OFF},
-    {"IO1P8 Pop Bumper", PB_OUTPUT_POPBUMPER, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF},
-    {"IO2P8 Ball Eject", PB_OUTPUT_BALLEJECT, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF},
-    {"Start LED", PB_OUTPUT_LED, IDO_LED1, 23, PB_RASPI, 0, PB_OFF},
-    {"LED0P8 LED", PB_OUTPUT_LED, IDO_LED2, 8, PB_LED, 0, PB_ON},
-    {"LED1P8 LED", PB_OUTPUT_LED, IDO_LED3, 8, PB_LED, 1, PB_ON},
-    {"LED2P8 LED", PB_OUTPUT_LED, IDO_LED4, 8, PB_LED, 2, PB_ON}
+    {"IO0P8 Sling Shot", PB_OUTPUT_SLINGSHOT, IDO_SLINGSHOT, 8, PB_IO, 0, PB_OFF, 100, 100}, 
+    {"IO1P8 Pop Bumper", PB_OUTPUT_POPBUMPER, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF, 100, 100},
+    {"IO2P8 Ball Eject", PB_OUTPUT_BALLEJECT, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF, 100, 100},
+    {"Start LED", PB_OUTPUT_LED, IDO_LED1, 23, PB_RASPI, 0, PB_OFF, 0, 0},
+    {"LED0P8 LED", PB_OUTPUT_LED, IDO_LED2, 8, PB_LED, 0, PB_ON, 0, 0},
+    {"LED1P8 LED", PB_OUTPUT_LED, IDO_LED3, 8, PB_LED, 1, PB_ON, 0, 0},
+    {"LED2P8 LED", PB_OUTPUT_LED, IDO_LED4, 8, PB_LED, 2, PB_ON, 0, 0}
 };
 
 // Input definitions
+// Fields: inputName, simMapKey, inputType, id, pin, boardType, boardIndex, lastState, lastStateTick, debounceTimeMS, autoOutput, autoOutputId, autoPinState
 stInputDef g_inputDef[] = {
-    {"Left Flipper", "A", PB_INPUT_BUTTON, IDI_LEFTFLIPPER, 27, PB_RASPI, 0, PB_OFF, 0, 4},
-    {"Right Flipper", "D", PB_INPUT_BUTTON, IDI_RIGHTFLIPPER, 17, PB_RASPI, 0, PB_OFF, 0, 4},
-    {"Left Activate", "Q", PB_INPUT_BUTTON, IDI_LEFTACTIVATE, 5, PB_RASPI, 0, PB_OFF, 0, 4},
-    {"Right Activate", "E", PB_INPUT_BUTTON, IDI_RIGHTACTIVATE,22, PB_RASPI, 0, PB_OFF, 0, 4},
-    {"Start", "Z", PB_INPUT_BUTTON, IDI_START, 6, PB_RASPI, 0, PB_OFF, 0, 4},
-    {"IO0P7", "1", PB_INPUT_SENSOR, IDI_SENSOR1, 7, PB_IO, 0, PB_OFF, 0, 4},
-    {"IO1P7", "2", PB_INPUT_SENSOR, IDI_SENSOR2, 7, PB_IO, 1, PB_OFF, 0, 4},
-    {"IO2P7", "3", PB_INPUT_SENSOR, IDI_SENSOR3, 7, PB_IO, 2, PB_OFF, 0, 4},
+    {"Left Flipper", "A", PB_INPUT_BUTTON, IDI_LEFTFLIPPER, 27, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_LED2, PB_ON},
+    {"Right Flipper", "D", PB_INPUT_BUTTON, IDI_RIGHTFLIPPER, 17, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_LED3, PB_ON},
+    {"Left Activate", "Q", PB_INPUT_BUTTON, IDI_LEFTACTIVATE, 5, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
+    {"Right Activate", "E", PB_INPUT_BUTTON, IDI_RIGHTACTIVATE,22, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
+    {"Start", "Z", PB_INPUT_BUTTON, IDI_START, 6, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
+    {"IO0P7", "1", PB_INPUT_SENSOR, IDI_SENSOR1, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
+    {"IO1P7", "2", PB_INPUT_SENSOR, IDI_SENSOR2, 7, PB_IO, 1, PB_OFF, 0, 5, false, 0, PB_OFF},
+    {"IO2P7", "3", PB_INPUT_SENSOR, IDI_SENSOR3, 7, PB_IO, 2, PB_OFF, 0, 5, false, 0, PB_OFF}
 };
 
 // LEDDriver Class Implementation for TLC59116 LED Driver Chip

@@ -45,6 +45,9 @@ struct stInputDef{
     PBPinState lastState;
     unsigned long lastStateTick;
     unsigned long debounceTimeMS;
+    bool autoOutput;
+    unsigned int autoOutputId;
+    PBPinState autoPinState;
 };
 
 // Output defintions
@@ -53,7 +56,7 @@ enum PBOutputType {
     PB_OUTPUT_SLINGSHOT = 0,
     PB_OUTPUT_POPBUMPER = 1,
     PB_OUTPUT_LED = 2,
-    PB_OUTPUT_BALLEJECT = 3,
+    PB_OUTPUT_BALLEJECT = 3
 };
 
 enum PBOutputControl {
@@ -72,6 +75,9 @@ struct stOutputDef{
     PBBoardType boardType;
     unsigned int boardIndex;
     PBPinState lastState;
+    unsigned int onTimeMS;
+    unsigned int offTimeMS;
+
 };
 
 // The actual definition of the input items - the user of the library will need to define these for the specific table

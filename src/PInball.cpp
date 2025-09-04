@@ -102,6 +102,13 @@ bool PBProcessOutput() {
     return (true);
 }
 
+bool PBProcessIO() {
+
+    PBProcessInput();
+    PBProcessOutput();
+    return (true);
+}
+
 #endif
 
 // Raspeberry Pi startup and render code
@@ -159,6 +166,21 @@ bool  PBProcessInput() {
             }
             
             g_PBEngine.m_inputQueue.push(inputMessage);
+            
+            // Check if autoOutput is enabled for this input
+            if (g_inputDef[inputId].autoOutput) {
+                // Find the output type for the autoOutputId
+                PBOutputType outputType = PB_OUTPUT_LED; // Default to LED
+                for (int j = 0; j < NUM_OUTPUTS; j++) {
+                    if (g_outputDef[j].id == g_inputDef[inputId].autoOutputId) {
+                        outputType = g_outputDef[j].outputType;
+                        break;
+                    }
+                }
+                
+                // Send output message with the specified autoPinState
+                g_PBEngine.SendOutputMsg(outputType, g_inputDef[inputId].autoOutputId, g_inputDef[inputId].autoPinState);
+            }
         }
     }
     
@@ -189,6 +211,21 @@ bool  PBProcessInput() {
 
                 // Push the message to the queue
                 g_PBEngine.m_inputQueue.push(inputMessage);
+                
+                // Check if autoOutput is enabled for this input
+                if (g_inputDef[i].autoOutput) {
+                    // Find the output type for the autoOutputId
+                    PBOutputType outputType = PB_OUTPUT_LED; // Default to LED
+                    for (int j = 0; j < NUM_OUTPUTS; j++) {
+                        if (g_outputDef[j].id == g_inputDef[i].autoOutputId) {
+                            outputType = g_outputDef[j].outputType;
+                            break;
+                        }
+                    }
+                    
+                    // Send output message with the specified autoPinState
+                    g_PBEngine.SendOutputMsg(outputType, g_inputDef[i].autoOutputId, g_inputDef[i].autoPinState);
+                }
             }
         }
     }
@@ -198,30 +235,76 @@ bool  PBProcessInput() {
 
 bool PBProcessOutput() {
 
-    // Pop the message from output queue and process it
-    // This is a simple loop for now, but will more complicated later
-    // The message queue should actually automatically manage on/off times and control of LEDs without main loop interaction
+    // Process all messages from the output queue
+    // For PB_RASPI outputs: send immediately to GPIO pins
+    // For PB_IO outputs: stage values to IODriver chips
+    // For PB_LED outputs: stage values to LED chips
+    // Then send all staged values at the end
 
-    // Pop the entry from the m_outputQueue
+    // Process all entries from the m_outputQueue
     while (!g_PBEngine.m_outputQueue.empty())
     {    
         stOutputMessage tempMessage = g_PBEngine.m_outputQueue.front();
         g_PBEngine.m_outputQueue.pop();
 
-        // Process the mesage - we only support the one LED right now
-        if (tempMessage.outputId == PB_OUTPUT_LED) {
-            // Set the LED state
-            if (tempMessage.outputState == PB_ON) {
-                // Set the LED on
-                digitalWrite(g_outputDef[PB_OUTPUT_LED].pin,HIGH); 
-            }
-            else {
-                // Set the LED off
-                 digitalWrite(g_outputDef[PB_OUTPUT_LED].pin,LOW); 
+        // Find the output definition that matches this outputId
+        int outputDefIndex = -1;
+        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            if (g_outputDef[i].id == tempMessage.outputId) {
+                outputDefIndex = i;
+                break;
             }
         }
-        
+
+        // If we found a matching output definition, process it
+        if (outputDefIndex != -1) {
+            stOutputDef& outputDef = g_outputDef[outputDefIndex];
+            
+            // Convert PBPinState to the appropriate value
+            int outputValue = (tempMessage.outputState == PB_ON) ? HIGH : LOW;
+            
+            // Process based on board type
+            if (outputDef.boardType == PB_RASPI) {
+                // Immediately send to GPIO pin
+                digitalWrite(outputDef.pin, outputValue);
+                
+            } else if (outputDef.boardType == PB_IO) {
+                // Stage the output value to the appropriate IODriver chip
+                if (outputDef.boardIndex < NUM_IO_CHIPS) {
+                    g_PBEngine.m_IOChip[outputDef.boardIndex].StageOutputPin(outputDef.pin, tempMessage.outputState);
+                }
+                
+            } else if (outputDef.boardType == PB_LED) {
+                // Stage the LED control to the appropriate LED chip
+                if (outputDef.boardIndex < NUM_LED_CHIPS) {
+                    LEDControlType ledState = (tempMessage.outputState == PB_ON) ? LEDOn : LEDOff;
+                    g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, ledState);
+                }
+            }
+            
+            // Update the lastState in the output definition
+            outputDef.lastState = tempMessage.outputState;
+        }
     }
+    
+    // Send all staged outputs to IODriver chips
+    for (int i = 0; i < NUM_IO_CHIPS; i++) {
+        g_PBEngine.m_IOChip[i].SendStagedOutput();
+    }
+    
+    // Send all staged outputs to LED chips
+    for (int i = 0; i < NUM_LED_CHIPS; i++) {
+        g_PBEngine.m_LEDChip[i].SendStagedLED();
+    }
+    
+    return (true);
+}
+
+// Overall IO processing - putting this in one function allows for easier timing control and to process all at once
+bool PBProcessIO() {
+
+    PBProcessInput();
+    PBProcessOutput();
     return (true);
 }
 
@@ -1089,13 +1172,10 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
                     else g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
 
-                     // Send the message to the output queue
-                    stOutputMessage outputMessage;        
-                    outputMessage.outputType = g_outputDef[m_CurrentOutputItem].outputType;
-                    outputMessage.outputId = g_outputDef[m_CurrentOutputItem].id;
-                    outputMessage.outputState = g_outputDef[m_CurrentOutputItem].lastState;
-                    outputMessage.sentTick = GetTickCountGfx();
-                    m_outputQueue.push(outputMessage);
+                     // Send the message to the output queue using SendOutputMsg function
+                    SendOutputMsg(g_outputDef[m_CurrentOutputItem].outputType, 
+                                g_outputDef[m_CurrentOutputItem].id, 
+                                g_outputDef[m_CurrentOutputItem].lastState);
                     }
             }
             
@@ -1398,6 +1478,30 @@ bool PBEngine::pbeSetupIO()
     return (g_PBEngine.m_PassSelfTest);
 }
 
+// Function to create and queue an output message
+void PBEngine::SendOutputMsg(PBOutputType outputType, unsigned int outputId, PBPinState outputState)
+{
+    stOutputMessage outputMessage;
+    outputMessage.outputType = outputType;
+    outputMessage.outputId = outputId;
+    outputMessage.outputState = outputState;
+    outputMessage.sentTick = GetTickCountGfx();
+    
+    // Lock the output queue mutex and add the message
+    // std::lock_guard<std::mutex> lock(m_outputQMutex);
+    m_outputQueue.push(outputMessage);
+}
+
+// Function to set or unset autoOutput for an input by array index
+bool PBEngine::SetAutoOutput(unsigned int id, bool autoOutputEnabled)
+{
+    if (id < NUM_INPUTS) {
+        g_inputDef[id].autoOutput = autoOutputEnabled;
+        return true;  // Valid index, updated
+    }
+    return false;  // Invalid index
+}
+
 // Main program start!!   
 int main(int argc, char const *argv[])
 {
@@ -1463,9 +1567,7 @@ int main(int argc, char const *argv[])
         // Don't want to do it on the first render loop since all the state may not be set up yet
         if (!firstLoop){
 
-            PBProcessInput();
-            PBProcessOutput();
-
+            PBProcessIO();
             // Process all the input message queue and update the game state
             if (!g_PBEngine.m_inputQueue.empty()){
                 inputMessage = g_PBEngine.m_inputQueue.front();
