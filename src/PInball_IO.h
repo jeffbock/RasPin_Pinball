@@ -179,6 +179,10 @@ private:
     bool m_pwmStaged[16];      // Track which PWM registers (PWM0-PWM15) have changes
     bool m_ledOutStaged[4];    // Track which LEDOUT registers (LEDOUT0-LEDOUT3) have changes
     
+    // Current state tracking for comparison (what was last sent to hardware)
+    uint8_t m_currentBrightness[16];  // Last brightness values sent to PWM registers
+    uint8_t m_currentControl[4];      // Last control values sent to LEDOUT registers
+    
     // Helper function to convert LEDState to control value
     uint8_t GetControlValue(LEDState state) const;
 };
@@ -229,6 +233,9 @@ private:
     bool m_outputStaged[2];       // Track which output ports have staged changes
     int m_i2cFd;
     uint16_t m_inputMask;         // Bit mask indicating which pins are inputs (1=input, 0=output)
+    
+    // Current state tracking for comparison (what was last sent to hardware)
+    uint8_t m_currentOutputValues[2];  // Last output values sent to OUTPUT_PORT registers
 };
 
 // Simple Amplifier Driver class for controlling a single MAX9744 chip

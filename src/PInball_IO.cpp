@@ -48,10 +48,12 @@ LEDDriver::LEDDriver(uint8_t address) : m_address(address), m_i2cFd(-1), m_group
     for (int i = 0; i < 16; i++) {
         m_ledBrightness[i] = 0xFF;  // Start with all LEDs with maximum brightness
         m_pwmStaged[i] = false;     // No PWM changes staged initially
+        m_currentBrightness[i] = 0x00;  // Initialize current state tracking (hardware starts at 0)
     }
     for (int i = 0; i < 4; i++) {
         m_ledControl[i] = 0x00;     // Start with all LEDs in OFF state
         m_ledOutStaged[i] = false;  // No LEDOUT changes staged initially
+        m_currentControl[i] = 0x00;  // Initialize current state tracking (hardware starts at 0)
     }
 
 #ifdef EXE_MODE_RASPI
@@ -163,8 +165,11 @@ void LEDDriver::StageLEDControl(bool setAll, unsigned int LEDIndex, LEDState sta
         // Set all LEDs to the same state    // Each register controls 4 LEDs (2 bits per LED)
         uint8_t regValue = (controlValue << 6) | (controlValue << 4) | (controlValue << 2) | controlValue;
         for (int i = 0; i < 4; i++) {
-            m_ledControl[i] = regValue;
-            m_ledOutStaged[i] = true;  // Mark this LEDOUT register as staged
+            // Only stage if the value differs from what was last sent to hardware
+            if (m_currentControl[i] != regValue) {
+                m_ledControl[i] = regValue;
+                m_ledOutStaged[i] = true;  // Mark this LEDOUT register as staged
+            }
         }
     } else {
         // Set specific LED
@@ -172,10 +177,16 @@ void LEDDriver::StageLEDControl(bool setAll, unsigned int LEDIndex, LEDState sta
             uint8_t regIndex = LEDIndex / 4;      // Which LEDOUT register (0-3)
             uint8_t bitPos = (LEDIndex % 4) * 2;  // Bit position within register (0,2,4,6)
             
-            // Clear the 2 bits for this LED and set new value
-            m_ledControl[regIndex] &= ~(0x03 << bitPos);
-            m_ledControl[regIndex] |= (controlValue << bitPos);
-            m_ledOutStaged[regIndex] = true;  // Mark this LEDOUT register as staged
+            // Calculate new register value
+            uint8_t newRegValue = m_currentControl[regIndex];  // Start with current hardware state
+            newRegValue &= ~(0x03 << bitPos);     // Clear the 2 bits for this LED
+            newRegValue |= (controlValue << bitPos);  // Set new value
+            
+            // Only stage if the value differs from what was last sent to hardware
+            if (m_currentControl[regIndex] != newRegValue) {
+                m_ledControl[regIndex] = newRegValue;
+                m_ledOutStaged[regIndex] = true;  // Mark this LEDOUT register as staged
+            }
         }
     }
 }
@@ -184,14 +195,20 @@ void LEDDriver::StageLEDBrightness(bool setAll, unsigned int LEDIndex, uint8_t b
     if (setAll) {
         // Set all LEDs to the same brightness
         for (int i = 0; i < 16; i++) {
-            m_ledBrightness[i] = brightness;
-            m_pwmStaged[i] = true;  // Mark this PWM register as staged
+            // Only stage if the brightness value differs from what was last sent to hardware
+            if (m_currentBrightness[i] != brightness) {
+                m_ledBrightness[i] = brightness;
+                m_pwmStaged[i] = true;  // Mark this PWM register as staged
+            }
         }
     } else {
         // Set specific LED brightness
         if (LEDIndex < 16) {
-            m_ledBrightness[LEDIndex] = brightness;
-            m_pwmStaged[LEDIndex] = true;  // Mark this PWM register as staged
+            // Only stage if the brightness value differs from what was last sent to hardware
+            if (m_currentBrightness[LEDIndex] != brightness) {
+                m_ledBrightness[LEDIndex] = brightness;
+                m_pwmStaged[LEDIndex] = true;  // Mark this PWM register as staged
+            }
         }
     }
 }
@@ -203,6 +220,7 @@ void LEDDriver::SendStagedLED() {
         for (int i = 0; i < 16; i++) {
             if (m_pwmStaged[i]) {
                 wiringPiI2CWriteReg8(m_i2cFd, TLC59116_PWM0 + i, m_ledBrightness[i]);
+                m_currentBrightness[i] = m_ledBrightness[i];  // Update current state tracking
                 m_pwmStaged[i] = false;  // Clear the staged flag after sending
             }
         }
@@ -211,6 +229,7 @@ void LEDDriver::SendStagedLED() {
         for (int i = 0; i < 4; i++) {
             if (m_ledOutStaged[i]) {
                 wiringPiI2CWriteReg8(m_i2cFd, TLC59116_LEDOUT0 + i, m_ledControl[i]);
+                m_currentControl[i] = m_ledControl[i];  // Update current state tracking
                 m_ledOutStaged[i] = false;  // Clear the staged flag after sending
             }
         }
@@ -305,6 +324,7 @@ IODriver::IODriver(uint8_t address, uint16_t inputMask) : m_address(address), m_
     for (int i = 0; i < 2; i++) {
         m_outputValues[i] = 0x00;      // Start with all outputs low
         m_outputStaged[i] = false;     // No changes staged initially
+        m_currentOutputValues[i] = 0x00;  // Initialize current state tracking (hardware starts at 0)
     }
 
 #ifdef EXE_MODE_RASPI
@@ -347,12 +367,18 @@ IODriver::~IODriver() {
 
 void IODriver::StageOutput(uint16_t value) {
     // Split 16-bit value into two 8-bit ports
-    m_outputValues[0] = (uint8_t)(value & 0xFF);         // Lower 8 bits for port 0
-    m_outputValues[1] = (uint8_t)((value >> 8) & 0xFF);  // Upper 8 bits for port 1
+    uint8_t newPort0 = (uint8_t)(value & 0xFF);         // Lower 8 bits for port 0
+    uint8_t newPort1 = (uint8_t)((value >> 8) & 0xFF);  // Upper 8 bits for port 1
     
-    // Mark both ports as having staged changes
-    m_outputStaged[0] = true;
-    m_outputStaged[1] = true;
+    // Only stage ports that differ from what was last sent to hardware
+    if (m_currentOutputValues[0] != newPort0) {
+        m_outputValues[0] = newPort0;
+        m_outputStaged[0] = true;
+    }
+    if (m_currentOutputValues[1] != newPort1) {
+        m_outputValues[1] = newPort1;
+        m_outputStaged[1] = true;
+    }
 }
 
 void IODriver::StageOutputPin(uint8_t pinIndex, PBPinState value) {
@@ -360,16 +386,20 @@ void IODriver::StageOutputPin(uint8_t pinIndex, PBPinState value) {
         uint8_t port = pinIndex / 8;      // Which port (0 or 1)
         uint8_t bitPos = pinIndex % 8;    // Bit position within port (0-7)
         
+        uint8_t newPortValue = m_currentOutputValues[port];  // Start with current hardware state
         if (value == PB_ON) {
             // Set the bit
-            m_outputValues[port] |= (1 << bitPos);
+            newPortValue |= (1 << bitPos);
         } else {
             // Clear the bit
-            m_outputValues[port] &= ~(1 << bitPos);
+            newPortValue &= ~(1 << bitPos);
         }
         
-        // Mark this port as having staged changes
-        m_outputStaged[port] = true;
+        // Only stage if the port value differs from what was last sent to hardware
+        if (m_currentOutputValues[port] != newPortValue) {
+            m_outputValues[port] = newPortValue;
+            m_outputStaged[port] = true;
+        }
     }
 }
 
@@ -380,6 +410,7 @@ void IODriver::SendStagedOutput() {
         for (int i = 0; i < 2; i++) {
             if (m_outputStaged[i]) {
                 wiringPiI2CWriteReg8(m_i2cFd, TCA9555_OUTPUT_PORT0 + i, m_outputValues[i]);
+                m_currentOutputValues[i] = m_outputValues[i];  // Update current state tracking
                 m_outputStaged[i] = false;  // Clear the staged flag after sending
             }
         }

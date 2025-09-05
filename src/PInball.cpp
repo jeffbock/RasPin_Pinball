@@ -233,6 +233,45 @@ bool  PBProcessInput() {
     return (true);
 }
 
+// New PBProcessOutput flow
+// Pop an output message from the output queue
+// If the message is for an IO chip or RASPI output
+//   Check to see if it's in the pulse output map - if so, ignore it
+//   Check to see if it's a pulse output, if so, put it in the pulse output map (index of OutputID) with appropriate values and start time
+//   If not a pulse output, stage it to the appropriate IODriver chip or if RASPI output, send it immediately to the GPIO pin
+// If the message is for an LED chip
+//   Check to see if a LED display sequence is active for that chip based on the sequence enabled boolean and the sequence chip mask which specifies which chips are in the sequence, if so, push the message to the deferred LED queue and go to next message.  
+//      Ensure the deferred queue has a max size and drop messages if it exceeds that size. Size should be set to 100 entries via a #define
+//   Otherwise, If the LED message is for a state control, send it to the LED chip immediately
+//   Otherwise, If the LED message is for a pin control, stage it to the correct LED chip
+// If the message is to start an LED sequence, start the LED sequence mode
+//  If a LED sequence is already acvtive, the new sequece will replace the old one
+//  Set a boolean to relflect start of the mode, and update the sequence chip mask to relflect affected chips.  Record the start time, save the LEDDriver outputs (16 bits each chip) values of the chips defined in the mask and reset the sequence index to 0
+// If the message is to stop an LED sequence, end the LED sequence mode, stage the saved values to the LEDDriver chips based on the sequence chip mask
+// When all messages have been processed
+//  For each entry in the pulse map, check require on time and required off time, and stage the correct value to the IO chip or send value directly to RaspPI GPIO. Remove from the map when done
+// Send all staged outputs to the IODriver chips
+// If in LED sequence mode
+//  Check to see if the sequence time has expired, if so, end the mode and stage LEDDriver outputs to the formerly saved values based on the sequence chip mask
+//  If sequence index is zero and this is the first time through, stage the LEDDriver outputs chips specified by the sequence chip mask to the first entry in the sequence
+//  else check if the time for the current sequence index has expired (calculate appripropriately if sequence is going up or down and the loop mode)
+//    Add the IndexStep value to the Index (this could be +1 or -1 depending on direction)
+//    If index is >= sequence length check the loop mode variable of the sequence
+//      If loop mode is NOLOOP, end the sequence mode and stage LEDDriver outputs to the intial saved values based on the sequence chip mask
+//      If loop mode is LOOP, set index to zero and stage LEDDriver outputs to the first entry in the sequence, reset the start time, based on the sequence chip mask
+//      If loop mode is PINGPONG or PINGPONGLOOP, reverse the IndexStep direction, adjust the index, and stage LEDDriver outputs to the new index in the sequence based on the sequence chip mask.  Use the current time to record the end time of the forward pass of the sequence
+//    If index is < 0 sequence length check the loop mode variable of the sequence
+//      If loop mode is NOLOOP, end the sequence mode and stage LEDDriver outputs to the intial saved values based on the sequence chip mask
+//      If loop mode is LOOP, set index to zero, change IndexStep value to +1, reset the start time
+//      If loop mode is PINGPONG or PINGPONGLOOP, reverse the IndexStep direction, adjust the index, and stage LEDDriver outputs to the new index in the sequence based on the sequence chip mask.  Use the current time to record the end time of the forward pass of the sequence
+//    If index is between 0 and sequence length, stage LEDDriver outputs to the current index in the sequence based on the sequence chip mask
+// else if not in LED sequence mode and there are messages in the deferred LED queue
+//    Pop each message from the deferred LED queue and process it as above for LED messages (since this is the same as above, a function should be created to handle this)
+// Send all staged outputs to all LED chips
+// Return true if everything processed ok
+// Can break this flow into multiple functions if to large and improve readability.  But it needs to be efficient as this is called frequently.
+// Most improtantly, try to access the ouput queue in on place only, as we may try to put a mutex around it later
+
 bool PBProcessOutput() {
 
     // Process all messages from the output queue
