@@ -13,9 +13,12 @@
 #define PB_I2C_AMPLIFIER 0x4B
 
 // Geneic IO definitions
+// PB_Blink and PB_Brightness added for LED driver support - they are not valid for inputs or other outputs
 enum PBPinState {
     PB_ON = 0,
     PB_OFF = 1,
+    PB_BLINK = 2,
+    PB_BRIGHTNESS = 3
 };
 
 enum PBBoardType {
@@ -26,18 +29,18 @@ enum PBBoardType {
 };
 
 // Input message structs and types
-enum PBInputType {
-    PB_INPUT_BUTTON = 0,
-    PB_INPUT_SENSOR = 1,
-    PB_INPUT_TARGET = 2,
-    PB_INPUT_JETBUMPER = 3,
-    PB_INPUT_POPBUMPER = 4,
+enum PBInputMsg {
+    PB_IMSG_BUTTON = 0,
+    PB_IMSG_SENSOR = 1,
+    PB_IMSG_TARGET = 2,
+    PB_IMSG_JETBUMPER = 3,
+    PB_IMSG_POPBUMPER = 4,
 };
 
 struct stInputDef{
     std::string inputName; 
     std::string simMapKey;
-    PBInputType inputType; 
+    PBInputMsg inputMsg; 
     unsigned int id;
     unsigned int pin;  // GPIO pin number, or the pin index for IODriver Chips
     PBBoardType boardType;
@@ -52,24 +55,26 @@ struct stInputDef{
 
 // Output defintions
 // Input message structs and types
-enum PBOutputType {
-    PB_OUTPUT_SLINGSHOT = 0,
-    PB_OUTPUT_POPBUMPER = 1,
-    PB_OUTPUT_LED = 2,
-    PB_OUTPUT_BALLEJECT = 3
+enum PBOutputMsg {
+    PB_OMSG_SLINGSHOT = 0,
+    PB_OMSG_POPBUMPER = 1,
+    PB_OMSG_LED = 2,
+    PB_OMSG_BALLEJECT = 3
 };
 
+/*
 enum PBOutputControl {
     PB_OUTCNTL_STATIC = 0,
     PB_OUTCNTL_BLINK = 1,
     PB_OUTCNTL_STATICSEQ = 2,
     PB_OUTCNTL_BLINKSEQ = 3,
 };
+*/
 
 // Placeholder - there are probably items to add here
 struct stOutputDef{
     std::string outputName; 
-    PBOutputType outputType; 
+    PBOutputMsg outputMsg; 
     unsigned int id;
     unsigned int pin; // GPIO pin number, or the pin index for IODriver and LED Chips
     PBBoardType boardType;

@@ -43,7 +43,7 @@ void PBWinSimInput(std::string character, PBPinState inputState, stInputMessage*
     // Find the character in the input definition global
     for (int i = 0; i < NUM_INPUTS; i++) {
         if (g_inputDef[i].simMapKey == character) {
-            inputMessage->inputType = g_inputDef[i].inputType;
+            inputMessage->inputMsg = g_inputDef[i].inputMsg;
             inputMessage->inputId = g_inputDef[i].id;
             inputMessage->inputState = inputState;
             inputMessage->sentTick = g_PBEngine.GetTickCountGfx();
@@ -154,7 +154,7 @@ bool  PBProcessInput() {
         // Check if the state has changed
         if (currentState != g_inputDef[inputId].lastState) {
             // Create an input message
-            inputMessage.inputType = g_inputDef[inputId].inputType;
+            inputMessage.inputMsg = g_inputDef[inputId].inputMsg;
             inputMessage.inputId = g_inputDef[inputId].id;
             if (currentState == 0) {
                 inputMessage.inputState = PB_ON;
@@ -170,10 +170,10 @@ bool  PBProcessInput() {
             // Check if autoOutput is enabled for this input
             if (g_inputDef[inputId].autoOutput) {
                 // Find the output type for the autoOutputId
-                PBOutputType outputType = PB_OUTPUT_LED; // Default to LED
+                PBOutputMsg outputType = PB_OMSG_LED; // Default to LED
                 for (int j = 0; j < NUM_OUTPUTS; j++) {
                     if (g_outputDef[j].id == g_inputDef[inputId].autoOutputId) {
-                        outputType = g_outputDef[j].outputType;
+                        outputType = g_outputDef[j].outputMsg;
                         break;
                     }
                 }
@@ -202,7 +202,7 @@ bool  PBProcessInput() {
             // Check if the state has changed
             if (pinState != g_inputDef[i].lastState) {
                 // Create an input message
-                inputMessage.inputType = g_inputDef[i].inputType;
+                inputMessage.inputMsg = g_inputDef[i].inputMsg;
                 inputMessage.inputId = g_inputDef[i].id;
                 inputMessage.inputState = pinState;
                 
@@ -215,10 +215,10 @@ bool  PBProcessInput() {
                 // Check if autoOutput is enabled for this input
                 if (g_inputDef[i].autoOutput) {
                     // Find the output type for the autoOutputId
-                    PBOutputType outputType = PB_OUTPUT_LED; // Default to LED
+                    PBOutputMsg outputType = PB_OMSG_LED; // Default to LED
                     for (int j = 0; j < NUM_OUTPUTS; j++) {
                         if (g_outputDef[j].id == g_inputDef[i].autoOutputId) {
-                            outputType = g_outputDef[j].outputType;
+                            outputType = g_outputDef[j].outputMsg;
                             break;
                         }
                     }
@@ -1112,7 +1112,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
     switch (m_mainState) {
         case PB_BOOTUP: {
             // If any button is pressed, move to the start menu
-            if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 m_mainState = PB_STARTMENU;
                 m_RestartMenu = true;
             }
@@ -1120,7 +1120,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         }
         case PB_STARTMENU: {
             // If either left button is pressed, subtract 1 from m_currentMenuItem
-            if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_LEFTFLIPPER) {
                     // Get the current menu item count from g_mainMenu
                     if (m_CurrentMenuItem > 0) {
@@ -1152,7 +1152,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         }
         case PB_DIAGNOSTICS: {
 
-            if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_LEFTFLIPPER) {
                     // Get the current menu item count from g_mainMenu
                     if (m_CurrentDiagnosticsItem > 0) {
@@ -1197,7 +1197,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             // Check the mode and send output message if needed
             if (m_TestMode == PB_TESTOUTPUT) {
                 // Send the output message to the output queue - this will be connected to HW
-                if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                     if (inputMessage.inputId == IDI_LEFTFLIPPER) {
                         if (m_CurrentOutputItem > 0) m_CurrentOutputItem--;
                     }
@@ -1212,7 +1212,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     else g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
 
                      // Send the message to the output queue using SendOutputMsg function
-                    SendOutputMsg(g_outputDef[m_CurrentOutputItem].outputType, 
+                    SendOutputMsg(g_outputDef[m_CurrentOutputItem].outputMsg, 
                                 g_outputDef[m_CurrentOutputItem].id, 
                                 g_outputDef[m_CurrentOutputItem].lastState);
                     }
@@ -1253,7 +1253,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             break;
         }
         case PB_SETTINGS: {
-            if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_LEFTFLIPPER) {
                     if (m_CurrentSettingsItem > 0) {
                         m_CurrentSettingsItem--;
@@ -1354,14 +1354,14 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             break;
         }
         case PB_CREDITS: {
-            if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 m_mainState = PB_STARTMENU;
                 m_RestartMenu = true;
             }
         break;
         }
         case PB_BENCHMARK: {
-            if (m_BenchmarkDone && (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON)) {
+            if (m_BenchmarkDone && (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON)) {
                 m_mainState = PB_DIAGNOSTICS;
                 m_RestartDiagnostics = true;
             }
@@ -1518,10 +1518,10 @@ bool PBEngine::pbeSetupIO()
 }
 
 // Function to create and queue an output message
-void PBEngine::SendOutputMsg(PBOutputType outputType, unsigned int outputId, PBPinState outputState)
+void PBEngine::SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState)
 {
     stOutputMessage outputMessage;
-    outputMessage.outputType = outputType;
+    outputMessage.outputMsg = outputMsg;
     outputMessage.outputId = outputId;
     outputMessage.outputState = outputState;
     outputMessage.sentTick = GetTickCountGfx();

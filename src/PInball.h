@@ -92,14 +92,14 @@ enum PBDifficultyMode{
 };
 
 struct stInputMessage {
-    PBInputType inputType;
+    PBInputMsg inputMsg;
     unsigned int inputId;
     PBPinState inputState;
     unsigned long sentTick; 
 };
 
 struct stOutputMessage {
-    PBOutputType outputType;
+    PBOutputMsg outputMsg;
     unsigned int outputId;
     PBPinState outputState;
     unsigned long sentTick;
@@ -158,7 +158,7 @@ public:
     bool pbeSetupIO();
     
     // Output message functions
-    void SendOutputMsg(PBOutputType outputType, unsigned int outputId, PBPinState outputState);
+    void SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState);
     
     // Input configuration functions
     bool SetAutoOutput(unsigned int index, bool autoOutputEnabled);

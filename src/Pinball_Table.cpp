@@ -282,7 +282,7 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                 if ((!gfxAnimateActive(m_PBTBLLeftDoorId)) && (!gfxAnimateActive(m_PBTBLRightDoorId))) m_tableState = PBTableState::PBTBL_STDPLAY; 
             } 
             else {
-                if (inputMessage.inputType == PB_INPUT_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                     if (inputMessage.inputId != IDI_START) {
                         switch (m_tableScreenState) {
                             case PBTBLScreenState::START_START: m_tableScreenState = PBTBLScreenState::START_INST; break;
