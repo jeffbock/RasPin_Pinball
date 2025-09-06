@@ -236,8 +236,8 @@ bool  PBProcessInput() {
 // New PBProcessOutput flow
 // Pop an output message from the output queue
 // If the message is for an IO chip or RASPI output
-//   Check to see if it's in the pulse output map - if so, ignore it
-//   Check to see if it's a pulse output, if so, put it in the pulse output map (index of OutputID) with appropriate values and start time
+//   Check to see if it's in the pulse output map (m_outputPulseMap) - if so, ignore it
+//   Check to see if it's a pulse output, if so, put it in the pulse output map (index of OutputID), on / off times and start time
 //   If not a pulse output, stage it to the appropriate IODriver chip or if RASPI output, send it immediately to the GPIO pin
 // If the message is for an LED chip
 //   Check to see if a LED display sequence is active for that chip based on the sequence enabled boolean and the sequence chip mask which specifies which chips are in the sequence, if so, push the message to the deferred LED queue and go to next message.  

@@ -105,6 +105,22 @@ struct stOutputMessage {
     unsigned long sentTick;
 };
 
+struct stOutputPulse {
+    unsigned int outputId;
+    unsigned int onTimeMS;
+    unsigned int offTimeMS;
+    unsigned long startTickMS;
+};
+
+struct stLEDSequnceStatus {
+    bool sequenceEnabled;
+    unsigned int sequenceChipMask; // Bit mask of which LED chips are in the sequence
+    unsigned long sequenceStartTick;
+    unsigned int sequenceIndex;    // Current index in the sequence
+    // Need pointer to an array of sets of three uint16_t values
+    uint16_t savedLEDValues[NUM_LED_CHIPS]; // Saved LED values for each chip in the sequence
+};
+
 struct stHighScoreData {
     unsigned long highScore;
     std::string playerInitials;
@@ -127,6 +143,12 @@ struct stSaveFileData {
 // Hardware configuration defines
 #define NUM_IO_CHIPS    3
 #define NUM_LED_CHIPS   3
+
+// Sequence timing defines - this will need to be updated if more LED chips are added
+#define LED0_SEQ_MASK 0x1
+#define LED1_SEQ_MASK 0x2
+#define LED2_SEQ_MASK 0x4
+#define LEDALL_SEQ_MASK 0x7
 
 // Make new class named PBGame that inheritis from PBOGLES with just essential functions
 class PBEngine : public PBGfx {
@@ -230,7 +252,8 @@ public:
     std::mutex m_inputQMutex;
     std::queue<stOutputMessage> m_outputQueue;
     std::mutex m_outputQMutex;
-    
+    std::map<unsigned int, stOutputPulse> m_outputPulseMap;
+
     // Main Backglass Variables
     unsigned int m_PBTBLBackglassId;
 

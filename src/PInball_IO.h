@@ -59,17 +59,12 @@ enum PBOutputMsg {
     PB_OMSG_SLINGSHOT = 0,
     PB_OMSG_POPBUMPER = 1,
     PB_OMSG_LED = 2,
-    PB_OMSG_BALLEJECT = 3
+    PB_OMSG_BALLEJECT = 3,
+    PB_OMSG_LEDCFG_GROUPDIM = 4,
+    PB_OMSG_LEDCFG_GROUPBLINK = 5,
+    PB_OMSG_LEDSET_BRIGHTNESS = 6,
+    PB_OMSG_LED_SEQUENCE = 7
 };
-
-/*
-enum PBOutputControl {
-    PB_OUTCNTL_STATIC = 0,
-    PB_OUTCNTL_BLINK = 1,
-    PB_OUTCNTL_STATICSEQ = 2,
-    PB_OUTCNTL_BLINKSEQ = 3,
-};
-*/
 
 // Placeholder - there are probably items to add here
 struct stOutputDef{
