@@ -98,6 +98,9 @@ struct stInputMessage {
     unsigned long sentTick; 
 };
 
+
+// Need to add additional params for all output messages  in an efficent way
+ 
 struct stOutputMessage {
     PBOutputMsg outputMsg;
     unsigned int outputId;
@@ -112,13 +115,29 @@ struct stOutputPulse {
     unsigned long startTickMS;
 };
 
-struct stLEDSequnceStatus {
+struct stLEDSequenceInfo {
     bool sequenceEnabled;
+    bool firstTime; // True if first time through the sequence
+    PBSequenceLoopMode loopMode;              
     unsigned int sequenceChipMask; // Bit mask of which LED chips are in the sequence
     unsigned long sequenceStartTick;
-    unsigned int sequenceIndex;    // Current index in the sequence
-    // Need pointer to an array of sets of three uint16_t values
+    unsigned int currentSeqIndex;    // Current index in the sequence
+    int indexStep;        // +1 or -1 depending on direction
     uint16_t savedLEDValues[NUM_LED_CHIPS]; // Saved LED values for each chip in the sequence
+    std::vector<std::vector<stLEDSequence>> *LEDSequence;
+};
+
+struct stLEDSequence {
+    uint16_t LEDOnBits [NUM_LED_CHIPS];
+    unsigned int onDurationMS;
+    unsigned int offDurationMS;
+}
+
+enum PBSequenceLoopMode { 
+    PB_NOLOOP = 0,
+    PB_LOOP = 1,
+    PB_PINGPONG = 2,
+    PB_PINGPONGLOOP = 3,
 };
 
 struct stHighScoreData {
@@ -149,6 +168,9 @@ struct stSaveFileData {
 #define LED1_SEQ_MASK 0x2
 #define LED2_SEQ_MASK 0x4
 #define LEDALL_SEQ_MASK 0x7
+
+// For the Deferred LED message queue
+#define MAX_DEFERRED_LED_QUEUE 100
 
 // Make new class named PBGame that inheritis from PBOGLES with just essential functions
 class PBEngine : public PBGfx {
@@ -253,6 +275,9 @@ public:
     std::queue<stOutputMessage> m_outputQueue;
     std::mutex m_outputQMutex;
     std::map<unsigned int, stOutputPulse> m_outputPulseMap;
+    stLEDSequenceInfo m_LEDSequenceInfo;
+    std::queue<stOutputMessage> m_deferredQueue;
+    std::mutex m_deferredQMutex;
 
     // Main Backglass Variables
     unsigned int m_PBTBLBackglassId;
