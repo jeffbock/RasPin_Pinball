@@ -191,6 +191,16 @@ void LEDDriver::StageLEDControl(bool setAll, unsigned int LEDIndex, LEDState sta
     }
 }
 
+void LEDDriver::StageLEDControl(unsigned int registerIndex, uint8_t value) {
+    if (registerIndex < 4) {
+        // Only stage if the value differs from what was last sent to hardware
+        if (m_currentControl[registerIndex] != value) {
+            m_ledControl[registerIndex] = value;
+            m_ledOutStaged[registerIndex] = true;  // Mark this LEDOUT register as staged
+        }
+    }
+}
+
 void LEDDriver::StageLEDBrightness(bool setAll, unsigned int LEDIndex, uint8_t brightness) {
     if (setAll) {
         // Set all LEDs to the same brightness
@@ -313,6 +323,36 @@ uint8_t LEDDriver::ReadGroupFreq() const {
     }
 #endif
     return value;
+}
+
+uint8_t LEDDriver::ReadLEDControl(LEDHardwareState hwState, uint8_t registerIndex) const {
+    // Read from staged or current LED control register (LEDOUT0-LEDOUT3)
+    if (registerIndex < 4) {
+        switch (hwState) {
+            case StagedHW:
+                return m_ledControl[registerIndex];    // Return staged value
+            case CurrentHW:
+                return m_currentControl[registerIndex]; // Return current hardware state
+            default:
+                return 0x00;  // Default to 0 for invalid hwState
+        }
+    }
+    return 0x00;  // Return 0 for invalid registerIndex
+}
+
+uint8_t LEDDriver::ReadLEDBrightness(LEDHardwareState hwState, uint8_t ledIndex) const {
+    // Read from staged or current LED brightness register (PWM0-PWM15)
+    if (ledIndex < 16) {
+        switch (hwState) {
+            case StagedHW:
+                return m_ledBrightness[ledIndex];    // Return staged value
+            case CurrentHW:
+                return m_currentBrightness[ledIndex]; // Return current hardware state
+            default:
+                return 0x00;  // Default to 0 for invalid hwState
+        }
+    }
+    return 0x00;  // Return 0 for invalid ledIndex
 }
 
 //==============================================================================
@@ -512,6 +552,21 @@ uint8_t IODriver::ReadConfigPort(uint8_t portIndex) const {
     }
 #endif
     return value;
+}
+
+uint8_t IODriver::ReadOutputValues(LEDHardwareState hwState, uint8_t portIndex) const {
+    // Read from staged or current output values (OUTPUT_PORT0-OUTPUT_PORT1)
+    if (portIndex < 2) {
+        switch (hwState) {
+            case StagedHW:
+                return m_outputValues[portIndex];    // Return staged value
+            case CurrentHW:
+                return m_currentOutputValues[portIndex]; // Return current hardware state
+            default:
+                return 0x00;  // Default to 0 for invalid hwState
+        }
+    }
+    return 0x00;  // Return 0 for invalid portIndex
 }
 
 //==============================================================================

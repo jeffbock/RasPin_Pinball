@@ -233,104 +233,80 @@ bool  PBProcessInput() {
     return (true);
 }
 
-// New PBProcessOutput flow - replace PBProcessOutput() for Rasberry Pi versions of the function
-// Use the old version of the function as a base reference, but modify the flow as follows.  Indentation is for clarity of the flow/brackets, but should be adjusted as needed for readability and efficiency 
-
-// Pop an output message from the output queue
-// If the message is for an IO chip or RASPI output
-//   Check to see if it's currently in the pulse output map (m_outputPulseMap) - if so, ignore drop the message
-//   Check to see if it's a pulse output, if so, put it in the pulse output map (index of OutputID), on / off times and start time
-//   If not a pulse output, stage it to the appropriate IODriver chip or if RASPI output, send it immediately to the GPIO pin
-// If the message is for an LED chip
-//   Check to see if a LED display sequence (m_LEDSequenceInfo) is active for that chip based on the sequence enabled boolean and the sequence chip mask which specifies which chips are in the sequence, if so, push the message to the deferred LED queue (m_deferredQueue) and go to next message.  
-//      Ensure the deferred queue has a max size (MAX_DEFERRED_LED_QUEUE) and drop messages if it exceeds that size. Size should be set to 100 entries via a #define
-//   Otherwise, If the LED message is for a state control (PB_OMSG_LEDCFG*), send it to the LED chip immediately
-//   Otherwise, If the LED message is for a pin control (PB_OMSG_LED or PB_OMSG_LEDSET_BRIGHTNESS), stage it to the correct LED chip
-// If the message is to start an LED sequence (PB_OMSG_LED_SEQUENCE), start the LED sequence mode
-//  If a LED sequence is already active, the new sequence will replace the old one
-//  Set a boolean to reflect start of the mode, and update the sequence chip mask to reflect affected chips.  Record the start time, save the LEDDriver outputs (16 bits each chip) (savedLEDValues) values of the chips defined in the mask and reset the sequence index to 0
-// If the message is to stop an LED sequence, end the LED sequence mode, stage the saved values to the LEDDriver chips based on the sequence chip mask
-// When all messages have been processed
-//  For each entry in the pulse map, check require on time and required off time, and stage the correct value to the IO chip or send value directly to RaspPI GPIO. Remove from the map when done
-// Send all staged outputs to the IODriver chips
-// If in LED sequence mode
-//  Check to see if the sequence time has completed, if so, end the mode and stage LEDDriver outputs to the formerly saved values based on the sequence chip mask
-//  If sequence index is zero (currentSeqIndex) and this is the first time through, stage the LEDDriver outputs chips specified by the sequence chip mask to the first entry in the sequence
-//  else check if the time for the current sequence index has expired (calculate appripropriately if sequence is going up or down and the loop mode)
-//    Add the IndexStep (indexStep) value to the Index (this could be +1 or -1 depending on direction)
-//    If index is >= sequence length check the loop mode variable of the sequence (loopMode)
-//      If loop mode is NOLOOP, end the sequence mode and stage LEDDriver outputs to the intial saved values based on the sequence chip mask
-//      If loop mode is LOOP, set index to zero and stage LEDDriver outputs to the first entry in the sequence, reset the start time, based on the sequence chip mask
-//      If loop mode is PINGPONG or PINGPONGLOOP, reverse the IndexStep direction, adjust the index, and stage LEDDriver outputs to the new index in the sequence based on the sequence chip mask.  Use the current time to record the end time of the forward pass of the sequence
-//    If index is < 0 sequence length check the loop mode variable of the sequence
-//      If loop mode is NOLOOP, end the sequence mode and stage LEDDriver outputs to the intial saved values based on the sequence chip mask
-//      If loop mode is LOOP, set index to zero, change IndexStep value to +1, reset the start time
-//      If loop mode is PINGPONG or PINGPONGLOOP, reverse the IndexStep direction, adjust the index, and stage LEDDriver outputs to the new index in the sequence based on the sequence chip mask.  Use the current time to record the end time of the forward pass of the sequence
-//    If index is between 0 and sequence length, stage LEDDriver outputs to the current index in the sequence based on the sequence chip mask
-// else if not in LED sequence mode and there are messages in the deferred LED queue
-//    Pop each message from the deferred LED queue and process it as above for LED messages (since this is the same as above, a function should be created to handle this)
-// Send all staged outputs to all LED chips
-// Return true if everything processed ok
-// Can break this flow into multiple functions if to large and improve readability, particularly calcuating current indexes for sequences and values for outputs for sequences and pulses.  But it needs to be efficient as this is called frequently.
-
+// Process output messages from the output queue, sending them to the appropriate hardware
+// Key Points - there are two deferred modes for output messages - Pulse outputs and LED sequences
+//   Pulse Outputs:  Once fired, the pulse must be completed (fixed on/off times).  Any message for that outputId is ignored until the pulse is complete
+//                   These are intended to used for things like slingshots, which may need to ignore messages, inputs while the pulse is active
+//
+//   LED Sequence:  Can be set per LED control chip.  Once started, all LED output messages for that chip put into a deferred queue until the sequence is stopped
+//                  The deferred queue is processed in the same order as the messages were received once the sequence is stopped
+//
+// Note: LED and IO chips are most efficient at managing I2C as HW transactions will only happen when there are changes to the staged values
+//       Raspberry PI GPIOs and LED Config changes are generally sent immediately as there is no staging capability - so use these messages sparingly
 
 bool PBProcessOutput() {
 
     // Process all messages from the output queue
-    // For PB_RASPI outputs: send immediately to GPIO pins
-    // For PB_IO outputs: stage values to IODriver chips
-    // For PB_LED outputs: stage values to LED chips
-    // Then send all staged values at the end
-
-    // Process all entries from the m_outputQueue
-    while (!g_PBEngine.m_outputQueue.empty())
-    {    
+    while (!g_PBEngine.m_outputQueue.empty()) {    
         stOutputMessage tempMessage = g_PBEngine.m_outputQueue.front();
         g_PBEngine.m_outputQueue.pop();
 
         // Find the output definition that matches this outputId
-        int outputDefIndex = -1;
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
-            if (g_outputDef[i].id == tempMessage.outputId) {
-                outputDefIndex = i;
-                break;
-            }
-        }
+        int outputDefIndex = FindOutputDefIndex(tempMessage.outputId);
 
         // If we found a matching output definition, process it
         if (outputDefIndex != -1) {
             stOutputDef& outputDef = g_outputDef[outputDefIndex];
+            bool skipProcessing = false;
             
-            // Convert PBPinState to the appropriate value
-            int outputValue = (tempMessage.outputState == PB_ON) ? HIGH : LOW;
-            
-            // Process based on board type
-            if (outputDef.boardType == PB_RASPI) {
-                // Immediately send to GPIO pin
-                digitalWrite(outputDef.pin, outputValue);
-                
-            } else if (outputDef.boardType == PB_IO) {
-                // Stage the output value to the appropriate IODriver chip
-                if (outputDef.boardIndex < NUM_IO_CHIPS) {
-                    g_PBEngine.m_IOChip[outputDef.boardIndex].StageOutputPin(outputDef.pin, tempMessage.outputState);
-                }
-                
-            } else if (outputDef.boardType == PB_LED) {
-                // Stage the LED control to the appropriate LED chip
-                if (outputDef.boardIndex < NUM_LED_CHIPS) {
-                    LEDControlType ledState = (tempMessage.outputState == PB_ON) ? LEDOn : LEDOff;
-                    g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, ledState);
-                }
+            // Handle different message types
+            switch (tempMessage.outputMsg) {
+                case PB_OMSG_SLINGSHOT:
+                    if (outputDef.boardType == PB_IO || outputDef.boardType == PB_RASPI) ProcessIOOutputMessage(tempMessage, outputDef);
+                    break;
+                case PB_OMSG_POPBUMPER:
+                    if (outputDef.boardType == PB_IO || outputDef.boardType == PB_RASPI) ProcessIOOutputMessage(tempMessage, outputDef);
+                    break;
+                case PB_OMSG_BALLEJECT:
+                    if (outputDef.boardType == PB_IO || outputDef.boardType == PB_RASPI) ProcessIOOutputMessage(tempMessage, outputDef);
+                    break;
+                case PB_OMSG_LED:
+                    if (outputDef.boardType == PB_LED) ProcessLEDOutputMessage(tempMessage, outputDef);
+                    break;
+                case PB_OMSG_LEDCFG_GROUPDIM:
+                    if (outputDef.boardType == PB_LED) ProcessLEDOutputMessage(tempMessage, outputDef);
+                    break;
+                case PB_OMSG_LEDCFG_GROUPBLINK:
+                    if (outputDef.boardType == PB_LED) ProcessLEDOutputMessage(tempMessage, outputDef);
+                    break;
+                case PB_OMSG_LEDSET_BRIGHTNESS:
+                    if (outputDef.boardType == PB_LED) ProcessLEDOutputMessage(tempMessage, outputDef);
+                    break;
+                case PB_OMSG_LED_SEQUENCE:
+                    ProcessLEDSequenceMessage(tempMessage);
+                    skipProcessing = true;
+                    break;
+                default:
+                    break;
             }
             
-            // Update the lastState in the output definition
-            outputDef.lastState = tempMessage.outputState;
+            if (skipProcessing) continue;  // Jump to the next message
         }
     }
+    
+    // Process pulse outputs from the pulse map
+    ProcessActivePulseOutputs();
     
     // Send all staged outputs to IODriver chips
     for (int i = 0; i < NUM_IO_CHIPS; i++) {
         g_PBEngine.m_IOChip[i].SendStagedOutput();
+    }
+    
+    // Handle LED sequence processing or deferred queue
+    if (g_PBEngine.m_LEDSequenceInfo.sequenceEnabled) {
+        ProcessActiveLEDSequence();
+    } else {
+        ProcessDeferredLEDQueue();
     }
     
     // Send all staged outputs to LED chips
@@ -338,7 +314,308 @@ bool PBProcessOutput() {
         g_PBEngine.m_LEDChip[i].SendStagedLED();
     }
     
-    return (true);
+    return true;
+}
+
+// Helper function to find output definition index by outputId
+int FindOutputDefIndex(unsigned int outputId) {
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        if (g_outputDef[i].id == outputId) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// Process LED sequence start/stop messages
+void ProcessLEDSequenceMessage(const stOutputMessage& message) {
+    if (message.outputState == PB_ON && message.options != nullptr) {
+        // Start LED sequence mode
+        g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = true;
+        g_PBEngine.m_LEDSequenceInfo.firstTime = true;
+        g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = message.sentTick;
+        g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
+        g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
+        
+        g_PBEngine.m_LEDSequenceInfo.sequenceChipMask = message.options->sequenceMask;
+        g_PBEngine.m_LEDSequenceInfo.loopMode = message.options->loopMode;
+        g_PBEngine.m_LEDSequenceInfo.LEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
+        
+        // Save current LED values for chips in the mask
+        for (int i = 0; i < NUM_LED_CHIPS; i++) {
+            if (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << i)) {
+                // Read current LED values from chip using LEDOUT0 register (LEDs 0-3)
+                g_PBEngine.m_LEDSequenceInfo.savedLEDValues[i] = g_PBEngine.m_LEDChip[i].ReadLEDControl(StagedHW, 0);
+            }
+        
+        }
+    } else {
+        // Stop LED sequence mode
+        g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = false;
+        
+        // Restore saved LED values
+        for (int i = 0; i < NUM_LED_CHIPS; i++) {
+            if (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << i)) {
+                // Stage entire register with saved values
+                g_PBEngine.m_LEDChip[i].StageLEDControl(0, g_PBEngine.m_LEDSequenceInfo.savedLEDValues[i]);
+            }
+        }
+    }
+}
+
+// Process IO and RASPI output messages
+void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputDef) {
+    // Check if it's currently in the pulse output map - if so, ignore this message
+    if (g_PBEngine.m_outputPulseMap.find(message.outputId) != g_PBEngine.m_outputPulseMap.end()) {
+        return;
+    }
+    
+    // Check if it's a pulse output
+    bool isPulseOutput = (message.options != nullptr && 
+                        (message.options->onTimeMS > 0 || message.options->offTimeMS > 0));
+    
+    if (isPulseOutput) {
+        // Put it in the pulse output map
+        stOutputPulse pulse;
+        pulse.outputId = message.outputId;
+        pulse.onTimeMS = message.options->onTimeMS;
+        pulse.offTimeMS = message.options->offTimeMS;
+        pulse.startTickMS = message.sentTick;
+        g_PBEngine.m_outputPulseMap[message.outputId] = pulse;
+    } else {
+        // Not a pulse output - stage or send immediately
+        int outputValue = (message.outputState == PB_ON) ? HIGH : LOW;
+        
+        if (outputDef.boardType == PB_RASPI) {
+            // Send immediately to GPIO pin
+            digitalWrite(outputDef.pin, outputValue);
+        } else if (outputDef.boardType == PB_IO) {
+            // Stage the output value to the appropriate IODriver chip
+            if (outputDef.boardIndex < NUM_IO_CHIPS) {
+                g_PBEngine.m_IOChip[outputDef.boardIndex].StageOutputPin(outputDef.pin, message.outputState);
+            }
+        }
+        
+        // Update the lastState in the output definition
+        outputDef.lastState = message.outputState;
+    }
+}
+
+// Process LED output messages
+void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& outputDef) {
+    // Check if LED sequence is active for this chip
+    bool sequenceActiveForChip = g_PBEngine.m_LEDSequenceInfo.sequenceEnabled && 
+                               (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << outputDef.boardIndex));
+    
+    if (sequenceActiveForChip) {
+        // Push message to deferred queue, but check size limit
+        if (g_PBEngine.m_deferredQueue.size() < MAX_DEFERRED_LED_QUEUE) {
+            g_PBEngine.m_deferredQueue.push(message);
+        }
+        // Drop message if queue is full
+        return;
+    }
+    
+    // Handle LED state control messages (send immediately)
+    if (message.outputMsg == PB_OMSG_LEDCFG_GROUPBRIGHTNESS || 
+        message.outputMsg == PB_OMSG_LEDCFG_GROUPBLINK) {
+        // Send LED config messages immediately to the chip
+        if (outputDef.boardIndex < NUM_LED_CHIPS) {
+            // Process LED config message immediately
+            if (message.outputMsg == PB_OMSG_LEDCFG_GROUPBRIGHTNESS) {
+                g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeDimming, message.outputState, 0, 0);
+            } else if (message.outputMsg == PB_OMSG_LEDCFG_GROUPBLINK) {
+                unsigned int onTime = message.options ? message.options->onTimeMS : 500;
+                unsigned int offTime = message.options ? message.options->offTimeMS : 500;
+                g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeBlinking, message.outputState, onTime, offTime);
+            }
+        }
+    }
+    // Handle regular LED pin control
+    else if (message.outputMsg == PB_OMSG_LED || message.outputMsg == PB_OMSG_LEDSET_BRIGHTNESS) {
+        // Stage the LED control to the appropriate LED chip
+        if (outputDef.boardIndex < NUM_LED_CHIPS) {
+            LEDState ledState = (message.outputState == PB_ON) ? LEDOn : LEDOff;
+            g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, ledState);
+        }
+        
+        // Update the lastState in the output definition
+        outputDef.lastState = message.outputState;
+    }
+}
+
+// Process active pulse outputs and manage their timing
+void ProcessActivePulseOutputs() {
+    auto pulseIt = g_PBEngine.m_outputPulseMap.begin();
+    while (pulseIt != g_PBEngine.m_outputPulseMap.end()) {
+        stOutputPulse& pulse = pulseIt->second;
+        unsigned long currentTime = g_PBEngine.GetTickCountGfx();
+        unsigned long elapsedTime = currentTime - pulse.startTickMS;
+        
+        // Find the output definition for this pulse
+        int outputDefIndex = FindOutputDefIndex(pulse.outputId);
+        
+        if (outputDefIndex != -1) {
+            stOutputDef& outputDef = g_outputDef[outputDefIndex];
+            bool pulseComplete = false;
+            
+            if (elapsedTime < pulse.onTimeMS) {
+                // ON phase
+                int outputValue = HIGH;
+                if (outputDef.boardType == PB_RASPI) {
+                    digitalWrite(outputDef.pin, outputValue);
+                } else if (outputDef.boardType == PB_IO && outputDef.boardIndex < NUM_IO_CHIPS) {
+                    g_PBEngine.m_IOChip[outputDef.boardIndex].StageOutputPin(outputDef.pin, PB_ON);
+                }
+                outputDef.lastState = PB_ON;
+            } else if (elapsedTime < (pulse.onTimeMS + pulse.offTimeMS)) {
+                // OFF phase
+                int outputValue = LOW;
+                if (outputDef.boardType == PB_RASPI) {
+                    digitalWrite(outputDef.pin, outputValue);
+                } else if (outputDef.boardType == PB_IO && outputDef.boardIndex < NUM_IO_CHIPS) {
+                    g_PBEngine.m_IOChip[outputDef.boardIndex].StageOutputPin(outputDef.pin, PB_OFF);
+                }
+                outputDef.lastState = PB_OFF;
+            } else {
+                // Pulse complete
+                pulseComplete = true;
+            }
+            
+            if (pulseComplete) {
+                pulseIt = g_PBEngine.m_outputPulseMap.erase(pulseIt);
+            } else {
+                ++pulseIt;
+            }
+        } else {
+            // Output definition not found, remove from map
+            pulseIt = g_PBEngine.m_outputPulseMap.erase(pulseIt);
+        }
+    }
+}
+
+// Process active LED sequence progression and loop handling
+void ProcessActiveLEDSequence() {
+    // Check if sequence time has completed (implement sequence timing logic)
+    // For now, implement basic sequence progression
+    
+    if (g_PBEngine.m_LEDSequenceInfo.LEDSequence != nullptr && 
+        !g_PBEngine.m_LEDSequenceInfo.LEDSequence->empty()) {
+        
+        // Stage current sequence values to LED chips
+        if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < g_PBEngine.m_LEDSequenceInfo.LEDSequence->size()) {
+            const auto& currentSequence = (*g_PBEngine.m_LEDSequenceInfo.LEDSequence)[g_PBEngine.m_LEDSequenceInfo.currentSeqIndex];
+            
+            for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+                if (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << chipIndex)) {
+                    if (chipIndex < currentSequence.size()) {
+                        // Stage individual LEDs based on the sequence bits
+                        uint16_t ledBits = currentSequence[chipIndex].LEDOnBits[chipIndex];
+                        for (int ledPin = 0; ledPin < 16; ledPin++) {
+                            LEDState state = (ledBits & (1 << ledPin)) ? LEDOn : LEDOff;
+                            g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, ledPin, state);
+                        }
+                    }
+                }
+            }
+            
+            // Advance sequence index (simplified - should include timing logic)
+            g_PBEngine.m_LEDSequenceInfo.currentSeqIndex += g_PBEngine.m_LEDSequenceInfo.indexStep;
+            
+            // Handle sequence boundaries and loop modes
+            HandleLEDSequenceBoundaries();
+        }
+    }
+}
+
+// Handle LED sequence boundary conditions and loop modes
+void HandleLEDSequenceBoundaries() {
+    if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex >= static_cast<int>(g_PBEngine.m_LEDSequenceInfo.LEDSequence->size())) {
+        switch (g_PBEngine.m_LEDSequenceInfo.loopMode) {
+            case PB_NOLOOP:
+                // End sequence
+                EndLEDSequence();
+                break;
+            case PB_LOOP:
+                g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
+                g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = g_PBEngine.GetTickCountGfx();
+                break;
+            case PB_PINGPONG:
+            case PB_PINGPONGLOOP:
+                g_PBEngine.m_LEDSequenceInfo.indexStep = -1;
+                g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = static_cast<int>(g_PBEngine.m_LEDSequenceInfo.LEDSequence->size()) - 2;
+                break;
+        }
+    } else if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < 0) {
+        switch (g_PBEngine.m_LEDSequenceInfo.loopMode) {
+            case PB_NOLOOP:
+                // End sequence
+                EndLEDSequence();
+                break;
+            case PB_LOOP:
+                g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
+                g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
+                g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = g_PBEngine.GetTickCountGfx();
+                break;
+            case PB_PINGPONG:
+            case PB_PINGPONGLOOP:
+                g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
+                g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 1;
+                break;
+        }
+    }
+}
+
+// End LED sequence and restore saved values
+void EndLEDSequence() {
+    g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = false;
+    for (int i = 0; i < NUM_LED_CHIPS; i++) {
+        if (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << i)) {
+            for (int ledPin = 0; ledPin < 16; ledPin++) {
+                LEDState state = (g_PBEngine.m_LEDSequenceInfo.savedLEDValues[i] & (1 << ledPin)) ? LEDOn : LEDOff;
+                g_PBEngine.m_LEDChip[i].StageLEDControl(false, ledPin, state);
+            }
+        }
+    }
+}
+
+// Process deferred LED messages when sequence is not active
+void ProcessDeferredLEDQueue() {
+    while (!g_PBEngine.m_deferredQueue.empty()) {
+        stOutputMessage deferredMessage = g_PBEngine.m_deferredQueue.front();
+        g_PBEngine.m_deferredQueue.pop();
+        
+        // Find the output definition
+        int outputDefIndex = FindOutputDefIndex(deferredMessage.outputId);
+        
+        if (outputDefIndex != -1) {
+            stOutputDef& outputDef = g_outputDef[outputDefIndex];
+            
+            if (outputDef.boardType == PB_LED) {
+                // Handle LED config messages
+                if (deferredMessage.outputMsg == PB_OMSG_LEDCFG_GROUPBRIGHTNESS || 
+                    deferredMessage.outputMsg == PB_OMSG_LEDCFG_GROUPBLINK) {
+                    if (outputDef.boardIndex < NUM_LED_CHIPS) {
+                        if (deferredMessage.outputMsg == PB_OMSG_LEDCFG_GROUPBRIGHTNESS) {
+                            g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeDimming, deferredMessage.outputState, 0, 0);
+                        } else if (deferredMessage.outputMsg == PB_OMSG_LEDCFG_GROUPBLINK) {
+                            unsigned int onTime = deferredMessage.options ? deferredMessage.options->onTimeMS : 500;
+                            unsigned int offTime = deferredMessage.options ? deferredMessage.options->offTimeMS : 500;
+                            g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeBlinking, deferredMessage.outputState, onTime, offTime);
+                        }
+                    }
+                }
+                // Handle regular LED pin control
+                else if (deferredMessage.outputMsg == PB_OMSG_LED || deferredMessage.outputMsg == PB_OMSG_LEDSET_BRIGHTNESS) {
+                    if (outputDef.boardIndex < NUM_LED_CHIPS) {
+                        LEDState ledState = (deferredMessage.outputState == PB_ON) ? LEDOn : LEDOff;
+                        g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, ledState);
+                    }
+                    outputDef.lastState = deferredMessage.outputState;
+                }
+            }
+        }
+    }
 }
 
 // Overall IO processing - putting this in one function allows for easier timing control and to process all at once
@@ -349,7 +626,7 @@ bool PBProcessIO() {
     return (true);
 }
 
-#endif
+#endif // RapberryPi Specific code
 
 // End the platform specific code and functions
 
@@ -1520,13 +1797,14 @@ bool PBEngine::pbeSetupIO()
 }
 
 // Function to create and queue an output message
-void PBEngine::SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState)
+void PBEngine::SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState, stOutputOptions* options)
 {
     stOutputMessage outputMessage;
     outputMessage.outputMsg = outputMsg;
     outputMessage.outputId = outputId;
     outputMessage.outputState = outputState;
     outputMessage.sentTick = GetTickCountGfx();
+    outputMessage.options = options;
     
     // Lock the output queue mutex and add the message
     // std::lock_guard<std::mutex> lock(m_outputQMutex);

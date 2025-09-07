@@ -144,6 +144,11 @@ enum LEDGroupMode {
     GroupModeBlinking   // Group mode set to blinking
 };
 
+enum LEDHardwareState {
+    StagedHW,          // Read from staged values (m_ledControl)
+    CurrentHW          // Read from current hardware state (m_currentControl)
+};
+
 // Max Volume for MAX9744 IC
 // Max is 0x3F but that is so sensitive, even small changes can be very loud.
 #define MAX9744_VOLUME_MAX 0x26
@@ -157,6 +162,7 @@ public:
 
     void SetGroupMode(LEDGroupMode groupMode, unsigned int brightness, unsigned int msTimeOn, unsigned int msTimeOff);
     void StageLEDControl(bool setAll, unsigned int LEDIndex, LEDState state);
+    void StageLEDControl(unsigned int registerIndex, uint8_t value);
     void StageLEDBrightness(bool setAll, unsigned int LEDIndex, uint8_t brightness);
     void SendStagedLED();
     LEDGroupMode GetGroupMode() const;
@@ -169,6 +175,8 @@ public:
     uint8_t ReadLEDOutRegister(uint8_t ledOutIndex) const;    // Read LEDOUT0-LEDOUT3 (ledOutIndex 0-3)
     uint8_t ReadGroupPWM() const;                             // Read GRPPWM register
     uint8_t ReadGroupFreq() const;                            // Read GRPFREQ register
+    uint8_t ReadLEDControl(LEDHardwareState hwState, uint8_t registerIndex) const;  // Read staged or current control register
+    uint8_t ReadLEDBrightness(LEDHardwareState hwState, uint8_t ledIndex) const;   // Read staged or current brightness register
 
 private:
     uint8_t m_address;
@@ -226,6 +234,7 @@ public:
     uint8_t ReadOutputPort(uint8_t portIndex) const;     // Read OUTPUT_PORT0 or OUTPUT_PORT1 (portIndex 0-1)
     uint8_t ReadPolarityPort(uint8_t portIndex) const;   // Read POLARITY_PORT0 or PORT1 (portIndex 0-1)
     uint8_t ReadConfigPort(uint8_t portIndex) const;     // Read CONFIG_PORT0 or PORT1 (portIndex 0-1)
+    uint8_t ReadOutputValues(LEDHardwareState hwState, uint8_t portIndex) const;  // Read staged or current output values
 
 private:
     uint8_t m_address;

@@ -47,6 +47,24 @@
 #include <chrono>
 #include "PBDebounce.h"
 
+// Hardware configuration defines - moved here to be available for structure definitions
+#define NUM_IO_CHIPS    3
+#define NUM_LED_CHIPS   3
+
+// For the Deferred LED message queue
+#define MAX_DEFERRED_LED_QUEUE 100
+
+// Forward declarations and early type definitions
+struct stLEDSequence; // Forward declaration
+typedef std::vector<std::vector<stLEDSequence>> LEDSequence;
+
+enum PBSequenceLoopMode { 
+    PB_NOLOOP = 0,
+    PB_LOOP = 1,
+    PB_PINGPONG = 2,
+    PB_PINGPONGLOOP = 3
+};
+
 // Forward declarations for the enums used in the PBEngine class
 enum class PBTableState;
 enum class PBTBLScreenState;
@@ -66,7 +84,7 @@ enum class PBTBLScreenState;
 
 bool PBInitRender (long width, long height);
 
-// The main modes / screens for the pinball game.  
+// The main modes / screens for the pinball menus.  
 enum PBMainState {
     PB_BOOTUP = 0,
     PB_STARTMENU = 1,
@@ -91,6 +109,8 @@ enum PBDifficultyMode{
     PB_DMEND
 };
 
+// Input message structures
+
 struct stInputMessage {
     PBInputMsg inputMsg;
     unsigned int inputId;
@@ -98,15 +118,26 @@ struct stInputMessage {
     unsigned long sentTick; 
 };
 
+// Output message structures
 
-// Need to add additional params for all output messages  in an efficent way
- 
+struct stOutputOptions {
+    unsigned int onTimeMS;
+    unsigned int offTimeMS;
+    unsigned int brightness;
+    unsigned int sequenceMask; // Bit mask of which LED chips are in the sequence
+    PBSequenceLoopMode loopMode;
+    const LEDSequence *setLEDSequence;
+};
+
 struct stOutputMessage {
     PBOutputMsg outputMsg;
     unsigned int outputId;
     PBPinState outputState;
     unsigned long sentTick;
+    stOutputOptions *options; // Pointer to options structure if needed
 };
+
+// Structures used during the processing of output messages
 
 struct stOutputPulse {
     unsigned int outputId;
@@ -123,23 +154,17 @@ struct stLEDSequenceInfo {
     unsigned long sequenceStartTick;
     unsigned int currentSeqIndex;    // Current index in the sequence
     int indexStep;        // +1 or -1 depending on direction
-    uint16_t savedLEDValues[NUM_LED_CHIPS]; // Saved LED values for each chip in the sequence
-    std::vector<std::vector<stLEDSequence>> *LEDSequence;
+    uint8_t savedLEDValues[NUM_LED_CHIPS]; // Saved LED values for each chip in the sequence
+    LEDSequence *LEDSequence;
 };
 
 struct stLEDSequence {
     uint16_t LEDOnBits [NUM_LED_CHIPS];
     unsigned int onDurationMS;
     unsigned int offDurationMS;
-}
-
-enum PBSequenceLoopMode { 
-    PB_NOLOOP = 0,
-    PB_LOOP = 1,
-    PB_PINGPONG = 2,
-    PB_PINGPONGLOOP = 3,
 };
 
+// Save file structures
 struct stHighScoreData {
     unsigned long highScore;
     std::string playerInitials;
@@ -159,18 +184,11 @@ struct stSaveFileData {
     std::array<stHighScoreData, NUM_HIGHSCORES> highScores; 
 };
 
-// Hardware configuration defines
-#define NUM_IO_CHIPS    3
-#define NUM_LED_CHIPS   3
-
 // Sequence timing defines - this will need to be updated if more LED chips are added
 #define LED0_SEQ_MASK 0x1
 #define LED1_SEQ_MASK 0x2
 #define LED2_SEQ_MASK 0x4
 #define LEDALL_SEQ_MASK 0x7
-
-// For the Deferred LED message queue
-#define MAX_DEFERRED_LED_QUEUE 100
 
 // Make new class named PBGame that inheritis from PBOGLES with just essential functions
 class PBEngine : public PBGfx {
@@ -202,7 +220,7 @@ public:
     bool pbeSetupIO();
     
     // Output message functions
-    void SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState);
+    void SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState, stOutputOptions* options = nullptr);
     
     // Input configuration functions
     bool SetAutoOutput(unsigned int index, bool autoOutputEnabled);
@@ -347,5 +365,16 @@ private:
 
     // Main Table functions - these will need to be modified per table
 };
+
+// Output processing function declarations
+int FindOutputDefIndex(unsigned int outputId);
+void ProcessLEDSequenceMessage(const stOutputMessage& message);
+void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputDef);
+void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& outputDef);
+void ProcessActivePulseOutputs();
+void ProcessActiveLEDSequence();
+void HandleLEDSequenceBoundaries();
+void EndLEDSequence();
+void ProcessDeferredLEDQueue();
 
 #endif // PInball_h
