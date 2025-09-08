@@ -23,6 +23,7 @@ Design prototype HW, use test mode to enable
     * Flippers, Sligshots, Pop Bumpers, Lane / Ball Detectors, Multiball lock gate
     * Build proto cabinet w/ foam board
 Build relay output boards that connect to output IO chips.  Likely FET controlled, opto-isolated and support multiple voltage output ranges
+    * Put the scematics for all boards into DigiKey for documenting.  See how much cost to build for real?
 Build foam board and whitewood prototype to judge sizes
 Create cabinet, flexible to support multiple playfields 
 
