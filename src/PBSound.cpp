@@ -31,8 +31,8 @@ bool PBSound::pbsInitialize() {
     }
     
     // Initialize SDL_mixer with reasonable quality settings
-    // 44.1kHz, 16-bit signed, stereo, 1024 byte chunks
-    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) < 0) {
+    // 44.1kHz, 16-bit signed, stereo, 2048 byte chunks
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
         SDL_Quit();
         return false;
     }
