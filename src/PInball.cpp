@@ -179,7 +179,7 @@ bool  PBProcessInput() {
                 }
                 
                 // Send output message with the specified autoPinState
-                g_PBEngine.SendOutputMsg(outputType, g_inputDef[inputId].autoOutputId, g_inputDef[inputId].autoPinState);
+                g_PBEngine.SendOutputMsg(outputType, g_inputDef[inputId].autoOutputId, g_inputDef[inputId].autoPinState, true);
             }
         }
     }
@@ -224,7 +224,7 @@ bool  PBProcessInput() {
                     }
                     
                     // Send output message with the specified autoPinState
-                    g_PBEngine.SendOutputMsg(outputType, g_inputDef[i].autoOutputId, g_inputDef[i].autoPinState);
+                    g_PBEngine.SendOutputMsg(outputType, g_inputDef[i].autoOutputId, g_inputDef[i].autoPinState, true);
                 }
             }
         }
@@ -261,26 +261,16 @@ bool PBProcessOutput() {
             
             // Handle different message types
             switch (tempMessage.outputMsg) {
-                case PB_OMSG_SLINGSHOT:
-                    if (outputDef.boardType == PB_IO || outputDef.boardType == PB_RASPI) ProcessIOOutputMessage(tempMessage, outputDef);
-                    break;
-                case PB_OMSG_POPBUMPER:
-                    if (outputDef.boardType == PB_IO || outputDef.boardType == PB_RASPI) ProcessIOOutputMessage(tempMessage, outputDef);
-                    break;
-                case PB_OMSG_BALLEJECT:
+                case PB_OMSG_GENERIC_IO:
                     if (outputDef.boardType == PB_IO || outputDef.boardType == PB_RASPI) ProcessIOOutputMessage(tempMessage, outputDef);
                     break;
                 case PB_OMSG_LED:
+                case PB_OMSG_LEDSET_BRIGHTNESS:
                     if (outputDef.boardType == PB_LED) ProcessLEDOutputMessage(tempMessage, outputDef);
                     break;
                 case PB_OMSG_LEDCFG_GROUPDIM:
-                    if (outputDef.boardType == PB_LED) ProcessLEDOutputMessage(tempMessage, outputDef);
-                    break;
                 case PB_OMSG_LEDCFG_GROUPBLINK:
-                    if (outputDef.boardType == PB_LED) ProcessLEDOutputMessage(tempMessage, outputDef);
-                    break;
-                case PB_OMSG_LEDSET_BRIGHTNESS:
-                    if (outputDef.boardType == PB_LED) ProcessLEDOutputMessage(tempMessage, outputDef);
+                    if (outputDef.boardType == PB_LED) ProcessLEDConfigMessage(tempMessage, outputDef);
                     break;
                 case PB_OMSG_LED_SEQUENCE:
                     ProcessLEDSequenceMessage(tempMessage);
@@ -371,7 +361,7 @@ void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputD
     }
     
     // Check if it's a pulse output
-    bool isPulseOutput = (message.options != nullptr && 
+    bool isPulseOutput = message.usePulse && (message.options != nullptr && 
                         (message.options->onTimeMS > 0 || message.options->offTimeMS > 0));
     
     if (isPulseOutput) {
@@ -384,7 +374,8 @@ void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputD
         g_PBEngine.m_outputPulseMap[message.outputId] = pulse;
     } else {
         // Not a pulse output - stage or send immediately
-        int outputValue = (message.outputState == PB_ON) ? HIGH : LOW;
+        // All logic is active low (so ON = LOW, OFF = HIGH)
+        int outputValue = (message.outputState == PB_OFF) ? HIGH : LOW;
         
         if (outputDef.boardType == PB_RASPI) {
             // Send immediately to GPIO pin
@@ -402,37 +393,24 @@ void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputD
 }
 
 // Process LED output messages
-void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& outputDef) {
-    // Check if LED sequence is active for this chip
-    bool sequenceActiveForChip = g_PBEngine.m_LEDSequenceInfo.sequenceEnabled && 
-                               (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << outputDef.boardIndex));
-    
-    if (sequenceActiveForChip) {
-        // Push message to deferred queue, but check size limit
-        if (g_PBEngine.m_deferredQueue.size() < MAX_DEFERRED_LED_QUEUE) {
-            g_PBEngine.m_deferredQueue.push(message);
-        }
-        // Drop message if queue is full
-        return;
-    }
-    
-    // Handle LED state control messages (send immediately)
-    if (message.outputMsg == PB_OMSG_LEDCFG_GROUPBRIGHTNESS || 
-        message.outputMsg == PB_OMSG_LEDCFG_GROUPBLINK) {
-        // Send LED config messages immediately to the chip
-        if (outputDef.boardIndex < NUM_LED_CHIPS) {
-            // Process LED config message immediately
-            if (message.outputMsg == PB_OMSG_LEDCFG_GROUPBRIGHTNESS) {
-                g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeDimming, message.outputState, 0, 0);
-            } else if (message.outputMsg == PB_OMSG_LEDCFG_GROUPBLINK) {
-                unsigned int onTime = message.options ? message.options->onTimeMS : 500;
-                unsigned int offTime = message.options ? message.options->offTimeMS : 500;
-                g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeBlinking, message.outputState, onTime, offTime);
+void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& outputDef, bool skipSequenceCheck) {
+    // Check if LED sequence is active for this chip (unless skip is requested)
+    if (!skipSequenceCheck) {
+        bool sequenceActiveForChip = g_PBEngine.m_LEDSequenceInfo.sequenceEnabled && 
+                                   (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << outputDef.boardIndex));
+        
+        if (sequenceActiveForChip) {
+            // Push message to deferred queue, but check size limit
+            if (g_PBEngine.m_deferredQueue.size() < MAX_DEFERRED_LED_QUEUE) {
+                g_PBEngine.m_deferredQueue.push(message);
             }
+            // Drop message if queue is full
+            return;
         }
     }
+    
     // Handle regular LED pin control
-    else if (message.outputMsg == PB_OMSG_LED || message.outputMsg == PB_OMSG_LEDSET_BRIGHTNESS) {
+    if (message.outputMsg == PB_OMSG_LED) {
         // Stage the LED control to the appropriate LED chip
         if (outputDef.boardIndex < NUM_LED_CHIPS) {
             LEDState ledState = (message.outputState == PB_ON) ? LEDOn : LEDOff;
@@ -441,6 +419,28 @@ void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& output
         
         // Update the lastState in the output definition
         outputDef.lastState = message.outputState;
+    }
+    else if (message.outputMsg == PB_OMSG_LEDSET_BRIGHTNESS) {
+        // Stage the LED brightness to the appropriate LED chip
+        if (outputDef.boardIndex < NUM_LED_CHIPS) {
+            uint8_t brightness = message.options ? message.options->brightness : 255;
+            g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDBrightness(false, outputDef.pin, brightness);
+        }
+    }
+}
+
+// Process LED configuration messages that write immediately
+void ProcessLEDConfigMessage(const stOutputMessage& message, stOutputDef& outputDef) {
+    // LED config messages always write immediately, no staging
+    if (outputDef.boardIndex < NUM_LED_CHIPS) {
+        if (message.outputMsg == PB_OMSG_LEDCFG_GROUPDIM) {
+            unsigned int brightness = message.options ? message.options->brightness : 255;
+            g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeDimming, brightness, 0, 0);
+        } else if (message.outputMsg == PB_OMSG_LEDCFG_GROUPBLINK) {
+            unsigned int onTime = message.options ? message.options->onTimeMS : 500;
+            unsigned int offTime = message.options ? message.options->offTimeMS : 500;
+            g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeBlinking, 0, onTime, offTime);
+        }
     }
 }
 
@@ -461,7 +461,7 @@ void ProcessActivePulseOutputs() {
             
             if (elapsedTime < pulse.onTimeMS) {
                 // ON phase
-                int outputValue = HIGH;
+                int outputValue = LOW;
                 if (outputDef.boardType == PB_RASPI) {
                     digitalWrite(outputDef.pin, outputValue);
                 } else if (outputDef.boardType == PB_IO && outputDef.boardIndex < NUM_IO_CHIPS) {
@@ -470,7 +470,7 @@ void ProcessActivePulseOutputs() {
                 outputDef.lastState = PB_ON;
             } else if (elapsedTime < (pulse.onTimeMS + pulse.offTimeMS)) {
                 // OFF phase
-                int outputValue = LOW;
+                int outputValue = HIGH;
                 if (outputDef.boardType == PB_RASPI) {
                     digitalWrite(outputDef.pin, outputValue);
                 } else if (outputDef.boardType == PB_IO && outputDef.boardIndex < NUM_IO_CHIPS) {
@@ -592,26 +592,16 @@ void ProcessDeferredLEDQueue() {
             stOutputDef& outputDef = g_outputDef[outputDefIndex];
             
             if (outputDef.boardType == PB_LED) {
-                // Handle LED config messages
-                if (deferredMessage.outputMsg == PB_OMSG_LEDCFG_GROUPBRIGHTNESS || 
+                // Use existing processing functions to avoid code duplication
+                if (deferredMessage.outputMsg == PB_OMSG_LEDCFG_GROUPDIM || 
                     deferredMessage.outputMsg == PB_OMSG_LEDCFG_GROUPBLINK) {
-                    if (outputDef.boardIndex < NUM_LED_CHIPS) {
-                        if (deferredMessage.outputMsg == PB_OMSG_LEDCFG_GROUPBRIGHTNESS) {
-                            g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeDimming, deferredMessage.outputState, 0, 0);
-                        } else if (deferredMessage.outputMsg == PB_OMSG_LEDCFG_GROUPBLINK) {
-                            unsigned int onTime = deferredMessage.options ? deferredMessage.options->onTimeMS : 500;
-                            unsigned int offTime = deferredMessage.options ? deferredMessage.options->offTimeMS : 500;
-                            g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeBlinking, deferredMessage.outputState, onTime, offTime);
-                        }
-                    }
+                    // Use ProcessLEDConfigMessage for config messages
+                    ProcessLEDConfigMessage(deferredMessage, outputDef);
                 }
-                // Handle regular LED pin control
-                else if (deferredMessage.outputMsg == PB_OMSG_LED || deferredMessage.outputMsg == PB_OMSG_LEDSET_BRIGHTNESS) {
-                    if (outputDef.boardIndex < NUM_LED_CHIPS) {
-                        LEDState ledState = (deferredMessage.outputState == PB_ON) ? LEDOn : LEDOff;
-                        g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, ledState);
-                    }
-                    outputDef.lastState = deferredMessage.outputState;
+                else if (deferredMessage.outputMsg == PB_OMSG_LED || 
+                         deferredMessage.outputMsg == PB_OMSG_LEDSET_BRIGHTNESS) {
+                    // Use ProcessLEDOutputMessage with skipSequenceCheck=true for deferred messages
+                    ProcessLEDOutputMessage(deferredMessage, outputDef, true);
                 }
             }
         }
@@ -1493,7 +1483,8 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                      // Send the message to the output queue using SendOutputMsg function
                     SendOutputMsg(g_outputDef[m_CurrentOutputItem].outputMsg, 
                                 g_outputDef[m_CurrentOutputItem].id, 
-                                g_outputDef[m_CurrentOutputItem].lastState);
+                                g_outputDef[m_CurrentOutputItem].lastState, 
+                                false);
                     }
             }
             
@@ -1797,12 +1788,13 @@ bool PBEngine::pbeSetupIO()
 }
 
 // Function to create and queue an output message
-void PBEngine::SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState, stOutputOptions* options)
+void PBEngine::SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState, bool usePulse, stOutputOptions* options)
 {
     stOutputMessage outputMessage;
     outputMessage.outputMsg = outputMsg;
     outputMessage.outputId = outputId;
     outputMessage.outputState = outputState;
+    outputMessage.usePulse = usePulse;
     outputMessage.sentTick = GetTickCountGfx();
     outputMessage.options = options;
     

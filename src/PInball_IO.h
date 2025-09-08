@@ -56,14 +56,12 @@ struct stInputDef{
 // Output defintions
 // Input message structs and types
 enum PBOutputMsg {
-    PB_OMSG_SLINGSHOT = 0,
-    PB_OMSG_POPBUMPER = 1,
-    PB_OMSG_LED = 2,
-    PB_OMSG_BALLEJECT = 3,
-    PB_OMSG_LEDCFG_GROUPDIM = 4,
-    PB_OMSG_LEDCFG_GROUPBLINK = 5,
-    PB_OMSG_LEDSET_BRIGHTNESS = 6,
-    PB_OMSG_LED_SEQUENCE = 7
+    PB_OMSG_LED = 1,
+    PB_OMSG_LEDCFG_GROUPDIM = 2,
+    PB_OMSG_LEDCFG_GROUPBLINK = 3,
+    PB_OMSG_LEDSET_BRIGHTNESS = 4,
+    PB_OMSG_LED_SEQUENCE = 5,
+    PB_OMSG_GENERIC_IO = 6
 };
 
 // Placeholder - there are probably items to add here

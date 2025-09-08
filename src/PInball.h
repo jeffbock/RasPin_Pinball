@@ -133,6 +133,7 @@ struct stOutputMessage {
     PBOutputMsg outputMsg;
     unsigned int outputId;
     PBPinState outputState;
+    bool usePulse;
     unsigned long sentTick;
     stOutputOptions *options; // Pointer to options structure if needed
 };
@@ -220,7 +221,7 @@ public:
     bool pbeSetupIO();
     
     // Output message functions
-    void SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState, stOutputOptions* options = nullptr);
+    void SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState, bool usePulse, stOutputOptions* options = nullptr);
     
     // Input configuration functions
     bool SetAutoOutput(unsigned int index, bool autoOutputEnabled);
@@ -370,7 +371,8 @@ private:
 int FindOutputDefIndex(unsigned int outputId);
 void ProcessLEDSequenceMessage(const stOutputMessage& message);
 void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputDef);
-void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& outputDef);
+void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& outputDef, bool skipSequenceCheck = false);
+void ProcessLEDConfigMessage(const stOutputMessage& message, stOutputDef& outputDef);
 void ProcessActivePulseOutputs();
 void ProcessActiveLEDSequence();
 void HandleLEDSequenceBoundaries();
