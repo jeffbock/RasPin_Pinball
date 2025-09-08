@@ -1,13 +1,12 @@
 This file tracks the various items to do in the pinball project in rough priority
 
 ** Raspberry Pi Specific Work
-Debug all output flows (pulse, sequences and standard - make sure polarities are right (some are backward))
+Debug all output flows (pulse, sequences and standard - make sure polarities are right (some are backward)), fix I/O intialization
 Create a cmake to build the program in Pi, and put EXE in right place to make paths work vs VS Code builds
 
 ** Generic arch improvements
 Add FPS limit to game screen to allow more time to process input / outputs
-Add glscissor support to turn on / off rendering to the score screen, that way sprites and clip at score screen edges
-Add menu item to enable output montitor mode - and then transparent overlay play screen with output status
+Add menu item to enable output montitor mode - put it on the sides of the backglass outsize active display screen
 Add some more interesting animation options (Any movement that makes animations better?)
 Expand sprites to have animated sprites - eg: UV maps within a sprite with different images - base is there but need example to integrate.
     -  Is there some standard sprite format / program that can be used?
@@ -24,6 +23,8 @@ Design prototype HW, use test mode to enable
     * Flippers, Sligshots, Pop Bumpers, Lane / Ball Detectors, Multiball lock gate
     * Build proto cabinet w/ foam board
 Build relay output boards that connect to output IO chips.  Likely FET controlled, opto-isolated and support multiple voltage output ranges
+Build foam board and whitewood prototype to judge sizes
+Create cabinet, flexible to support multiple playfields 
 
 ** Documentation
 Write up arch docs
@@ -36,8 +37,9 @@ Fix sprite animation acceleration parameter
 Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
 Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
 Install git LFS as that large bitmaps, etc.. are expected at some point
-Align sounds to less popping - increase buffer size, align sample modes, use WAV?
+Align sounds to less popping - align sample modes, use WAV?
 Protect input / output queues with mutex and make them multi-thread?  May not be needed with current design
+Add glscissor support to turn on / off rendering to the score screen, that way sprites and clip at score screen edges
 
 ** Maybe future stuff
 Look a neo-pixel support - can we have multi-color strips on individual addressed LEDs?
