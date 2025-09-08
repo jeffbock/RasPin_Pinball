@@ -329,7 +329,7 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
         
         g_PBEngine.m_LEDSequenceInfo.sequenceChipMask = message.options->sequenceMask;
         g_PBEngine.m_LEDSequenceInfo.loopMode = message.options->loopMode;
-        g_PBEngine.m_LEDSequenceInfo.LEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
+        g_PBEngine.m_LEDSequenceInfo.pLEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
         
         // Save current LED values for chips in the mask
         for (int i = 0; i < NUM_LED_CHIPS; i++) {
@@ -499,12 +499,12 @@ void ProcessActiveLEDSequence() {
     // Check if sequence time has completed (implement sequence timing logic)
     // For now, implement basic sequence progression
     
-    if (g_PBEngine.m_LEDSequenceInfo.LEDSequence != nullptr && 
-        !g_PBEngine.m_LEDSequenceInfo.LEDSequence->empty()) {
+    if (g_PBEngine.m_LEDSequenceInfo.pLEDSequence != nullptr && 
+        !g_PBEngine.m_LEDSequenceInfo.pLEDSequence->empty()) {
         
         // Stage current sequence values to LED chips
-        if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < g_PBEngine.m_LEDSequenceInfo.LEDSequence->size()) {
-            const auto& currentSequence = (*g_PBEngine.m_LEDSequenceInfo.LEDSequence)[g_PBEngine.m_LEDSequenceInfo.currentSeqIndex];
+        if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < g_PBEngine.m_LEDSequenceInfo.pLEDSequence->size()) {
+            const auto& currentSequence = (*g_PBEngine.m_LEDSequenceInfo.pLEDSequence)[g_PBEngine.m_LEDSequenceInfo.currentSeqIndex];
             
             for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
                 if (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << chipIndex)) {
@@ -530,7 +530,7 @@ void ProcessActiveLEDSequence() {
 
 // Handle LED sequence boundary conditions and loop modes
 void HandleLEDSequenceBoundaries() {
-    if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex >= static_cast<int>(g_PBEngine.m_LEDSequenceInfo.LEDSequence->size())) {
+    if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex >= static_cast<int>(g_PBEngine.m_LEDSequenceInfo.pLEDSequence->size())) {
         switch (g_PBEngine.m_LEDSequenceInfo.loopMode) {
             case PB_NOLOOP:
                 // End sequence
@@ -543,7 +543,7 @@ void HandleLEDSequenceBoundaries() {
             case PB_PINGPONG:
             case PB_PINGPONGLOOP:
                 g_PBEngine.m_LEDSequenceInfo.indexStep = -1;
-                g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = static_cast<int>(g_PBEngine.m_LEDSequenceInfo.LEDSequence->size()) - 2;
+                g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = static_cast<int>(g_PBEngine.m_LEDSequenceInfo.pLEDSequence->size()) - 2;
                 break;
         }
     } else if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < 0) {

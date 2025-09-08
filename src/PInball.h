@@ -156,7 +156,7 @@ struct stLEDSequenceInfo {
     unsigned int currentSeqIndex;    // Current index in the sequence
     int indexStep;        // +1 or -1 depending on direction
     uint8_t savedLEDValues[NUM_LED_CHIPS]; // Saved LED values for each chip in the sequence
-    LEDSequence *LEDSequence;
+    LEDSequence *pLEDSequence;
 };
 
 struct stLEDSequence {
