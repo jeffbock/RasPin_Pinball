@@ -360,16 +360,20 @@ void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputD
         return;
     }
     
+    // Temporary breakpoint
+    if (message.outputId == IDO_SLINGSHOT) {
+        int bp = 1;
+    }
+
     // Check if it's a pulse output
-    bool isPulseOutput = message.usePulse && (message.options != nullptr && 
-                        (message.options->onTimeMS > 0 || message.options->offTimeMS > 0));
+    bool isPulseOutput = message.usePulse && (outputDef.onTimeMS > 0 || outputDef.offTimeMS > 0);
     
     if (isPulseOutput) {
         // Put it in the pulse output map
         stOutputPulse pulse;
         pulse.outputId = message.outputId;
-        pulse.onTimeMS = message.options->onTimeMS;
-        pulse.offTimeMS = message.options->offTimeMS;
+        pulse.onTimeMS = outputDef.onTimeMS;
+        pulse.offTimeMS = outputDef.offTimeMS;
         pulse.startTickMS = message.sentTick;
         g_PBEngine.m_outputPulseMap[message.outputId] = pulse;
     } else {
@@ -437,8 +441,8 @@ void ProcessLEDConfigMessage(const stOutputMessage& message, stOutputDef& output
             unsigned int brightness = message.options ? message.options->brightness : 255;
             g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeDimming, brightness, 0, 0);
         } else if (message.outputMsg == PB_OMSG_LEDCFG_GROUPBLINK) {
-            unsigned int onTime = message.options ? message.options->onTimeMS : 500;
-            unsigned int offTime = message.options ? message.options->offTimeMS : 500;
+            unsigned int onTime = message.options ? message.options->onBlinkMS : 500;
+            unsigned int offTime = message.options ? message.options->offBlinkMS : 500;
             g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeBlinking, 0, onTime, offTime);
         }
     }
@@ -1418,7 +1422,14 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         case (3):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
                         default: break;
                     }
-                }                
+                }
+
+                if (inputMessage.inputId == IDI_START) {
+                    // Sending Test Messages
+                    SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, PB_ON, true);
+                    SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_POPBUMPER, PB_ON, true);
+                    SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_BALLEJECT, PB_ON, true);
+                }
             }
             break;
         }

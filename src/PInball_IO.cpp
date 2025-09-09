@@ -19,9 +19,9 @@
 // Output definitions
 // Fields: outputName, outputMsg, id, pin, boardType, boardIndex, lastState, onTimeMS, offTimeMS
 stOutputDef g_outputDef[] = {
-    {"IO0P8 Sling Shot", PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, 8, PB_IO, 0, PB_OFF, 100, 100}, 
-    {"IO1P8 Pop Bumper", PB_OMSG_GENERIC_IO, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF, 100, 100},
-    {"IO2P8 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF, 100, 100},
+    {"IO0P8 Sling Shot", PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, 8, PB_IO, 0, PB_OFF, 500, 500}, 
+    {"IO1P8 Pop Bumper", PB_OMSG_GENERIC_IO, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF, 1000, 1000},
+    {"IO2P8 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF, 2000, 2000},
     {"Start LED", PB_OMSG_GENERIC_IO, IDO_LED1, 23, PB_RASPI, 0, PB_ON, 0, 0},
     {"LED0P8 LED", PB_OMSG_LED, IDO_LED2, 8, PB_LED, 0, PB_OFF, 0, 0},
     {"LED1P8 LED", PB_OMSG_LED, IDO_LED3, 8, PB_LED, 1, PB_OFF, 0, 0},

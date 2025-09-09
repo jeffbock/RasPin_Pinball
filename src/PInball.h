@@ -121,8 +121,8 @@ struct stInputMessage {
 // Output message structures
 
 struct stOutputOptions {
-    unsigned int onTimeMS;
-    unsigned int offTimeMS;
+    unsigned int onBlinkMS;
+    unsigned int offBlinkMS;
     unsigned int brightness;
     unsigned int sequenceMask; // Bit mask of which LED chips are in the sequence
     PBSequenceLoopMode loopMode;
