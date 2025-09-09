@@ -167,8 +167,8 @@ bool  PBProcessInput() {
             
             g_PBEngine.m_inputQueue.push(inputMessage);
             
-            // Check if autoOutput is enabled for this input
-            if (g_inputDef[inputId].autoOutput) {
+            // Check if autoOutput is enabled globally and for this input
+            if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[inputId].autoOutput) {
                 // Find the output type for the autoOutputId
                 PBOutputMsg outputType = PB_OMSG_LED; // Default to LED
                 for (int j = 0; j < NUM_OUTPUTS; j++) {
@@ -212,8 +212,8 @@ bool  PBProcessInput() {
                 // Push the message to the queue
                 g_PBEngine.m_inputQueue.push(inputMessage);
                 
-                // Check if autoOutput is enabled for this input
-                if (g_inputDef[i].autoOutput) {
+                // Check if autoOutput is enabled globally and for this input
+                if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[i].autoOutput) {
                     // Find the output type for the autoOutputId
                     PBOutputMsg outputType = PB_OMSG_LED; // Default to LED
                     for (int j = 0; j < NUM_OUTPUTS; j++) {
@@ -681,6 +681,9 @@ bool PBProcessIO() {
     // Tables start screen variables
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
     m_RestartTable = true;
+    
+    // Auto output control - default to disable since the menus launch first
+    m_autoOutputEnable = false;
  }
 
  PBEngine::~PBEngine(){
@@ -1697,6 +1700,7 @@ bool PBEngine::pbeSetupIO()
     wiringPiSetupPinType(WPI_PIN_BCM);
     #endif // EXE_MODE_RASPI
 
+    // Set up inputs
     for (int i = 0; i < NUM_INPUTS; i++) {
         if (g_inputDef[i].boardType == PB_RASPI){
             #ifdef EXE_MODE_RASPI
@@ -1713,26 +1717,33 @@ bool PBEngine::pbeSetupIO()
         }
     }
 
-    // Repeat for outputs
+    // Repeat for outputs - key point - "ON" is always active LOW output by design.
      g_PBEngine.pbeSendConsole("(PI)nball Engine: Intializing Outputs");
 
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         if (g_outputDef[i].boardType == PB_RASPI){
             #ifdef EXE_MODE_RASPI
                 pinMode(g_outputDef[i].pin, OUTPUT);
-                digitalWrite(g_outputDef[i].pin,LOW); 
+                if (g_outputDef[i].lastState == PB_ON) {
+                    digitalWrite(g_outputDef[i].pin,LOW);
+                } else {
+                    digitalWrite(g_outputDef[i].pin,HIGH);
+                }
             #endif
         }
         else if (g_outputDef[i].boardType == PB_IO) {
             // Configure the pin as output on the appropriate IO chip
             if (g_outputDef[i].boardIndex < NUM_IO_CHIPS) {
-                g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].ConfigurePin(g_outputDef[i].pin, PB_OUTPUT);
-                g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].StageOutputPin(g_outputDef[i].pin, PB_OFF);  // Initialize to LOW
+                g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].ConfigurePin(g_outputDef[i].pin, PB_OUTPUT);    
+                g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].StageOutputPin(g_outputDef[i].pin, g_outputDef[i].lastState);  // Initialize to HIGH
             }
         }
         else if (g_outputDef[i].boardType == PB_LED) {
             // Configure the LED on the appropriate LED chip
             if (g_outputDef[i].boardIndex < NUM_LED_CHIPS) {
+                if (g_outputDef[i].lastState == PB_ON)
+                    g_PBEngine.m_LEDChip[g_outputDef[i].boardIndex].StageLEDControl(true, g_outputDef[i].pin, LEDOn);  // Initialize to ON
+                else
                 g_PBEngine.m_LEDChip[g_outputDef[i].boardIndex].StageLEDControl(false, g_outputDef[i].pin, LEDOff);  // Initialize to OFF
             }
         }

@@ -22,10 +22,10 @@ stOutputDef g_outputDef[] = {
     {"IO0P8 Sling Shot", PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, 8, PB_IO, 0, PB_OFF, 100, 100}, 
     {"IO1P8 Pop Bumper", PB_OMSG_GENERIC_IO, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF, 100, 100},
     {"IO2P8 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF, 100, 100},
-    {"Start LED", PB_OMSG_GENERIC_IO, IDO_LED1, 23, PB_RASPI, 0, PB_OFF, 0, 0},
-    {"LED0P8 LED", PB_OMSG_LED, IDO_LED2, 8, PB_LED, 0, PB_ON, 0, 0},
-    {"LED1P8 LED", PB_OMSG_LED, IDO_LED3, 8, PB_LED, 1, PB_ON, 0, 0},
-    {"LED2P8 LED", PB_OMSG_LED, IDO_LED4, 8, PB_LED, 2, PB_ON, 0, 0}
+    {"Start LED", PB_OMSG_GENERIC_IO, IDO_LED1, 23, PB_RASPI, 0, PB_ON, 0, 0},
+    {"LED0P8 LED", PB_OMSG_LED, IDO_LED2, 8, PB_LED, 0, PB_OFF, 0, 0},
+    {"LED1P8 LED", PB_OMSG_LED, IDO_LED3, 8, PB_LED, 1, PB_OFF, 0, 0},
+    {"LED2P8 LED", PB_OMSG_LED, IDO_LED4, 8, PB_LED, 2, PB_OFF, 0, 0}
 };
 
 // Input definitions
@@ -48,7 +48,7 @@ LEDDriver::LEDDriver(uint8_t address) : m_address(address), m_i2cFd(-1), m_group
     for (int i = 0; i < 16; i++) {
         m_ledBrightness[i] = 0xFF;  // Start with all LEDs with maximum brightness
         m_pwmStaged[i] = false;     // No PWM changes staged initially
-        m_currentBrightness[i] = 0x00;  // Initialize current state tracking (hardware starts at 0)
+        m_currentBrightness[i] = 0xFF;  // Initialize current state tracking (hardware starts at 0)
     }
     for (int i = 0; i < 4; i++) {
         m_ledControl[i] = 0x00;     // Start with all LEDs in OFF state
@@ -427,7 +427,8 @@ void IODriver::StageOutputPin(uint8_t pinIndex, PBPinState value) {
         uint8_t bitPos = pinIndex % 8;    // Bit position within port (0-7)
         
         uint8_t newPortValue = m_currentOutputValues[port];  // Start with current hardware state
-        if (value == PB_ON) {
+        // Set the bits - This system uses active low outputs
+        if (value == PB_OFF) {
             // Set the bit
             newPortValue |= (1 << bitPos);
         } else {
