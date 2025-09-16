@@ -167,8 +167,8 @@ bool  PBProcessInput() {
             
             g_PBEngine.m_inputQueue.push(inputMessage);
             
-            // Check if autoOutput is enabled for this input
-            if (g_inputDef[inputId].autoOutput) {
+            // Check if autoOutput is enabled globally and for this input
+            if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[inputId].autoOutput) {
                 // Find the output type for the autoOutputId
                 PBOutputMsg outputType = PB_OMSG_LED; // Default to LED
                 for (int j = 0; j < NUM_OUTPUTS; j++) {
@@ -212,8 +212,8 @@ bool  PBProcessInput() {
                 // Push the message to the queue
                 g_PBEngine.m_inputQueue.push(inputMessage);
                 
-                // Check if autoOutput is enabled for this input
-                if (g_inputDef[i].autoOutput) {
+                // Check if autoOutput is enabled globally and for this input
+                if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[i].autoOutput) {
                     // Find the output type for the autoOutputId
                     PBOutputMsg outputType = PB_OMSG_LED; // Default to LED
                     for (int j = 0; j < NUM_OUTPUTS; j++) {
@@ -360,16 +360,20 @@ void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputD
         return;
     }
     
+    // Temporary breakpoint
+    if (message.outputId == IDO_SLINGSHOT) {
+        int bp = 1;
+    }
+
     // Check if it's a pulse output
-    bool isPulseOutput = message.usePulse && (message.options != nullptr && 
-                        (message.options->onTimeMS > 0 || message.options->offTimeMS > 0));
+    bool isPulseOutput = message.usePulse && (outputDef.onTimeMS > 0 || outputDef.offTimeMS > 0);
     
     if (isPulseOutput) {
         // Put it in the pulse output map
         stOutputPulse pulse;
         pulse.outputId = message.outputId;
-        pulse.onTimeMS = message.options->onTimeMS;
-        pulse.offTimeMS = message.options->offTimeMS;
+        pulse.onTimeMS = outputDef.onTimeMS;
+        pulse.offTimeMS = outputDef.offTimeMS;
         pulse.startTickMS = message.sentTick;
         g_PBEngine.m_outputPulseMap[message.outputId] = pulse;
     } else {
@@ -437,8 +441,8 @@ void ProcessLEDConfigMessage(const stOutputMessage& message, stOutputDef& output
             unsigned int brightness = message.options ? message.options->brightness : 255;
             g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeDimming, brightness, 0, 0);
         } else if (message.outputMsg == PB_OMSG_LEDCFG_GROUPBLINK) {
-            unsigned int onTime = message.options ? message.options->onTimeMS : 500;
-            unsigned int offTime = message.options ? message.options->offTimeMS : 500;
+            unsigned int onTime = message.options ? message.options->onBlinkMS : 500;
+            unsigned int offTime = message.options ? message.options->offBlinkMS : 500;
             g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeBlinking, 0, onTime, offTime);
         }
     }
@@ -681,6 +685,9 @@ bool PBProcessIO() {
     // Tables start screen variables
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
     m_RestartTable = true;
+    
+    // Auto output control - default to disable since the menus launch first
+    m_autoOutputEnable = false;
  }
 
  PBEngine::~PBEngine(){
@@ -1415,7 +1422,14 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         case (3):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
                         default: break;
                     }
-                }                
+                }
+
+                if (inputMessage.inputId == IDI_START) {
+                    // Sending Test Messages
+                    SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, PB_ON, true);
+                    SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_POPBUMPER, PB_ON, true);
+                    SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_BALLEJECT, PB_ON, true);
+                }
             }
             break;
         }
@@ -1697,6 +1711,7 @@ bool PBEngine::pbeSetupIO()
     wiringPiSetupPinType(WPI_PIN_BCM);
     #endif // EXE_MODE_RASPI
 
+    // Set up inputs
     for (int i = 0; i < NUM_INPUTS; i++) {
         if (g_inputDef[i].boardType == PB_RASPI){
             #ifdef EXE_MODE_RASPI
@@ -1713,26 +1728,33 @@ bool PBEngine::pbeSetupIO()
         }
     }
 
-    // Repeat for outputs
+    // Repeat for outputs - key point - "ON" is always active LOW output by design.
      g_PBEngine.pbeSendConsole("(PI)nball Engine: Intializing Outputs");
 
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         if (g_outputDef[i].boardType == PB_RASPI){
             #ifdef EXE_MODE_RASPI
                 pinMode(g_outputDef[i].pin, OUTPUT);
-                digitalWrite(g_outputDef[i].pin,LOW); 
+                if (g_outputDef[i].lastState == PB_ON) {
+                    digitalWrite(g_outputDef[i].pin,LOW);
+                } else {
+                    digitalWrite(g_outputDef[i].pin,HIGH);
+                }
             #endif
         }
         else if (g_outputDef[i].boardType == PB_IO) {
             // Configure the pin as output on the appropriate IO chip
             if (g_outputDef[i].boardIndex < NUM_IO_CHIPS) {
-                g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].ConfigurePin(g_outputDef[i].pin, PB_OUTPUT);
-                g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].StageOutputPin(g_outputDef[i].pin, PB_OFF);  // Initialize to LOW
+                g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].ConfigurePin(g_outputDef[i].pin, PB_OUTPUT);    
+                g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].StageOutputPin(g_outputDef[i].pin, g_outputDef[i].lastState);  // Initialize to HIGH
             }
         }
         else if (g_outputDef[i].boardType == PB_LED) {
             // Configure the LED on the appropriate LED chip
             if (g_outputDef[i].boardIndex < NUM_LED_CHIPS) {
+                if (g_outputDef[i].lastState == PB_ON)
+                    g_PBEngine.m_LEDChip[g_outputDef[i].boardIndex].StageLEDControl(true, g_outputDef[i].pin, LEDOn);  // Initialize to ON
+                else
                 g_PBEngine.m_LEDChip[g_outputDef[i].boardIndex].StageLEDControl(false, g_outputDef[i].pin, LEDOff);  // Initialize to OFF
             }
         }

@@ -121,8 +121,8 @@ struct stInputMessage {
 // Output message structures
 
 struct stOutputOptions {
-    unsigned int onTimeMS;
-    unsigned int offTimeMS;
+    unsigned int onBlinkMS;
+    unsigned int offBlinkMS;
     unsigned int brightness;
     unsigned int sequenceMask; // Bit mask of which LED chips are in the sequence
     PBSequenceLoopMode loopMode;
@@ -226,6 +226,10 @@ public:
     // Input configuration functions
     bool SetAutoOutput(unsigned int index, bool autoOutputEnabled);
     
+    // Auto output enable/disable functions
+    void SetAutoOutputEnable(bool enable) { m_autoOutputEnable = enable; }
+    bool GetAutoOutputEnable() const { return m_autoOutputEnable; }
+    
     #ifdef EXE_MODE_RASPI
         // This map is used for whatever arbitrary Raspberry Pi inputs are used (from the main board)
         // Note: IO expansion chips are not included in the structure
@@ -324,6 +328,9 @@ private:
 
     // Main table Variables, etc..
     bool m_PBTBLStartLoaded; 
+    
+    // Auto output control
+    bool m_autoOutputEnable; 
 
     // Private functions for rendering main state screens
     bool pbeRenderDefaultBackground (unsigned long currentTick, unsigned long lastTick);
