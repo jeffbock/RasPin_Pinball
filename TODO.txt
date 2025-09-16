@@ -6,6 +6,7 @@ Create a cmake to build the program in Pi, and put EXE in right place to make pa
 
 ** Generic arch improvements
 Add FPS limit to game screen to allow more time to process input / outputs
+Add quick amplifier silencer startup program (maybe command line, address and value to send, w/ defaults just to off, standard address)
 Add menu item to enable output montitor mode - put it on the sides of the backglass outsize active display screen
 Add some more interesting animation options (Any movement that makes animations better?)
 Expand sprites to have animated sprites - eg: UV maps within a sprite with different images - base is there but need example to integrate.
