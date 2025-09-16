@@ -658,6 +658,8 @@ bool PBProcessIO() {
     m_CurrentDiagnosticsItem = 0;
     m_EnableOverlay = false;
     m_RestartDiagnostics = true;
+    m_ShowFPS = false;
+    m_RenderFPS = 0;
 
     // Credits screen variables
     m_CreditsScrollY = 480;
@@ -1097,6 +1099,96 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
     return (true);   
 }
 
+// I/O Overlay Rendering - Shows current state of all inputs and outputs
+
+bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTick){
+    
+    // Uses the same resources as test mode
+    if (!pbeLoadTestMode (false)) return (false); 
+
+    // Set up transparent background for overlay
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    
+    // INPUTS Section
+    gfxSetColor(m_defaultFontSpriteId, 0, 255, 255, 255);  // Cyan for inputs header
+    gfxRenderShadowString(m_defaultFontSpriteId, "INPUTS", 20, 5, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    
+    // Render inputs in one column (48 items will fit with 40% scale)
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        std::string temp = g_inputDef[i].inputName + ": ";
+        
+        int x = 20;                   // Single column
+        int y = 25 + (i * 20);        // Start below header at top of screen
+        
+        // Render input name
+        gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+        gfxRenderString(m_defaultFontSpriteId, temp, x, y, 0.4, GFX_TEXTLEFT);
+        
+        // Render state with appropriate color
+        std::string stateText;
+        switch (g_inputDef[i].lastState) {
+            case PB_ON:
+                stateText = "ON";
+                gfxSetColor(m_defaultFontSpriteId, 0, 255, 0, 255);  // Green for ON
+                break;
+            case PB_OFF:
+                stateText = "OFF";
+                gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);  // Gray for OFF
+                break;
+            default:
+                stateText = "UNK";
+                gfxSetColor(m_defaultFontSpriteId, 255, 0, 255, 255);  // Magenta for unknown
+                break;
+        }
+        gfxRenderString(m_defaultFontSpriteId, stateText, x + 180, y, 0.4, GFX_TEXTLEFT);
+    }
+    
+    // OUTPUTS Section - Position moved 225 pixels further right total
+    int outputStartX = PB_SCREENWIDTH - 255;  // Moved 225 pixels right total (was -480, now -255)
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for outputs header
+    gfxRenderShadowString(m_defaultFontSpriteId, "OUTPUTS", outputStartX, 5, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    
+    // Render outputs in one column (48 items will fit with 40% scale)
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        std::string temp = g_outputDef[i].outputName + ": ";
+        
+        int x = outputStartX;         // Single column
+        int y = 25 + (i * 20);        // Start below header at top of screen
+        
+        // Render output name
+        gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+        gfxRenderString(m_defaultFontSpriteId, temp, x, y, 0.4, GFX_TEXTLEFT);
+        
+        // Render state with appropriate color
+        std::string stateText;
+        switch (g_outputDef[i].lastState) {
+            case PB_ON:
+                stateText = "ON";
+                gfxSetColor(m_defaultFontSpriteId, 0, 255, 0, 255);  // Green for ON
+                break;
+            case PB_OFF:
+                stateText = "OFF";
+                gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);  // Gray for OFF
+                break;
+            case PB_BLINK:
+                stateText = "BLNK";
+                gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for BLINK
+                break;
+            case PB_BRIGHTNESS:
+                stateText = "BRGT";
+                gfxSetColor(m_defaultFontSpriteId, 255, 128, 0, 255);  // Orange for BRIGHTNESS
+                break;
+            default:
+                stateText = "UNK";
+                gfxSetColor(m_defaultFontSpriteId, 255, 0, 255, 255);  // Magenta for unknown
+                break;
+        }
+        gfxRenderString(m_defaultFontSpriteId, stateText, x + 180, y, 0.4, GFX_TEXTLEFT);
+    }
+    
+    return (true);   
+}
+
 // Settings Menu Screen
 
 bool PBEngine::pbeLoadSettings(bool forceReload){
@@ -1174,8 +1266,11 @@ bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long las
     gfxSetRotateDegrees(m_StartMenuSwordId, 0.0f, false);
 
     // Add the extra data to the menu strings before displaying
-    if (m_EnableOverlay) tempMenu[2] += PB_OVERLAY_ON_TEXT;
-    else tempMenu[2] += PB_OVERLAY_OFF_TEXT;
+    if (m_EnableOverlay) tempMenu[2] += PB_ON_TEXT;
+    else tempMenu[2] += PB_OFF_TEXT;
+    
+    if (m_ShowFPS) tempMenu[3] += PB_ON_TEXT;
+    else tempMenu[3] += PB_OFF_TEXT;
         
     // Render the menu items with shadow depending on the selected item
     pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentDiagnosticsItem, (PB_SCREENWIDTH/2) - 500, 250, 25, &tempMenu, true, true, 64, 0, 255, 255, 8);
@@ -1462,6 +1557,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         else m_EnableOverlay = true;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
                     }
+                    break;
+                    case (3): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                        if (m_ShowFPS) m_ShowFPS = false;
+                        else m_ShowFPS = true;
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                    }
+                    break;
+                    case (4): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                        m_mainState = PB_BOOTUP;
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                    }
+                    break;
                     default: break;
                 }
             }
@@ -1839,6 +1946,8 @@ bool PBEngine::SetAutoOutput(unsigned int id, bool autoOutputEnabled)
 int main(int argc, char const *argv[])
 {
     std::string temp;
+    static unsigned int startFrameTime = 0;
+    static bool didLimitRender = false;
     
     g_PBEngine.pbeSendConsole("OpenGL ES: Initialize");
     if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
@@ -1889,6 +1998,8 @@ int main(int argc, char const *argv[])
     // std::thread inputThread(&PBProcessInput);
 
     // The main game engine loop
+    startFrameTime = g_PBEngine.GetTickCountGfx();
+
     while (true) {
 
         currentTick = g_PBEngine.GetTickCountGfx();
@@ -1913,14 +2024,47 @@ int main(int argc, char const *argv[])
         }
         else firstLoop = false;
 
-        if (!g_PBEngine.m_GameStarted)g_PBEngine.pbeRenderScreen(currentTick, lastTick);
-        else g_PBEngine.pbeRenderGameScreen(currentTick, lastTick);
+        // Limit the render speed to per the #defines ( PB_MS_PER_FRAME)
+        if (((currentTick - startFrameTime) >= PB_MS_PER_FRAME) || (PB_MS_PER_FRAME == 0)) {
+            didLimitRender = false;
+            startFrameTime = currentTick;
+        }
 
-        // Flush the swap when running the benchmark
-        if (g_PBEngine.pbeGetMainState() == PB_BENCHMARK) g_PBEngine.gfxSwap(true);
-        else g_PBEngine.gfxSwap(false);
+        if (!didLimitRender){
+            
+            // FPS tracking variables - only count when actually rendering
+            static unsigned long frameCount = 0;
+            static unsigned long fpsLastTime = currentTick;
+            static unsigned long fpsUpdateInterval = 1000; // Update FPS every 1 second
+            
+            // Calculate FPS based on actual rendered frames
+            frameCount++;
+            if (currentTick - fpsLastTime >= fpsUpdateInterval) {
+                g_PBEngine.m_RenderFPS = (int)((float)frameCount / ((float)(currentTick - fpsLastTime) / 1000.0f));
+                frameCount = 0;
+                fpsLastTime = currentTick;
+            }
 
-        lastTick = currentTick;
+            if (!g_PBEngine.m_GameStarted)g_PBEngine.pbeRenderScreen(currentTick, lastTick);
+            else g_PBEngine.pbeRenderGameScreen(currentTick, lastTick);
+
+            // Show the IO overlay if enabled
+            if (g_PBEngine.m_EnableOverlay) g_PBEngine.pbeRenderOverlay(currentTick, lastTick);
+
+            // Render the current FPS if enabled, at the top center of the sreen
+            if (g_PBEngine.m_ShowFPS) {
+                std::string temp = "FPS: " + std::to_string(g_PBEngine.m_RenderFPS);
+                g_PBEngine.gfxSetColor(g_PBEngine.m_defaultFontSpriteId, 255, 255, 255, 255);
+                g_PBEngine.gfxRenderShadowString(g_PBEngine.m_defaultFontSpriteId, temp, PB_SCREENWIDTH / 2, 10, 1, GFX_TEXTCENTER,0,0,0,0,1);
+            }
+
+            // Flush the swap when running the benchmark
+            if (g_PBEngine.pbeGetMainState() == PB_BENCHMARK) g_PBEngine.gfxSwap(true);
+            else g_PBEngine.gfxSwap(false);
+
+            lastTick = currentTick;
+            didLimitRender = true;
+        }
     }
 
    // Join the input thread before exiting

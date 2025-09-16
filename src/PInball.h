@@ -73,6 +73,10 @@ enum class PBTBLScreenState;
 #define PB_SCREENWIDTH 1920
 #define PB_SCREENHEIGHT 1080
 
+// FPS limit for the game rendering
+#define PB_FPSLIMIT 30
+#define PB_MS_PER_FRAME (PB_FPSLIMIT == 0 ? 0 : (1000 / PB_FPSLIMIT))
+
 #define MENUFONT "src/resources/fonts/Baldur_96_768.png"
 #define MENUSWORD "src/resources/textures/MenuSword.png"
 #define SAVEFILENAME "src/resources/savefile.bin"
@@ -200,6 +204,7 @@ public:
     // Public funcation for dealing w/ rendering and loading screens by screen state
     bool pbeRenderScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderOverlay(unsigned long currentTick, unsigned long lastTick);
     bool pbeLoadGameScreen (PBMainState state);
 
     // Console functions
@@ -282,7 +287,9 @@ public:
     // Diagnostics Menu
     unsigned int m_CurrentDiagnosticsItem;
     bool m_EnableOverlay;
-    bool m_RestartDiagnostics; 
+    bool m_RestartDiagnostics;
+    bool m_ShowFPS;
+    int m_RenderFPS;
 
     // Credits screen
     unsigned int m_CreditsScrollY, m_TicksPerPixel, m_StartTick;
