@@ -7,7 +7,6 @@ Create a cmake to build the program in Pi, and put EXE in right place to make pa
 ** Generic arch improvements
 Add quick amplifier silencer startup program (maybe command line, address and value to send, w/ defaults just to off, standard address)
 Add some more interesting animation options (Any movement that makes animations better?)
-Refactor main / engine and rename to RasPin
 
 ** Gameplay tasks
 Create simple score / gameplay screen
