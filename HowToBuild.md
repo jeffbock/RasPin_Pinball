@@ -1,12 +1,12 @@
 # Why Windows and Raspberry Pi?
-Despite the power of the Rasberry Pi, Windowws remains a faster and more capable development environemnt.  That said, you don't need to use Windows to develop with the PInball engine - you can exclusively use PiOS.  At some point you must move to PiOS since Windows is limited to basic simulaton capabilities and cannot talk to the PInball hardware.  Thankfull, VS Code makes it pretty easy to switch between the two development environments.
+Despite the power of the Rasberry Pi, Windowws remains a faster and more capable development environemnt.  That said, you don't need to use Windows to develop with the RasPin engine - you can exclusively use PiOS.  At some point you must move to PiOS since Windows is limited to basic simulaton capabilities and cannot talk to the PInball hardware.  Thankfull, VS Code makes it pretty easy to switch between the two development environments.
 
 # Build Instructions
 The build is set up with VS code, with both Windows and Raspberry Pi 5 build paths.  The assumption is that development and debug is being done on a Windows machine, while final testing will deploy a build to the Raspberry Pi
 
 While using VS Code, by hitting Ctrl-Shift-P, you can bring up the Task Commands.  The following commands exist:
-- Windows / Rasberry Pi:  Full Pinball Build - Build the PInball engine and executable to run PInball.
-- Windows / Rasberry Pi:  FontGen Build - Builds FontGen.cpp, a utility program takes a truetype font, and generate the files needed to use that font in the PInball engine.
+- Windows / Rasberry Pi:  Full Pinball Build - Build the RasPin engine and executable to run PInball.
+- Windows / Rasberry Pi:  FontGen Build - Builds FontGen.cpp, a utility program takes a truetype font, and generate the files needed to use that font in the RasPin.
 - Windows / Rasberry Pi:  Single file build - used for testing single files
 
 PiOS uses OGL ES 3.1, so this will be the target for the builds and the main display output of the app will be a full-screen OGL ES rendering surface.

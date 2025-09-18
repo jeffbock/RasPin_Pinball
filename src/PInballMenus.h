@@ -14,22 +14,11 @@
 
 // Details for the main menu
 #define MenuTitle "Dragons of Destiny"
-std::map<unsigned int, std::string>  g_mainMenu = {
-    {0, "Play Pinball"},
-    {1, "Settings"},
-    {2, "Diagnostics"},
-    {3, "Credits"}
-};
+extern std::map<unsigned int, std::string> g_mainMenu;
 
 // Details for the settings menu
 #define MenuSettings "Settings"
-std::map<unsigned int, std::string>  g_settingsMenu = {
-    {0, "Main Volume: "},
-    {1, "Music Volume: "},
-    {2, "Balls Per Game: "},
-    {3, "Difficulty: "},
-    {4, "Reset High Scores"}
-};
+extern std::map<unsigned int, std::string> g_settingsMenu;
 
 #define PB_EASY_TEXT "Easy"
 #define PB_NORMAL_TEXT "Normal"
@@ -38,13 +27,7 @@ std::map<unsigned int, std::string>  g_settingsMenu = {
 
 // Details for the diagnotic menu
 #define MenuDiagnostics "Diagnostics"
-std::map<unsigned int, std::string>  g_diagnosticsMenu = {
-    {0, "Test Input/Output"},
-    {1, "Run Benchmark"},
-    {2, "I/O Overlay: "},
-    {3, "Show FPS: "},
-    {4, "Show Console"}
-};
+extern std::map<unsigned int, std::string> g_diagnosticsMenu;
 
 #define PB_ON_TEXT "On"
 #define PB_OFF_TEXT "Off"

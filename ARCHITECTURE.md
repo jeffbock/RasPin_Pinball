@@ -1,4 +1,4 @@
-# PInball Engine Architecture and API Guide
+# RasPin Architecture and API Guide
 
 ## Overview
 PInball is a cross-platform pinball simulation and hardware control engine designed for both Windows and Raspberry Pi (PiOS). It provides a framework for building 1/2 scale physical pinball machines, supporting both simulation (on Windows) and real hardware interaction (on PiOS). The engine is written in C++ and uses OpenGL ES for graphics rendering.

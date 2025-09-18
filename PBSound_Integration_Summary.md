@@ -50,7 +50,7 @@ int getMasterVolume() const;                  // Get current master volume
 int getMusicVolume() const;                   // Get current music volume
 ```
 
-## Integration with PInball Engine
+## Integration with RasPin
 
 The PBSound class has been integrated into the main PBEngine class:
 

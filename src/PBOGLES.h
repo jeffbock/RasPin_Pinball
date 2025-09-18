@@ -7,6 +7,13 @@
 #ifndef PBOGLES_h
 #define PBOGLES_h
 
+// Define WIN32_LEAN_AND_MEAN before including EGL headers to avoid redefinition warnings
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#endif
+
 //#include "include_ogl/egl.h"
 //#include "include_ogl/gl31.h"
 #include <egl.h>
