@@ -1,4 +1,4 @@
-# (PI)nball
+# RasPin Engine
 Half-scale pinball project using Raspberry Pi.  The goal is to fully develop a system of SW and HW using Raspberry PI and various easy to source HW pieces to develop a half size machine with all the basic pinball requirements.  
 
 <img src="https://github.com/user-attachments/assets/57f19724-b2ef-4bbc-9d49-0114196ab59f" alt="Screenshot 2025-05-13 224816" width="400">
