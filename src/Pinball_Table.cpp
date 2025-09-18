@@ -5,7 +5,7 @@
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
 // Additional details can also be found in the license file in the root of the project.
 
-#include "PInball_Table.h"
+#include "Pinball_Table.h"
 #include "Pinball_TableStr.h"
 
 // PBEgine Class Fucntions for the main pinball game

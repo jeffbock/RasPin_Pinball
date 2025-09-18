@@ -1,12 +1,12 @@
 
-// PInball:  A complete pinball framework for building 1/2 scale phyical pinball machines with Raspberry Pi
+// Pinball:  A complete pinball framework for building 1/2 scale phyical pinball machines with Raspberry Pi
 
 // Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
 // Additional details can also be found in the license file in the root of the project.
 
-#include "PInball.h"
-#include "PInballMenus.h"
+#include "Pinball.h"
+#include "PinballMenus.h"
 
  // Global pinball engine object
 PBEngine g_PBEngine;
@@ -797,7 +797,7 @@ bool PBEngine::pbeLoadDefaultBackground(bool forceReload){
     if (forceReload) defaultBackgroundLoaded = false;
     if (defaultBackgroundLoaded) return (true);
 
-    pbeSendConsole("(PI)nball Engine: Loading default background resources");
+    pbeSendConsole("Pinball Engine: Loading default background resources");
 
     m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/ConsoleLarge.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, false, true);
     gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 196);
@@ -836,7 +836,7 @@ bool PBEngine::pbeLoadBootUp(bool forceReload){
 
     if (!pbeLoadDefaultBackground(forceReload)) return (false);
 
-    pbeSendConsole("(PI)nball Engine: Loading boot screen resources");
+    pbeSendConsole("Pinball Engine: Loading boot screen resources");
     
     // Load the bootup screen items
     
@@ -846,7 +846,7 @@ bool PBEngine::pbeLoadBootUp(bool forceReload){
 
     if (m_BootUpTitleBarId == NOSPRITE) return (false);
 
-    pbeSendConsole("(PI)nball Engine: Ready - Press any button to continue");
+    pbeSendConsole("Pinball Engine: Ready - Press any button to continue");
 
     bootUpLoaded = true;
     return (bootUpLoaded);
@@ -897,7 +897,7 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
     pbeRenderDefaultBackground (currentTick, lastTick);
          
     gfxRenderSprite(m_BootUpTitleBarId, 0, 0);
-    gfxRenderShadowString(m_defaultFontSpriteId, "(PI)nball Engine - Copyright 2025 Jeff Bock", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Pinball Engine - Copyright 2025 Jeff Bock", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
 
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);   
     pbeRenderConsole(1, 42);
@@ -1318,7 +1318,7 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
         gfxRenderShadowString(m_defaultFontSpriteId, "Dragons of Destiny Pinball", tempX, m_CreditsScrollY + (1*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Designed and Programmed by: Jeffrey Bock", tempX, m_CreditsScrollY + (2*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Additional design and 3D printing: Tremayne Bock", tempX, m_CreditsScrollY + (3*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Using Rasberry Pi (PI)nball Engine", tempX, m_CreditsScrollY + (4*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Using Rasberry Pi Pinball Engine", tempX, m_CreditsScrollY + (4*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Full code and 3D models available at:", tempX, m_CreditsScrollY + (5*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "https://github.com/jeffbock/PInball", tempX, m_CreditsScrollY + (6*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Thanks to Kim, Ally, Katie and Ruth for inspiration", tempX, m_CreditsScrollY + (7*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
@@ -1777,17 +1777,17 @@ bool PBEngine::pbeSetupIO()
     // Check the input definitions and ensure no duplicates
     // Need to change this to a self test function - will need to set up Raspberry I/O and breakout boards
     for (int i = 0; i < NUM_INPUTS; i++) {
-        if (i == 0) g_PBEngine.pbeSendConsole("(PI)nball Engine: Total Inputs: " + std::to_string(NUM_INPUTS)); 
+        if (i == 0) g_PBEngine.pbeSendConsole("Pinball Engine: Total Inputs: " + std::to_string(NUM_INPUTS)); 
         for (int j = i + 1; j < NUM_INPUTS; j++) {
             if (g_inputDef[i].id == g_inputDef[j].id) {
-                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate input ID: " + std::to_string(g_inputDef[i].id));
+                g_PBEngine.pbeSendConsole("Pinball Engine: ERROR: Duplicate input ID: " + std::to_string(g_inputDef[i].id));
                 g_PBEngine.m_PassSelfTest = false;
             }
             // Check that the board type and pin number are unique
             if (g_inputDef[i].boardType == g_inputDef[j].boardType && 
                 g_inputDef[i].boardIndex == g_inputDef[j].boardIndex && 
                 g_inputDef[i].pin == g_inputDef[j].pin) {
-                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate input board/board index/pin: " + std::to_string(g_inputDef[i].id));
+                g_PBEngine.pbeSendConsole("Pinball Engine: ERROR: Duplicate input board/board index/pin: " + std::to_string(g_inputDef[i].id));
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
@@ -1795,24 +1795,24 @@ bool PBEngine::pbeSetupIO()
 
     // Check the output definitions and ensure no duplicates
     for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (i == 0) g_PBEngine.pbeSendConsole("(PI)nball Engine: Total Outputs: " + std::to_string(NUM_OUTPUTS)); 
+        if (i == 0) g_PBEngine.pbeSendConsole("Pinball Engine: Total Outputs: " + std::to_string(NUM_OUTPUTS)); 
         for (int j = i + 1; j < NUM_OUTPUTS; j++) {
             if (g_outputDef[i].id == g_outputDef[j].id) {
-                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate output ID: " + std::to_string(g_outputDef[i].id));
+                g_PBEngine.pbeSendConsole("Pinball Engine: ERROR: Duplicate output ID: " + std::to_string(g_outputDef[i].id));
                 g_PBEngine.m_PassSelfTest = false;
             }
             // Check that the board type and pin number are unique
             if (g_outputDef[i].boardType == g_outputDef[j].boardType && 
                 g_outputDef[i].boardIndex == g_outputDef[j].boardIndex && 
                 g_outputDef[i].pin == g_outputDef[j].pin) {
-                g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Duplicate output board/board index/pin: " + std::to_string(g_outputDef[i].id));
+                g_PBEngine.pbeSendConsole("Pinball Engine: ERROR: Duplicate output board/board index/pin: " + std::to_string(g_outputDef[i].id));
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
     }
 
     // Loop through each of the inputs and program the GPIOs and setup the debounce class for each input
-     g_PBEngine.pbeSendConsole("(PI)nball Engine: Intializing Inputs");
+     g_PBEngine.pbeSendConsole("Pinball Engine: Intializing Inputs");
 
     #ifdef EXE_MODE_RASPI
     wiringPiSetupPinType(WPI_PIN_BCM);
@@ -1836,7 +1836,7 @@ bool PBEngine::pbeSetupIO()
     }
 
     // Repeat for outputs - key point - "ON" is always active LOW output by design.
-     g_PBEngine.pbeSendConsole("(PI)nball Engine: Intializing Outputs");
+     g_PBEngine.pbeSendConsole("Pinball Engine: Intializing Outputs");
 
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         if (g_outputDef[i].boardType == PB_RASPI){
@@ -1868,7 +1868,7 @@ bool PBEngine::pbeSetupIO()
     }
 
     // Send all staged changes to IO and LED chips
-    g_PBEngine.pbeSendConsole("(PI)nball Engine: Sending programmed outputs to pins (LED and IO)");
+    g_PBEngine.pbeSendConsole("Pinball Engine: Sending programmed outputs to pins (LED and IO)");
 
     for (int i = 0; i < NUM_IO_CHIPS; i++) {
         g_PBEngine.m_IOChip[i].SendStagedOutput();
@@ -1880,14 +1880,14 @@ bool PBEngine::pbeSetupIO()
     // Hardware validation checks (only do this for actual Raspberry Pi HW)
 
     #ifdef EXE_MODE_RASPI
-    g_PBEngine.pbeSendConsole("(PI)nball Engine: Verifying HW LED and IO Setup");
+    g_PBEngine.pbeSendConsole("Pinball Engine: Verifying HW LED and IO Setup");
     
     // Check LEDDriver MODE1 registers - bit 4 should be 0 (normal operation)
     for (int i = 0; i < NUM_LED_CHIPS; i++) {
         uint8_t mode1 = g_PBEngine.m_LEDChip[i].ReadModeRegister(1);
         if ((mode1 & 0x10) != 0) {  // Check bit 4
             uint8_t address = g_PBEngine.m_LEDChip[i].GetAddress();
-            g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: LED chip " + std::to_string(i) + " (address 0x" + std::to_string(address) + ") not detected");
+            g_PBEngine.pbeSendConsole("Pinball Engine: ERROR: LED chip " + std::to_string(i) + " (address 0x" + std::to_string(address) + ") not detected");
             g_PBEngine.m_PassSelfTest = false;
         }
     }
@@ -1897,19 +1897,19 @@ bool PBEngine::pbeSetupIO()
         uint8_t polarity0 = g_PBEngine.m_IOChip[i].ReadPolarityPort(0);
         if (polarity0 != 0x00) {  // Should be 0x00, not 0xFF
             uint8_t address = g_PBEngine.m_IOChip[i].GetAddress();
-            g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: IO chip " + std::to_string(i) + " (address 0x" + std::to_string(address) + ") not detected");
+            g_PBEngine.pbeSendConsole("Pinball Engine: ERROR: IO chip " + std::to_string(i) + " (address 0x" + std::to_string(address) + ") not detected");
             g_PBEngine.m_PassSelfTest = false;
         }
     }
     #endif // EXE_MODE_RASPI
 
     // Setup and verify the amplifier
-    g_PBEngine.pbeSendConsole("(PI)nball Engine: Initializing amplifier");
+    g_PBEngine.pbeSendConsole("Pinball Engine: Initializing amplifier");
     g_PBEngine.m_ampDriver.SetVolume(0);  
     
     if (!g_PBEngine.m_ampDriver.IsConnected()) {
         uint8_t address = g_PBEngine.m_ampDriver.GetAddress();
-        g_PBEngine.pbeSendConsole("(PI)nball Engine: ERROR: Amplifier (address 0x" + std::to_string(address) + ") not detected");
+        g_PBEngine.pbeSendConsole("Pinball Engine: ERROR: Amplifier (address 0x" + std::to_string(address) + ") not detected");
         g_PBEngine.m_PassSelfTest = false;
     } 
     
@@ -1957,38 +1957,38 @@ int main(int argc, char const *argv[])
     temp = "Screen Width: " + std::to_string(g_PBEngine.oglGetScreenWidth()) + " Screen Height: " + std::to_string(g_PBEngine.oglGetScreenHeight());
     g_PBEngine.pbeSendConsole(temp);
 
-    g_PBEngine.pbeSendConsole("(PI)nball Engine: Loading system font");
+    g_PBEngine.pbeSendConsole("Pinball Engine: Loading system font");
 
     // Get the system font sprite Id and default height for console
     g_PBEngine.m_defaultFontSpriteId = g_PBEngine.gfxGetSystemFontSpriteId();
     g_PBEngine.m_consoleTextHeight = g_PBEngine.gfxGetTextHeight(g_PBEngine.m_defaultFontSpriteId);
 
-    g_PBEngine.pbeSendConsole("(PI)nball Engine: System font ready");
+    g_PBEngine.pbeSendConsole("Pinball Engine: System font ready");
 
     // Setup the inputs and outputs
-    g_PBEngine.pbeSendConsole("(PI)nball Engine: Setting up I/O");
+    g_PBEngine.pbeSendConsole("Pinball Engine: Setting up I/O");
     g_PBEngine.pbeSetupIO();
     
     // Load the saved values for settings and high scores
     if (!g_PBEngine.pbeLoadSaveFile(false, false)) {
         std::string temp2 = SAVEFILENAME;
-        std::string temp = "(PI)nball Engine: ERROR Using settings defaults, failed: " + temp2;
+        std::string temp = "Pinball Engine: ERROR Using settings defaults, failed: " + temp2;
         g_PBEngine.pbeSendConsole(temp);
         g_PBEngine.pbeSaveFile ();
     }
-    else g_PBEngine.pbeSendConsole("(PI)nball Engine: Loaded settings and score file"); 
+    else g_PBEngine.pbeSendConsole("Pinball Engine: Loaded settings and score file"); 
 
     // Set amplifier volume from saved settings (convert 0-10 range to 0-100%)
     g_PBEngine.m_ampDriver.SetVolume(g_PBEngine.m_saveFileData.mainVolume * 10);
-    g_PBEngine.pbeSendConsole("(PI)nball Engine: Set amplifier volume to " + std::to_string(g_PBEngine.m_saveFileData.mainVolume * 10) + "%");
+    g_PBEngine.pbeSendConsole("Pinball Engine: Set amplifier volume to " + std::to_string(g_PBEngine.m_saveFileData.mainVolume * 10) + "%");
 
     // Set the mixer volumes and start the background music
-    g_PBEngine.pbeSendConsole("(PI)nball Engine: Starting main menu music");    
+    g_PBEngine.pbeSendConsole("Pinball Engine: Starting main menu music");    
     g_PBEngine.m_soundSystem.pbsSetMasterVolume(100);
     g_PBEngine.m_soundSystem.pbsSetMusicVolume(g_PBEngine.m_saveFileData.musicVolume * 10);
     g_PBEngine.m_soundSystem.pbsPlayMusic(MUSICFANTASY);
 
-    g_PBEngine.pbeSendConsole("(PI)nball Engine: Starting main processing loop");    
+    g_PBEngine.pbeSendConsole("Pinball Engine: Starting main processing loop");    
    
     // Main loop for the pinball game                                
     unsigned long currentTick = g_PBEngine.GetTickCountGfx();

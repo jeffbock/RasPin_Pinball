@@ -1,4 +1,4 @@
-// PInball_Table.h:  Header file for the specific functions needed for the pinball table.  
+// Pinball_Table.h:  Header file for the specific functions needed for the pinball table.  
 //                   This includes further PBEngine Class functions and any support functions unique to the table
 //                   These need to be defined by the user for the specific table
 
@@ -6,10 +6,10 @@
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
 // Additional details can also be found in the license file in the root of the project.
 
-#ifndef PInball_Table_h
-#define PInball_Table_h
+#ifndef Pinball_Table_h
+#define Pinball_Table_h
 
-#include "PInball.h"
+#include "Pinball.h"
 
 enum class PBTableState {
     PBTBL_START = 0,
@@ -28,4 +28,4 @@ enum class PBTBLScreenState {
 #define ACTIVEDISPX 448
 #define ACTIVEDISPY 268
 
-#endif // PInball_Table_h
+#endif // Pinball_Table_h

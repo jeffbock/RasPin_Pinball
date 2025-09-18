@@ -1,12 +1,12 @@
-// PInball_IO.h:  Header file to define all the input sensors and buttons in the pinball machine
+// Pinball_IO.h:  Header file to define all the input sensors and buttons in the pinball machine
 // These need to be defined by the user for the specific table
 
 // Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
 // Additional details can also be found in the license file in the root of the project.// MIT License, Copyright (c) 2025 Jeffrey D. Bock, except where where otherwise noted
 
-#ifndef PInball_IO_h
-#define PInball_IO_h
+#ifndef Pinball_IO_h
+#define Pinball_IO_h
 
 #include <string>
 
@@ -265,4 +265,4 @@ private:
 };
 
 
-#endif
+#endif // Pinball_IO_h

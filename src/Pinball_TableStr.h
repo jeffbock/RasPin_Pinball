@@ -4,8 +4,8 @@
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
 // Additional details can also be found in the license file in the root of the project.
 
-#ifndef PInball_TableStr_h
-#define PInball_TableStr_h
+#ifndef Pinball_TableStr_h
+#define Pinball_TableStr_h
 
 #include <string>
 
@@ -23,4 +23,4 @@ std::string PBTableInst[] = {
 
 #define PBTABLEINSTSIZE 9
 
-#endif // PInball_TableStr_h
+#endif // Pinball_TableStr_h

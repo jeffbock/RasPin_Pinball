@@ -1,11 +1,11 @@
-// PInball:  A complete pinball framework for building 1/2 scale phyical pinball machines with Raspberry Pi
+// Pinball:  A complete pinball framework for building 1/2 scale phyical pinball machines with Raspberry Pi
 
 // Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
 // Additional details can also be found in the license file in the root of the project.
 
-#ifndef PInball_h
-#define PInball_h
+#ifndef Pinball_h
+#define Pinball_h
 
 // Choose the EXE mode for the code - Windows is used for developent / debug, Rasberry Pi is used for the final build
 // Change the PBBuildSwitch.h to change the build mode
@@ -29,8 +29,6 @@
 // Includes for all platforms
 #include <egl.h>
 #include <gl31.h>
-//#include "include_ogl/egl.h"
-//#include "include_ogl/gl31.h"
 #include "PBOGLES.h"
 #include "PBGfx.h"
 #include "PInball_IO.h"
@@ -393,4 +391,4 @@ void HandleLEDSequenceBoundaries();
 void EndLEDSequence();
 void ProcessDeferredLEDQueue();
 
-#endif // PInball_h
+#endif // Pinball_h

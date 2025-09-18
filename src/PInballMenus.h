@@ -1,13 +1,13 @@
 
-// PInballMenus.h:  Menus used by the main pinball engine.
-// This file can only be inlcuded in PInball.cpp, and not in any other file.
+// PinballMenus.h:  Menus used by the main pinball engine.
+// This file can only be inlcuded in Pinball.cpp, and not in any other file.
 
 // Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
 // Additional details can also be found in the license file in the root of the project.
 
-#ifndef PInballMenus_h
-#define PInballMenus_h
+#ifndef PinballMenus_h
+#define PinballMenus_h
 
 #include <map>
 #include <string>
@@ -53,4 +53,4 @@ std::map<unsigned int, std::string>  g_diagnosticsMenu = {
 
 #define CURSOR_TO_MENU_SPACING 8
 
-#endif // PInballMenus_h  
+#endif // PinballMenus_h  

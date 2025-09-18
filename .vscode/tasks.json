@@ -76,24 +76,25 @@
         // Windows Full Build for Pinball
         {
             "type": "cppbuild",
-            "label": "Windows: Full PInball Build",
+            "label": "Windows: Full Pinball Build",
             "command": "cl.exe",
             "args": [
                 "/Zi",
                 "/EHsc",
                 "/nologo",
                 "/Fo${workspaceFolder}/winbuild/",
-                "/Fe${workspaceFolder}/winbuild/PInball.exe",
-                "/Fd${workspaceFolder}/winbuild/PInball.pdb",
+                "/Fe${workspaceFolder}/winbuild/Pinball.exe",
+                "/Fd${workspaceFolder}/winbuild/Pinball.pdb",
                 "${workspaceFolder}/src/stb_image.cpp",
                 "${workspaceFolder}/src/PBOGLES.cpp",
                 "${workspaceFolder}/src/PBGfx.cpp",
                 "${workspaceFolder}/src/PBWinRender.cpp",
                 "${workspaceFolder}/src/PBDebounce.cpp",
-                "${workspaceFolder}/src/PInball_IO.cpp",
-                "${workspaceFolder}/src/PInball_Table.cpp",
+                "${workspaceFolder}/src/Pinball_IO.cpp",
+                "${workspaceFolder}/src/Pinball_Table.cpp",
                 "${workspaceFolder}/src/PBSound.cpp",
-                "${workspaceFolder}/src/PInball.cpp",
+                "${workspaceFolder}/src/Pinball_Engine.cpp",
+                "${workspaceFolder}/src/Pinball.cpp",
                 "/I${workspaceFolder}/src/include_ogl_win",
                 "/link",
                 "/LIBPATH:${workspaceFolder}/src/lib_ogl_win",
@@ -124,27 +125,28 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "detail": "Windows: Full PInball Build"
+            "detail": "Windows: Full Pinball Build"
         },
 
         // Raspberry Pi: Full Build
         {
             "type": "cppbuild",
-            "label": "Raspberry Pi: Full PInball Build",
+            "label": "Raspberry Pi: Full Pinball Build",
             "command": "/usr/bin/g++",
             "args": [
                 "-g",
                 "-o",
-                "${workspaceFolder}/raspibuild/PInball",
+                "${workspaceFolder}/raspibuild/Pinball",
                 "${workspaceFolder}/src/stb_image.cpp",
                 "${workspaceFolder}/src/PBOGLES.cpp",
                 "${workspaceFolder}/src/PBGfx.cpp",
                 "${workspaceFolder}/src/PBRaspPiRender.cpp",
                 "${workspaceFolder}/src/PBDebounce.cpp",
-                "${workspaceFolder}/src/PInball_IO.cpp",
+                "${workspaceFolder}/src/Pinball_IO.cpp",
                 "${workspaceFolder}/src/Pinball_Table.cpp",
                 "${workspaceFolder}/src/PBSound.cpp",
-                "${workspaceFolder}/src/PInball.cpp",
+                "${workspaceFolder}/src/Pinball_Engine.cpp",
+                "${workspaceFolder}/src/Pinball.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
                 "-I/usr/include/EGL",
                 "-I/usr/include/GLES3",
@@ -171,7 +173,7 @@
                 "kind": "build",
                 "isDefault": false
             },
-            "detail": "Raspberry Pi: Full PInball Build"
+            "detail": "Raspberry Pi: Full Pinball Build"
         },
 
         // FontGen Windows Build
