@@ -927,7 +927,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 
             if (((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) && inputMessage.inputState == PB_ON){
                 switch (m_CurrentDiagnosticsItem) {
-                    case (0): m_mainState = PB_TESTMODE; m_RestartTestMode = true; break;
+                    case (0): m_mainState = PB_TESTMODE; m_RestartTestMode = true; m_EnableOverlay = false; break;
                     case (1): m_mainState = PB_BENCHMARK; m_RestartBenchmark = true; break;
                     case (2): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                         if (m_EnableOverlay) m_EnableOverlay = false;
