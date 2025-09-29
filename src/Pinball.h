@@ -53,6 +53,11 @@
 #include "PinballMenus.h"
 #include "Pinball_Engine.h"
 
+// Version Information
+#define PB_VERSION_MAJOR 0
+#define PB_VERSION_MINOR 5  
+#define PB_VERSION_BUILD 6
+
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 1920
 #define PB_SCREENHEIGHT 1080
@@ -73,6 +78,9 @@
 #define EFFECTCLICK "src/resources/sound/click.mp3"
 
 bool PBInitRender (long width, long height);
+
+// Version display function
+void ShowVersion();
 
 // Forward declarations for structures
 struct stInputMessage;

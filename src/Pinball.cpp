@@ -32,6 +32,15 @@
  // Global pinball engine object
 PBEngine g_PBEngine;
 
+// Version display function
+void ShowVersion() {
+    std::string versionStr = "RasPin Pinball Engine v" + 
+                           std::to_string(PB_VERSION_MAJOR) + "." + 
+                           std::to_string(PB_VERSION_MINOR) + "." + 
+                           std::to_string(PB_VERSION_BUILD);
+    g_PBEngine.pbeSendConsole(versionStr);
+}
+
 // Windows startup and render code
 #ifdef EXE_MODE_WINDOWS
 #include "PBWinRender.h"
@@ -647,6 +656,9 @@ int main(int argc, char const *argv[])
     std::string temp;
     static unsigned int startFrameTime = 0;
     static bool didLimitRender = false;
+    
+    // Show version information first
+    ShowVersion();
     
     g_PBEngine.pbeSendConsole("OpenGL ES: Initialize");
     if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);

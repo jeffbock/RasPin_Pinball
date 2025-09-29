@@ -1,6 +1,25 @@
 {
     "version": "2.0.0",
     "tasks": [
+        // Version Update Task
+        {
+            "type": "shell",
+            "label": "Update Version",
+            "command": "python",
+            "args": ["scripts/update_version.py"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "detail": "Auto-increment version numbers"
+        },
+
         // Windows C/C++ single file EXE build
         {
             "type": "cppbuild",
@@ -78,6 +97,7 @@
             "type": "cppbuild",
             "label": "Windows: Full Pinball Build",
             "command": "cl.exe",
+            "dependsOn": "Update Version",
             "args": [
                 "/Zi",
                 "/EHsc",
@@ -259,6 +279,7 @@
             "type": "cppbuild",
             "label": "Windows: Full Pinball Build (Release)",
             "command": "cl.exe",
+            "dependsOn": "Update Version",
             "args": [
                 "/O2",                    // Maximum optimization
                 "/Oi",                    // Enable intrinsic functions
