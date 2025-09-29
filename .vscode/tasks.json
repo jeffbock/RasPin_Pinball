@@ -252,6 +252,125 @@
                 "isDefault": false
             },
             "detail": "Raspberry Pi: FontGen Build"
+        },
+
+        // Windows Release Build (Optimized)
+        {
+            "type": "cppbuild",
+            "label": "Windows: Full Pinball Build (Release)",
+            "command": "cl.exe",
+            "args": [
+                "/O2",                    // Maximum optimization
+                "/Oi",                    // Enable intrinsic functions
+                "/Ot",                    // Favor fast code
+                "/Oy",                    // Omit frame pointers
+                "/GL",                    // Whole program optimization
+                "/DNDEBUG",               // Define NDEBUG for release
+                "/EHsc",
+                "/nologo",
+                "/Fo${workspaceFolder}/winbuild/release/",
+                "/Fe${workspaceFolder}/winbuild/release/Pinball.exe",
+                "${workspaceFolder}/src/stb_image.cpp",
+                "${workspaceFolder}/src/PBOGLES.cpp",
+                "${workspaceFolder}/src/PBGfx.cpp",
+                "${workspaceFolder}/src/PBWinRender.cpp",
+                "${workspaceFolder}/src/PBDebounce.cpp",
+                "${workspaceFolder}/src/Pinball_IO.cpp",
+                "${workspaceFolder}/src/Pinball_Table.cpp",
+                "${workspaceFolder}/src/PBSound.cpp",
+                "${workspaceFolder}/src/PinballMenus.cpp",
+                "${workspaceFolder}/src/Pinball_Engine.cpp",
+                "${workspaceFolder}/src/Pinball.cpp",
+                "/I${workspaceFolder}/src/include_ogl_win",
+                "/link",
+                "/LTCG",                  // Link-time code generation
+                "/OPT:REF",               // Remove unreferenced functions
+                "/OPT:ICF",               // Enable COMDAT folding
+                "/LIBPATH:${workspaceFolder}/src/lib_ogl_win",
+                "/LIBPATH:C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64",
+                "libegl.dll.lib",
+                "libglesv2.dll.lib",
+                "kernel32.lib",
+                "user32.lib",
+                "gdi32.lib",
+                "winspool.lib",
+                "comdlg32.lib",
+                "advapi32.lib",
+                "shell32.lib",
+                "ole32.lib",
+                "oleaut32.lib",
+                "uuid.lib",
+                "odbc32.lib",
+                "odbccp32.lib",
+                "/machine:x64"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$msCompile"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "Windows: Optimized Release Build"
+        },
+
+        // Raspberry Pi Release Build (Optimized)
+        {
+            "type": "cppbuild",
+            "label": "Raspberry Pi: Full Pinball Build (Release)",
+            "command": "/usr/bin/g++",
+            "args": [
+                "-O3",                    // Maximum optimization
+                "-march=native",          // Optimize for target CPU
+                "-mtune=native",          // Tune for target CPU
+                "-flto",                  // Link-time optimization
+                "-ffast-math",            // Fast math optimizations
+                "-funroll-loops",         // Unroll loops
+                "-DNDEBUG",               // Define NDEBUG for release
+                "-o",
+                "${workspaceFolder}/raspibuild/release/Pinball",
+                "${workspaceFolder}/src/stb_image.cpp",
+                "${workspaceFolder}/src/PBOGLES.cpp",
+                "${workspaceFolder}/src/PBGfx.cpp",
+                "${workspaceFolder}/src/PBRaspPiRender.cpp",
+                "${workspaceFolder}/src/PBDebounce.cpp",
+                "${workspaceFolder}/src/Pinball_IO.cpp",
+                "${workspaceFolder}/src/Pinball_Table.cpp",
+                "${workspaceFolder}/src/PBSound.cpp",
+                "${workspaceFolder}/src/PinballMenus.cpp",
+                "${workspaceFolder}/src/Pinball_Engine.cpp",
+                "${workspaceFolder}/src/Pinball.cpp",
+                "-I${workspaceFolder}/src/include_ogl_raspi",
+                "-I/usr/include/EGL",
+                "-I/usr/include/GLES3",
+                "-I/usr/include/KHR",
+                "-I/usr/include/X11",
+                "-I/usr/include/X11/extensions",
+                "-lEGL",
+                "-lGLESv2",
+                "-lpthread",
+                "-lm",
+                "-lX11",
+                "-lXrandr",
+                "-lwiringPi",
+                "-lSDL2",
+                "-lSDL2_mixer",
+                "-s"                      // Strip symbols for smaller binary
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "Raspberry Pi: Optimized Release Build"
         }
     ]
 }
