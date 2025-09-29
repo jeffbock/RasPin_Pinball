@@ -90,7 +90,14 @@ struct stOutputDef{
 #define IDO_LED2 4
 #define IDO_LED3 5
 #define IDO_LED4 6
-#define NUM_OUTPUTS 7
+#define IDO_LED5 7
+#define IDO_LED6 8
+#define IDO_LED7 9
+#define IDO_LED8 10
+#define IDO_LED9 11
+#define IDO_LED10 12
+
+#define NUM_OUTPUTS 13
 
 #define IDI_LEFTFLIPPER 0
 #define IDI_RIGHTFLIPPER 1

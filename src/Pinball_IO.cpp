@@ -23,9 +23,15 @@ stOutputDef g_outputDef[] = {
     {"IO1P8 Pop Bumper", PB_OMSG_GENERIC_IO, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF, 1000, 1000},
     {"IO2P8 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF, 2000, 2000},
     {"Start LED", PB_OMSG_GENERIC_IO, IDO_LED1, 23, PB_RASPI, 0, PB_ON, 0, 0},
-    {"LED0P8 LED", PB_OMSG_LED, IDO_LED2, 8, PB_LED, 0, PB_OFF, 0, 0},
-    {"LED1P8 LED", PB_OMSG_LED, IDO_LED3, 8, PB_LED, 1, PB_OFF, 0, 0},
-    {"LED2P8 LED", PB_OMSG_LED, IDO_LED4, 8, PB_LED, 2, PB_OFF, 0, 0}
+    {"LED0P08 LED", PB_OMSG_LED, IDO_LED2, 8, PB_LED, 0, PB_OFF, 0, 0},
+    {"LED0P09 LED", PB_OMSG_LED, IDO_LED3, 9, PB_LED, 0, PB_OFF, 0, 0},
+    {"LED0P10 LED", PB_OMSG_LED, IDO_LED4, 10, PB_LED, 0, PB_OFF, 0, 0},
+    {"LED1P08 LED", PB_OMSG_LED, IDO_LED5, 8, PB_LED, 1, PB_OFF, 0, 0},
+    {"LED1P09 LED", PB_OMSG_LED, IDO_LED6, 9, PB_LED, 1, PB_OFF, 0, 0},
+    {"LED1P10 LED", PB_OMSG_LED, IDO_LED7, 10, PB_LED, 1, PB_OFF, 0, 0},
+    {"LED2P08 LED", PB_OMSG_LED, IDO_LED8, 8, PB_LED, 2, PB_OFF, 0, 0},
+    {"LED2P09 LED", PB_OMSG_LED, IDO_LED9, 9, PB_LED, 2, PB_OFF, 0, 0},
+    {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 0, 0}
 };
 
 // Input definitions
@@ -36,9 +42,9 @@ stInputDef g_inputDef[] = {
     {"Left Activate", "Q", PB_IMSG_BUTTON, IDI_LEFTACTIVATE, 5, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
     {"Right Activate", "E", PB_IMSG_BUTTON, IDI_RIGHTACTIVATE,22, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
     {"Start", "Z", PB_IMSG_BUTTON, IDI_START, 6, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
-    {"IO0P7", "1", PB_IMSG_SENSOR, IDI_SENSOR1, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
-    {"IO1P7", "2", PB_IMSG_SENSOR, IDI_SENSOR2, 7, PB_IO, 1, PB_OFF, 0, 5, false, 0, PB_OFF},
-    {"IO2P7", "3", PB_IMSG_SENSOR, IDI_SENSOR3, 7, PB_IO, 2, PB_OFF, 0, 5, false, 0, PB_OFF}
+    {"IO0P07", "1", PB_IMSG_SENSOR, IDI_SENSOR1, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
+    {"IO1P07", "2", PB_IMSG_SENSOR, IDI_SENSOR2, 7, PB_IO, 1, PB_OFF, 0, 5, false, 0, PB_OFF},
+    {"IO2P07", "3", PB_IMSG_SENSOR, IDI_SENSOR3, 7, PB_IO, 2, PB_OFF, 0, 5, false, 0, PB_OFF}
 };
 
 // LEDDriver Class Implementation for TLC59116 LED Driver Chip
