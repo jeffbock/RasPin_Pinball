@@ -8,7 +8,7 @@
 
 #include "wiringPi.h"
 #include "wiringPiI2C.h"
-#include "Pinball_IO.h"
+#include "PInball_IO.h"
 #include <chrono>
 
 class cDebounceInput {
