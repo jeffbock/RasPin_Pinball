@@ -154,6 +154,7 @@
             "type": "cppbuild",
             "label": "Raspberry Pi: Full Pinball Build",
             "command": "/usr/bin/g++",
+            "dependsOn": "Update Version",
             "args": [
                 "-g",
                 "-o",
@@ -343,6 +344,7 @@
             "type": "cppbuild",
             "label": "Raspberry Pi: Full Pinball Build (Release)",
             "command": "/usr/bin/g++",
+            "dependsOn": "Update Version",
             "args": [
                 "-O3",                    // Maximum optimization
                 "-march=native",          // Optimize for target CPU
