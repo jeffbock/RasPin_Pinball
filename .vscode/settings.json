@@ -78,5 +78,6 @@
         "mutex": "cpp",
         "stop_token": "cpp",
         "thread": "cpp"
-    }
+    },
+    "debug.defaultDebugConfiguration": "RasPi: Debug Pinball"
 }

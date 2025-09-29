@@ -57,6 +57,8 @@
 #define PB_SCREENWIDTH 1920
 #define PB_SCREENHEIGHT 1080
 
+#define MAX_DEFERRED_LED_QUEUE  100  // Maximum size of the deferred LED message queue
+
 // FPS limit for the game rendering
 #define PB_FPSLIMIT 30
 #define PB_MS_PER_FRAME (PB_FPSLIMIT == 0 ? 0 : (1000 / PB_FPSLIMIT))
