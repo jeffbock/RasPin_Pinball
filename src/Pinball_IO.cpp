@@ -30,8 +30,8 @@ stOutputDef g_outputDef[] = {
     {"LED1P09 LED", PB_OMSG_LED, IDO_LED6, 9, PB_LED, 1, PB_OFF, 50, 0},
     {"LED1P10 LED", PB_OMSG_LED, IDO_LED7, 10, PB_LED, 1, PB_OFF, 50, 0},
     {"LED2P08 LED", PB_OMSG_LED, IDO_LED8, 8, PB_LED, 2, PB_OFF, 500, 0},
-    {"LED2P09 LED", PB_OMSG_LED, IDO_LED9, 9, PB_LED, 2, PB_OFF, 500, 0},
-    {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 500, 0}
+    {"LED2P09 LED", PB_OMSG_LED, IDO_LED9, 9, PB_LED, 2, PB_OFF, 300, 0},
+    {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 100, 0}
 };
 
 // Input definitions
@@ -184,7 +184,7 @@ void LEDDriver::StageLEDControl(bool setAll, unsigned int LEDIndex, LEDState sta
             uint8_t bitPos = (LEDIndex % 4) * 2;  // Bit position within register (0,2,4,6)
             
             // Calculate new register value
-            uint8_t newRegValue = m_currentControl[regIndex];  // Start with current hardware state
+            uint8_t newRegValue = m_ledControl[regIndex];  // Start with the last staged state
             newRegValue &= ~(0x03 << bitPos);     // Clear the 2 bits for this LED
             newRegValue |= (controlValue << bitPos);  // Set new value
             
@@ -432,7 +432,7 @@ void IODriver::StageOutputPin(uint8_t pinIndex, PBPinState value) {
         uint8_t port = pinIndex / 8;      // Which port (0 or 1)
         uint8_t bitPos = pinIndex % 8;    // Bit position within port (0-7)
         
-        uint8_t newPortValue = m_currentOutputValues[port];  // Start with current hardware state
+        uint8_t newPortValue =  m_outputValues[port];  // Start with current staged state
         // Set the bits - This system uses active low outputs
         if (value == PB_OFF) {
             // Set the bit

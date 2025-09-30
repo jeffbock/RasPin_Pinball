@@ -514,7 +514,7 @@ void ProcessActivePulseOutputs() {
                     g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, LEDOn);
                 }
                 outputDef.lastState = PB_ON;
-            } else if (elapsedTime < (pulse.onTimeMS + pulse.offTimeMS)) {
+            } else if (elapsedTime >= pulse.onTimeMS ) {
                 // OFF phase
                 if (outputDef.boardType == PB_RASPI) {
                     int outputValue = HIGH;
@@ -526,9 +526,10 @@ void ProcessActivePulseOutputs() {
                     g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, LEDOff);
                 }
                 outputDef.lastState = PB_OFF;
-            } else {
-                // Pulse complete
-                pulseComplete = true;
+                if (elapsedTime >= (pulse.onTimeMS + pulse.offTimeMS)) {
+                    // Pulse complete
+                    pulseComplete = true;
+                }
             }
             
             if (pulseComplete) {

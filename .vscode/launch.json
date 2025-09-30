@@ -21,7 +21,41 @@
             "externalConsole": false,
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "Raspberry Pi: Full Pinball Build", // Links to your Raspberry Pi build task
+            // "preLaunchTask": "cppbuild: Raspberry Pi: Full Pinball Build", // Commented out to skip building
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ],
+            "logging": {
+                "engineLogging": false
+            }
+        },
+        {
+            "name": "RasPi: Debug Pinball (with Build)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/raspibuild/Pinball", // Path to the compiled executable for pinball.cpp
+            "args": [], // Arguments to pass to the program, if any
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "DISPLAY",
+                    "value": ":0"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "cppbuild: Raspberry Pi: Full Pinball Build", // Links to your Raspberry Pi build task
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -50,7 +84,7 @@
             "externalConsole": false,
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "Raspberry Pi: FontGen Build", // Links to your Raspberry Pi FontGen build task
+            "preLaunchTask": "cppbuild: Raspberry Pi: FontGen Build", // Links to your Raspberry Pi FontGen build task
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -71,13 +105,13 @@
             "name": "Windows: Debug Pinball",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/winbuild/Pinball.exe", // Path to the compiled executable for pinball.cpp
+            "program": "${workspaceFolder}/winbuild/pinball.exe", // Path to the compiled executable for pinball.cpp
             "args": [], // Arguments to pass to the program, if any
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
-            "preLaunchTask": "Windows: Full Pinball Build", // Ensure you have a build task configured
+            "preLaunchTask": "cppbuild: Windows: Full Pinball Build", // Ensure you have a build task configured
             "logging": {
                 "engineLogging": false
             }
@@ -86,13 +120,13 @@
             "name": "Windows: Debug FontGen",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/winbuild/FontGen.exe", // Path to the compiled executable
+            "program": "${workspaceFolder}/winbuild/fontgen.exe", // Path to the compiled executable
             "args": ["./winbuild/IMMORTAL.ttf", "60", "512", "4"], // Arguments to pass to the program
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
-            "preLaunchTask": "Windows: FontGen Build", // Ensure you have a build task configured
+            "preLaunchTask": "cppbuild: Windows: FontGen Build", // Ensure you have a build task configured
             "logging": {
                 "engineLogging": false
             }
