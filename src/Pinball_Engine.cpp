@@ -901,7 +901,16 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, PB_ON, true);
                     SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_POPBUMPER, PB_ON, true);
                     SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_BALLEJECT, PB_ON, true);
-                }
+                    SendOutputMsg(PB_OMSG_LED, IDO_LED2, PB_ON, true);
+                    SendOutputMsg(PB_OMSG_LED, IDO_LED3, PB_ON, true);
+                    SendOutputMsg(PB_OMSG_LED, IDO_LED4, PB_ON, true);
+                    SendOutputMsg(PB_OMSG_LED, IDO_LED5, PB_ON, true);
+                    SendOutputMsg(PB_OMSG_LED, IDO_LED6, PB_ON, true);
+                    SendOutputMsg(PB_OMSG_LED, IDO_LED7, PB_ON, true);
+                    SendOutputMsg(PB_OMSG_LED, IDO_LED8, PB_ON, true);
+                    SendOutputMsg(PB_OMSG_LED, IDO_LED9, PB_ON, true);
+                    SendOutputMsg(PB_OMSG_LED, IDO_LED10, PB_ON, true);
+                }   
             }
             break;
         }

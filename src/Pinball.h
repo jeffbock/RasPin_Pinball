@@ -56,7 +56,7 @@
 // Version Information
 #define PB_VERSION_MAJOR 0
 #define PB_VERSION_MINOR 5  
-#define PB_VERSION_BUILD 10
+#define PB_VERSION_BUILD 14
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 1920

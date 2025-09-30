@@ -386,11 +386,6 @@ void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputD
         return;
     }
     
-    // Temporary breakpoint
-    if (message.outputId == IDO_SLINGSHOT) {
-        int bp = 1;
-    }
-
     // Check if it's a pulse output
     bool isPulseOutput = message.usePulse && (outputDef.onTimeMS > 0 || outputDef.offTimeMS > 0);
     
@@ -438,23 +433,41 @@ void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& output
             return;
         }
     }
-    
-    // Handle regular LED pin control
-    if (message.outputMsg == PB_OMSG_LED) {
-        // Stage the LED control to the appropriate LED chip
-        if (outputDef.boardIndex < NUM_LED_CHIPS) {
-            LEDState ledState = (message.outputState == PB_ON) ? LEDOn : LEDOff;
-            g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, ledState);
-        }
-        
-        // Update the lastState in the output definition
-        outputDef.lastState = message.outputState;
+
+     // Check if it's currently in the pulse output map - if so, ignore this message
+    if (g_PBEngine.m_outputPulseMap.find(message.outputId) != g_PBEngine.m_outputPulseMap.end()) {
+        return;
     }
-    else if (message.outputMsg == PB_OMSG_LEDSET_BRIGHTNESS) {
-        // Stage the LED brightness to the appropriate LED chip
-        if (outputDef.boardIndex < NUM_LED_CHIPS) {
-            uint8_t brightness = message.options ? message.options->brightness : 255;
-            g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDBrightness(false, outputDef.pin, brightness);
+    
+    // Check if it's a pulse output
+    bool isPulseOutput = message.usePulse && (outputDef.onTimeMS > 0 || outputDef.offTimeMS > 0);
+    
+    if (isPulseOutput) {
+        // Put it in the pulse output map
+        stOutputPulse pulse;
+        pulse.outputId = message.outputId;
+        pulse.onTimeMS = outputDef.onTimeMS;
+        pulse.offTimeMS = outputDef.offTimeMS;
+        pulse.startTickMS = message.sentTick;
+        g_PBEngine.m_outputPulseMap[message.outputId] = pulse;
+    } else {
+        // Handle regular LED pin control
+        if (message.outputMsg == PB_OMSG_LED) {
+            // Stage the LED control to the appropriate LED chip
+            if (outputDef.boardIndex < NUM_LED_CHIPS) {
+                LEDState ledState = (message.outputState == PB_ON) ? LEDOn : LEDOff;
+                g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, ledState);
+            }
+            
+            // Update the lastState in the output definition
+            outputDef.lastState = message.outputState;
+        }
+        else if (message.outputMsg == PB_OMSG_LEDSET_BRIGHTNESS) {
+            // Stage the LED brightness to the appropriate LED chip
+            if (outputDef.boardIndex < NUM_LED_CHIPS) {
+                uint8_t brightness = message.options ? message.options->brightness : 255;
+                g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDBrightness(false, outputDef.pin, brightness);
+            }
         }
     }
 }
@@ -491,20 +504,26 @@ void ProcessActivePulseOutputs() {
             
             if (elapsedTime < pulse.onTimeMS) {
                 // ON phase
-                int outputValue = LOW;
                 if (outputDef.boardType == PB_RASPI) {
+                    int outputValue = LOW;
                     digitalWrite(outputDef.pin, outputValue);
                 } else if (outputDef.boardType == PB_IO && outputDef.boardIndex < NUM_IO_CHIPS) {
                     g_PBEngine.m_IOChip[outputDef.boardIndex].StageOutputPin(outputDef.pin, PB_ON);
+                } else if (outputDef.boardType == PB_LED && outputDef.boardIndex < NUM_LED_CHIPS) {
+                    // Stage the LED ON to the appropriate LED chip
+                    g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, LEDOn);
                 }
                 outputDef.lastState = PB_ON;
             } else if (elapsedTime < (pulse.onTimeMS + pulse.offTimeMS)) {
                 // OFF phase
-                int outputValue = HIGH;
                 if (outputDef.boardType == PB_RASPI) {
+                    int outputValue = HIGH;
                     digitalWrite(outputDef.pin, outputValue);
                 } else if (outputDef.boardType == PB_IO && outputDef.boardIndex < NUM_IO_CHIPS) {
                     g_PBEngine.m_IOChip[outputDef.boardIndex].StageOutputPin(outputDef.pin, PB_OFF);
+                } else if (outputDef.boardType == PB_LED && outputDef.boardIndex < NUM_LED_CHIPS) {
+                    // Stage the LED OFF to the appropriate LED chip
+                    g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, LEDOff);
                 }
                 outputDef.lastState = PB_OFF;
             } else {
