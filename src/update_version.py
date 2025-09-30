@@ -71,7 +71,7 @@ def main():
     os.chdir(project_dir)
     
     # Update version in header file
-    header_file = "src/PInball.h"
+    header_file = "src/Pinball.h"
     
     if not os.path.exists(header_file):
         print(f"❌ Error: {header_file} not found!")

@@ -6,7 +6,7 @@
             "type": "shell",
             "label": "Update Version",
             "command": "python",
-            "args": ["scripts/update_version.py"],
+            "args": ["src/update_version.py"],
             "group": "build",
             "presentation": {
                 "echo": true,

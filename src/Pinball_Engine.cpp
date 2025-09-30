@@ -961,10 +961,28 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 
         case PB_TESTMODE: {
             
+            // Record state of flipper and activation buttons
+            if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputState == PB_ON) m_LFON = true;
+                else m_LFON = false;
+            }
+            if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputState == PB_ON) m_RFON = true;
+                else m_RFON = false;
+            }
+            if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                if (inputMessage.inputState == PB_ON) m_LAON = true;
+                else m_LAON = false;
+            }
+            if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                if (inputMessage.inputState == PB_ON) m_RAON = true;
+                else m_RAON = false;
+            }
+
             // Check the mode and send output message if needed
             if (m_TestMode == PB_TESTOUTPUT) {
                 // Send the output message to the output queue - this will be connected to HW
-                if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON && (!m_LAON && !m_RAON)) {
                     if (inputMessage.inputId == IDI_LEFTFLIPPER) {
                         if (m_CurrentOutputItem > 0) m_CurrentOutputItem--;
                     }
@@ -986,24 +1004,6 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     }
             }
             
-            // If the start button has been pressed, return to the start menu
-            if (inputMessage.inputId == IDI_LEFTFLIPPER) {
-                if (inputMessage.inputState == PB_ON) m_LFON = true;
-                else m_LFON = false;
-            }
-            if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                if (inputMessage.inputState == PB_ON) m_RFON = true;
-                else m_RFON = false;
-            }
-            if (inputMessage.inputId == IDI_LEFTACTIVATE) {
-                if (inputMessage.inputState == PB_ON) m_LAON = true;
-                else m_LAON = false;
-            }
-            if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
-                if (inputMessage.inputState == PB_ON) m_RAON = true;
-                else m_RAON = false;
-            }
-
             // If both left and right flippers are pressed, toggle the test mode
             if (m_LFON && m_RFON) {
                 if (m_TestMode == PB_TESTINPUT) m_TestMode = PB_TESTOUTPUT;
