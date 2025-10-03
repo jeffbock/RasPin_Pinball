@@ -183,6 +183,7 @@ public:
     
     // Output message functions
     void SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState, bool usePulse, stOutputOptions* options = nullptr);
+    void SendRGBMsg(unsigned int redId, unsigned int greenId, unsigned int blueId, PBLEDColor color, PBPinState outputState, bool usePulse, stOutputOptions* options = nullptr);
     
     // Input configuration functions
     bool SetAutoOutput(unsigned int index, bool autoOutputEnabled);

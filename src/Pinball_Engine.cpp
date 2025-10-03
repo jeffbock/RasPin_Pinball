@@ -897,19 +897,28 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
 
                 if (inputMessage.inputId == IDI_START) {
+
+                    static int testCount = 0;
+
                     // Sending Test Messages
                     SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, PB_ON, true);
                     SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_POPBUMPER, PB_ON, true);
                     SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_BALLEJECT, PB_ON, true);
-                    SendOutputMsg(PB_OMSG_LED, IDO_LED2, PB_ON, true);
-                    SendOutputMsg(PB_OMSG_LED, IDO_LED3, PB_ON, true);
-                    SendOutputMsg(PB_OMSG_LED, IDO_LED4, PB_ON, true);
-                    SendOutputMsg(PB_OMSG_LED, IDO_LED5, PB_ON, true);
-                    SendOutputMsg(PB_OMSG_LED, IDO_LED6, PB_ON, true);
-                    SendOutputMsg(PB_OMSG_LED, IDO_LED7, PB_ON, true);
-                    SendOutputMsg(PB_OMSG_LED, IDO_LED8, PB_ON, true);
-                    SendOutputMsg(PB_OMSG_LED, IDO_LED9, PB_ON, true);
-                    SendOutputMsg(PB_OMSG_LED, IDO_LED10, PB_ON, true);
+                    if (testCount % 3 == 0) {  
+                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDCYAN, PB_ON, false);
+                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDYELLOW, PB_ON, false);
+                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDPURPLE, PB_ON, false);
+                    }
+                    else if (testCount % 3 == 1) {
+                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDRED, PB_ON, false);
+                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDGREEN, PB_ON, false);
+                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDBLUE, PB_ON, false);
+                    }
+                    else {
+                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDWHITE, PB_ON, false);
+                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDWHITE, PB_ON, false);
+                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDWHITE, PB_ON, false);
+                    }
                 }   
             }
             break;
@@ -1316,6 +1325,43 @@ void PBEngine::SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPin
     // Lock the output queue mutex and add the message
     // std::lock_guard<std::mutex> lock(m_outputQMutex);
     m_outputQueue.push(outputMessage);
+}
+
+// Function to send RGB color messages to three separate LED outputs - makes it RGB LEDs to be a single call
+// Specify which output IDs to use for the outputs and then set them by color enum
+void PBEngine::SendRGBMsg(unsigned int redId, unsigned int greenId, unsigned int blueId, PBLEDColor color, PBPinState outputState, bool usePulse, stOutputOptions* options)
+{
+    // Determine the state for each color channel based on the requested color
+    PBPinState redState = PB_OFF;
+    PBPinState greenState = PB_OFF;
+    PBPinState blueState = PB_OFF;
+    
+    // Set the appropriate color channels based on the color enum
+    switch (color) {
+        case PB_LEDRED:     redState = outputState; break;
+        case PB_LEDGREEN:   greenState = outputState; break;
+        case PB_LEDBLUE:    blueState = outputState; break;
+        case PB_LEDWHITE:   redState = greenState = blueState = outputState; break;
+        case PB_LEDPURPLE:  redState = blueState = outputState; break;
+        case PB_LEDYELLOW:  redState = greenState = outputState; break;
+        case PB_LEDCYAN:    greenState = blueState = outputState; break;
+        default:            break; // Unknown color, turn all off
+    }
+    
+    // If outputState is PB_OFF, override all colors to be off regardless of enum
+    if (outputState == PB_OFF) {
+        redState = greenState = blueState = PB_OFF;
+    }
+    
+    // Send messages to each color channel
+    // Red channel
+    SendOutputMsg(PB_OMSG_LED, redId, redState, usePulse, options);
+    
+    // Green channel  
+    SendOutputMsg(PB_OMSG_LED, greenId, greenState, usePulse, options);
+    
+    // Blue channel
+    SendOutputMsg(PB_OMSG_LED, blueId, blueState, usePulse, options);
 }
 
 // Function to set or unset autoOutput for an input by array index
