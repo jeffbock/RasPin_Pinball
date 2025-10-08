@@ -346,34 +346,60 @@ int FindOutputDefIndex(unsigned int outputId) {
 // Process LED sequence start/stop messages
 void ProcessLEDSequenceMessage(const stOutputMessage& message) {
     if (message.outputState == PB_ON && message.options != nullptr) {
-        // Start LED sequence mode
-        g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = true;
-        g_PBEngine.m_LEDSequenceInfo.firstTime = true;
-        g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = message.sentTick;
-        g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
-        g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
+    // Start LED sequence mode
+    g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = true;
+    g_PBEngine.m_LEDSequenceInfo.firstTime = true;
+    g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = message.sentTick;
+    g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
+    g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
+    
+    g_PBEngine.m_LEDSequenceInfo.loopMode = message.options->loopMode;
+    g_PBEngine.m_LEDSequenceInfo.pLEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
+    
+    // Copy activeLEDMask from output options to sequence info
+    for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+        g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex] = message.options->activeLEDMask[chipIndex];
         
-        g_PBEngine.m_LEDSequenceInfo.sequenceChipMask = message.options->sequenceMask;
-        g_PBEngine.m_LEDSequenceInfo.loopMode = message.options->loopMode;
-        g_PBEngine.m_LEDSequenceInfo.pLEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
-        
-        // Save current LED values for chips in the mask
-        for (int i = 0; i < NUM_LED_CHIPS; i++) {
-            if (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << i)) {
-                // Read current LED values from chip using LEDOUT0 register (LEDs 0-3)
-                g_PBEngine.m_LEDSequenceInfo.savedLEDValues[i] = g_PBEngine.m_LEDChip[i].ReadLEDControl(StagedHW, 0);
+        // For each active pin, clear it from pulse map and stage to OFF
+        uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
+        for (int pin = 0; pin < 16; pin++) {
+            if (activeMask & (1 << pin)) {
+                // Find output ID for this chip/pin combination
+                for (size_t i = 0; i < g_outputDef.size(); i++) {
+                    if (g_outputDef[i].boardType == PB_LED && 
+                        g_outputDef[i].boardIndex == chipIndex && 
+                        g_outputDef[i].pin == pin) {
+                        
+                        // Remove from pulse map if present
+                        auto pulseIt = g_PBEngine.m_outputPulseMap.find(g_outputDef[i].outputId);
+                        if (pulseIt != g_PBEngine.m_outputPulseMap.end()) {
+                            g_PBEngine.m_outputPulseMap.erase(pulseIt);
+                        }
+                        
+                        // Stage LED to OFF
+                        g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, pin, LEDOff);
+                        break;
+                    }
+                }
             }
-        
         }
-    } else {
-        // Stop LED sequence mode
-        g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = false;
         
-        // Restore saved LED values
-        for (int i = 0; i < NUM_LED_CHIPS; i++) {
-            if (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << i)) {
-                // Stage entire register with saved values
-                g_PBEngine.m_LEDChip[i].StageLEDControl(0, g_PBEngine.m_LEDSequenceInfo.savedLEDValues[i]);
+        // Save current LED values (after staging OFF) using staged values, not HW values
+        g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex] = 
+            g_PBEngine.m_LEDChip[chipIndex].ReadLEDControl(Staged, 0);
+    }
+} else {
+    // Stop LED sequence mode
+    g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = false;
+    
+    // Restore saved LED values for pins that were in the sequence
+    for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+        uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
+        for (int pin = 0; pin < 16; pin++) {
+            if (activeMask & (1 << pin)) {
+                // Restore pin state from saved values
+                LEDState state = (g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex] & (1 << pin)) ? LEDOn : LEDOff;
+                g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, pin, state);
             }
         }
     }
@@ -419,12 +445,16 @@ void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputD
 
 // Process LED output messages
 void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& outputDef, bool skipSequenceCheck) {
-    // Check if LED sequence is active for this chip (unless skip is requested)
+    // Check if LED sequence is active for this specific chip/pin (unless skip is requested)
     if (!skipSequenceCheck) {
-        bool sequenceActiveForChip = g_PBEngine.m_LEDSequenceInfo.sequenceEnabled && 
-                                   (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << outputDef.boardIndex));
+        bool sequenceActiveForPin = false;
+        if (g_PBEngine.m_LEDSequenceInfo.sequenceEnabled && 
+            outputDef.boardIndex < NUM_LED_CHIPS) {
+            // Check if this specific pin is in the active LED mask
+            sequenceActiveForPin = (g_PBEngine.m_LEDSequenceInfo.activeLEDMask[outputDef.boardIndex] & (1 << outputDef.pin)) != 0;
+        }
         
-        if (sequenceActiveForChip) {
+        if (sequenceActiveForPin) {
             // Push message to deferred queue, but check size limit
             if (g_PBEngine.m_deferredQueue.size() < MAX_DEFERRED_LED_QUEUE) {
                 g_PBEngine.m_deferredQueue.push(message);
@@ -557,11 +587,16 @@ void ProcessActiveLEDSequence() {
             const auto& currentSequence = (*g_PBEngine.m_LEDSequenceInfo.pLEDSequence)[g_PBEngine.m_LEDSequenceInfo.currentSeqIndex];
             
             for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
-                if (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << chipIndex)) {
-                    if (chipIndex < currentSequence.size()) {
-                        // Stage individual LEDs based on the sequence bits
-                        uint16_t ledBits = currentSequence[chipIndex].LEDOnBits[chipIndex];
-                        for (int ledPin = 0; ledPin < 16; ledPin++) {
+                if (chipIndex < currentSequence.size()) {
+                    // Get the active LED mask for this chip
+                    uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
+                    
+                    // Get the LED bits from the sequence for this chip
+                    uint16_t ledBits = currentSequence[chipIndex].LEDOnBits[chipIndex];
+                    
+                    // Stage individual LEDs based on the sequence bits, but only for active pins
+                    for (int ledPin = 0; ledPin < 16; ledPin++) {
+                        if (activeMask & (1 << ledPin)) {
                             LEDState state = (ledBits & (1 << ledPin)) ? LEDOn : LEDOff;
                             g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, ledPin, state);
                         }
@@ -619,11 +654,14 @@ void HandleLEDSequenceBoundaries() {
 // End LED sequence and restore saved values
 void EndLEDSequence() {
     g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = false;
-    for (int i = 0; i < NUM_LED_CHIPS; i++) {
-        if (g_PBEngine.m_LEDSequenceInfo.sequenceChipMask & (1 << i)) {
-            for (int ledPin = 0; ledPin < 16; ledPin++) {
-                LEDState state = (g_PBEngine.m_LEDSequenceInfo.savedLEDValues[i] & (1 << ledPin)) ? LEDOn : LEDOff;
-                g_PBEngine.m_LEDChip[i].StageLEDControl(false, ledPin, state);
+    
+    // Restore saved LED values only for pins that were in the active mask
+    for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+        uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
+        for (int ledPin = 0; ledPin < 16; ledPin++) {
+            if (activeMask & (1 << ledPin)) {
+                LEDState state = (g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex] & (1 << ledPin)) ? LEDOn : LEDOff;
+                g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, ledPin, state);
             }
         }
     }

@@ -1,5 +1,6 @@
 #include "Pinball_Engine.h"
 #include "Pinball.h"
+#include "PBSequences.h"
 
 // Class functions for PBEngine
  PBEngine::PBEngine() {
@@ -900,25 +901,24 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 
                     static int testCount = 0;
 
-                    // Sending Test Messages
-                    SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, PB_ON, true);
-                    SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_POPBUMPER, PB_ON, true);
-                    SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_BALLEJECT, PB_ON, true);
                     if (testCount % 3 == 0) {  
+                        // Sending Test Messages
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, PB_ON, true);
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_POPBUMPER, PB_ON, true);
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_BALLEJECT, PB_ON, true);
+
                         SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDCYAN, PB_ON, false);
                         SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDYELLOW, PB_ON, false);
                         SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDPURPLE, PB_ON, false);
                     }
                     else if (testCount % 3 == 1) {
-                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDRED, PB_ON, false);
-                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDGREEN, PB_ON, false);
-                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDBLUE, PB_ON, false);
+                        // Turn on sequence
+                        SendSeqMsg(&PBSeq_AllChipsTest, PBSeq_AllChipsTestMask, PB_LOOP, PB_ON);
                     }
                     else {
-                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDWHITE, PB_ON, false);
-                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDWHITE, PB_ON, false);
-                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDWHITE, PB_ON, false);
-                    }
+                        // Turn off sequence
+                        SendSeqMsg(&PBSeq_AllChipsTest, PBSeq_AllChipsTestMask, PB_LOOP, PB_OFF);
+                    }           
                 }   
             }
             break;
@@ -1362,6 +1362,28 @@ void PBEngine::SendRGBMsg(unsigned int redId, unsigned int greenId, unsigned int
     
     // Blue channel
     SendOutputMsg(PB_OMSG_LED, blueId, blueState, usePulse, options);
+}
+
+void PBEngine::SendSeqMsg(const LEDSequence* sequence, const uint16_t* mask, PBSequenceLoopMode loopMode, PBPinState outputState)
+{
+    if (outputState == PB_ON) {
+        // Set up sequence options
+        stOutputOptions seqOptions;
+        seqOptions.loopMode = loopMode;
+        seqOptions.setLEDSequence = sequence;
+        
+        // Copy the mask for all LED chips
+        for (int i = 0; i < NUM_LED_CHIPS; i++) {
+            seqOptions.activeLEDMask[i] = mask[i];
+        }
+        
+        // Send the sequence start message
+        SendOutputMsg(PB_OMSG_LED_SEQUENCE, 0, PB_ON, false, &seqOptions);
+    }
+    else {
+        // Send the sequence stop message
+        SendOutputMsg(PB_OMSG_LED_SEQUENCE, 0, PB_OFF, false);
+    }
 }
 
 // Function to set or unset autoOutput for an input by array index

@@ -7,6 +7,7 @@
 
 #include "Pinball_Table.h"
 #include "Pinball_TableStr.h"
+#include "PBSequences.h"
 
 // PBEgine Class Fucntions for the main pinball game
 

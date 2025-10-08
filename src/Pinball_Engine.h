@@ -92,8 +92,8 @@ struct stOutputOptions {
     unsigned int onBlinkMS;
     unsigned int offBlinkMS;
     unsigned int brightness;
-    unsigned int sequenceMask; 
     PBSequenceLoopMode loopMode;
+    uint16_t activeLEDMask[NUM_LED_CHIPS];
     const LEDSequence *setLEDSequence;
 };
 
@@ -117,11 +117,11 @@ struct stLEDSequenceInfo {
     bool sequenceEnabled;
     bool firstTime;
     PBSequenceLoopMode loopMode;              
-    unsigned int sequenceChipMask;
     unsigned long sequenceStartTick;
     unsigned int currentSeqIndex;
     int indexStep;
-    uint8_t savedLEDValues[NUM_LED_CHIPS];
+    uint16_t previousLEDValues[NUM_LED_CHIPS];
+    uint16_t activeLEDMask[NUM_LED_CHIPS];
     LEDSequence *pLEDSequence;
 };
 
@@ -184,6 +184,7 @@ public:
     // Output message functions
     void SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState, bool usePulse, stOutputOptions* options = nullptr);
     void SendRGBMsg(unsigned int redId, unsigned int greenId, unsigned int blueId, PBLEDColor color, PBPinState outputState, bool usePulse, stOutputOptions* options = nullptr);
+    void SendSeqMsg(const LEDSequence* sequence, const uint16_t* mask, PBSequenceLoopMode loopMode, PBPinState outputState);
     
     // Input configuration functions
     bool SetAutoOutput(unsigned int index, bool autoOutputEnabled);
