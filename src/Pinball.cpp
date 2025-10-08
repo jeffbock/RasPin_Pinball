@@ -580,26 +580,24 @@ void ProcessActiveLEDSequence() {
     // For now, implement basic sequence progression
     
     if (g_PBEngine.m_LEDSequenceInfo.pLEDSequence != nullptr && 
-        !g_PBEngine.m_LEDSequenceInfo.pLEDSequence->empty()) {
+        g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount > 0) {
         
         // Stage current sequence values to LED chips
-        if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < g_PBEngine.m_LEDSequenceInfo.pLEDSequence->size()) {
-            const auto& currentSequence = (*g_PBEngine.m_LEDSequenceInfo.pLEDSequence)[g_PBEngine.m_LEDSequenceInfo.currentSeqIndex];
+        if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount) {
+            const auto& currentStep = g_PBEngine.m_LEDSequenceInfo.pLEDSequence->steps[g_PBEngine.m_LEDSequenceInfo.currentSeqIndex];
             
             for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
-                if (chipIndex < currentSequence.size()) {
-                    // Get the active LED mask for this chip
-                    uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
+                // Get the active LED mask for this chip
+                uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
+                
+                // Get the LED bits from the sequence step for this chip
+                uint16_t ledBits = currentStep.LEDOnBits[chipIndex];
                     
-                    // Get the LED bits from the sequence for this chip
-                    uint16_t ledBits = currentSequence[chipIndex].LEDOnBits[chipIndex];
-                    
-                    // Stage individual LEDs based on the sequence bits, but only for active pins
-                    for (int ledPin = 0; ledPin < 16; ledPin++) {
-                        if (activeMask & (1 << ledPin)) {
-                            LEDState state = (ledBits & (1 << ledPin)) ? LEDOn : LEDOff;
-                            g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, ledPin, state);
-                        }
+                // Stage individual LEDs based on the sequence bits, but only for active pins
+                for (int ledPin = 0; ledPin < 16; ledPin++) {
+                    if (activeMask & (1 << ledPin)) {
+                        LEDState state = (ledBits & (1 << ledPin)) ? LEDOn : LEDOff;
+                        g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, ledPin, state);
                     }
                 }
             }
@@ -615,7 +613,7 @@ void ProcessActiveLEDSequence() {
 
 // Handle LED sequence boundary conditions and loop modes
 void HandleLEDSequenceBoundaries() {
-    if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex >= static_cast<int>(g_PBEngine.m_LEDSequenceInfo.pLEDSequence->size())) {
+    if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex >= static_cast<int>(g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount)) {
         switch (g_PBEngine.m_LEDSequenceInfo.loopMode) {
             case PB_NOLOOP:
                 // End sequence
@@ -628,7 +626,7 @@ void HandleLEDSequenceBoundaries() {
             case PB_PINGPONG:
             case PB_PINGPONGLOOP:
                 g_PBEngine.m_LEDSequenceInfo.indexStep = -1;
-                g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = static_cast<int>(g_PBEngine.m_LEDSequenceInfo.pLEDSequence->size()) - 2;
+                g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = static_cast<int>(g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount) - 2;
                 break;
         }
     } else if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < 0) {

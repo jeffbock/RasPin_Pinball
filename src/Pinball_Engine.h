@@ -76,8 +76,15 @@ enum class PBTableState;
 enum class PBTBLScreenState;
 
 // Structure forward declarations and type definitions
-struct stLEDSequence; 
-typedef std::vector<std::vector<stLEDSequence>> LEDSequence;
+struct stLEDSequence;
+
+// LED Sequence data structure - compile-time friendly
+struct stLEDSequenceData {
+    const stLEDSequence* steps;  // Pointer to static array of steps
+    size_t stepCount;            // Number of steps in the array
+};
+
+typedef const stLEDSequenceData LEDSequence;
 
 // Input message structures
 struct stInputMessage {
