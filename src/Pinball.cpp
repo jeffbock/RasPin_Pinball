@@ -346,48 +346,48 @@ int FindOutputDefIndex(unsigned int outputId) {
 // Process LED sequence start/stop messages
 void ProcessLEDSequenceMessage(const stOutputMessage& message) {
     if (message.outputState == PB_ON && message.options != nullptr) {
-    // Start LED sequence mode
-    g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = true;
-    g_PBEngine.m_LEDSequenceInfo.firstTime = true;
-    g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = message.sentTick;
-    g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
-    g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
-    
-    g_PBEngine.m_LEDSequenceInfo.loopMode = message.options->loopMode;
-    g_PBEngine.m_LEDSequenceInfo.pLEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
-    
-    // Copy activeLEDMask from output options to sequence info
-    for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
-        g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex] = message.options->activeLEDMask[chipIndex];
+        // Start LED sequence mode
+        g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = true;
+        g_PBEngine.m_LEDSequenceInfo.firstTime = true;
+        g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = message.sentTick;
+        g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
+        g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
         
-        // For each active pin, clear it from pulse map and stage to OFF
-        uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
-        for (int pin = 0; pin < 16; pin++) {
-            if (activeMask & (1 << pin)) {
-                // Find output ID for this chip/pin combination
-                for (size_t i = 0; i < g_outputDef.size(); i++) {
-                    if (g_outputDef[i].boardType == PB_LED && 
-                        g_outputDef[i].boardIndex == chipIndex && 
-                        g_outputDef[i].pin == pin) {
-                        
-                        // Remove from pulse map if present
-                        auto pulseIt = g_PBEngine.m_outputPulseMap.find(g_outputDef[i].outputId);
-                        if (pulseIt != g_PBEngine.m_outputPulseMap.end()) {
-                            g_PBEngine.m_outputPulseMap.erase(pulseIt);
+        g_PBEngine.m_LEDSequenceInfo.loopMode = message.options->loopMode;
+        g_PBEngine.m_LEDSequenceInfo.pLEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
+        
+        // Copy activeLEDMask from output options to sequence info
+        for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+            g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex] = message.options->activeLEDMask[chipIndex];
+            
+            // For each active pin, clear it from pulse map and stage to OFF
+            uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
+            for (int pin = 0; pin < 16; pin++) {
+                if (activeMask & (1 << pin)) {
+                    // Find output ID for this chip/pin combination
+                    for (size_t i = 0; i < NUM_OUTPUTS; i++) {
+                        if (g_outputDef[i].boardType == PB_LED && 
+                            g_outputDef[i].boardIndex == chipIndex && 
+                            g_outputDef[i].pin == pin) {
+                            
+                            // Remove from pulse map if present
+                            auto pulseIt = g_PBEngine.m_outputPulseMap.find(g_outputDef[i].id);
+                            if (pulseIt != g_PBEngine.m_outputPulseMap.end()) {
+                                g_PBEngine.m_outputPulseMap.erase(pulseIt);
+                            }
+                            
+                            // Stage LED to OFF
+                            g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, pin, LEDOff);
+                            break;
                         }
-                        
-                        // Stage LED to OFF
-                        g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, pin, LEDOff);
-                        break;
                     }
                 }
             }
+            
+            // Save current LED values (after staging OFF) using staged values, not HW values
+            g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex] = 
+                g_PBEngine.m_LEDChip[chipIndex].ReadLEDControl(StagedHW, 0);
         }
-        
-        // Save current LED values (after staging OFF) using staged values, not HW values
-        g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex] = 
-            g_PBEngine.m_LEDChip[chipIndex].ReadLEDControl(Staged, 0);
-    }
 } else {
     // Stop LED sequence mode
     g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = false;
@@ -403,6 +403,7 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
             }
         }
     }
+}
 }
 
 // Process IO and RASPI output messages

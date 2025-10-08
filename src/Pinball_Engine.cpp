@@ -918,7 +918,9 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     else {
                         // Turn off sequence
                         SendSeqMsg(&PBSeq_AllChipsTest, PBSeq_AllChipsTestMask, PB_LOOP, PB_OFF);
-                    }           
+                    }       
+                    
+                    testCount++;
                 }   
             }
             break;
