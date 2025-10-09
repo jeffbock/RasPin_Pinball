@@ -168,7 +168,7 @@ enum LEDHardwareState {
 // Max Volume for MAX9744 IC
 // Max is 0x3F but that is so sensitive, even small changes can be very loud.
 #define MAX9744_VOLUME_MAX 0x26
-#define MAX9744_VOLUME_MIN 0x14
+#define MAX9744_VOLUME_MIN 0x0A
 
 // LED Driver class for controlling a single tlc59116 chip
 class LEDDriver {
@@ -193,6 +193,9 @@ public:
     uint8_t ReadGroupFreq() const;                            // Read GRPFREQ register
     uint8_t ReadLEDControl(LEDHardwareState hwState, uint8_t registerIndex) const;  // Read staged or current control register
     uint8_t ReadLEDBrightness(LEDHardwareState hwState, uint8_t ledIndex) const;   // Read staged or current brightness register
+    
+    // Helper function to convert 2-bit register value to LEDState for a specific pin
+    LEDState GetLEDStateFromVal(uint8_t regValue, unsigned int pin) const;
 
 private:
     uint8_t m_address;

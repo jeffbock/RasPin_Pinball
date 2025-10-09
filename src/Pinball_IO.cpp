@@ -163,6 +163,24 @@ uint8_t LEDDriver::GetControlValue(LEDState state) const {
     }
 }
 
+LEDState LEDDriver::GetLEDStateFromVal(uint8_t regValue, unsigned int pin) const {
+    // Calculate bit position within the register (pin % 4 gives position 0-3, then * 2 for 2-bit values)
+    int pinInReg = pin % 4;  // Position within the register (0-3)
+    int bitPos = pinInReg * 2;  // Each pin uses 2 bits
+    
+    // Extract the 2-bit LED state from the register value
+    uint8_t pinState = (regValue >> bitPos) & 0x03;  // Extract 2 bits
+    
+    // Convert 2-bit value to LEDState
+    switch (pinState) {
+        case 0x00: return LEDOff;      // 00 = LED off
+        case 0x01: return LEDOn;       // 01 = LED on  
+        case 0x02: return LEDDimming;  // 10 = PWM (individual brightness)
+        case 0x03: return LEDGroup;    // 11 = PWM+Group (group control)
+        default:   return LEDOff;      // Default to off for safety
+    }
+}
+
 void LEDDriver::StageLEDControl(bool setAll, unsigned int LEDIndex, LEDState state) {
     
     uint8_t controlValue = GetControlValue(state);

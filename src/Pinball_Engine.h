@@ -127,7 +127,7 @@ struct stLEDSequenceInfo {
     unsigned long sequenceStartTick;
     unsigned int currentSeqIndex;
     int indexStep;
-    uint16_t previousLEDValues[NUM_LED_CHIPS];
+    uint8_t previousLEDValues[NUM_LED_CHIPS][4];
     uint16_t activeLEDMask[NUM_LED_CHIPS];
     LEDSequence *pLEDSequence;
 };

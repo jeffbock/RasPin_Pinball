@@ -359,6 +359,11 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
         // Copy activeLEDMask from output options to sequence info
         for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
             g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex] = message.options->activeLEDMask[chipIndex];
+
+            // Save all 4 LED control registers for later restore 
+            for (int regIndex = 0; regIndex < 4; regIndex++) {
+                g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex][regIndex] = g_PBEngine.m_LEDChip[chipIndex].ReadLEDControl(StagedHW, regIndex);
+            }
             
             // For each active pin, clear it from pulse map and stage to OFF
             uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
@@ -383,26 +388,10 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
                     }
                 }
             }
-            
-            // Save current LED values (after staging OFF) using staged values, not HW values
-            g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex] = 
-                g_PBEngine.m_LEDChip[chipIndex].ReadLEDControl(StagedHW, 0);
         }
 } else {
     // Stop LED sequence mode
-    g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = false;
-    
-    // Restore saved LED values for pins that were in the sequence
-    for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
-        uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
-        for (int pin = 0; pin < 16; pin++) {
-            if (activeMask & (1 << pin)) {
-                // Restore pin state from saved values
-                LEDState state = (g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex] & (1 << pin)) ? LEDOn : LEDOff;
-                g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, pin, state);
-            }
-        }
-    }
+    EndLEDSequence();
 }
 }
 
@@ -659,7 +648,12 @@ void EndLEDSequence() {
         uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
         for (int ledPin = 0; ledPin < 16; ledPin++) {
             if (activeMask & (1 << ledPin)) {
-                LEDState state = (g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex] & (1 << ledPin)) ? LEDOn : LEDOff;
+                // Calculate which register this pin corresponds to
+                int regIndex = ledPin / 4;  // Each register controls 4 pins (2 bits per pin)
+                
+                // Get the saved register value and convert to LEDState using helper function
+                uint8_t savedRegValue = g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex][regIndex];
+                LEDState state = g_PBEngine.m_LEDChip[chipIndex].GetLEDStateFromVal(savedRegValue, ledPin);
                 g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, ledPin, state);
             }
         }
