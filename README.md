@@ -6,7 +6,6 @@ A half-scale pinball hobbyist project using Raspberry Pi hardware.  The goal is 
 <img width="400" alt="RasPinStart" src="https://github.com/user-attachments/assets/6ad23313-8f80-4c98-af07-982c786c6f57" />
 <img width="363" alt="RasPin" src="https://github.com/user-attachments/assets/a15879aa-0a3b-4ca7-8cfd-c8a9cbe4cf9a" />
 
-
 # Current Features - This is a work in progress and changing constantly
 - Intended to be a hobby level, low cost system for creating full feature, half scale pinball machines with Raspberry Pi hardware
 - Cross platform VS Code environment for Raspberry Pi (full HW) and Windows (simulation / fast development)
@@ -43,7 +42,7 @@ A half-scale pinball hobbyist project using Raspberry Pi hardware.  The goal is 
 -  I've been a computer engineer in the industry for 30+ years, working for major tech firms, primarily in HW/SW interfacing and testing for graphics and AI drivers.  Creating SW to talk to HW and graphics engines at that level has always been a hobby and pinball seems to be an excellent overall systems and architectural challenge to do all the things that are interesting.
 
 # License Guidelines
--  TL;DR: The SW and all files are open source unless otherwise noted, and available to users for personal but not commercial projects.  Any contributions to the repo become available for all to use.  The original repo owner reserves the rights to use the code and all contributions for commercial use.  Hey - I might want to build and sell a few machines at some point... ;)  If you want to use the code for commercial purposes, let's talk.
+-  TL;DR: The SW and all files are open source unless otherwise noted, and available to users for personal but not commercial projects.  Any contributions to the repo become available for all to use.  The original repo owner reserves the rights to use the code and all contributions for commercial use.  Hey - I might want to build and sell a few machines at some point... ;)  If you want to use the code for commercial purposes, then let's talk.
 
 - Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.  See more specific details and other license terms in the root of the project
 
