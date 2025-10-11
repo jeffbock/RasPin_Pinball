@@ -1,8 +1,7 @@
 This file tracks the various items to do in the pinball project in rough priority
 
 ** Raspberry Pi Specific Work
-Debug all output flows (pulse, sequences and standard - make sure polarities are right (some are backward)), fix I/O intialization
-Create a cmake to build the program in Pi, and put EXE in right place to make paths work vs VS Code builds
+Currently no planned work
 
 ** Generic arch improvements
 Add quick amplifier silencer startup program (maybe command line, address and value to send, w/ defaults just to off, standard address)
@@ -11,7 +10,7 @@ Add some more interesting animation options (Any movement that makes animations 
 ** Gameplay tasks
 Create simple score / gameplay screen
 Generate characters, dungeon screens
-Super complicated state machine for normal gameplay (eg: the game)
+Super complicated state machine for normal gameplay (eg: the game) - probably need a class to / sub classes to manage the various pinball items
 
 ** Hardware enabling
 Design prototype HW, use test mode to enable
@@ -25,15 +24,14 @@ Add fuses to protect HW / boards
 Add capapacitors to I/O boards for noise reduction
 
 ** Documentation
-Write up arch docs
-Write API / Programmers "How to Use" Docs for system
+Nothing plan for now, but user guide should be updated as needed.  It's AI managed so may not be quite right
 
 ** Lower Priority
 Add video playback capability
 Refactor redudant input messages (output messages now not type (eg: flipper) specific) - do same for inputs?
-Duplicate all the Windows simulation capability in PiOS
-Fix sprite animation acceleration parameter
-Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
+Bug: Fix sprite animation acceleration parameter
+Bug: Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
+Bug:  Sometimes the sequnce code missing restoring or starting properly... 
 Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
 Install git LFS as that large bitmaps, etc.. are expected at some point
 Align sounds to less popping - align sample modes, use WAV?
@@ -42,6 +40,8 @@ Add glscissor support to turn on / off rendering to the score screen, that way s
 Expand sprites to have animated sprites - eg: UV maps within a sprite with different images - base is there but need example to integrate.
     -  Is there some standard sprite format / program that can be used?
     -  Or add basic capability to animate more automatically between different sprites / loop / etc..
+Actually checkout the CMAKE flow - I don't use it a lot right now
+Duplicate all the Windows simulation capability in PiOS
 
 ** Maybe future stuff
 Look a neo-pixel support - can we have multi-color strips on individual addressed LEDs?
