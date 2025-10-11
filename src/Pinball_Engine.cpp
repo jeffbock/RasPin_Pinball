@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
+// The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
+// Additional details can also be found in the license file in the root of the project.
+
 #include "Pinball_Engine.h"
 #include "Pinball.h"
 #include "PBSequences.h"
@@ -500,7 +504,7 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
         
         // Render input name
         gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-        gfxRenderString(m_defaultFontSpriteId, temp, x, y, 0.4, GFX_TEXTLEFT);
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, x, y, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
         
         // Render state with appropriate color
         std::string stateText;
@@ -518,7 +522,7 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
                 gfxSetColor(m_defaultFontSpriteId, 255, 0, 255, 255);  // Magenta for unknown
                 break;
         }
-        gfxRenderString(m_defaultFontSpriteId, stateText, x + 180, y, 0.4, GFX_TEXTLEFT);
+        gfxRenderShadowString(m_defaultFontSpriteId, stateText, x + 180, y, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
     }
     
     // OUTPUTS Section - Position moved 225 pixels further right total
@@ -535,7 +539,7 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
         
         // Render output name
         gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-        gfxRenderString(m_defaultFontSpriteId, temp, x, y, 0.4, GFX_TEXTLEFT);
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, x, y, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
         
         // Render state with appropriate color
         std::string stateText;
@@ -561,7 +565,7 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
                 gfxSetColor(m_defaultFontSpriteId, 255, 0, 255, 255);  // Magenta for unknown
                 break;
         }
-        gfxRenderString(m_defaultFontSpriteId, stateText, x + 180, y, 0.4, GFX_TEXTLEFT);
+        gfxRenderShadowString(m_defaultFontSpriteId, stateText, x + 180, y, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
     }
     
     return (true);   

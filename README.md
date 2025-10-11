@@ -1,25 +1,46 @@
-# RasPin Engine
-Half-scale pinball project using Raspberry Pi.  The goal is to fully develop a system of SW and HW using Raspberry PI and various easy to source HW pieces to develop a half size machine with all the basic pinball requirements.  
+# RasPin Pinball Framework
+A half-scale pinball hobbyist project using Raspberry Pi hardware.  The goal is to fully develop a low cost system of SW and HW using Raspberry Pi and various easy to source HW pieces with typical modern pinball machnine capabilities.  Developed from scratch to learn and develop and entire architecture.  Compared to other pinball frameworks, RasPin is intended to be unique to Raspberry Pi, low cost, easy to implement, small and efficient and really intended for the hobbyist who wants a hand in every piece of the machine they want to build.
 
 <img src="https://github.com/user-attachments/assets/57f19724-b2ef-4bbc-9d49-0114196ab59f" alt="Screenshot 2025-05-13 224816" width="400">
 <img src="https://github.com/user-attachments/assets/b3703c41-70b1-40f0-bd77-2578b7076be8" alt="Screenshot 2025-05-13 224901" width="400">  
 
-# Feature Goals
-- Standard piball electro-magnetic devices:  Bumpers, Pop-Bumpers, Slingshots, Lane sensors, flippers
-- Full lighting and sound effects, including reasonably large display
-- Interactive mix between pinball and electronic screen for both physical and screen based experiences.
+# Current Features - This is a work in progress and changing constantly
+- Intended to be a hobby level, low cost system for creating full feature, half scale pinball machines with Raspberry Pi hardware
+- Cross platform VS Code environment for Raspberry Pi (full HW) and Windows (simulation / fast development)
+- Supports a primary Pinball HDMI screen, plus 2nd monitor support for ease of debug / development
+- Built on OpenGL ES for graphics rendering, with sprite, animation and text rendering support
+- Simplified HW architecture for easy debug, understanding and implemention
+- Message based input and output processing utilizing Raspberry Pi, and TI I2C IO and LED expanders optimized to decrease latency and minimize HW traffic
+- Automatic LED control and sequence animation for dynamic lighting effects
+- Easy to use music and sound effect system with multiple channels
+- Full setup / control and diagnostics menus and capability, along with straight-forward ability to add / expand for your own personalize machine.
+- TODO: Prototype HW (mechanics, flippers, slings, etc..), build a cabinet and implement a full game (currrently only game test screens).
+- TODO: Develop schematics for the custom expander boards based on TI 
 
 # Design and Development guidelines
--  Actual machine based on Raspberry Pi 5 and PiOS for ease of development and debug.
--  Cross platform support: Shared code between PiOS and Windows - Windows for high power development / simulation.
--  Utilize VS Code as standard cross-platform environment
--  Develop core code from scratch - for learning, and ultimate low level control of Pi Controller.
--  OpenGL ES backend sprite engine, built on PInball graphics HAL.  Allows for easy upgrade to different backend later (Vulkan?)
--  All sensor/button inputs, lighting and solenoid outputs routed through Pi controller.
-    - Allows for complete decoupling of inputs and outputs - maximum flexibility of how to respond to inputs.
-    - IO expanders / driver boards used in conjunction with Pi controller to greatly expand number of elements in the system.
--  Sound and display using standard HDMI and audio output jacks from the Pi controller.
+-  Actual machine based on Raspberry Pi 5 and PiOS for ease of development and debug.  Full power of Linux OS.  
+-  Cross platform support via VS Code: Shared code between PiOS and Windows - using Windows for high power development / simulation.
+-  Keep the structure and coding straightfoward so that intermediate level coders and utilize the system and build new tables.
+-  Modular / HAL based graphics engine - allow for easy upgrade to other APIs if desired (currently OGL 3.1, but maybe Vulkan later?)
+-  All IO (sensor/button inputs, lighting and solenoid outputs) routed through Pi controller.
+    - Allows for complete decoupling of inputs and outputs - maximum flexibility of how to respond to inputs but design to reduce latency
+    - IO expanders (based on TI TCA9555) / driver boards used in conjunction with Pi controller to greatly expand number of elements in the system.
+    - LED expander (based on TI TLC59116) with blinking, dimming and group control to offload LED management for core HW as much as possible
+    - Modular structure for I/O devices to allow ease of integration of any new controllers.
+-  Sound and display using standard HDMI and audio output jacks from the Pi controller.  Flexibily in primary screen selection for the table.
+    - Can use HDMI speaker sound or external amplifier based on readily avaialble MAX9744 breakout boards.
+-  Simple sound usage with WAV / MP3 files for easy to use music and sound effects.
 -  Allow for flexibility in configuration, eg: standard menus but SW should be architected to quickly change tables and layouts.
 -  Everything should be rougly half-scale compared to a normal pinball machine - which means ~14" W x 28"H play area with a 1/2" ball.
     -  All custom pinball mechanisms will be developed with 3D models for 3D printing, allowing others to easily duplicate the construction.
     -  Cabinet will be developed using bass wood plywood.
+-  Focus on architecture and design, utilize AI for speed of development but review all code closely to ensure desired behavior
+
+# About the lead developer
+-  I've been a computer engineer in the industry for 30+ years, working for major tech firms, primarily in HW/SW interfacing and testing for graphics and AI drivers.  Creating SW to talk to HW and graphics engines at that level has always been a hobby and pinball seems to be an excellent overall systems and architectural challenge to do all the things that are interesting.
+
+# License Guidelines
+-  TL;DR: The SW and all files are open source unless otherwise noted, and available to users for personal but not commercial projects.  Any contributions to the repo become available for all to use.  The original repo owner reserves the rights to use the code and all contributions for commercial use.  Hey - I might want to build and sell a few machines at some point... ;)  If you want to use the code for commercial purposes, let's talk.
+
+- Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.  See more specific details and other license terms in the root of the project
+

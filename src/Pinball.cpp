@@ -813,11 +813,11 @@ int main(int argc, char const *argv[])
             // Show the IO overlay if enabled
             if (g_PBEngine.m_EnableOverlay) g_PBEngine.pbeRenderOverlay(currentTick, lastTick);
 
-            // Render the current FPS if enabled, at the top center of the sreen
+            // Render the current FPS if enabled, at the bottom left corner
             if (g_PBEngine.m_ShowFPS) {
                 std::string temp = "FPS: " + std::to_string(g_PBEngine.m_RenderFPS);
                 g_PBEngine.gfxSetColor(g_PBEngine.m_defaultFontSpriteId, 255, 255, 255, 255);
-                g_PBEngine.gfxRenderShadowString(g_PBEngine.m_defaultFontSpriteId, temp, PB_SCREENWIDTH / 2, 10, 1, GFX_TEXTCENTER,0,0,0,0,1);
+                g_PBEngine.gfxRenderShadowString(g_PBEngine.m_defaultFontSpriteId, temp, 10, PB_SCREENHEIGHT - 30, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
             }
 
             // Flush the swap when running the benchmark

@@ -68,6 +68,8 @@ XRandR - Multi-monitor support:  `sudo apt-get install x11-xserver-utils`
 
 WiringPi - I/O and I2C: `sudo apt install ./wiringpi-3.0-1.deb`
 
+SDL_Mixer - Sound Library: `sudo apt install libsdl2-dev libsdl2-mixer-dev`
+
 PInball is currently designed to run along with X11 and XRandR, and assumes that it will find an 800x480 display to utilize as a full screen display.  The current tested configuration is a 800x480 display on the HDMI1 port, while a larger monitor is used on HDMI2 for running VS Code and full screen debugging.
 
 Of course, to control PInball on PiOS, it is assumed that you also have at least a basic breakout box containing left/right flipper, left/right activate and a start button wired up to the Raspberry Pi GPIOs per the design.  The PiOS code does not currently support the simple keyboard simulator used on Windows.
