@@ -1,6 +1,8 @@
 # CMake Build System for PInball (Raspberry Pi)
 
-This CMake configuration provides an alternative build system for the Raspberry Pi version of PInball, with the same optimization settings as the VS Code tasks.
+This CMake configuration provides an alternative build system for the Raspberry Pi version of PInball, with the same optimization settings as the VS Code tasks.  
+
+NOTE:  VS Code is the primary maintained build tool.  This has not been tested or updated extensively, and is probably got path problems since the last reorganization.  Use at your own risk.  Intention was to use this as a secondary build mechanism when the repo is cloned on a system without VS Code.
 
 ## Features
 
