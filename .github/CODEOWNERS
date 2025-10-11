@@ -1,0 +1,6 @@
+# CODEOWNERS file for PInball repository
+# This file defines who must review pull requests for different parts of the repository
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global rule: jeffbock must review all changes to the entire repository
+* @jeffbock
