@@ -912,12 +912,12 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDPURPLE, PB_ON, false);
                     }
                     else if (testCount % 3 == 1) {
-                        // Turn on sequence
-                        SendSeqMsg(&PBSeq_AllChipsTest, PBSeq_AllChipsTestMask, PB_LOOP, PB_ON);
+                        // Turn on RGB color cycle sequence
+                        SendSeqMsg(&PBSeq_RGBColorCycle, PBSeq_RGBColorCycleMask, PB_LOOP, PB_ON);
                     }
                     else {
-                        // Turn off sequence
-                        SendSeqMsg(&PBSeq_AllChipsTest, PBSeq_AllChipsTestMask, PB_LOOP, PB_OFF);
+                        // Turn off RGB color cycle sequence
+                        SendSeqMsg(&PBSeq_RGBColorCycle, PBSeq_RGBColorCycleMask, PB_LOOP, PB_OFF);
                     }       
                     
                     testCount++;

@@ -81,7 +81,7 @@ struct stLEDSequence;
 // LED Sequence data structure - compile-time friendly
 struct stLEDSequenceData {
     const stLEDSequence* steps;  // Pointer to static array of steps
-    size_t stepCount;            // Number of steps in the array
+    int stepCount;               // Number of steps in the array (changed to int for consistency)
 };
 
 typedef const stLEDSequenceData LEDSequence;
@@ -125,7 +125,9 @@ struct stLEDSequenceInfo {
     bool firstTime;
     PBSequenceLoopMode loopMode;              
     unsigned long sequenceStartTick;
-    unsigned int currentSeqIndex;
+    unsigned long stepStartTick;              // Track when current step started
+    int currentSeqIndex;                      // Changed to int to handle negative values
+    int previousSeqIndex;                     // Changed to int to handle negative values
     int indexStep;
     uint8_t previousLEDValues[NUM_LED_CHIPS][4];
     uint16_t activeLEDMask[NUM_LED_CHIPS];
