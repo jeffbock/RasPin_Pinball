@@ -14,4 +14,10 @@
 extern const LEDSequence PBSeq_AllChipsTest;
 extern const uint16_t PBSeq_AllChipsTestMask[NUM_LED_CHIPS];
 
+extern const LEDSequence PBSeq_LastThreeTest;
+extern const uint16_t PBSeq_LastThreeTestMask[NUM_LED_CHIPS];
+
+extern const LEDSequence PBSeq_RGBColorCycle;
+extern const uint16_t PBSeq_RGBColorCycleMask[NUM_LED_CHIPS];
+
 #endif // PBSequences_h

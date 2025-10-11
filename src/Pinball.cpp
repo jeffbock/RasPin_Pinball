@@ -350,7 +350,9 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
         g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = true;
         g_PBEngine.m_LEDSequenceInfo.firstTime = true;
         g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = message.sentTick;
+        g_PBEngine.m_LEDSequenceInfo.stepStartTick = message.sentTick;
         g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
+        g_PBEngine.m_LEDSequenceInfo.previousSeqIndex = -1; // Initialize to indicate never set
         g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
         
         g_PBEngine.m_LEDSequenceInfo.loopMode = message.options->loopMode;
@@ -383,6 +385,7 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
                             
                             // Stage LED to OFF
                             g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, pin, LEDOff);
+                            g_outputDef[i].lastState = PB_OFF;
                             break;
                         }
                     }
@@ -567,33 +570,80 @@ void ProcessActivePulseOutputs() {
 // Process active LED sequence progression and loop handling
 void ProcessActiveLEDSequence() {
     // Check if sequence time has completed (implement sequence timing logic)
-    // For now, implement basic sequence progression
     
     if (g_PBEngine.m_LEDSequenceInfo.pLEDSequence != nullptr && 
         g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount > 0) {
         
-        // Stage current sequence values to LED chips
-        if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount) {
+        unsigned long currentTick = g_PBEngine.GetTickCountGfx();
+        int nextSeqIndex = g_PBEngine.m_LEDSequenceInfo.currentSeqIndex;
+        bool shouldAdvanceSequence = false;
+        
+        // Initialize step timing on first run or when starting a new step
+        if (g_PBEngine.m_LEDSequenceInfo.firstTime || 
+            g_PBEngine.m_LEDSequenceInfo.previousSeqIndex != g_PBEngine.m_LEDSequenceInfo.currentSeqIndex) {
+            g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick;
+            g_PBEngine.m_LEDSequenceInfo.firstTime = false;
+        }
+        
+        // Calculate timing for current step
+        if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex >= 0 && 
+            g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount) {
+
             const auto& currentStep = g_PBEngine.m_LEDSequenceInfo.pLEDSequence->steps[g_PBEngine.m_LEDSequenceInfo.currentSeqIndex];
+            unsigned long elapsedStepTime = currentTick - g_PBEngine.m_LEDSequenceInfo.stepStartTick;
+            unsigned long totalStepDuration = currentStep.onDurationMS + currentStep.offDurationMS;
             
-            for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
-                // Get the active LED mask for this chip
-                uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
+            // Check if it's time to advance to the next step
+            if (elapsedStepTime >= totalStepDuration) {
+                shouldAdvanceSequence = true;
+                nextSeqIndex = g_PBEngine.m_LEDSequenceInfo.currentSeqIndex + g_PBEngine.m_LEDSequenceInfo.indexStep;
+            }
+        }
+        
+        // Only stage LED values if the sequence index has changed or this is the first time
+        if (g_PBEngine.m_LEDSequenceInfo.previousSeqIndex != g_PBEngine.m_LEDSequenceInfo.currentSeqIndex ||
+            g_PBEngine.m_LEDSequenceInfo.previousSeqIndex == -1) { // -1 indicates never set
+            
+            // Stage current sequence values to LED chips
+            if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex >= 0 && 
+                g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount) {
+                const auto& currentStep = g_PBEngine.m_LEDSequenceInfo.pLEDSequence->steps[g_PBEngine.m_LEDSequenceInfo.currentSeqIndex];
                 
-                // Get the LED bits from the sequence step for this chip
-                uint16_t ledBits = currentStep.LEDOnBits[chipIndex];
+                for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+                    // Get the active LED mask for this chip
+                    uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
                     
-                // Stage individual LEDs based on the sequence bits, but only for active pins
-                for (int ledPin = 0; ledPin < 16; ledPin++) {
-                    if (activeMask & (1 << ledPin)) {
-                        LEDState state = (ledBits & (1 << ledPin)) ? LEDOn : LEDOff;
-                        g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, ledPin, state);
+                    // Get the LED bits from the sequence step for this chip
+                    uint16_t ledBits = currentStep.LEDOnBits[chipIndex];
+                        
+                    // Stage individual LEDs based on the sequence bits, but only for active pins
+                    for (int ledPin = 0; ledPin < 16; ledPin++) {
+                        if (activeMask & (1 << ledPin)) {
+                            LEDState state = (ledBits & (1 << ledPin)) ? LEDOn : LEDOff;
+                            g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, ledPin, state);
+                            
+                            // Update lastState for this LED in the output definition
+                            for (size_t i = 0; i < NUM_OUTPUTS; i++) {
+                                if (g_outputDef[i].boardType == PB_LED && 
+                                    g_outputDef[i].boardIndex == chipIndex && 
+                                    g_outputDef[i].pin == ledPin) {
+                                    g_outputDef[i].lastState = (state == LEDOn) ? PB_ON : PB_OFF;
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
             }
             
-            // Advance sequence index (simplified - should include timing logic)
-            g_PBEngine.m_LEDSequenceInfo.currentSeqIndex += g_PBEngine.m_LEDSequenceInfo.indexStep;
+            // Update previous sequence index to avoid redundant programming
+            g_PBEngine.m_LEDSequenceInfo.previousSeqIndex = g_PBEngine.m_LEDSequenceInfo.currentSeqIndex;
+        }
+        
+        // Advance sequence index if timing indicates we should
+        if (shouldAdvanceSequence) {
+            g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = nextSeqIndex;
+            g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick; // Reset step timer
             
             // Handle sequence boundaries and loop modes
             HandleLEDSequenceBoundaries();
@@ -603,7 +653,9 @@ void ProcessActiveLEDSequence() {
 
 // Handle LED sequence boundary conditions and loop modes
 void HandleLEDSequenceBoundaries() {
-    if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex >= static_cast<int>(g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount)) {
+    unsigned long currentTick = g_PBEngine.GetTickCountGfx();
+    
+    if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex >= g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount) {
         switch (g_PBEngine.m_LEDSequenceInfo.loopMode) {
             case PB_NOLOOP:
                 // End sequence
@@ -611,29 +663,34 @@ void HandleLEDSequenceBoundaries() {
                 break;
             case PB_LOOP:
                 g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
-                g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = g_PBEngine.GetTickCountGfx();
+                g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = currentTick;
+                g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick; // Reset step timer
                 break;
             case PB_PINGPONG:
             case PB_PINGPONGLOOP:
                 g_PBEngine.m_LEDSequenceInfo.indexStep = -1;
-                g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = static_cast<int>(g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount) - 2;
+                g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount - 2;
+                g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick; // Reset step timer
                 break;
         }
     } else if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < 0) {
         switch (g_PBEngine.m_LEDSequenceInfo.loopMode) {
             case PB_NOLOOP:
+            case PB_PINGPONG:
                 // End sequence
                 EndLEDSequence();
                 break;
             case PB_LOOP:
                 g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
                 g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
-                g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = g_PBEngine.GetTickCountGfx();
+                g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = currentTick;
+                g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick; // Reset step timer
                 break;
-            case PB_PINGPONG:
             case PB_PINGPONGLOOP:
-                g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
                 g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 1;
+                g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
+                g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = currentTick;
+                g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick; // Reset step timer
                 break;
         }
     }
@@ -655,6 +712,16 @@ void EndLEDSequence() {
                 uint8_t savedRegValue = g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex][regIndex];
                 LEDState state = g_PBEngine.m_LEDChip[chipIndex].GetLEDStateFromVal(savedRegValue, ledPin);
                 g_PBEngine.m_LEDChip[chipIndex].StageLEDControl(false, ledPin, state);
+                
+                // Update lastState for this LED in the output definition
+                for (size_t i = 0; i < NUM_OUTPUTS; i++) {
+                    if (g_outputDef[i].boardType == PB_LED && 
+                        g_outputDef[i].boardIndex == chipIndex && 
+                        g_outputDef[i].pin == ledPin) {
+                        g_outputDef[i].lastState = (state == LEDOn) ? PB_ON : PB_OFF;
+                        break;
+                    }
+                }
             }
         }
     }
