@@ -30,7 +30,7 @@ A half-scale pinball hobbyist project using Raspberry Pi hardware.  The goal is 
     - IO expanders (based on TI TCA9555) / driver boards used in conjunction with Pi controller to greatly expand number of elements in the system.
     - LED expander (based on TI TLC59116) with blinking, dimming and group control to offload LED management for core HW as much as possible
     - Modular structure for I/O devices to allow ease of integration of any new controllers.
--  Sound and display using standard HDMI and audio output jacks from the Pi controller.  Flexibily in primary screen selection for the table.
+-  Sound and display using standard HDMI and audio output jacks from the Pi controller.  The code has flexibility in primary screen selection for the table.
     - Can use HDMI speaker sound or external amplifier based on readily avaialble MAX9744 breakout boards.
 -  Simple sound usage with WAV / MP3 files for easy to use music and sound effects.
 -  Allow for flexibility in configuration, eg: standard menus but SW should be architected to quickly change tables and layouts.
