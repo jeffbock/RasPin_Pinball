@@ -1,7 +1,7 @@
 This file tracks the various items to do in the pinball project in rough priority
 
 ** Raspberry Pi Specific Work
-Currently no planned work
+Currently no planned work - that's pretty cool.
 
 ** Generic arch improvements
 Add quick amplifier silencer startup program (maybe command line, address and value to send, w/ defaults just to off, standard address)
