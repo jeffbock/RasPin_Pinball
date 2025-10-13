@@ -4,6 +4,7 @@
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
 // Additional details can also be found in the license file in the root of the project.
 
+#include "PBBuildSwitch.h"
 #include "PinballMenus.h"
 
 // Global menu definitions
@@ -11,7 +12,10 @@ std::map<unsigned int, std::string> g_mainMenu = {
     {0, "Play Pinball"},
     {1, "Settings"},
     {2, "Diagnostics"},
-    {3, "Credits"}
+    {3, "Credits"},
+    #if ENABLE_TEST_SANDBOX
+    {4, "Test Sandbox"}
+    #endif
 };
 
 std::map<unsigned int, std::string> g_settingsMenu = {

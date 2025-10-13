@@ -52,6 +52,9 @@
     m_TicksPerScene = 10000; m_BenchmarkStartTick = 0;  m_CountDownTicks = 4000; m_BenchmarkDone = false;
     m_RestartBenchmark = true;
 
+    // Test Sandbox variables
+    m_RestartTestSandbox = true;
+
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
     m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false; 
@@ -166,6 +169,7 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
         case PB_CREDITS: return pbeRenderCredits(currentTick, lastTick); break;
         case PB_SETTINGS: return pbeRenderSettings(currentTick, lastTick); break;
         case PB_DIAGNOSTICS: return pbeRenderDiagnostics(currentTick, lastTick); break;
+        case PB_TESTSANDBOX: return pbeRenderTestSandbox(currentTick, lastTick); break;
         default: return (false); break;
     }
 
@@ -663,6 +667,78 @@ bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long las
      return (true);
 }
 
+// Test Sandbox Screen
+
+bool PBEngine::pbeLoadTestSandbox(bool forceReload){
+    if (!pbeLoadStartMenu(false)) return (false); 
+    return (true);
+}
+
+bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long lastTick){
+    
+    if (!pbeLoadTestSandbox(false)) return (false);
+    
+    if (m_RestartTestSandbox) {
+        m_RestartTestSandbox = false;
+    }
+
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    
+    // Render the default background
+    pbeRenderDefaultBackground(currentTick, lastTick);
+    
+    // Render title
+    gfxSetColor(m_StartMenuFontId, 255, 165, 0, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 2.0, false);
+    gfxRenderShadowString(m_StartMenuFontId, "Test Sandbox", (PB_SCREENWIDTH/2), 15, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 6);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    
+    // Render button descriptions in the middle of the screen
+    int centerX = PB_SCREENWIDTH / 2;
+    int startY = 200;
+    int lineSpacing = 50;
+    
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_defaultFontSpriteId, 1.2, false);
+    
+    // Left Flipper - Bright RED (lighter, more vibrant)
+    std::string lfState = m_LFON ? " (ON)" : " (OFF)";
+    gfxSetColor(m_defaultFontSpriteId, 255, 64, 64, 255);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Left Flipper" + lfState + ":", centerX - 200, startY, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    gfxRenderShadowString(m_defaultFontSpriteId, "LED Sequence Test", centerX + 50, startY, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    
+    // Right Flipper - Bright RED (lighter, more vibrant)
+    std::string rfState = m_RFON ? " (ON)" : " (OFF)";
+    gfxSetColor(m_defaultFontSpriteId, 255, 64, 64, 255);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Right Flipper" + rfState + ":", centerX - 200, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Test 2", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    
+    // Left Activate - Bright Cyan-Blue (like blue LED light)
+    std::string laState = m_LAON ? " (ON)" : " (OFF)";
+    gfxSetColor(m_defaultFontSpriteId, 64, 192, 255, 255);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Left Activate" + laState + ":", centerX - 200, startY + (2 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Test 3", centerX + 50, startY + (2 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    
+    // Right Activate - Bright Cyan-Blue (like blue LED light)
+    std::string raState = m_RAON ? " (ON)" : " (OFF)";
+    gfxSetColor(m_defaultFontSpriteId, 64, 192, 255, 255);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Right Activate" + raState + ":", centerX - 200, startY + (3 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Test 4", centerX + 50, startY + (3 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    
+    // Reset scale
+    gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
+    
+    // Add instructions to exit
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", PB_SCREENWIDTH - 130, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    
+    return (true);
+}
+
 // Credits Screen processing
 
 bool PBEngine::pbeLoadCredits(bool forceReload){
@@ -897,35 +973,12 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         case (1):  m_mainState = PB_SETTINGS; m_RestartSettings = true; break;
                         case (2):  m_mainState = PB_DIAGNOSTICS; m_RestartDiagnostics = true; break;
                         case (3):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
+                        #if ENABLE_TEST_SANDBOX
+                        case (4):  m_mainState = PB_TESTSANDBOX; m_RestartTestSandbox = true; break;
+                        #endif
                         default: break;
                     }
                 }
-
-                if (inputMessage.inputId == IDI_START) {
-
-                    static int testCount = 0;
-
-                    if (testCount % 3 == 0) {  
-                        // Sending Test Messages
-                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, PB_ON, true);
-                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_POPBUMPER, PB_ON, true);
-                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_BALLEJECT, PB_ON, true);
-
-                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDCYAN, PB_ON, false);
-                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDYELLOW, PB_ON, false);
-                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDPURPLE, PB_ON, false);
-                    }
-                    else if (testCount % 3 == 1) {
-                        // Turn on RGB color cycle sequence
-                        SendSeqMsg(&PBSeq_RGBColorCycle, PBSeq_RGBColorCycleMask, PB_LOOP, PB_ON);
-                    }
-                    else {
-                        // Turn off RGB color cycle sequence
-                        SendSeqMsg(&PBSeq_RGBColorCycle, PBSeq_RGBColorCycleMask, PB_LOOP, PB_OFF);
-                    }       
-                    
-                    testCount++;
-                }   
             }
             break;
         }
@@ -1168,6 +1221,76 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         break;
         }
 
+        case PB_TESTSANDBOX: {
+            // Track button states for display
+            if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputState == PB_ON) m_LFON = true;
+                else m_LFON = false;
+            }
+            if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputState == PB_ON) m_RFON = true;
+                else m_RFON = false;
+            }
+            if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                if (inputMessage.inputState == PB_ON) m_LAON = true;
+                else m_LAON = false;
+            }
+            if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                if (inputMessage.inputState == PB_ON) m_RAON = true;
+                else m_RAON = false;
+            }
+            
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+                
+                // Start button exits to Start Menu
+                if (inputMessage.inputId == IDI_START) {
+                    m_mainState = PB_STARTMENU;
+                    m_RestartMenu = true;
+                }
+                
+                // Left Flipper - Test 1
+                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                    static int testCount = 0;
+
+                    if (testCount % 3 == 0) {  
+                        // Sending Test Messages
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, PB_ON, true);
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_POPBUMPER, PB_ON, true);
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_BALLEJECT, PB_ON, true);
+
+                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDCYAN, PB_ON, false);
+                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDYELLOW, PB_ON, false);
+                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDPURPLE, PB_ON, false);
+                    }
+                    else if (testCount % 3 == 1) {
+                        // Turn on RGB color cycle sequence
+                        SendSeqMsg(&PBSeq_RGBColorCycle, PBSeq_RGBColorCycleMask, PB_LOOP, PB_ON);
+                    }
+                    else {
+                        // Turn off RGB color cycle sequence
+                        SendSeqMsg(&PBSeq_RGBColorCycle, PBSeq_RGBColorCycleMask, PB_LOOP, PB_OFF);
+                    }       
+                    
+                    testCount++;
+                }
+                
+                // Right Flipper - Test 2
+                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                    // To be defined
+                }
+                
+                // Left Activate - Test 3
+                if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                    // To be defined
+                }
+                
+                // Right Activate - Test 4
+                if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                    // To be defined
+                }
+            }
+        break;
+        }
         default: break;
     }
 }

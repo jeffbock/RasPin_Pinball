@@ -48,7 +48,8 @@ enum PBMainState {
     PB_BENCHMARK = 4,
     PB_CREDITS = 5,
     PB_SETTINGS = 6,
-    PB_DIAGNOSTICS = 7
+    PB_DIAGNOSTICS = 7,
+    PB_TESTSANDBOX = 8
 };
 
 enum PBTestModeState{ 
@@ -266,6 +267,9 @@ public:
     unsigned int m_TicksPerScene, m_BenchmarkStartTick, m_CountDownTicks, m_aniId;
     bool m_BenchmarkDone, m_RestartBenchmark;
 
+    // Test Sandbox screen variables
+    bool m_RestartTestSandbox;
+
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;
     std::mutex m_inputQMutex;
@@ -315,6 +319,7 @@ private:
     bool pbeRenderCredits(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderSettings(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderDiagnostics(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderTestSandbox(unsigned long currentTick, unsigned long lastTick);
 
     // Generic menu rendering function
     bool pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int fontSprite, unsigned int selectedItem, 
@@ -331,6 +336,7 @@ private:
     bool pbeLoadCredits(bool forceReload);
     bool pbeLoadSettings(bool forceReload);
     bool pbeLoadDiagnostics(bool forceReload);
+    bool pbeLoadTestSandbox(bool forceReload);
 
     ///////////////////////////////
     // Specfic Game Table Functions

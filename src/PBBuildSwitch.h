@@ -10,4 +10,7 @@
 #define EXE_MODE_WINDOWS
 // #define EXE_MODE_RASPI
 
+// Enable/Disable Test Sandbox menu item - set to 1 to enable, 0 to disable
+#define ENABLE_TEST_SANDBOX 1
+
 #endif
