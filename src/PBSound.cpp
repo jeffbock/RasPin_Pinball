@@ -12,6 +12,9 @@ PBSound::PBSound() : initialized(false), masterVolume(100), musicVolume(100) {
         effectChannels[i] = -1;
         effectActive[i] = false;
     }
+    videoAudioChunk = nullptr;
+    videoAudioChannel = -1;
+    videoAudioActive = false;
 #endif
 }
 
@@ -37,8 +40,8 @@ bool PBSound::pbsInitialize() {
         return false;
     }
     
-    // Allocate 4 mixing channels for effects
-    Mix_AllocateChannels(4);
+    // Allocate 5 mixing channels: 4 for effects, 1 reserved for video audio
+    Mix_AllocateChannels(5);
     
     // Set initial volumes
     Mix_VolumeMusic(convertVolumeToSDL(musicVolume));
@@ -67,6 +70,9 @@ void PBSound::pbsShutdown() {
     
     // Stop all effects and free chunks
     pbsStopAllEffects();
+    
+    // Stop video audio
+    pbsStopVideoAudio();
     
     // Free cached effects
     for (auto& pair : loadedEffects) {
@@ -287,4 +293,107 @@ int PBSound::convertVolumeToSDL(int percentage) {
     // Convert 0-100% to SDL's 0-128 range
     return (percentage * MIX_MAX_VOLUME) / 100;
 }
+
+Mix_Chunk* PBSound::createAudioChunkFromSamples(const float* audioSamples, int numSamples, int sampleRate) {
+    if (!audioSamples || numSamples <= 0) {
+        return nullptr;
+    }
+    
+    // Convert float samples to 16-bit signed integers
+    int bufferSize = numSamples * sizeof(Sint16);
+    Sint16* buffer = new Sint16[numSamples];
+    
+    for (int i = 0; i < numSamples; i++) {
+        // Clamp and convert float [-1.0, 1.0] to Sint16 [-32768, 32767]
+        float sample = audioSamples[i];
+        if (sample > 1.0f) sample = 1.0f;
+        if (sample < -1.0f) sample = -1.0f;
+        buffer[i] = (Sint16)(sample * 32767.0f);
+    }
+    
+    // Create Mix_Chunk from buffer
+    Mix_Chunk* chunk = new Mix_Chunk;
+    chunk->allocated = 1;
+    chunk->abuf = (Uint8*)buffer;
+    chunk->alen = bufferSize;
+    chunk->volume = MIX_MAX_VOLUME;
+    
+    return chunk;
+}
 #endif
+
+// Video audio functions (stubs for Windows, implementation for Raspberry Pi)
+
+bool PBSound::pbsPlayVideoAudio(const float* audioSamples, int numSamples, int sampleRate) {
+#ifdef EXE_MODE_RASPI
+    if (!initialized || !audioSamples || numSamples <= 0) {
+        return false;
+    }
+    
+    // Stop any existing video audio
+    pbsStopVideoAudio();
+    
+    // Create audio chunk from samples
+    videoAudioChunk = createAudioChunkFromSamples(audioSamples, numSamples, sampleRate);
+    if (!videoAudioChunk) {
+        return false;
+    }
+    
+    // Play on channel 4 (reserved for video - channels 0-3 are for effects)
+    videoAudioChannel = Mix_PlayChannel(4, videoAudioChunk, 0);
+    if (videoAudioChannel == -1) {
+        Mix_FreeChunk(videoAudioChunk);
+        videoAudioChunk = nullptr;
+        return false;
+    }
+    
+    videoAudioActive = true;
+    return true;
+#else
+    // Windows stub
+    return false;
+#endif
+}
+
+void PBSound::pbsStopVideoAudio() {
+#ifdef EXE_MODE_RASPI
+    if (!initialized) {
+        return;
+    }
+    
+    if (videoAudioActive && videoAudioChannel != -1) {
+        Mix_HaltChannel(videoAudioChannel);
+    }
+    
+    if (videoAudioChunk) {
+        // Free the buffer we allocated
+        if (videoAudioChunk->abuf) {
+            delete[] (Sint16*)videoAudioChunk->abuf;
+        }
+        delete videoAudioChunk;
+        videoAudioChunk = nullptr;
+    }
+    
+    videoAudioChannel = -1;
+    videoAudioActive = false;
+#endif
+}
+
+bool PBSound::pbsIsVideoAudioPlaying() {
+#ifdef EXE_MODE_RASPI
+    if (!initialized || !videoAudioActive || videoAudioChannel == -1) {
+        return false;
+    }
+    
+    // Check if channel is still playing
+    if (!Mix_Playing(videoAudioChannel)) {
+        videoAudioActive = false;
+        return false;
+    }
+    
+    return true;
+#else
+    // Windows stub
+    return false;
+#endif
+}

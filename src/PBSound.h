@@ -53,6 +53,11 @@ public:
     // Stop all effects
     void pbsStopAllEffects();
     
+    // Video audio functions (Raspberry Pi only, channel 5 reserved for video)
+    bool pbsPlayVideoAudio(const float* audioSamples, int numSamples, int sampleRate);
+    void pbsStopVideoAudio();
+    bool pbsIsVideoAudioPlaying();
+    
     // Set overall volume (0-100%)
     void pbsSetMasterVolume(int volume);
     
@@ -75,11 +80,17 @@ private:
     bool effectActive[4];       // Track which effects are active
     std::map<std::string, Mix_Chunk*> loadedEffects;  // Cache for loaded effects
     
+    // Video audio channel (channel 5 dedicated to video)
+    Mix_Chunk* videoAudioChunk;
+    int videoAudioChannel;
+    bool videoAudioActive;
+    
     // Internal helper methods
     int findFreeEffectSlot();
     void updateEffectStatus();
     Mix_Chunk* loadEffect(const std::string& filePath);
     int convertVolumeToSDL(int percentage);
+    Mix_Chunk* createAudioChunkFromSamples(const float* audioSamples, int numSamples, int sampleRate);
 #endif
 };
 

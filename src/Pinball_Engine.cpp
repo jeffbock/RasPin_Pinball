@@ -54,6 +54,13 @@
 
     // Test Sandbox variables
     m_RestartTestSandbox = true;
+    m_sandboxVideoPlayer = nullptr;
+    m_sandboxVideoSpriteId = NOSPRITE;
+    m_sandboxVideoLoaded = false;
+    m_videoFadeStartTick = 0;
+    m_videoFadingIn = false;
+    m_videoFadingOut = false;
+    m_videoFadeDurationSec = 2.0f;  // 2 second fade in/out
 
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
@@ -79,7 +86,11 @@
 
  PBEngine::~PBEngine(){
 
-    // Code later...
+    // Clean up video player
+    if (m_sandboxVideoPlayer) {
+        delete m_sandboxVideoPlayer;
+        m_sandboxVideoPlayer = nullptr;
+    }
 
 }
 
@@ -670,7 +681,42 @@ bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long las
 // Test Sandbox Screen
 
 bool PBEngine::pbeLoadTestSandbox(bool forceReload){
-    if (!pbeLoadStartMenu(false)) return (false); 
+    if (!pbeLoadStartMenu(false)) return (false);
+    
+    // Initialize video player if not already created
+    if (!m_sandboxVideoPlayer && !forceReload) {
+        m_sandboxVideoPlayer = new PBVideoPlayer(this, &m_soundSystem);
+        
+        // Load the video with 720p dimensions (1280x720)
+        // Center it horizontally and position below the text
+        // With 75% scale: 1280 * 0.75 = 960 width, 720 * 0.75 = 540 height
+        int scaledWidth = (int)(1280 * 0.75f);
+        int scaledHeight = (int)(720 * 0.75f);
+        
+        // Center horizontally and position below text (text ends around y=250)
+        int videoX = (PB_SCREENWIDTH - scaledWidth) / 2;
+        int videoY = 480;  // Below the button descriptions (pushed down 200px)
+        
+        m_sandboxVideoSpriteId = m_sandboxVideoPlayer->pbvpLoadVideo(
+            "src/resources/videos/darktown.mp4",
+            videoX,
+            videoY,
+            false  // Don't keep resident
+        );
+        
+        if (m_sandboxVideoSpriteId != NOSPRITE) {
+            // Scale the video sprite to 75%
+            m_sandboxVideoPlayer->pbvpSetScaleFactor(0.75f);
+            
+            // Start with alpha at 0 for fade in
+            gfxSetTextureAlpha(m_sandboxVideoSpriteId, 0.0f);
+            
+            m_sandboxVideoLoaded = true;
+        } else {
+            m_sandboxVideoLoaded = false;
+        }
+    }
+    
     return (true);
 }
 
@@ -680,6 +726,16 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     
     if (m_RestartTestSandbox) {
         m_RestartTestSandbox = false;
+        
+        // Clean up any existing video player when restarting sandbox
+        if (m_sandboxVideoPlayer) {
+            m_sandboxVideoPlayer->pbvpStop();
+            m_sandboxVideoPlayer->pbvpUnloadVideo();
+            delete m_sandboxVideoPlayer;
+            m_sandboxVideoPlayer = nullptr;
+            m_sandboxVideoSpriteId = NOSPRITE;
+            m_sandboxVideoLoaded = false;
+        }
     }
 
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
@@ -720,7 +776,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 64, 192, 255, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Left Activate" + laState + ":", centerX - 200, startY + (2 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Test 3", centerX + 50, startY + (2 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Video Playback Test", centerX + 50, startY + (2 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Right Activate - Bright Cyan-Blue (like blue LED light)
     std::string raState = m_RAON ? " (ON)" : " (OFF)";
@@ -731,6 +787,65 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     
     // Reset scale
     gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
+    
+    // Update and render video if loaded and playing
+    if (m_sandboxVideoLoaded && m_sandboxVideoPlayer) {
+        pbvPlaybackState videoState = m_sandboxVideoPlayer->pbvpGetPlaybackState();
+        
+        if (videoState == PBV_PLAYING) {
+            // Update video frame (this decodes next frame, updates texture, and plays audio)
+            m_sandboxVideoPlayer->pbvpUpdate(currentTick);
+            
+            // Track current video alpha for text rendering
+            float currentVideoAlpha = 1.0f;
+            
+            // Handle fade in
+            if (m_videoFadingIn) {
+                float fadeElapsed = (currentTick - m_videoFadeStartTick) / 1000.0f;
+                float fadeProgress = fadeElapsed / m_videoFadeDurationSec;
+                
+                if (fadeProgress >= 1.0f) {
+                    // Fade in complete
+                    currentVideoAlpha = 1.0f;
+                    gfxSetTextureAlpha(m_sandboxVideoSpriteId, currentVideoAlpha);
+                    m_videoFadingIn = false;
+                } else {
+                    // Fade in progress
+                    currentVideoAlpha = fadeProgress;
+                    gfxSetTextureAlpha(m_sandboxVideoSpriteId, currentVideoAlpha);
+                }
+            }
+            
+            // Handle fade out
+            if (m_videoFadingOut) {
+                float fadeElapsed = (currentTick - m_videoFadeStartTick) / 1000.0f;
+                float fadeProgress = fadeElapsed / m_videoFadeDurationSec;
+                
+                if (fadeProgress >= 1.0f) {
+                    // Fade out complete - stop the video
+                    currentVideoAlpha = 0.0f;
+                    gfxSetTextureAlpha(m_sandboxVideoSpriteId, currentVideoAlpha);
+                    m_videoFadingOut = false;
+                    m_sandboxVideoPlayer->pbvpStop();
+                } else {
+                    // Fade out progress (1.0 to 0.0)
+                    currentVideoAlpha = 1.0f - fadeProgress;
+                    gfxSetTextureAlpha(m_sandboxVideoSpriteId, currentVideoAlpha);
+                }
+            }
+            
+            // Render the video sprite
+            m_sandboxVideoPlayer->pbvpRender();
+            
+            // Render video title over the video at the top, matching video alpha
+            // Video is at Y=480, so position title just below that
+            unsigned int textAlpha = (unsigned int)(currentVideoAlpha * 255.0f);
+            gfxSetColor(m_StartMenuFontId, 139, 0, 0, textAlpha);  // Blood red with matching alpha
+            gfxSetScaleFactor(m_StartMenuFontId, 0.75, false);
+            gfxRenderShadowString(m_StartMenuFontId, "Town of Darkside", (PB_SCREENWIDTH/2), 495, 2, GFX_TEXTCENTER, 0, 0, 0, textAlpha, 2);
+            gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+        }
+    }
     
     // Add instructions to exit
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
@@ -1244,6 +1359,16 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 
                 // Start button exits to Start Menu
                 if (inputMessage.inputId == IDI_START) {
+                    // Clean up video player before exiting
+                    if (m_sandboxVideoPlayer) {
+                        m_sandboxVideoPlayer->pbvpStop();
+                        m_sandboxVideoPlayer->pbvpUnloadVideo();
+                        delete m_sandboxVideoPlayer;
+                        m_sandboxVideoPlayer = nullptr;
+                        m_sandboxVideoSpriteId = NOSPRITE;
+                        m_sandboxVideoLoaded = false;
+                    }
+                    
                     m_mainState = PB_STARTMENU;
                     m_RestartMenu = true;
                 }
@@ -1279,9 +1404,41 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     // To be defined
                 }
                 
-                // Left Activate - Test 3
+                // Left Activate - Test 3 - Video Playback Test (Toggle fade in/out)
                 if (inputMessage.inputId == IDI_LEFTACTIVATE) {
-                    // To be defined
+                    if (m_sandboxVideoLoaded && m_sandboxVideoPlayer) {
+                        pbvPlaybackState videoState = m_sandboxVideoPlayer->pbvpGetPlaybackState();
+                        
+                        if (videoState == PBV_STOPPED || videoState == PBV_FINISHED) {
+                            // Start video playback with fade in
+                            m_sandboxVideoPlayer->pbvpSetLooping(true);  // Enable looping
+                            gfxSetTextureAlpha(m_sandboxVideoSpriteId, 0.0f);    // Start fully transparent
+                            m_sandboxVideoPlayer->pbvpPlay();
+                            
+                            // Initialize fade in
+                            m_videoFadingIn = true;
+                            m_videoFadingOut = false;
+                            m_videoFadeStartTick = GetTickCountGfx();
+                        } else if (videoState == PBV_PLAYING) {
+                            // Toggle between fade in and fade out
+                            if (!m_videoFadingIn && !m_videoFadingOut) {
+                                // Currently fully visible, start fade out
+                                m_videoFadingOut = true;
+                                m_videoFadingIn = false;
+                                m_videoFadeStartTick = GetTickCountGfx();
+                            } else if (m_videoFadingOut) {
+                                // Currently fading out, reverse to fade in
+                                m_videoFadingIn = true;
+                                m_videoFadingOut = false;
+                                m_videoFadeStartTick = GetTickCountGfx();
+                            } else if (m_videoFadingIn) {
+                                // Currently fading in, reverse to fade out
+                                m_videoFadingOut = true;
+                                m_videoFadingIn = false;
+                                m_videoFadeStartTick = GetTickCountGfx();
+                            }
+                        }
+                    }
                 }
                 
                 // Right Activate - Test 4

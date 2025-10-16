@@ -35,7 +35,8 @@ public:
     enum oglTexType {
         OGL_BMP = 0,
         OGL_PNG = 1, 
-        OGL_NONE = 2, 
+        OGL_NONE = 2,
+        OGL_VIDEO = 3,      // Video texture (dynamically updated)
         OGL_TTEND
     };
 
@@ -53,6 +54,8 @@ protected:
     GLuint oglLoadTexture(const char* filename, oglTexType type, unsigned int* width, unsigned int* height);
     GLuint oglLoadBMPTexture (const char* filename, unsigned int* width, unsigned int* height);
     GLuint oglLoadPNGTexture (const char* filename, unsigned int* width, unsigned int* height);
+    GLuint oglCreateVideoTexture(unsigned int width, unsigned int height);
+    bool   oglUpdateTexture(GLuint textureId, const uint8_t* data, unsigned int width, unsigned int height);
     void   oglRenderQuad (float* X1, float* Y1, float* X2, float* Y2, float U1, float V1, float U2, float V2, 
                           bool useCenter, bool useTexAlpha, float texAlpha, unsigned int textureId, 
                           float vertRed, float vertGreen, float vertBlue, float vertAlpha, 
