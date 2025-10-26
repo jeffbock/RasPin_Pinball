@@ -698,7 +698,7 @@ bool PBEngine::pbeLoadTestSandbox(bool forceReload){
         int videoY = 480;  // Below the button descriptions (pushed down 200px)
         
         m_sandboxVideoSpriteId = m_sandboxVideoPlayer->pbvpLoadVideo(
-            "src/resources/videos/darktown_h264.mp4",
+            "src/resources/videos/darktown_sound_h264.mp4",
             videoX,
             videoY,
             false  // Don't keep resident
@@ -762,14 +762,14 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 255, 64, 64, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Left Flipper" + lfState + ":", centerX - 200, startY, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "LED Sequence Test", centerX + 50, startY, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Sequence Test", centerX + 50, startY, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Right Flipper - Bright RED (lighter, more vibrant)
     std::string rfState = m_RFON ? " (ON)" : " (OFF)";
     gfxSetColor(m_defaultFontSpriteId, 255, 64, 64, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Right Flipper" + rfState + ":", centerX - 200, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Test 2", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Force LED Send (R-G-B) Test", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Left Activate - Bright Cyan-Blue (like blue LED light)
     std::string laState = m_LAON ? " (ON)" : " (OFF)";
@@ -1090,7 +1090,12 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         case (2):  m_mainState = PB_DIAGNOSTICS; m_RestartDiagnostics = true; break;
                         case (3):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
                         #if ENABLE_TEST_SANDBOX
-                        case (4):  m_mainState = PB_TESTSANDBOX; m_RestartTestSandbox = true; break;
+                        case (4):  
+                            m_mainState = PB_TESTSANDBOX; 
+                            m_RestartTestSandbox = true; 
+                            // Pause background music when entering sandbox
+                            m_soundSystem.pbsPauseMusic();
+                            break;
                         #endif
                         default: break;
                     }
@@ -1370,6 +1375,9 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         m_sandboxVideoLoaded = false;
                     }
                     
+                    // Resume background music when exiting sandbox
+                    m_soundSystem.pbsResumeMusic();
+                    
                     m_mainState = PB_STARTMENU;
                     m_RestartMenu = true;
                 }
@@ -1402,7 +1410,26 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 
                 // Right Flipper - Test 2
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                    // To be defined
+                    static int testQCount = 0;
+
+                    if (testQCount % 3 == 0) {  
+                        // Sending Test Messages - these can be used to test out the pending message queue while sequences are running
+                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDRED, PB_ON, false);
+                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDRED, PB_ON, false);
+                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDRED, PB_ON, false);
+                    }
+                    else if (testQCount % 3 == 1) {
+                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDGREEN, PB_ON, false);
+                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDGREEN, PB_ON, false);
+                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDGREEN, PB_ON, false);
+                    }
+                    else {
+                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDBLUE, PB_ON, false);
+                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDBLUE, PB_ON, false);
+                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDBLUE, PB_ON, false);
+                    }       
+                    
+                    testQCount++;
                 }
                 
                 // Left Activate - Test 3 - Video Playback Test (Toggle fade in/out)

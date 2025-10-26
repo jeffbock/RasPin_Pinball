@@ -41,6 +41,12 @@ public:
     // Stop current music
     void pbsStopMusic();
     
+    // Pause current music
+    void pbsPauseMusic();
+    
+    // Resume paused music
+    void pbsResumeMusic();
+    
     // Play sound effect (returns effect ID 1-4, or 0 on failure)
     int pbsPlayEffect(const std::string& mp3FilePath);
     

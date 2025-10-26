@@ -129,6 +129,22 @@ void PBSound::pbsStopMusic() {
 #endif
 }
 
+void PBSound::pbsPauseMusic() {
+#ifdef EXE_MODE_RASPI
+    if (initialized && currentMusic && Mix_PlayingMusic()) {
+        Mix_PauseMusic();
+    }
+#endif
+}
+
+void PBSound::pbsResumeMusic() {
+#ifdef EXE_MODE_RASPI
+    if (initialized && currentMusic && Mix_PausedMusic()) {
+        Mix_ResumeMusic();
+    }
+#endif
+}
+
 int PBSound::pbsPlayEffect(const std::string& mp3FilePath) {
 #ifdef EXE_MODE_RASPI
     if (!initialized) {
