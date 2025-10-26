@@ -398,3 +398,23 @@ See LICENSE file for details.
 - FFmpeg library: https://ffmpeg.org/
 - SDL2 and SDL2_mixer: https://www.libsdl.org/
 - Built for the Pinball project
+
+## Decoders found during LS
+
+crw-rw----+ 1 root video 81, 16 Oct 11 14:17 /dev/video19
+crw-rw----+ 1 root video 81,  0 Oct 11 14:17 /dev/video20
+crw-rw----+ 1 root video 81,  1 Oct 11 14:17 /dev/video21
+crw-rw----+ 1 root video 81,  2 Oct 11 14:17 /dev/video22
+crw-rw----+ 1 root video 81,  3 Oct 11 14:17 /dev/video23
+crw-rw----+ 1 root video 81,  4 Oct 11 14:17 /dev/video24
+crw-rw----+ 1 root video 81,  5 Oct 11 14:17 /dev/video25
+crw-rw----+ 1 root video 81,  6 Oct 11 14:17 /dev/video26
+crw-rw----+ 1 root video 81,  7 Oct 11 14:17 /dev/video27
+crw-rw----+ 1 root video 81,  8 Oct 11 14:17 /dev/video28
+crw-rw----+ 1 root video 81,  9 Oct 11 14:17 /dev/video29
+crw-rw----+ 1 root video 81, 10 Oct 11 14:17 /dev/video30
+crw-rw----+ 1 root video 81, 11 Oct 11 14:17 /dev/video31
+crw-rw----+ 1 root video 81, 12 Oct 11 14:17 /dev/video32
+crw-rw----+ 1 root video 81, 13 Oct 11 14:17 /dev/video33
+crw-rw----+ 1 root video 81, 14 Oct 11 14:17 /dev/video34
+crw-rw----+ 1 root video 81, 15 Oct 11 14:17 /dev/video35
