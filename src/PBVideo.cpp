@@ -379,25 +379,111 @@ bool PBVideo::openCodecs() {
         AVCodecParameters* codecParams = formatContext->streams[videoStreamIndex]->codecpar;
         const AVCodec* codec = nullptr;
         
-        // Use software decoder for better compatibility
-        // Hardware decoders (V4L2 M2M) can be problematic on some Raspberry Pi configurations
+#if defined(EXE_MODE_RASPI) && ENABLE_HW_VIDEO_DECODE
+        // Try hardware decoder first on Raspberry Pi
+        if (codecParams->codec_id == AV_CODEC_ID_H264) {
+            codec = avcodec_find_decoder_by_name("h264_v4l2m2m");
+            if (codec) {
+                printf("PBVideo: Using H.264 hardware decoder (V4L2 M2M)\n");
+            } else {
+                printf("PBVideo: H.264 hardware decoder not found, falling back to software\n");
+                codec = avcodec_find_decoder(codecParams->codec_id);
+            }
+        } else if (codecParams->codec_id == AV_CODEC_ID_HEVC) {
+            codec = avcodec_find_decoder_by_name("hevc_v4l2m2m");
+            if (codec) {
+                printf("PBVideo: Using HEVC hardware decoder (V4L2 M2M)\n");
+            } else {
+                printf("PBVideo: HEVC hardware decoder not found, falling back to software\n");
+                codec = avcodec_find_decoder(codecParams->codec_id);
+            }
+        } else {
+            // Use software decoder for other codecs
+            codec = avcodec_find_decoder(codecParams->codec_id);
+            if (codec) {
+                printf("PBVideo: Using software decoder for codec: %s\n", codec->name);
+            }
+        }
+#else
+        // Use software decoder for better compatibility on Windows
+        // or when hardware decode is disabled
         codec = avcodec_find_decoder(codecParams->codec_id);
+        if (codec) {
+            printf("PBVideo: Using software decoder: %s\n", codec->name);
+        }
+#endif
         
         if (!codec) {
+            printf("PBVideo: No decoder found for codec ID: %d\n", codecParams->codec_id);
             return false;
         }
         
         videoCodecContext = avcodec_alloc_context3(codec);
         if (!videoCodecContext) {
+            printf("PBVideo: Failed to allocate codec context\n");
             return false;
         }
         
         if (avcodec_parameters_to_context(videoCodecContext, codecParams) < 0) {
+            printf("PBVideo: Failed to copy codec parameters to context\n");
             return false;
         }
         
+#if defined(EXE_MODE_RASPI) && ENABLE_HW_VIDEO_DECODE
+        // Configure hardware decoder specific options
+        if (strstr(codec->name, "v4l2m2m") != nullptr) {
+            // Set device path for V4L2 M2M decoder
+            av_opt_set(videoCodecContext->priv_data, "device", "/dev/video10", 0);
+            
+            // Enable extra output buffers for better performance
+            av_opt_set_int(videoCodecContext->priv_data, "num_output_buffers", 16, 0);
+            av_opt_set_int(videoCodecContext->priv_data, "num_capture_buffers", 16, 0);
+            
+            printf("PBVideo: Configured V4L2 M2M decoder with /dev/video10\n");
+        }
+#endif
+        
         if (avcodec_open2(videoCodecContext, codec, nullptr) < 0) {
+#if defined(EXE_MODE_RASPI) && ENABLE_HW_VIDEO_DECODE
+            // If hardware decoder fails, try software decoder as fallback
+            if (strstr(codec->name, "v4l2m2m") != nullptr) {
+                printf("PBVideo: Hardware decoder failed, falling back to software\n");
+                
+                // Clean up failed hardware context
+                avcodec_free_context(&videoCodecContext);
+                
+                // Try software decoder
+                codec = avcodec_find_decoder(codecParams->codec_id);
+                if (codec) {
+                    videoCodecContext = avcodec_alloc_context3(codec);
+                    if (videoCodecContext) {
+                        if (avcodec_parameters_to_context(videoCodecContext, codecParams) >= 0) {
+                            if (avcodec_open2(videoCodecContext, codec, nullptr) >= 0) {
+                                printf("PBVideo: Software decoder fallback successful\n");
+                            } else {
+                                printf("PBVideo: Software decoder fallback failed\n");
+                                return false;
+                            }
+                        } else {
+                            printf("PBVideo: Failed to copy parameters for software fallback\n");
+                            return false;
+                        }
+                    } else {
+                        printf("PBVideo: Failed to allocate context for software fallback\n");
+                        return false;
+                    }
+                } else {
+                    printf("PBVideo: No software decoder available for fallback\n");
+                    return false;
+                }
+            } else {
+                printf("PBVideo: Software decoder failed to open\n");
+                return false;
+            }
+#else
+            printf("PBVideo: Failed to open codec\n");
             return false;
+#endif
         }
         
         // Allocate video frames
