@@ -4,6 +4,7 @@
 // Additional details can also be found in the license file in the root of the project.
 
 #include "PBVideo.h"
+#include "PBBuildSwitch.h"
 #include <cstring>
 #include <cmath>
 
@@ -376,7 +377,29 @@ bool PBVideo::openCodecs() {
     // Open video codec
     if (videoStreamIndex >= 0) {
         AVCodecParameters* codecParams = formatContext->streams[videoStreamIndex]->codecpar;
-        const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
+        const AVCodec* codec = nullptr;
+        
+#ifdef EXE_MODE_RASPI
+        // On Raspberry Pi 5, try to use hardware decoder for H.264 and H.265
+        if (codecParams->codec_id == AV_CODEC_ID_H264) {
+            // Try V4L2 M2M hardware decoder for H.264
+            codec = avcodec_find_decoder_by_name("h264_v4l2m2m");
+            if (codec) {
+                // Successfully found hardware decoder
+            }
+        } else if (codecParams->codec_id == AV_CODEC_ID_HEVC) {
+            // Try V4L2 M2M hardware decoder for H.265/HEVC
+            codec = avcodec_find_decoder_by_name("hevc_v4l2m2m");
+            if (codec) {
+                // Successfully found hardware decoder
+            }
+        }
+#endif
+        
+        // If hardware decoder not found or not on Raspberry Pi, use software decoder
+        if (!codec) {
+            codec = avcodec_find_decoder(codecParams->codec_id);
+        }
         
         if (!codec) {
             return false;
