@@ -175,6 +175,8 @@
                 "${workspaceFolder}/src/Pinball_IO.cpp",
                 "${workspaceFolder}/src/Pinball_Table.cpp",
                 "${workspaceFolder}/src/PBSound.cpp",
+                "${workspaceFolder}/src/PBVideo.cpp",
+                "${workspaceFolder}/src/PBVideoPlayer.cpp",
                 "${workspaceFolder}/src/PinballMenus.cpp",
                 "${workspaceFolder}/src/PBSequences.cpp",
                 "${workspaceFolder}/src/Pinball_Engine.cpp",
@@ -193,7 +195,12 @@
                 "-lXrandr",
                 "-lwiringPi",
                 "-lSDL2",
-                "-lSDL2_mixer"
+                "-lSDL2_mixer",
+                "-lavcodec",
+                "-lavformat",
+                "-lavutil",
+                "-lswscale",
+                "-lswresample"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -380,6 +387,8 @@
                 "${workspaceFolder}/src/Pinball_IO.cpp",
                 "${workspaceFolder}/src/Pinball_Table.cpp",
                 "${workspaceFolder}/src/PBSound.cpp",
+                "${workspaceFolder}/src/PBVideo.cpp",
+                "${workspaceFolder}/src/PBVideoPlayer.cpp",
                 "${workspaceFolder}/src/PinballMenus.cpp",
                 "${workspaceFolder}/src/PBSequences.cpp",
                 "${workspaceFolder}/src/Pinball_Engine.cpp",
@@ -399,6 +408,11 @@
                 "-lwiringPi",
                 "-lSDL2",
                 "-lSDL2_mixer",
+                "-lavcodec",
+                "-lavformat",
+                "-lavutil",
+                "-lswscale",
+                "-lswresample",
                 "-s"                      // Strip symbols for smaller binary
             ],
             "options": {

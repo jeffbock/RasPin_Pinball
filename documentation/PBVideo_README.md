@@ -57,8 +57,7 @@ PBVideo is a cross-platform video playback system for the Pinball project that i
 
 ```bash
 sudo apt update
-sudo apt install libavcodec-dev libavformat-dev libavutil-dev \
-                 libswscale-dev libswresample-dev
+sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev
 ```
 
 ## Build Configuration
