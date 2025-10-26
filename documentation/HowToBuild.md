@@ -13,6 +13,8 @@ PiOS uses OGL ES 3.1, so this will be the target for the builds and the main dis
 
 The VS code configuration files (eg: tasks.json, launch.json, settings.json, c_cpp_properties.json) are automatically set up correctly depending on your current OS, and per instructions below.
 
+The GIT repo uses LFS, make sure to install: Windows: winget install -e --id GitHub.GitLFS, RaspPi: sudo apt install git-lfs
+
 **Important Note**:  You must change the #define in PBBuildSwitch.h depending on which build you want. For example,
 
 ```

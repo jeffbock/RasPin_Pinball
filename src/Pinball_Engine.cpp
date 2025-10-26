@@ -698,7 +698,7 @@ bool PBEngine::pbeLoadTestSandbox(bool forceReload){
         int videoY = 480;  // Below the button descriptions (pushed down 200px)
         
         m_sandboxVideoSpriteId = m_sandboxVideoPlayer->pbvpLoadVideo(
-            "src/resources/videos/darktown.mp4",
+            "src/resources/videos/darktown_h264.mp4",
             videoX,
             videoY,
             false  // Don't keep resident
