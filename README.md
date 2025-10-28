@@ -16,7 +16,7 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
 - Automatic LED control and sequence animation for dynamic lighting effects
 - Easy to use music and sound effect system with multiple channels
 - Full setup / control and diagnostics menus and capability, along with straight-forward ability to add / expand for your own personalize machine.
-- TODO: Prototype HW (mechanics, flippers, slings, etc..), build a cabinet and implement a full game (currrently only game test screens).
+- TODO: Prototype HW (mechanics, flippers, slings, etc..), build a cabinet and implement a full game (currently only game test screens).
 - TODO: Develop schematics for the custom expander boards based on TI
 
 # Documentation
