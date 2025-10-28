@@ -56,7 +56,7 @@
 // Version Information
 #define PB_VERSION_MAJOR 0
 #define PB_VERSION_MINOR 5  
-#define PB_VERSION_BUILD 138
+#define PB_VERSION_BUILD 139
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 1920
@@ -101,6 +101,8 @@ bool PBProcessIO();
 
 // Output processing utility functions - Used only in Raspberry Pi Mode
 int FindOutputDefIndex(unsigned int outputId);
+void SendAllStagedIO();
+void SendAllStagedLED();
 void ProcessLEDSequenceMessage(const stOutputMessage& message);
 void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputDef);
 void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& outputDef, bool skipSequenceCheck = false);
