@@ -1,5 +1,5 @@
 # RasPin Pinball Framework
-A half-scale pinball hobbyist project using Raspberry Pi hardware.  The goal is to fully develop a low cost system of SW and HW using Raspberry Pi and various easy to source HW pieces with typical modern pinball machnine capabilities.  Developed from scratch to learn and develop the entire architecture.  Compared to other pinball frameworks, RasPin is intended to be unique to Raspberry Pi, low cost, easy to implement, small and efficient and really intended for the hobbyist who wants a hand in every piece of the machine they want to build.
+A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is to fully develop a low cost system of SW and HW using Raspberry Pi and various easy to source HW pieces with typical modern pinball machnine capabilities.  Developed from scratch to learn and develop the entire architecture.  Compared to other pinball frameworks, RasPin is intended to be unique to Raspberry Pi, low cost, easy to implement, small and efficient and really intended for the hobbyist who wants a hand in every piece of the machine they want to build.
 
 <img width="400" alt="RasPinMenu" src="https://github.com/user-attachments/assets/80699574-9bf8-4ebb-9889-d9ec4445964f" />
 <img width="400" alt="RasPinDiag" src="https://github.com/user-attachments/assets/78baad46-6c7f-4157-8284-754867c45b45" />
