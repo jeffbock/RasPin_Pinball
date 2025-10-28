@@ -315,7 +315,9 @@ Mix_Chunk* PBSound::createAudioChunkFromSamples(const float* audioSamples, int n
         return nullptr;
     }
     
-    // Convert float samples to 16-bit signed integers
+    // numSamples is total samples (already accounts for stereo channels)
+    // For stereo: numSamples = frames * 2
+    // Each sample converts to Sint16, so buffer size = numSamples * sizeof(Sint16)
     int bufferSize = numSamples * sizeof(Sint16);
     Sint16* buffer = new Sint16[numSamples];
     
@@ -346,8 +348,18 @@ bool PBSound::pbsPlayVideoAudio(const float* audioSamples, int numSamples, int s
         return false;
     }
     
-    // Stop any existing video audio
-    pbsStopVideoAudio();
+    // Check if previous video audio is still playing
+    // Only stop if it's finished, otherwise let it complete
+    if (videoAudioActive && videoAudioChannel != -1) {
+        if (!Mix_Playing(videoAudioChannel)) {
+            // Previous chunk finished, clean it up
+            pbsStopVideoAudio();
+        } else {
+            // Previous chunk still playing, skip this one to avoid interruption
+            // This prevents clicking from stopping mid-playback
+            return false;
+        }
+    }
     
     // Create audio chunk from samples
     videoAudioChunk = createAudioChunkFromSamples(audioSamples, numSamples, sampleRate);

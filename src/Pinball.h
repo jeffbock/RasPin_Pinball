@@ -56,7 +56,7 @@
 // Version Information
 #define PB_VERSION_MAJOR 0
 #define PB_VERSION_MINOR 5  
-#define PB_VERSION_BUILD 139
+#define PB_VERSION_BUILD 142
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 1920
@@ -99,6 +99,7 @@ bool PBProcessInput();
 bool PBProcessOutput();
 bool PBProcessIO();
 
+#ifdef EXE_MODE_RASPI
 // Output processing utility functions - Used only in Raspberry Pi Mode
 int FindOutputDefIndex(unsigned int outputId);
 void SendAllStagedIO();
@@ -112,5 +113,6 @@ void ProcessActiveLEDSequence();
 void HandleLEDSequenceBoundaries();
 void EndLEDSequence();
 void ProcessDeferredLEDQueue();
+#endif
 
 #endif // Pinball_h

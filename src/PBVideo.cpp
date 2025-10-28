@@ -51,6 +51,7 @@ PBVideo::PBVideo() {
     audioBuffer = nullptr;
     audioBufferSize = 0;
     audioSamplesAvailable = 0;
+    audioAccumulatorIndex = 0;
     
     videoInfo = {"", 0, 0, 0.0f, 0.0f, false, false};
 }
@@ -155,6 +156,7 @@ bool PBVideo::pbvLoadVideo(const std::string& videoFilePath) {
 void PBVideo::pbvUnloadVideo() {
     pbvStop();
     
+    clearPacketQueues();
     closeCodecs();
     
     if (formatContext) {
@@ -205,6 +207,7 @@ void PBVideo::pbvStop() {
     lastFrameTimeSec = 0.0f;
     newFrameAvailable = false;
     audioSamplesAvailable = 0;
+    audioAccumulatorIndex = 0;
     
     // Seek back to beginning if video is loaded
     if (videoLoaded) {
@@ -220,6 +223,11 @@ bool PBVideo::pbvUpdateFrame(unsigned long currentTick) {
     // Initialize start tick on first update
     if (startTick == 0) {
         startTick = currentTick;
+    }
+    
+    // Fill packet queues if they're getting low
+    if (videoPacketQueue.size() < 5 || audioPacketQueue.size() < 5) {
+        fillPacketQueues();
     }
     
     // Calculate current playback time
@@ -242,9 +250,28 @@ bool PBVideo::pbvUpdateFrame(unsigned long currentTick) {
             lastFrameTimeSec = currentTimeSec;
             newFrameAvailable = true;
             
-            // Also decode audio if available and enabled
+            // Accumulate audio samples if available and enabled
+            // We decode multiple audio frames per video frame to keep audio buffer full
             if (videoInfo.hasAudio && audioEnabled) {
-                decodeNextAudioFrame();
+                // Keep accumulating audio until we have a good buffer
+                while (audioAccumulatorIndex < AUDIO_ACCUMULATOR_SIZE * 0.8f) {
+                    if (!decodeNextAudioFrame()) {
+                        break; // No more audio frames available
+                    }
+                }
+                
+                // If we have enough samples, make them available for playback
+                if (audioAccumulatorIndex >= 4410) { // ~100ms at 44.1kHz stereo
+                    audioSamplesAvailable = audioAccumulatorIndex;
+                    // Copy to audio buffer for retrieval
+                    for (int i = 0; i < audioSamplesAvailable && i < audioBufferSize; i++) {
+                        audioBuffer[i] = audioAccumulator[i];
+                    }
+                    // Reset accumulator
+                    audioAccumulatorIndex = 0;
+                } else {
+                    audioSamplesAvailable = 0;
+                }
             }
             
             return true;
@@ -256,6 +283,7 @@ bool PBVideo::pbvUpdateFrame(unsigned long currentTick) {
                 startTick = currentTick;
                 pauseDuration = 0;
                 lastFrameTimeSec = 0.0f;
+                audioAccumulatorIndex = 0;
                 return pbvUpdateFrame(currentTick);
             } else {
                 playbackState = PBV_FINISHED;
@@ -624,31 +652,91 @@ void PBVideo::freeBuffers() {
     }
 }
 
+void PBVideo::clearPacketQueues() {
+    // Free all packets in video queue
+    while (!videoPacketQueue.empty()) {
+        AVPacket* pkt = videoPacketQueue.front();
+        videoPacketQueue.pop();
+        av_packet_free(&pkt);
+    }
+    
+    // Free all packets in audio queue
+    while (!audioPacketQueue.empty()) {
+        AVPacket* pkt = audioPacketQueue.front();
+        audioPacketQueue.pop();
+        av_packet_free(&pkt);
+    }
+}
+
+bool PBVideo::fillPacketQueues() {
+    if (!formatContext) {
+        return false;
+    }
+    
+    // Read packets and distribute to appropriate queues
+    // Stop after reading 10 packets to avoid blocking too long
+    int packetsRead = 0;
+    while (packetsRead < 10) {
+        AVPacket* pkt = av_packet_alloc();
+        if (!pkt) {
+            break;
+        }
+        
+        int result = av_read_frame(formatContext, pkt);
+        if (result < 0) {
+            av_packet_free(&pkt);
+            return false; // End of stream or error
+        }
+        
+        // Route packet to appropriate queue
+        if (pkt->stream_index == videoStreamIndex) {
+            videoPacketQueue.push(pkt);
+        } else if (pkt->stream_index == audioStreamIndex) {
+            audioPacketQueue.push(pkt);
+        } else {
+            // Unknown stream, discard
+            av_packet_free(&pkt);
+        }
+        
+        packetsRead++;
+    }
+    
+    return true;
+}
+
 bool PBVideo::decodeNextVideoFrame() {
     if (!videoCodecContext || videoStreamIndex < 0) {
         return false;
     }
     
-    while (av_read_frame(formatContext, packet) >= 0) {
-        if (packet->stream_index == videoStreamIndex) {
-            // Send packet to decoder
-            if (avcodec_send_packet(videoCodecContext, packet) < 0) {
-                av_packet_unref(packet);
-                continue;
-            }
-            
-            // Receive frame from decoder
-            if (avcodec_receive_frame(videoCodecContext, videoFrame) == 0) {
-                // Convert frame to RGBA
-                convertFrameToRGBA();
-                av_packet_unref(packet);
-                return true;
-            }
-        }
-        av_packet_unref(packet);
+    // Fill queue if empty
+    if (videoPacketQueue.empty()) {
+        fillPacketQueues();
     }
     
-    return false; // End of stream
+    // Try to decode from queued packets
+    while (!videoPacketQueue.empty()) {
+        AVPacket* pkt = videoPacketQueue.front();
+        videoPacketQueue.pop();
+        
+        // Send packet to decoder
+        if (avcodec_send_packet(videoCodecContext, pkt) < 0) {
+            av_packet_free(&pkt);
+            continue;
+        }
+        
+        // Receive frame from decoder
+        int ret = avcodec_receive_frame(videoCodecContext, videoFrame);
+        av_packet_free(&pkt);
+        
+        if (ret == 0) {
+            // Successfully decoded a frame
+            convertFrameToRGBA();
+            return true;
+        }
+    }
+    
+    return false; // No more frames available
 }
 
 bool PBVideo::decodeNextAudioFrame() {
@@ -656,26 +744,34 @@ bool PBVideo::decodeNextAudioFrame() {
         return false;
     }
     
-    while (av_read_frame(formatContext, packet) >= 0) {
-        if (packet->stream_index == audioStreamIndex) {
-            // Send packet to decoder
-            if (avcodec_send_packet(audioCodecContext, packet) < 0) {
-                av_packet_unref(packet);
-                continue;
-            }
-            
-            // Receive frame from decoder
-            if (avcodec_receive_frame(audioCodecContext, audioFrame) == 0) {
-                // Convert audio to float stereo
-                convertAudioToFloat();
-                av_packet_unref(packet);
-                return true;
-            }
-        }
-        av_packet_unref(packet);
+    // Fill queue if empty
+    if (audioPacketQueue.empty()) {
+        fillPacketQueues();
     }
     
-    return false; // End of stream
+    // Try to decode from queued packets
+    while (!audioPacketQueue.empty()) {
+        AVPacket* pkt = audioPacketQueue.front();
+        audioPacketQueue.pop();
+        
+        // Send packet to decoder
+        if (avcodec_send_packet(audioCodecContext, pkt) < 0) {
+            av_packet_free(&pkt);
+            continue;
+        }
+        
+        // Receive frame from decoder
+        int ret = avcodec_receive_frame(audioCodecContext, audioFrame);
+        av_packet_free(&pkt);
+        
+        if (ret == 0) {
+            // Successfully decoded a frame
+            convertAudioToFloat();
+            return true;
+        }
+    }
+    
+    return false; // No more frames available
 }
 
 void PBVideo::convertFrameToRGBA() {
@@ -692,19 +788,26 @@ void PBVideo::convertFrameToRGBA() {
 }
 
 void PBVideo::convertAudioToFloat() {
-    if (!audioFrame || !swrContext || !audioBuffer) {
+    if (!audioFrame || !swrContext) {
         return;
     }
     
-    // Resample audio to stereo float format
-    uint8_t* output = (uint8_t*)audioBuffer;
-    int outSamples = swr_convert(swrContext, &output, audioBufferSize / 2,
+    // Temporary buffer for resampled audio
+    float tempBuffer[8192]; // Large enough for typical audio frame
+    uint8_t* output = (uint8_t*)tempBuffer;
+    
+    // Resample audio to stereo float format at 44.1kHz
+    int outSamples = swr_convert(swrContext, &output, 4096,
                                  (const uint8_t**)audioFrame->data, audioFrame->nb_samples);
     
     if (outSamples > 0) {
-        audioSamplesAvailable = outSamples;
-    } else {
-        audioSamplesAvailable = 0;
+        // Accumulate samples into accumulator buffer
+        // outSamples is in frames (each frame = 2 samples for stereo)
+        int totalSamples = outSamples * 2; // Convert frames to samples (stereo)
+        
+        for (int i = 0; i < totalSamples && audioAccumulatorIndex < AUDIO_ACCUMULATOR_SIZE; i++) {
+            audioAccumulator[audioAccumulatorIndex++] = tempBuffer[i];
+        }
     }
 }
 
@@ -731,6 +834,9 @@ bool PBVideo::seekToFrame(float timeSec) {
         return false;
     }
     
+    // Clear packet queues since we seeked
+    clearPacketQueues();
+    
     // Flush codec buffers
     if (videoCodecContext) {
         avcodec_flush_buffers(videoCodecContext);
@@ -738,6 +844,9 @@ bool PBVideo::seekToFrame(float timeSec) {
     if (audioCodecContext) {
         avcodec_flush_buffers(audioCodecContext);
     }
+    
+    // Reset audio accumulator
+    audioAccumulatorIndex = 0;
     
     return true;
 }

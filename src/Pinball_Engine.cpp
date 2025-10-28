@@ -1579,8 +1579,10 @@ bool PBEngine::pbeSetupIO()
     // Send all staged changes to IO and LED chips
     g_PBEngine.pbeSendConsole("RasPin: Sending programmed outputs to pins (LED and IO)");
 
+#ifdef EXE_MODE_RASPI
     SendAllStagedIO();
     SendAllStagedLED();
+#endif
 
     // Hardware validation checks (only do this for actual Raspberry Pi HW)
 

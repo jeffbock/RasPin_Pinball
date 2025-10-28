@@ -9,6 +9,7 @@
 #include "PBBuildSwitch.h"
 #include <string>
 #include <cstdint>
+#include <queue>
 
 // Forward declarations for FFmpeg structures to avoid including FFmpeg headers in this header
 extern "C" {
@@ -143,12 +144,23 @@ private:
     int audioBufferSize;
     int audioSamplesAvailable;
     
+    // Packet queues for separate video/audio demuxing
+    std::queue<AVPacket*> videoPacketQueue;
+    std::queue<AVPacket*> audioPacketQueue;
+    
+    // Audio accumulation buffer for smooth playback
+    static const int AUDIO_ACCUMULATOR_SIZE = 8820; // ~200ms at 44.1kHz stereo
+    float audioAccumulator[AUDIO_ACCUMULATOR_SIZE];
+    int audioAccumulatorIndex;
+    
     // Internal helper methods
     bool openVideoFile(const std::string& filePath);
     bool findStreamInfo();
     bool openCodecs();
     void closeCodecs();
     void freeBuffers();
+    void clearPacketQueues();
+    bool fillPacketQueues();
     bool decodeNextVideoFrame();
     bool decodeNextAudioFrame();
     void convertFrameToRGBA();
