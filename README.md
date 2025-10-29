@@ -22,6 +22,7 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
 # Documentation
 - **[Users Guide](documentation/UsersGuide.md)** - Complete framework guide for pinball programmers
 - **[How To Build](documentation/HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
+- **[FontGen Guide](documentation/FontGen_Guide.md)** - Font generation utility for creating custom fonts from TrueType files
 - **API Reference Documentation:**
   - **[PBEngine API](documentation/PBEngine_API.md)** - Core engine class, game state, and output control
   - **[I/O Processing API](documentation/IO_Processing_API.md)** - Input/output message processing and hardware communication
