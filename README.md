@@ -20,6 +20,7 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
 - TODO: Develop schematics for the custom expander boards based on TI
 
 # Documentation
+- **[RasPin Overview](documentation/RasPin_Overview.md)** - **START HERE** - High-level architecture overview with diagrams and introduction to all documentation
 - **[Users Guide](documentation/UsersGuide.md)** - Complete framework guide for pinball programmers
 - **[How To Build](documentation/HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
 - **[FontGen Guide](documentation/FontGen_Guide.md)** - Font generation utility for creating custom fonts from TrueType files
