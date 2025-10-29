@@ -26,7 +26,8 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
   - **[PBEngine API](documentation/PBEngine_API.md)** - Core engine class, game state, and output control
   - **[I/O Processing API](documentation/IO_Processing_API.md)** - Input/output message processing and hardware communication
   - **[LED Control API](documentation/LED_Control_API.md)** - LED control, sequences, and animation patterns
-  - **[Platform Init API](documentation/Platform_Init_API.md)** - Platform initialization, main loop, and configuration 
+  - **[Platform Init API](documentation/Platform_Init_API.md)** - Platform initialization, main loop, and configuration
+  - **[Game Creation API](documentation/Game_Creation_API.md)** - Graphics (PBGfx), sound (PBSound), sprites, animations, and screen management 
 
 # Design and Development guidelines
 -  Actual machine based on Raspberry Pi 5 and PiOS for ease of development and debug.  Full power of Linux OS.  
