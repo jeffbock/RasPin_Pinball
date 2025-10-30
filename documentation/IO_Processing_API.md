@@ -277,6 +277,14 @@ struct stOutputOptions {
 };
 ```
 
+**Note:** The `options` parameter can be `nullptr` if not required. Only pass an `stOutputOptions` structure when you need to specify brightness, blink rates, or sequence parameters.
+
+**Example - Simple LED (no options needed):**
+```cpp
+// options parameter is nullptr (default)
+g_PBEngine.SendOutputMsg(PB_OMSG_LED, LED_ROLLOVER_1, PB_ON, false);
+```
+
 **Example - LED with Brightness:**
 ```cpp
 stOutputOptions options;
