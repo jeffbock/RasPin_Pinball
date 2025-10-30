@@ -6,6 +6,7 @@ Currently no planned work - that's pretty cool.
 ** Generic arch improvements
 Add quick amplifier silencer startup program (maybe command line, address and value to send, w/ defaults just to off, standard address)
 Add some more interesting animation options (Any movement that makes animations better?)
+Add strucutre for "devices" in the pinball table - general class to control things that require multi-step operation to work - so game code can "fire and forget" vs. tightly control in the game loop.
 
 ** Gameplay tasks
 Create simple score / gameplay screen
