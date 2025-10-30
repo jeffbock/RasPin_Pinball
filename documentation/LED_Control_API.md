@@ -374,6 +374,10 @@ g_PBEngine.SendOutputMsg(PB_OMSG_LED, LED_EXTRA_BALL, PB_ON, true);
 // → LED will turn on for 500ms, then off for 100ms, then stop
 ```
 
+**Important Notes:**
+- **Pulse Protection:** When an LED is in pulse mode, subsequent messages to that LED are ignored until the pulse completes. This prevents interrupting the timed effect.
+- **Sequence Cancellation:** Starting an LED sequence will cancel any active pulse on participating LEDs. The sequence takes priority over pulse mode.
+
 **Use Cases:**
 - Brief flash on target hit
 - Ball lock indicator

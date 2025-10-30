@@ -148,6 +148,9 @@ void ProcessIOOutputMessage(const stOutputMessage& message,
 - Stages output to appropriate hardware (GPIO or I/O chip)
 - Updates output state tracking
 
+**Important Note:**
+- **Message Dropping:** Any I/O message sent to an output that is currently running a pulse will be dropped/ignored. This protects the pulse timing and prevents interrupting timed operations like solenoid firing. Wait for the pulse to complete before sending new messages to that output.
+
 **Example Usage (called internally):**
 ```cpp
 // User code sends message
