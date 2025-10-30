@@ -189,17 +189,17 @@ stOutputDef g_outputDef[NUM_OUTPUTS] = {
 
 **Timing Diagram:**
 ```
-Message Received ─┐
-                  │
-        ┌─────────▼─────────┐
-ON      │████████████████   │  (onTimeMS)
-        └────────────────────┘
-                            │
-                  ┌─────────▼─────────┐
-OFF               │                    │  (offTimeMS)
-                  └────────────────────┘
-                                       │
-Message Complete ──────────────────────┘
+Time:      0ms                    50ms                    150ms
+           │                       │                       │
+Message ───┘                       │                       │
+           │                       │                       │
+Output: ───┐                       ┌───────────────────────┘
+   ON      │███████████████████████│  (onTimeMS = 50ms)
+           └───────────────────────┐
+   OFF                             │███████████████████████  (offTimeMS = 100ms)
+                                   └───────────────────────
+                                                           │
+                                            Pulse Complete ┘
 ```
 
 ---
