@@ -41,6 +41,12 @@ public:
     // Stop current music
     void pbsStopMusic();
     
+    // Pause current music
+    void pbsPauseMusic();
+    
+    // Resume paused music
+    void pbsResumeMusic();
+    
     // Play sound effect (returns effect ID 1-4, or 0 on failure)
     int pbsPlayEffect(const std::string& mp3FilePath);
     
@@ -52,6 +58,13 @@ public:
     
     // Stop all effects
     void pbsStopAllEffects();
+    
+    // Video audio streaming functions (Raspberry Pi only, channel 4 reserved for video)
+    bool pbsStartVideoAudioStream();  // Initialize the streaming system
+    void pbsStopVideoAudio();
+    void pbsRestartVideoAudioStream();  // Restart stream (for looping video)
+    bool pbsIsVideoAudioPlaying();
+    void pbsSetVideoAudioProvider(class PBVideo* provider);  // Set the video object for callbacks
     
     // Set overall volume (0-100%)
     void pbsSetMasterVolume(int volume);
@@ -75,11 +88,23 @@ private:
     bool effectActive[4];       // Track which effects are active
     std::map<std::string, Mix_Chunk*> loadedEffects;  // Cache for loaded effects
     
+    // Video audio streaming system (dedicated channel 4)
+    static const int VIDEO_AUDIO_CHANNEL = 4;
+    Mix_Chunk* videoAudioChunk;          // Single chunk for streaming
+    bool videoAudioStreaming;            // Is stream active?
+    class PBVideo* videoProvider;        // Reference to video for pulling audio
+    
     // Internal helper methods
     int findFreeEffectSlot();
     void updateEffectStatus();
     Mix_Chunk* loadEffect(const std::string& filePath);
     int convertVolumeToSDL(int percentage);
+    Mix_Chunk* createAudioChunkFromSamples(const float* audioSamples, int numSamples, int sampleRate);
+    
+    // Static callback for SDL_mixer channel finished
+    static void channelFinishedCallback(int channel);
+    static PBSound* instance;  // Singleton for callback access
+    void handleChannelFinished(int channel);
 #endif
 };
 

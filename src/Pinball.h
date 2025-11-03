@@ -45,10 +45,11 @@
 #include <vector>
 #include <queue>
 #include <map>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
 #include <chrono>
+// Multi-threading includes for potential future use
+//#include <thread>
+//#include <mutex>
+//#include <condition_variable>
 #include "PBDebounce.h"
 #include "PinballMenus.h"
 #include "Pinball_Engine.h"
@@ -56,7 +57,7 @@
 // Version Information
 #define PB_VERSION_MAJOR 0
 #define PB_VERSION_MINOR 5  
-#define PB_VERSION_BUILD 102
+#define PB_VERSION_BUILD 163
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 1920
@@ -99,8 +100,11 @@ bool PBProcessInput();
 bool PBProcessOutput();
 bool PBProcessIO();
 
+#ifdef EXE_MODE_RASPI
 // Output processing utility functions - Used only in Raspberry Pi Mode
 int FindOutputDefIndex(unsigned int outputId);
+void SendAllStagedIO();
+void SendAllStagedLED();
 void ProcessLEDSequenceMessage(const stOutputMessage& message);
 void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputDef);
 void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& outputDef, bool skipSequenceCheck = false);
@@ -110,5 +114,6 @@ void ProcessActiveLEDSequence();
 void HandleLEDSequenceBoundaries();
 void EndLEDSequence();
 void ProcessDeferredLEDQueue();
+#endif
 
 #endif // Pinball_h

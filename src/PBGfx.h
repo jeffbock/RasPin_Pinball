@@ -29,7 +29,8 @@ using json = nlohmann::json;
 enum gfxTexType {
     GFX_BMP = 0,
     GFX_PNG = 1, 
-    GFX_NONE = 2, 
+    GFX_NONE = 2,
+    GFX_VIDEO = 3,     // Video texture (updated dynamically)
     GFX_TTEND
 };
 
@@ -221,6 +222,9 @@ public:
 
     // System Clock Function
     unsigned long GetTickCountGfx();
+    
+    // Video texture functions
+    bool         gfxUpdateVideoTexture(unsigned int spriteId, const uint8_t* frameData, unsigned int width, unsigned int height);
     
 private:
     unsigned int gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem);

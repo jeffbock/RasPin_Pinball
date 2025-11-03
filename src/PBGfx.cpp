@@ -117,6 +117,7 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
             break;
         case GFX_PNG: textureType = OGL_PNG; break;
         case GFX_NONE: textureType = OGL_NONE; break;
+        case GFX_VIDEO: textureType = OGL_VIDEO; break;
         default: return (NOSPRITE);
     }
 
@@ -411,8 +412,9 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId){
             y2 -= shiftup;
         }
 
-        // Use alpha if the texture is a BMP (eg: use the the supplied alpha value, otherwise it is assumed PNG already has alpha)
-        bool useTexAlpha = m_spriteList[it->second.parentSpriteId].textureType == GFX_BMP ? true : false;
+        // Use alpha if the texture is a BMP or VIDEO (eg: use the the supplied alpha value, otherwise it is assumed PNG already has alpha)
+        bool useTexAlpha = (m_spriteList[it->second.parentSpriteId].textureType == GFX_BMP || 
+                           m_spriteList[it->second.parentSpriteId].textureType == GFX_VIDEO) ? true : false;
 
         // Change the textureID to no texture if the sprite is not using a texture
         unsigned int tempTextureId = it->second.glTextureId;
@@ -1013,4 +1015,32 @@ bool PBGfx::gfxAnimateRestart(unsigned int animateSpriteId, unsigned long startT
 // This can cause issues if a given rendering function is using a saved value for the current tick, but then also trying to animate during the same frame after restarting the animation.
 bool PBGfx::gfxAnimateRestart(unsigned int animateSpriteId){
     return gfxAnimateRestart(animateSpriteId, GetTickCountGfx());
+}
+
+// Update a video texture with new frame data
+bool PBGfx::gfxUpdateVideoTexture(unsigned int spriteId, const uint8_t* frameData, unsigned int width, unsigned int height) {
+    
+    auto it = m_instanceList.find(spriteId);
+    if (it == m_instanceList.end()) {
+        return false;
+    }
+    
+    // Check if this is a video texture type
+    if (m_spriteList[it->second.parentSpriteId].textureType != GFX_VIDEO) {
+        return false;
+    }
+    
+    // Check if texture is loaded
+    if (!m_spriteList[it->second.parentSpriteId].isLoaded) {
+        return false;
+    }
+    
+    // Verify dimensions match
+    if (width != m_spriteList[it->second.parentSpriteId].baseWidth || 
+        height != m_spriteList[it->second.parentSpriteId].baseHeight) {
+        return false;
+    }
+    
+    // Update the OpenGL texture with new frame data
+    return oglUpdateTexture(m_spriteList[it->second.parentSpriteId].glTextureId, frameData, width, height);
 }

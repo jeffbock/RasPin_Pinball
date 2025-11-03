@@ -15,6 +15,7 @@
 #include "Pinball_Table.h"
 #include "PBSound.h"
 #include "PBDebounce.h"
+#include "PBVideoPlayer.h"
 
 // Standard library includes
 #include <iostream>
@@ -269,6 +270,13 @@ public:
 
     // Test Sandbox screen variables
     bool m_RestartTestSandbox;
+    PBVideoPlayer* m_sandboxVideoPlayer;
+    unsigned int m_sandboxVideoSpriteId;
+    bool m_sandboxVideoLoaded;
+    unsigned long m_videoFadeStartTick;
+    bool m_videoFadingIn;
+    bool m_videoFadingOut;
+    float m_videoFadeDurationSec;
 
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;

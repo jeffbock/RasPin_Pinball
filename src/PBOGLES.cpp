@@ -333,6 +333,18 @@ GLuint PBOGLES::oglLoadTexture(const char* filename, oglTexType type, unsigned i
     {
         case OGL_BMP: tempTexture = oglLoadBMPTexture (filename, width, height); break;
         case OGL_PNG: tempTexture = oglLoadPNGTexture (filename, width, height); break;
+        case OGL_VIDEO:
+            // For video textures, filename contains "widthxheight" format (e.g., "1920x1080")
+            // Parse the dimensions and create an empty texture
+            {
+                int vidWidth = 0, vidHeight = 0;
+                if (sscanf(filename, "%dx%d", &vidWidth, &vidHeight) == 2) {
+                    tempTexture = oglCreateVideoTexture(vidWidth, vidHeight);
+                    *width = vidWidth;
+                    *height = vidHeight;
+                }
+            }
+            break;
         default: break;
     }
 
@@ -438,4 +450,38 @@ GLuint PBOGLES::oglLoadPNGTexture (const char* filename, unsigned int* width, un
     return texture;
 
     return (0);
+}
+
+// Create an empty texture for video playback (will be updated dynamically)
+GLuint PBOGLES::oglCreateVideoTexture(unsigned int width, unsigned int height) {
+    GLuint texture;
+    glGenTextures(1, &texture);
+    if (texture == 0) return 0;
+    
+    glBindTexture(GL_TEXTURE_2D, texture);
+    
+    // Create an empty RGBA texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    
+    // Set texture parameters for video (no mipmaps, linear filtering)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    
+    return texture;
+}
+
+// Update an existing texture with new video frame data
+bool PBOGLES::oglUpdateTexture(GLuint textureId, const uint8_t* data, unsigned int width, unsigned int height) {
+    if (textureId == 0 || data == nullptr) {
+        return false;
+    }
+    
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    
+    // Update the texture with new RGBA data
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    
+    return true;
 }

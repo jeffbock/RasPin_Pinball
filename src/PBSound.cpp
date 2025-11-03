@@ -3,6 +3,11 @@
 // Additional details can also be found in the license file in the root of the project.
 
 #include "PBSound.h"
+#include "PBVideo.h"
+
+#ifdef EXE_MODE_RASPI
+PBSound* PBSound::instance = nullptr;
+#endif
 
 PBSound::PBSound() : initialized(false), masterVolume(100), musicVolume(100) {
 #ifdef EXE_MODE_RASPI
@@ -12,6 +17,11 @@ PBSound::PBSound() : initialized(false), masterVolume(100), musicVolume(100) {
         effectChannels[i] = -1;
         effectActive[i] = false;
     }
+    // Initialize video audio streaming system
+    videoAudioChunk = nullptr;
+    videoAudioStreaming = false;
+    videoProvider = nullptr;
+    instance = this;  // Set singleton for callback
 #endif
 }
 
@@ -37,8 +47,11 @@ bool PBSound::pbsInitialize() {
         return false;
     }
     
-    // Allocate 4 mixing channels for effects
-    Mix_AllocateChannels(4);
+    // Allocate 5 mixing channels: 4 for effects, 1 reserved for video audio
+    Mix_AllocateChannels(5);
+    
+    // Register channel finished callback for continuous audio streaming
+    Mix_ChannelFinished(channelFinishedCallback);
     
     // Set initial volumes
     Mix_VolumeMusic(convertVolumeToSDL(musicVolume));
@@ -67,6 +80,9 @@ void PBSound::pbsShutdown() {
     
     // Stop all effects and free chunks
     pbsStopAllEffects();
+    
+    // Stop video audio
+    pbsStopVideoAudio();
     
     // Free cached effects
     for (auto& pair : loadedEffects) {
@@ -119,6 +135,22 @@ void PBSound::pbsStopMusic() {
 #ifdef EXE_MODE_RASPI
     if (initialized && currentMusic) {
         Mix_HaltMusic();
+    }
+#endif
+}
+
+void PBSound::pbsPauseMusic() {
+#ifdef EXE_MODE_RASPI
+    if (initialized && currentMusic && Mix_PlayingMusic()) {
+        Mix_PauseMusic();
+    }
+#endif
+}
+
+void PBSound::pbsResumeMusic() {
+#ifdef EXE_MODE_RASPI
+    if (initialized && currentMusic && Mix_PausedMusic()) {
+        Mix_ResumeMusic();
     }
 #endif
 }
@@ -286,5 +318,184 @@ Mix_Chunk* PBSound::loadEffect(const std::string& filePath) {
 int PBSound::convertVolumeToSDL(int percentage) {
     // Convert 0-100% to SDL's 0-128 range
     return (percentage * MIX_MAX_VOLUME) / 100;
+}
+
+Mix_Chunk* PBSound::createAudioChunkFromSamples(const float* audioSamples, int numSamples, int sampleRate) {
+    if (!audioSamples || numSamples <= 0) {
+        return nullptr;
+    }
+    
+    // numSamples is total samples (already accounts for stereo channels)
+    // For stereo: numSamples = frames * 2
+    // Each sample converts to Sint16, so buffer size = numSamples * sizeof(Sint16)
+    int bufferSize = numSamples * sizeof(Sint16);
+    Sint16* buffer = new Sint16[numSamples];
+    
+    for (int i = 0; i < numSamples; i++) {
+        // Clamp and convert float [-1.0, 1.0] to Sint16 [-32768, 32767]
+        float sample = audioSamples[i];
+        if (sample > 1.0f) sample = 1.0f;
+        if (sample < -1.0f) sample = -1.0f;
+        buffer[i] = (Sint16)(sample * 32767.0f);
+    }
+    
+    // Create Mix_Chunk from buffer
+    Mix_Chunk* chunk = new Mix_Chunk;
+    chunk->allocated = 1;
+    chunk->abuf = (Uint8*)buffer;
+    chunk->alen = bufferSize;
+    chunk->volume = MIX_MAX_VOLUME;
+    
+    return chunk;
+}
+#endif
+
+// Video audio streaming functions (stubs for Windows, implementation for Raspberry Pi)
+
+void PBSound::pbsSetVideoAudioProvider(PBVideo* provider) {
+#ifdef EXE_MODE_RASPI
+    videoProvider = provider;
+#endif
+}
+
+bool PBSound::pbsStartVideoAudioStream() {
+#ifdef EXE_MODE_RASPI
+    if (!initialized || !videoProvider) {
+        return false;
+    }
+    
+    videoAudioStreaming = true;
+    
+    // Queue the first chunk manually to start the stream
+    const int STREAM_CHUNK_SIZE = 2048;
+    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo
+    
+    int samplesRead = videoProvider->pbvGetAudioSamples(audioSamples, STREAM_CHUNK_SIZE);
+    if (samplesRead > 0) {
+        // samplesRead is mono count, but we need total stereo samples for createAudioChunkFromSamples
+        videoAudioChunk = createAudioChunkFromSamples(audioSamples, samplesRead * 2, 44100);
+        if (videoAudioChunk) {
+            int result = Mix_PlayChannel(VIDEO_AUDIO_CHANNEL, videoAudioChunk, 0);
+            if (result == -1) {
+                // Failed to play - clean up
+                if (videoAudioChunk->abuf) {
+                    delete[] (Sint16*)videoAudioChunk->abuf;
+                }
+                delete videoAudioChunk;
+                videoAudioChunk = nullptr;
+                videoAudioStreaming = false;
+                return false;
+            }
+            // Success! When this chunk finishes, the callback will queue the next one
+            return true;
+        }
+    }
+    
+    // No audio available
+    videoAudioStreaming = false;
+    return false;
+#else
+    return false;
+#endif
+}
+
+void PBSound::pbsStopVideoAudio() {
+#ifdef EXE_MODE_RASPI
+    if (!initialized) {
+        return;
+    }
+    
+    videoAudioStreaming = false;
+    
+    // Stop channel 4
+    Mix_HaltChannel(VIDEO_AUDIO_CHANNEL);
+    
+    // Clean up current chunk
+    if (videoAudioChunk) {
+        if (videoAudioChunk->abuf) {
+            delete[] (Sint16*)videoAudioChunk->abuf;
+        }
+        delete videoAudioChunk;
+        videoAudioChunk = nullptr;
+    }
+#endif
+}
+
+void PBSound::pbsRestartVideoAudioStream() {
+#ifdef EXE_MODE_RASPI
+    // Stop current stream and restart
+    pbsStopVideoAudio();
+    
+    // Small delay to ensure channel is fully stopped
+    SDL_Delay(5);
+    
+    // Restart streaming
+    pbsStartVideoAudioStream();
+#endif
+}
+
+bool PBSound::pbsIsVideoAudioPlaying() {
+#ifdef EXE_MODE_RASPI
+    if (!initialized) {
+        return false;
+    }
+    
+    return videoAudioStreaming && Mix_Playing(VIDEO_AUDIO_CHANNEL);
+#else
+    return false;
+#endif
+}
+
+// Static callback function - called by SDL_mixer when a channel finishes
+#ifdef EXE_MODE_RASPI
+void PBSound::channelFinishedCallback(int channel) {
+    if (instance) {
+        instance->handleChannelFinished(channel);
+    }
+}
+
+void PBSound::handleChannelFinished(int channel) {
+    // Only handle our video audio channel
+    if (channel != VIDEO_AUDIO_CHANNEL || !videoAudioStreaming || !videoProvider) {
+        return;
+    }
+    
+    // Clean up previous chunk
+    if (videoAudioChunk) {
+        if (videoAudioChunk->abuf) {
+            delete[] (Sint16*)videoAudioChunk->abuf;
+        }
+        delete videoAudioChunk;
+        videoAudioChunk = nullptr;
+    }
+    
+    // Pull next audio chunk from video provider
+    // Use fixed 2048 sample chunks (46ms at 44.1kHz stereo) for smooth streaming
+    const int STREAM_CHUNK_SIZE = 2048;
+    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo
+    
+    int samplesRead = videoProvider->pbvGetAudioSamples(audioSamples, STREAM_CHUNK_SIZE);
+    if (samplesRead > 0) {
+        // samplesRead is mono count, but we need total stereo samples for createAudioChunkFromSamples
+        videoAudioChunk = createAudioChunkFromSamples(audioSamples, samplesRead * 2, 44100);
+        if (videoAudioChunk) {
+            int result = Mix_PlayChannel(VIDEO_AUDIO_CHANNEL, videoAudioChunk, 0);
+            if (result == -1) {
+                // Failed to play - clean up and stop streaming
+                if (videoAudioChunk->abuf) {
+                    delete[] (Sint16*)videoAudioChunk->abuf;
+                }
+                delete videoAudioChunk;
+                videoAudioChunk = nullptr;
+                videoAudioStreaming = false;
+            }
+            // Note: When this chunk finishes, this callback will be called again automatically
+        } else {
+            videoAudioStreaming = false;
+        }
+    } else {
+        // No more audio available, stop streaming
+        videoAudioStreaming = false;
+    }
 }
 #endif

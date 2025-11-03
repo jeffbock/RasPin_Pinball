@@ -314,9 +314,7 @@ bool PBProcessOutput() {
     ProcessActivePulseOutputs();
     
     // Send all staged outputs to IODriver chips
-    for (int i = 0; i < NUM_IO_CHIPS; i++) {
-        g_PBEngine.m_IOChip[i].SendStagedOutput();
-    }
+    SendAllStagedIO();
     
     // Handle LED sequence processing or deferred queue
     if (g_PBEngine.m_LEDSequenceInfo.sequenceEnabled) {
@@ -326,9 +324,7 @@ bool PBProcessOutput() {
     }
     
     // Send all staged outputs to LED chips
-    for (int i = 0; i < NUM_LED_CHIPS; i++) {
-        g_PBEngine.m_LEDChip[i].SendStagedLED();
-    }
+    SendAllStagedLED();
     
     return true;
 }
@@ -343,28 +339,46 @@ int FindOutputDefIndex(unsigned int outputId) {
     return -1;
 }
 
+// Helper function to send all staged IO outputs to hardware
+void SendAllStagedIO() {
+    for (int i = 0; i < NUM_IO_CHIPS; i++) {
+        g_PBEngine.m_IOChip[i].SendStagedOutput();
+    }
+}
+
+// Helper function to send all staged LED outputs to hardware
+void SendAllStagedLED() {
+    for (int i = 0; i < NUM_LED_CHIPS; i++) {
+        g_PBEngine.m_LEDChip[i].SendStagedLED();
+    }
+}
+
 // Process LED sequence start/stop messages
 void ProcessLEDSequenceMessage(const stOutputMessage& message) {
     if (message.outputState == PB_ON && message.options != nullptr) {
         // Start LED sequence mode
+        unsigned long currentTick = g_PBEngine.GetTickCountGfx();
         g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = true;
         g_PBEngine.m_LEDSequenceInfo.firstTime = true;
-        g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = message.sentTick;
-        g_PBEngine.m_LEDSequenceInfo.stepStartTick = message.sentTick;
+        g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = currentTick;
+        g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick;
         g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
         g_PBEngine.m_LEDSequenceInfo.previousSeqIndex = -1; // Initialize to indicate never set
         g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
         
         g_PBEngine.m_LEDSequenceInfo.loopMode = message.options->loopMode;
         g_PBEngine.m_LEDSequenceInfo.pLEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
-        
+
+        // Make sure all LEDs are cleared for the sequence - all HW updated w/ last staged values
+        SendAllStagedLED();
+            
         // Copy activeLEDMask from output options to sequence info
         for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
             g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex] = message.options->activeLEDMask[chipIndex];
 
             // Save all 4 LED control registers for later restore 
             for (int regIndex = 0; regIndex < 4; regIndex++) {
-                g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex][regIndex] = g_PBEngine.m_LEDChip[chipIndex].ReadLEDControl(StagedHW, regIndex);
+                g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex][regIndex] = g_PBEngine.m_LEDChip[chipIndex].ReadLEDControl(CurrentHW, regIndex);
             }
             
             // For each active pin, clear it from pulse map and stage to OFF
@@ -578,10 +592,14 @@ void ProcessActiveLEDSequence() {
         int nextSeqIndex = g_PBEngine.m_LEDSequenceInfo.currentSeqIndex;
         bool shouldAdvanceSequence = false;
         
-        // Initialize step timing on first run or when starting a new step
-        if (g_PBEngine.m_LEDSequenceInfo.firstTime || 
-            g_PBEngine.m_LEDSequenceInfo.previousSeqIndex != g_PBEngine.m_LEDSequenceInfo.currentSeqIndex) {
+        // Initialize step timing when index changes (but not on firstTime, as it's already set in ProcessLEDSequenceMessage)
+        if (g_PBEngine.m_LEDSequenceInfo.previousSeqIndex != g_PBEngine.m_LEDSequenceInfo.currentSeqIndex &&
+            !g_PBEngine.m_LEDSequenceInfo.firstTime) {
             g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick;
+        }
+        
+        // Clear firstTime flag after using it
+        if (g_PBEngine.m_LEDSequenceInfo.firstTime) {
             g_PBEngine.m_LEDSequenceInfo.firstTime = false;
         }
         
@@ -725,6 +743,9 @@ void EndLEDSequence() {
             }
         }
     }
+
+    // Send all the staged LED outputs to HW
+    SendAllStagedLED();
 }
 
 // Process deferred LED messages when sequence is not active

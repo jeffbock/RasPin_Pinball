@@ -54,6 +54,13 @@
 
     // Test Sandbox variables
     m_RestartTestSandbox = true;
+    m_sandboxVideoPlayer = nullptr;
+    m_sandboxVideoSpriteId = NOSPRITE;
+    m_sandboxVideoLoaded = false;
+    m_videoFadeStartTick = 0;
+    m_videoFadingIn = false;
+    m_videoFadingOut = false;
+    m_videoFadeDurationSec = 2.0f;  // 2 second fade in/out
 
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
@@ -79,7 +86,11 @@
 
  PBEngine::~PBEngine(){
 
-    // Code later...
+    // Clean up video player
+    if (m_sandboxVideoPlayer) {
+        delete m_sandboxVideoPlayer;
+        m_sandboxVideoPlayer = nullptr;
+    }
 
 }
 
@@ -670,7 +681,42 @@ bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long las
 // Test Sandbox Screen
 
 bool PBEngine::pbeLoadTestSandbox(bool forceReload){
-    if (!pbeLoadStartMenu(false)) return (false); 
+    if (!pbeLoadStartMenu(false)) return (false);
+    
+    // Initialize video player if not already created
+    if (!m_sandboxVideoPlayer && !forceReload) {
+        m_sandboxVideoPlayer = new PBVideoPlayer(this, &m_soundSystem);
+        
+        // Load the video with 720p dimensions (1280x720)
+        // Center it horizontally and position below the text
+        // With 75% scale: 1280 * 0.75 = 960 width, 720 * 0.75 = 540 height
+        int scaledWidth = (int)(1280 * 0.75f);
+        int scaledHeight = (int)(720 * 0.75f);
+        
+        // Center horizontally and position below text (text ends around y=250)
+        int videoX = (PB_SCREENWIDTH - scaledWidth) / 2;
+        int videoY = 480;  // Below the button descriptions (pushed down 200px)
+        
+        m_sandboxVideoSpriteId = m_sandboxVideoPlayer->pbvpLoadVideo(
+            "src/resources/videos/darktown_sound_h264.mp4",
+            videoX,
+            videoY,
+            false  // Don't keep resident
+        );
+        
+        if (m_sandboxVideoSpriteId != NOSPRITE) {
+            // Scale the video sprite to 75%
+            m_sandboxVideoPlayer->pbvpSetScaleFactor(0.75f);
+            
+            // Start with alpha at 0 for fade in
+            gfxSetTextureAlpha(m_sandboxVideoSpriteId, 0.0f);
+            
+            m_sandboxVideoLoaded = true;
+        } else {
+            m_sandboxVideoLoaded = false;
+        }
+    }
+    
     return (true);
 }
 
@@ -680,6 +726,16 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     
     if (m_RestartTestSandbox) {
         m_RestartTestSandbox = false;
+        
+        // Clean up any existing video player when restarting sandbox
+        if (m_sandboxVideoPlayer) {
+            m_sandboxVideoPlayer->pbvpStop();
+            m_sandboxVideoPlayer->pbvpUnloadVideo();
+            delete m_sandboxVideoPlayer;
+            m_sandboxVideoPlayer = nullptr;
+            m_sandboxVideoSpriteId = NOSPRITE;
+            m_sandboxVideoLoaded = false;
+        }
     }
 
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
@@ -706,21 +762,21 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 255, 64, 64, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Left Flipper" + lfState + ":", centerX - 200, startY, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "LED Sequence Test", centerX + 50, startY, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Sequence Test", centerX + 50, startY, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Right Flipper - Bright RED (lighter, more vibrant)
     std::string rfState = m_RFON ? " (ON)" : " (OFF)";
     gfxSetColor(m_defaultFontSpriteId, 255, 64, 64, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Right Flipper" + rfState + ":", centerX - 200, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Test 2", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Force LED Send (R-G-B) Test", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Left Activate - Bright Cyan-Blue (like blue LED light)
     std::string laState = m_LAON ? " (ON)" : " (OFF)";
     gfxSetColor(m_defaultFontSpriteId, 64, 192, 255, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Left Activate" + laState + ":", centerX - 200, startY + (2 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Test 3", centerX + 50, startY + (2 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Video Playback Test", centerX + 50, startY + (2 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Right Activate - Bright Cyan-Blue (like blue LED light)
     std::string raState = m_RAON ? " (ON)" : " (OFF)";
@@ -731,6 +787,65 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     
     // Reset scale
     gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
+    
+    // Update and render video if loaded and playing
+    if (m_sandboxVideoLoaded && m_sandboxVideoPlayer) {
+        pbvPlaybackState videoState = m_sandboxVideoPlayer->pbvpGetPlaybackState();
+        
+        if (videoState == PBV_PLAYING) {
+            // Update video frame (this decodes next frame, updates texture, and plays audio)
+            m_sandboxVideoPlayer->pbvpUpdate(currentTick);
+            
+            // Track current video alpha for text rendering
+            float currentVideoAlpha = 1.0f;
+            
+            // Handle fade in
+            if (m_videoFadingIn) {
+                float fadeElapsed = (currentTick - m_videoFadeStartTick) / 1000.0f;
+                float fadeProgress = fadeElapsed / m_videoFadeDurationSec;
+                
+                if (fadeProgress >= 1.0f) {
+                    // Fade in complete
+                    currentVideoAlpha = 1.0f;
+                    gfxSetTextureAlpha(m_sandboxVideoSpriteId, currentVideoAlpha);
+                    m_videoFadingIn = false;
+                } else {
+                    // Fade in progress
+                    currentVideoAlpha = fadeProgress;
+                    gfxSetTextureAlpha(m_sandboxVideoSpriteId, currentVideoAlpha);
+                }
+            }
+            
+            // Handle fade out
+            if (m_videoFadingOut) {
+                float fadeElapsed = (currentTick - m_videoFadeStartTick) / 1000.0f;
+                float fadeProgress = fadeElapsed / m_videoFadeDurationSec;
+                
+                if (fadeProgress >= 1.0f) {
+                    // Fade out complete - stop the video
+                    currentVideoAlpha = 0.0f;
+                    gfxSetTextureAlpha(m_sandboxVideoSpriteId, currentVideoAlpha);
+                    m_videoFadingOut = false;
+                    m_sandboxVideoPlayer->pbvpStop();
+                } else {
+                    // Fade out progress (1.0 to 0.0)
+                    currentVideoAlpha = 1.0f - fadeProgress;
+                    gfxSetTextureAlpha(m_sandboxVideoSpriteId, currentVideoAlpha);
+                }
+            }
+            
+            // Render the video sprite
+            m_sandboxVideoPlayer->pbvpRender();
+            
+            // Render video title over the video at the top, matching video alpha
+            // Video is at Y=480, so position title just below that
+            unsigned int textAlpha = (unsigned int)(currentVideoAlpha * 255.0f);
+            gfxSetColor(m_StartMenuFontId, 139, 0, 0, textAlpha);  // Blood red with matching alpha
+            gfxSetScaleFactor(m_StartMenuFontId, 0.75, false);
+            gfxRenderShadowString(m_StartMenuFontId, "Town of Darkside", (PB_SCREENWIDTH/2), 495, 2, GFX_TEXTCENTER, 0, 0, 0, textAlpha, 2);
+            gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+        }
+    }
     
     // Add instructions to exit
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
@@ -778,14 +893,15 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
         gfxRenderShadowString(m_defaultFontSpriteId, "Additional design and 3D printing: Tremayne Bock", tempX, m_CreditsScrollY + (3*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Using RasPin Pinball Engine", tempX, m_CreditsScrollY + (4*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Full code and 3D models available at:", tempX, m_CreditsScrollY + (5*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "https://github.com/jeffbock/PInball", tempX, m_CreditsScrollY + (6*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "https://github.com/jeffbock/RasPin_Pinball", tempX, m_CreditsScrollY + (6*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Thanks to Kim, Ally, Katie and Ruth for inspiration", tempX, m_CreditsScrollY + (7*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, " ", tempX, m_CreditsScrollY + (8*spacing), 1, GFX_TEXTCENTER, 0,0,0,0,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Thanks to the following Open Source libraries", tempX, m_CreditsScrollY + (9*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Using the these excellent open source libraries", tempX, m_CreditsScrollY + (9*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "STB Single Header: http://nothings.org/stb", tempX, m_CreditsScrollY + (10*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "JSON.hpp https://github.com/nlohmann/json", tempX, m_CreditsScrollY + (11*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "WiringPi https://github.com/WiringPi/WiringPi", tempX, m_CreditsScrollY + (12*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Developed using AI and Microsoft Copilot tools", tempX, m_CreditsScrollY + (13*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "FFmpeg https://github.com/BtbN/FFmpeg-Builds", tempX, m_CreditsScrollY + (13*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Developed using AI and Microsoft Copilot tools", tempX, m_CreditsScrollY + (14*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
     }
 
@@ -974,7 +1090,12 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         case (2):  m_mainState = PB_DIAGNOSTICS; m_RestartDiagnostics = true; break;
                         case (3):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
                         #if ENABLE_TEST_SANDBOX
-                        case (4):  m_mainState = PB_TESTSANDBOX; m_RestartTestSandbox = true; break;
+                        case (4):  
+                            m_mainState = PB_TESTSANDBOX; 
+                            m_RestartTestSandbox = true; 
+                            // Pause background music when entering sandbox
+                            m_soundSystem.pbsPauseMusic();
+                            break;
                         #endif
                         default: break;
                     }
@@ -1244,6 +1365,19 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 
                 // Start button exits to Start Menu
                 if (inputMessage.inputId == IDI_START) {
+                    // Clean up video player before exiting
+                    if (m_sandboxVideoPlayer) {
+                        m_sandboxVideoPlayer->pbvpStop();
+                        m_sandboxVideoPlayer->pbvpUnloadVideo();
+                        delete m_sandboxVideoPlayer;
+                        m_sandboxVideoPlayer = nullptr;
+                        m_sandboxVideoSpriteId = NOSPRITE;
+                        m_sandboxVideoLoaded = false;
+                    }
+                    
+                    // Resume background music when exiting sandbox
+                    m_soundSystem.pbsResumeMusic();
+                    
                     m_mainState = PB_STARTMENU;
                     m_RestartMenu = true;
                 }
@@ -1276,12 +1410,63 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 
                 // Right Flipper - Test 2
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                    // To be defined
+                    static int testQCount = 0;
+
+                    if (testQCount % 3 == 0) {  
+                        // Sending Test Messages - these can be used to test out the pending message queue while sequences are running
+                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDRED, PB_ON, false);
+                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDRED, PB_ON, false);
+                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDRED, PB_ON, false);
+                    }
+                    else if (testQCount % 3 == 1) {
+                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDGREEN, PB_ON, false);
+                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDGREEN, PB_ON, false);
+                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDGREEN, PB_ON, false);
+                    }
+                    else {
+                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDBLUE, PB_ON, false);
+                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDBLUE, PB_ON, false);
+                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDBLUE, PB_ON, false);
+                    }       
+                    
+                    testQCount++;
                 }
                 
-                // Left Activate - Test 3
+                // Left Activate - Test 3 - Video Playback Test (Toggle fade in/out)
                 if (inputMessage.inputId == IDI_LEFTACTIVATE) {
-                    // To be defined
+                    if (m_sandboxVideoLoaded && m_sandboxVideoPlayer) {
+                        pbvPlaybackState videoState = m_sandboxVideoPlayer->pbvpGetPlaybackState();
+                        
+                        if (videoState == PBV_STOPPED || videoState == PBV_FINISHED) {
+                            // Start video playback with fade in
+                            m_sandboxVideoPlayer->pbvpSetLooping(true);  // Enable looping
+                            gfxSetTextureAlpha(m_sandboxVideoSpriteId, 0.0f);    // Start fully transparent
+                            m_sandboxVideoPlayer->pbvpPlay();
+                            
+                            // Initialize fade in
+                            m_videoFadingIn = true;
+                            m_videoFadingOut = false;
+                            m_videoFadeStartTick = GetTickCountGfx();
+                        } else if (videoState == PBV_PLAYING) {
+                            // Toggle between fade in and fade out
+                            if (!m_videoFadingIn && !m_videoFadingOut) {
+                                // Currently fully visible, start fade out
+                                m_videoFadingOut = true;
+                                m_videoFadingIn = false;
+                                m_videoFadeStartTick = GetTickCountGfx();
+                            } else if (m_videoFadingOut) {
+                                // Currently fading out, reverse to fade in
+                                m_videoFadingIn = true;
+                                m_videoFadingOut = false;
+                                m_videoFadeStartTick = GetTickCountGfx();
+                            } else if (m_videoFadingIn) {
+                                // Currently fading in, reverse to fade out
+                                m_videoFadingOut = true;
+                                m_videoFadingIn = false;
+                                m_videoFadeStartTick = GetTickCountGfx();
+                            }
+                        }
+                    }
                 }
                 
                 // Right Activate - Test 4
@@ -1394,12 +1579,10 @@ bool PBEngine::pbeSetupIO()
     // Send all staged changes to IO and LED chips
     g_PBEngine.pbeSendConsole("RasPin: Sending programmed outputs to pins (LED and IO)");
 
-    for (int i = 0; i < NUM_IO_CHIPS; i++) {
-        g_PBEngine.m_IOChip[i].SendStagedOutput();
-    }
-    for (int i = 0; i < NUM_LED_CHIPS; i++) {
-        g_PBEngine.m_LEDChip[i].SendStagedLED();
-    }
+#ifdef EXE_MODE_RASPI
+    SendAllStagedIO();
+    SendAllStagedLED();
+#endif
 
     // Hardware validation checks (only do this for actual Raspberry Pi HW)
 
