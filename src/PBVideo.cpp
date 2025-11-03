@@ -552,14 +552,13 @@ bool PBVideo::openCodecs() {
 #if defined(EXE_MODE_RASPI) && ENABLE_HW_VIDEO_DECODE
         // Configure hardware decoder specific options
         if (strstr(codec->name, "v4l2m2m") != nullptr) {
-            // Set device path for V4L2 M2M decoder
-            av_opt_set(videoCodecContext->priv_data, "device", "/dev/video10", 0);
-            
-            // Enable extra output buffers for better performance
+            // On Raspberry Pi 5+, let FFmpeg auto-detect the device
+            // (the older /dev/video10 path is only for Pi 4 and earlier)
+            // Just configure buffer counts for better performance
             av_opt_set_int(videoCodecContext->priv_data, "num_output_buffers", 16, 0);
             av_opt_set_int(videoCodecContext->priv_data, "num_capture_buffers", 16, 0);
             
-            printf("PBVideo: Configured V4L2 M2M decoder with /dev/video10\n");
+            printf("PBVideo: Configured V4L2 M2M decoder (auto-detect device)\n");
         }
 #endif
         
@@ -625,10 +624,11 @@ bool PBVideo::openCodecs() {
                             videoCodecContext->height, 1);
         
         // Initialize SWS context for color conversion
+        // Use SWS_FAST_BILINEAR for better performance, especially with software decode
         swsContext = sws_getContext(videoCodecContext->width, videoCodecContext->height,
                                     videoCodecContext->pix_fmt,
                                     videoCodecContext->width, videoCodecContext->height,
-                                    AV_PIX_FMT_RGBA, SWS_BILINEAR, nullptr, nullptr, nullptr);
+                                    AV_PIX_FMT_RGBA, SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
         
         if (!swsContext) {
             return false;
