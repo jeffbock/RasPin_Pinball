@@ -1,5 +1,5 @@
 # RasPin Pinball Framework
-A half-scale pinball hobbyist project using Raspberry Pi hardware.  The goal is to fully develop a low cost system of SW and HW using Raspberry Pi and various easy to source HW pieces with typical modern pinball machnine capabilities.  Developed from scratch to learn and develop the entire architecture.  Compared to other pinball frameworks, RasPin is intended to be unique to Raspberry Pi, low cost, easy to implement, small and efficient and really intended for the hobbyist who wants a hand in every piece of the machine they want to build.
+A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is to fully develop a low cost system of SW and HW using Raspberry Pi and various easy to source HW pieces with typical modern pinball machnine capabilities.  Developed from scratch to learn and develop the entire architecture.  Compared to other pinball frameworks, RasPin is intended to be unique to Raspberry Pi, low cost, easy to implement, small and efficient and really intended for the hobbyist who wants a hand in every piece of the machine they want to build.
 
 <img width="400" alt="RasPinMenu" src="https://github.com/user-attachments/assets/80699574-9bf8-4ebb-9889-d9ec4445964f" />
 <img width="400" alt="RasPinDiag" src="https://github.com/user-attachments/assets/78baad46-6c7f-4157-8284-754867c45b45" />
@@ -16,8 +16,20 @@ A half-scale pinball hobbyist project using Raspberry Pi hardware.  The goal is 
 - Automatic LED control and sequence animation for dynamic lighting effects
 - Easy to use music and sound effect system with multiple channels
 - Full setup / control and diagnostics menus and capability, along with straight-forward ability to add / expand for your own personalize machine.
-- TODO: Prototype HW (mechanics, flippers, slings, etc..), build a cabinet and implement a full game (currrently only game test screens).
-- TODO: Develop schematics for the custom expander boards based on TI 
+- TODO: Prototype HW (mechanics, flippers, slings, etc..), build a cabinet and implement a full game (currently only game test screens).
+- TODO: Develop schematics for the custom expander boards based on TI
+
+# Documentation
+- **[RasPin Overview](documentation/RasPin_Overview.md)** - **START HERE** - High-level architecture overview with diagrams and introduction to all documentation
+- **[Users Guide](documentation/UsersGuide.md)** - Complete framework guide for pinball programmers
+- **[How To Build](documentation/HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
+- **[FontGen Guide](documentation/FontGen_Guide.md)** - Font generation utility for creating custom fonts from TrueType files
+- **API Reference Documentation:**
+  - **[PBEngine API](documentation/PBEngine_API.md)** - Core engine class, game state, and output control
+  - **[I/O Processing API](documentation/IO_Processing_API.md)** - Input/output message processing and hardware communication
+  - **[LED Control API](documentation/LED_Control_API.md)** - LED control, sequences, and animation patterns
+  - **[Platform Init API](documentation/Platform_Init_API.md)** - Platform initialization, main loop, and configuration
+  - **[Game Creation API](documentation/Game_Creation_API.md)** - Graphics (PBGfx), sound (PBSound), sprites, animations, and screen management 
 
 # Design and Development guidelines
 -  Actual machine based on Raspberry Pi 5 and PiOS for ease of development and debug.  Full power of Linux OS.  
