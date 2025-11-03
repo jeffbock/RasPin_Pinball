@@ -80,6 +80,11 @@ public:
     // This is designed to be called once per video frame update
     const float* pbvGetAudioSamples(int* numSamples);
     
+    // Get audio samples into provided buffer (for streaming callback)
+    // Returns number of samples actually read
+    // Buffer must be large enough for requestedSamples * 2 (stereo)
+    int pbvGetAudioSamples(float* buffer, int requestedSamples);
+    
     // Query functions
     stVideoInfo pbvGetVideoInfo() const;
     pbvPlaybackState pbvGetPlaybackState() const;
@@ -98,9 +103,16 @@ public:
     void pbvSetAudioEnabled(bool enabled);
     bool pbvIsAudioEnabled() const { return audioEnabled; }
     
+    // Debug and monitoring functions
+    bool pbvIsUsingHardwareDecoder() const;
+    void pbvPrintDecoderInfo() const;
+    
     // Set looping behavior
     void pbvSetLooping(bool loop);
     bool pbvIsLooping() const { return looping; }
+    
+    // Check if video just looped (clears flag after check)
+    bool pbvDidJustLoop();
     
 private:
     // FFmpeg context pointers
@@ -127,12 +139,18 @@ private:
     bool looping;
     bool audioEnabled;
     float playbackSpeed;
+    bool justLooped;  // Flag set when video loops (cleared by pbvDidJustLoop())
     
     // Timing information
     unsigned long startTick;       // Tick when playback started
     unsigned long pauseTick;       // Tick when playback was paused
     unsigned long pauseDuration;   // Total time spent paused
     float lastFrameTimeSec;        // Time of last decoded frame
+    double videoTimeBase;          // Video stream time base
+    double audioTimeBase;          // Audio stream time base
+    double masterClock;            // Master playback clock (audio-based)
+    double videoClock;             // Current video frame timestamp
+    double audioClock;             // Current audio frame timestamp
     
     // Frame buffers
     uint8_t* frameBuffer;          // RGBA frame data for texture upload
@@ -144,12 +162,19 @@ private:
     int audioBufferSize;
     int audioSamplesAvailable;
     
+    // Improved audio buffering for smoother playback
+    static const int AUDIO_BUFFER_FRAMES = 8192;  // Number of stereo frames (increased for smoother playback)
+    float smoothAudioBuffer[AUDIO_BUFFER_FRAMES * 2]; // Stereo samples
+    int audioReadIndex;
+    int audioWriteIndex;
+    int audioBufferedSamples;
+    
     // Packet queues for separate video/audio demuxing
     std::queue<AVPacket*> videoPacketQueue;
     std::queue<AVPacket*> audioPacketQueue;
     
     // Audio accumulation buffer for smooth playback
-    static const int AUDIO_ACCUMULATOR_SIZE = 8820; // ~200ms at 44.1kHz stereo
+    static const int AUDIO_ACCUMULATOR_SIZE = 88200; // ~1 second at 44.1kHz stereo (increased to prevent underruns)
     float audioAccumulator[AUDIO_ACCUMULATOR_SIZE];
     int audioAccumulatorIndex;
     
@@ -167,6 +192,10 @@ private:
     void convertAudioToFloat();
     float getCurrentPlaybackTimeSec(unsigned long currentTick) const;
     bool seekToFrame(float timeSec);
+    double getVideoClock();
+    double getAudioClock();
+    double getMasterClock();
+    bool shouldDisplayFrame(double frameTime);
 };
 
 #endif // PBVideo_h

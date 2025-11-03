@@ -7,6 +7,8 @@
 #include "PBBuildSwitch.h"
 #include <cstring>
 #include <cmath>
+#include <algorithm>
+#include <algorithm>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -38,11 +40,17 @@ PBVideo::PBVideo() {
     looping = false;
     audioEnabled = true;
     playbackSpeed = 1.0f;
+    justLooped = false;
     
     startTick = 0;
     pauseTick = 0;
     pauseDuration = 0;
     lastFrameTimeSec = 0.0f;
+    videoTimeBase = 0.0;
+    audioTimeBase = 0.0;
+    masterClock = 0.0;
+    videoClock = 0.0;
+    audioClock = 0.0;
     
     frameBuffer = nullptr;
     frameBufferSize = 0;
@@ -51,6 +59,9 @@ PBVideo::PBVideo() {
     audioBuffer = nullptr;
     audioBufferSize = 0;
     audioSamplesAvailable = 0;
+    audioReadIndex = 0;
+    audioWriteIndex = 0;
+    audioBufferedSamples = 0;
     audioAccumulatorIndex = 0;
     
     videoInfo = {"", 0, 0, 0.0f, 0.0f, false, false};
@@ -111,6 +122,17 @@ bool PBVideo::pbvLoadVideo(const std::string& videoFilePath) {
     videoInfo.hasVideo = (videoStreamIndex >= 0);
     videoInfo.hasAudio = (audioStreamIndex >= 0);
     
+    // Store time base information for proper synchronization
+    if (videoStreamIndex >= 0) {
+        AVRational timeBase = formatContext->streams[videoStreamIndex]->time_base;
+        videoTimeBase = (double)timeBase.num / (double)timeBase.den;
+    }
+    
+    if (audioStreamIndex >= 0) {
+        AVRational timeBase = formatContext->streams[audioStreamIndex]->time_base;
+        audioTimeBase = (double)timeBase.num / (double)timeBase.den;
+    }
+    
     if (videoInfo.hasVideo) {
         videoInfo.width = videoCodecContext->width;
         videoInfo.height = videoCodecContext->height;
@@ -170,6 +192,14 @@ void PBVideo::pbvUnloadVideo() {
     videoStreamIndex = -1;
     audioStreamIndex = -1;
     videoInfo = {"", 0, 0, 0.0f, 0.0f, false, false};
+    videoTimeBase = 0.0;
+    audioTimeBase = 0.0;
+    masterClock = 0.0;
+    videoClock = 0.0;
+    audioClock = 0.0;
+    audioReadIndex = 0;
+    audioWriteIndex = 0;
+    audioBufferedSamples = 0;
 }
 
 bool PBVideo::pbvPlay() {
@@ -187,6 +217,17 @@ bool PBVideo::pbvPlay() {
         pauseDuration = 0;
         lastFrameTimeSec = 0.0f;
         playbackState = PBV_PLAYING;
+        
+        // Pre-fill audio buffer for streaming to work immediately
+        // Fill to 75% to prevent initial popping
+        if (videoInfo.hasAudio && audioEnabled) {
+            while (audioAccumulatorIndex < AUDIO_ACCUMULATOR_SIZE * 0.75f) {
+                if (!decodeNextAudioFrame()) {
+                    break;
+                }
+            }
+            audioSamplesAvailable = audioAccumulatorIndex;
+        }
     }
     
     return true;
@@ -230,50 +271,38 @@ bool PBVideo::pbvUpdateFrame(unsigned long currentTick) {
         fillPacketQueues();
     }
     
-    // Calculate current playback time
-    float currentTimeSec = getCurrentPlaybackTimeSec(currentTick);
+    // Always try to keep audio buffer filled independently of video
+    if (videoInfo.hasAudio && audioEnabled) {
+        // Keep buffer at 75% capacity for smooth streaming without gaps
+        // Higher buffer prevents popping/crackling from underruns
+        while (audioAccumulatorIndex < AUDIO_ACCUMULATOR_SIZE * 0.75f) {
+            if (!decodeNextAudioFrame()) {
+                break; // No more audio frames available
+            }
+        }
+        // Make available samples accessible
+        audioSamplesAvailable = audioAccumulatorIndex;
+    }
     
     // Check if we need to decode a new frame
     if (!videoInfo.hasVideo) {
         return false;
     }
     
+    // Calculate current playback time based on system clock
+    float currentTimeSec = getCurrentPlaybackTimeSec(currentTick);
+    
     // Calculate the time per frame
     float frameTime = 1.0f / videoInfo.fps;
     
-    // Check if it's time for the next frame
-    if (currentTimeSec >= lastFrameTimeSec + frameTime) {
+    // Check if it's time for the next frame (small tolerance to prevent frame rushing)
+    if (currentTimeSec >= lastFrameTimeSec + frameTime - 0.001f) { // 1ms tolerance
         // Decode next video frame
         bool success = decodeNextVideoFrame();
         
         if (success) {
             lastFrameTimeSec = currentTimeSec;
             newFrameAvailable = true;
-            
-            // Accumulate audio samples if available and enabled
-            // We decode multiple audio frames per video frame to keep audio buffer full
-            if (videoInfo.hasAudio && audioEnabled) {
-                // Keep accumulating audio until we have a good buffer
-                while (audioAccumulatorIndex < AUDIO_ACCUMULATOR_SIZE * 0.8f) {
-                    if (!decodeNextAudioFrame()) {
-                        break; // No more audio frames available
-                    }
-                }
-                
-                // If we have enough samples, make them available for playback
-                if (audioAccumulatorIndex >= 4410) { // ~100ms at 44.1kHz stereo
-                    audioSamplesAvailable = audioAccumulatorIndex;
-                    // Copy to audio buffer for retrieval
-                    for (int i = 0; i < audioSamplesAvailable && i < audioBufferSize; i++) {
-                        audioBuffer[i] = audioAccumulator[i];
-                    }
-                    // Reset accumulator
-                    audioAccumulatorIndex = 0;
-                } else {
-                    audioSamplesAvailable = 0;
-                }
-            }
-            
             return true;
         } else {
             // End of video
@@ -284,6 +313,9 @@ bool PBVideo::pbvUpdateFrame(unsigned long currentTick) {
                 pauseDuration = 0;
                 lastFrameTimeSec = 0.0f;
                 audioAccumulatorIndex = 0;
+                videoClock = 0.0;
+                audioClock = 0.0;
+                justLooped = true;  // Signal that we looped
                 return pbvUpdateFrame(currentTick);
             } else {
                 playbackState = PBV_FINISHED;
@@ -307,13 +339,67 @@ const uint8_t* PBVideo::pbvGetFrameData(unsigned int* frameWidth, unsigned int* 
     return frameBuffer;
 }
 
+// Overload for buffer-based retrieval (used by streaming callback)
+int PBVideo::pbvGetAudioSamples(float* buffer, int requestedSamples) {
+    if (!videoLoaded || !videoInfo.hasAudio || !audioEnabled || audioSamplesAvailable == 0 || !buffer) {
+        return 0;
+    }
+    
+    int samplesToProvide = std::min(audioSamplesAvailable, requestedSamples * 2); // stereo
+    
+    // Copy samples to provided buffer
+    memcpy(buffer, audioAccumulator, samplesToProvide * sizeof(float));
+    
+    // Shift remaining samples to front of accumulator
+    int remainingSamples = audioAccumulatorIndex - samplesToProvide;
+    if (remainingSamples > 0) {
+        memmove(audioAccumulator, audioAccumulator + samplesToProvide, 
+                remainingSamples * sizeof(float));
+    }
+    audioAccumulatorIndex = remainingSamples;
+    audioSamplesAvailable = audioAccumulatorIndex;
+    
+    return samplesToProvide / 2;  // Return mono sample count
+}
+
+// Original version for compatibility
 const float* PBVideo::pbvGetAudioSamples(int* numSamples) {
-    if (!videoLoaded || !videoInfo.hasAudio || !audioEnabled) {
+    if (!videoLoaded || !videoInfo.hasAudio || !audioEnabled || audioSamplesAvailable == 0) {
         *numSamples = 0;
         return nullptr;
     }
     
-    *numSamples = audioSamplesAvailable;
+    // Calculate chunk size to match video frame rate
+    // Smaller chunks finish faster, allowing dual channels to alternate smoothly
+    int targetSamplesPerFrame = 1470; // Default: ~33ms (good for 30fps)
+    
+    if (videoInfo.fps > 0.0f) {
+        // Calculate samples for one frame duration
+        float frameDuration = 1.0f / videoInfo.fps; // seconds
+        targetSamplesPerFrame = (int)(44100.0f * frameDuration * 2.0f); // stereo samples
+        
+        // Clamp to reasonable range
+        if (targetSamplesPerFrame < 882) targetSamplesPerFrame = 882;    // Min ~20ms
+        if (targetSamplesPerFrame > 4410) targetSamplesPerFrame = 4410;  // Max ~100ms
+    }
+    
+    int samplesToProvide = std::min(audioSamplesAvailable, targetSamplesPerFrame);
+    
+    // Copy samples to audio buffer for retrieval
+    for (int i = 0; i < samplesToProvide && i < audioBufferSize; i++) {
+        audioBuffer[i] = audioAccumulator[i];
+    }
+    
+    // Shift remaining samples to front of accumulator (avoid gaps)
+    int remainingSamples = audioAccumulatorIndex - samplesToProvide;
+    if (remainingSamples > 0) {
+        memmove(audioAccumulator, audioAccumulator + samplesToProvide, 
+                remainingSamples * sizeof(float));
+    }
+    audioAccumulatorIndex = remainingSamples;
+    audioSamplesAvailable = audioAccumulatorIndex;
+    
+    *numSamples = samplesToProvide;
     return audioBuffer;
 }
 
@@ -370,6 +456,12 @@ void PBVideo::pbvSetAudioEnabled(bool enabled) {
 
 void PBVideo::pbvSetLooping(bool loop) {
     looping = loop;
+}
+
+bool PBVideo::pbvDidJustLoop() {
+    bool result = justLooped;
+    justLooped = false;  // Clear flag after reading
+    return result;
 }
 
 // Private helper methods
@@ -731,6 +823,8 @@ bool PBVideo::decodeNextVideoFrame() {
         
         if (ret == 0) {
             // Successfully decoded a frame
+            // Update video clock with frame timestamp
+            videoClock = getVideoClock();
             convertFrameToRGBA();
             return true;
         }
@@ -766,6 +860,8 @@ bool PBVideo::decodeNextAudioFrame() {
         
         if (ret == 0) {
             // Successfully decoded a frame
+            // Update audio clock with frame timestamp
+            audioClock = getAudioClock();
             convertAudioToFloat();
             return true;
         }
@@ -847,6 +943,108 @@ bool PBVideo::seekToFrame(float timeSec) {
     
     // Reset audio accumulator
     audioAccumulatorIndex = 0;
+    audioSamplesAvailable = 0;
     
     return true;
+}
+
+// New synchronization methods for better A/V sync
+double PBVideo::getVideoClock() {
+    if (!videoFrame || videoStreamIndex < 0) {
+        return 0.0;
+    }
+    
+    // Get the presentation timestamp of the current video frame
+    if (videoFrame->pts != AV_NOPTS_VALUE) {
+        return videoFrame->pts * videoTimeBase;
+    } else if (videoFrame->pkt_dts != AV_NOPTS_VALUE) {
+        return videoFrame->pkt_dts * videoTimeBase;
+    }
+    
+    return videoClock;
+}
+
+double PBVideo::getAudioClock() {
+    if (!audioFrame || audioStreamIndex < 0) {
+        return 0.0;
+    }
+    
+    // Get the presentation timestamp of the current audio frame
+    if (audioFrame->pts != AV_NOPTS_VALUE) {
+        return audioFrame->pts * audioTimeBase;
+    } else if (audioFrame->pkt_dts != AV_NOPTS_VALUE) {
+        return audioFrame->pkt_dts * audioTimeBase;
+    }
+    
+    return audioClock;
+}
+
+double PBVideo::getMasterClock() {
+    // Use system time as the master clock
+    // This keeps playback smooth and predictable
+    // Audio and video will both sync to wall clock time
+    return (double)getCurrentPlaybackTimeSec(0);
+}
+
+bool PBVideo::shouldDisplayFrame(double frameTime) {
+    // Get current master clock time
+    double masterTime = getMasterClock();
+    
+    // Calculate timing difference
+    double timeDiff = frameTime - masterTime;
+    
+    // Display frame if it's within reasonable timing window
+    // Allow some tolerance for timing variations
+    return (timeDiff >= -0.04 && timeDiff <= 0.04); // 40ms tolerance
+}
+
+// Debug and monitoring functions
+bool PBVideo::pbvIsUsingHardwareDecoder() const {
+    if (!videoCodecContext) {
+        return false;
+    }
+    
+    const char* codecName = videoCodecContext->codec->name;
+    return (strstr(codecName, "v4l2m2m") != nullptr || 
+            strstr(codecName, "nvenc") != nullptr ||
+            strstr(codecName, "vaapi") != nullptr ||
+            strstr(codecName, "qsv") != nullptr);
+}
+
+void PBVideo::pbvPrintDecoderInfo() const {
+    printf("=== PBVideo Decoder Information ===\n");
+    
+    if (videoCodecContext) {
+        printf("Video Codec: %s\n", videoCodecContext->codec->long_name);
+        printf("Video Decoder: %s\n", videoCodecContext->codec->name);
+        printf("Hardware Acceleration: %s\n", pbvIsUsingHardwareDecoder() ? "YES" : "NO");
+        printf("Video Resolution: %dx%d\n", videoCodecContext->width, videoCodecContext->height);
+        printf("Video Pixel Format: %s\n", av_get_pix_fmt_name(videoCodecContext->pix_fmt));
+        printf("Video Time Base: %.6f\n", videoTimeBase);
+    } else {
+        printf("No video codec loaded\n");
+    }
+    
+    if (audioCodecContext) {
+        printf("Audio Codec: %s\n", audioCodecContext->codec->long_name);
+        printf("Audio Decoder: %s\n", audioCodecContext->codec->name);
+        printf("Audio Sample Rate: %d Hz\n", audioCodecContext->sample_rate);
+        printf("Audio Channels: %d\n", audioCodecContext->ch_layout.nb_channels);
+        printf("Audio Time Base: %.6f\n", audioTimeBase);
+    } else {
+        printf("No audio codec loaded\n");
+    }
+    
+    printf("Playback State: ");
+    switch (playbackState) {
+        case PBV_STOPPED: printf("STOPPED\n"); break;
+        case PBV_PLAYING: printf("PLAYING\n"); break;
+        case PBV_PAUSED: printf("PAUSED\n"); break;
+        case PBV_FINISHED: printf("FINISHED\n"); break;
+    }
+    
+    printf("Audio Buffer Status: %d/%d frames buffered\n", audioBufferedSamples, AUDIO_BUFFER_FRAMES);
+    printf("Video Queue Size: %zu packets\n", videoPacketQueue.size());
+    printf("Audio Queue Size: %zu packets\n", audioPacketQueue.size());
+    printf("===================================\n");
 }

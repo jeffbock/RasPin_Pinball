@@ -59,10 +59,13 @@ public:
     // Stop all effects
     void pbsStopAllEffects();
     
-    // Video audio functions (Raspberry Pi only, channel 5 reserved for video)
-    bool pbsPlayVideoAudio(const float* audioSamples, int numSamples, int sampleRate);
+    // Video audio streaming functions (Raspberry Pi only, channel 4 reserved for video)
+    bool pbsStartVideoAudioStream();  // Initialize the streaming system
     void pbsStopVideoAudio();
+    void pbsRestartVideoAudioStream();  // Restart stream (for looping video)
     bool pbsIsVideoAudioPlaying();
+    bool pbsQueueVideoAudio(const float* audioSamples, int numSamples, int sampleRate);  // Add audio to circular buffer
+    void pbsSetVideoAudioProvider(class PBVideo* provider);  // Set the video object for callbacks
     
     // Set overall volume (0-100%)
     void pbsSetMasterVolume(int volume);
@@ -86,10 +89,11 @@ private:
     bool effectActive[4];       // Track which effects are active
     std::map<std::string, Mix_Chunk*> loadedEffects;  // Cache for loaded effects
     
-    // Video audio channel (channel 5 dedicated to video)
-    Mix_Chunk* videoAudioChunk;
-    int videoAudioChannel;
-    bool videoAudioActive;
+    // Video audio streaming system (dedicated channel 4)
+    static const int VIDEO_AUDIO_CHANNEL = 4;
+    Mix_Chunk* videoAudioChunk;          // Single chunk for streaming
+    bool videoAudioStreaming;            // Is stream active?
+    class PBVideo* videoProvider;        // Reference to video for pulling audio
     
     // Internal helper methods
     int findFreeEffectSlot();
@@ -97,6 +101,11 @@ private:
     Mix_Chunk* loadEffect(const std::string& filePath);
     int convertVolumeToSDL(int percentage);
     Mix_Chunk* createAudioChunkFromSamples(const float* audioSamples, int numSamples, int sampleRate);
+    
+    // Static callback for SDL_mixer channel finished
+    static void channelFinishedCallback(int channel);
+    static PBSound* instance;  // Singleton for callback access
+    void handleChannelFinished(int channel);
 #endif
 };
 

@@ -87,7 +87,16 @@ bool PBVideoPlayer::pbvpPlay() {
         return false;
     }
     
-    return m_video.pbvPlay();
+    // Start the video
+    bool success = m_video.pbvPlay();
+    
+    // Start audio streaming if we have sound and audio is enabled
+    if (success && m_sound && audioEnabled) {
+        m_sound->pbsSetVideoAudioProvider(&m_video);
+        m_sound->pbsStartVideoAudioStream();
+    }
+    
+    return success;
 }
 
 void PBVideoPlayer::pbvpPause() {
@@ -122,6 +131,11 @@ bool PBVideoPlayer::pbvpUpdate(unsigned long currentTick) {
     // Update video frame
     bool newFrame = m_video.pbvUpdateFrame(currentTick);
     
+    // Check if video just looped - restart audio stream for clean loop
+    if (m_sound && audioEnabled && m_video.pbvDidJustLoop()) {
+        m_sound->pbsRestartVideoAudioStream();
+    }
+    
     if (newFrame) {
         // Get the new frame data
         unsigned int frameWidth, frameHeight;
@@ -132,16 +146,8 @@ bool PBVideoPlayer::pbvpUpdate(unsigned long currentTick) {
             m_gfx->gfxUpdateVideoTexture(videoSpriteId, frameData, frameWidth, frameHeight);
         }
         
-        // Handle audio if available and enabled
-        if (m_sound && audioEnabled) {
-            int numSamples;
-            const float* audioSamples = m_video.pbvGetAudioSamples(&numSamples);
-            
-            if (audioSamples && numSamples > 0) {
-                // Play the audio samples (44.1kHz stereo)
-                m_sound->pbsPlayVideoAudio(audioSamples, numSamples, 44100);
-            }
-        }
+        // Note: Audio is now handled automatically via SDL_mixer callback streaming
+        // No need to queue audio per-frame anymore
     }
     
     return true;
