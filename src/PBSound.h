@@ -64,7 +64,6 @@ public:
     void pbsStopVideoAudio();
     void pbsRestartVideoAudioStream();  // Restart stream (for looping video)
     bool pbsIsVideoAudioPlaying();
-    bool pbsQueueVideoAudio(const float* audioSamples, int numSamples, int sampleRate);  // Add audio to circular buffer
     void pbsSetVideoAudioProvider(class PBVideo* provider);  // Set the video object for callbacks
     
     // Set overall volume (0-100%)

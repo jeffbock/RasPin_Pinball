@@ -399,16 +399,6 @@ bool PBSound::pbsStartVideoAudioStream() {
 #endif
 }
 
-bool PBSound::pbsQueueVideoAudio(const float* audioSamples, int numSamples, int sampleRate) {
-#ifdef EXE_MODE_RASPI
-    // This function is no longer needed - audio is pulled via callback
-    // But keep it for compatibility, just return true
-    return true;
-#else
-    return false;
-#endif
-}
-
 void PBSound::pbsStopVideoAudio() {
 #ifdef EXE_MODE_RASPI
     if (!initialized) {

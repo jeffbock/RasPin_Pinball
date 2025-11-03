@@ -162,13 +162,6 @@ private:
     int audioBufferSize;
     int audioSamplesAvailable;
     
-    // Improved audio buffering for smoother playback
-    static const int AUDIO_BUFFER_FRAMES = 8192;  // Number of stereo frames (increased for smoother playback)
-    float smoothAudioBuffer[AUDIO_BUFFER_FRAMES * 2]; // Stereo samples
-    int audioReadIndex;
-    int audioWriteIndex;
-    int audioBufferedSamples;
-    
     // Packet queues for separate video/audio demuxing
     std::queue<AVPacket*> videoPacketQueue;
     std::queue<AVPacket*> audioPacketQueue;
@@ -192,6 +185,8 @@ private:
     void convertAudioToFloat();
     float getCurrentPlaybackTimeSec(unsigned long currentTick) const;
     bool seekToFrame(float timeSec);
+    
+    // FUTURE: Advanced A/V synchronization methods (preserved for potential future use)
     double getVideoClock();
     double getAudioClock();
     double getMasterClock();

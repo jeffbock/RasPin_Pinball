@@ -8,7 +8,6 @@
 #include <cstring>
 #include <cmath>
 #include <algorithm>
-#include <algorithm>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -59,9 +58,6 @@ PBVideo::PBVideo() {
     audioBuffer = nullptr;
     audioBufferSize = 0;
     audioSamplesAvailable = 0;
-    audioReadIndex = 0;
-    audioWriteIndex = 0;
-    audioBufferedSamples = 0;
     audioAccumulatorIndex = 0;
     
     videoInfo = {"", 0, 0, 0.0f, 0.0f, false, false};
@@ -197,9 +193,6 @@ void PBVideo::pbvUnloadVideo() {
     masterClock = 0.0;
     videoClock = 0.0;
     audioClock = 0.0;
-    audioReadIndex = 0;
-    audioWriteIndex = 0;
-    audioBufferedSamples = 0;
 }
 
 bool PBVideo::pbvPlay() {
@@ -823,7 +816,7 @@ bool PBVideo::decodeNextVideoFrame() {
         
         if (ret == 0) {
             // Successfully decoded a frame
-            // Update video clock with frame timestamp
+            // FUTURE: Update video clock for A/V sync improvements
             videoClock = getVideoClock();
             convertFrameToRGBA();
             return true;
@@ -860,7 +853,7 @@ bool PBVideo::decodeNextAudioFrame() {
         
         if (ret == 0) {
             // Successfully decoded a frame
-            // Update audio clock with frame timestamp
+            // FUTURE: Update audio clock for A/V sync improvements
             audioClock = getAudioClock();
             convertAudioToFloat();
             return true;
@@ -948,7 +941,11 @@ bool PBVideo::seekToFrame(float timeSec) {
     return true;
 }
 
-// New synchronization methods for better A/V sync
+// FUTURE: Synchronization methods for advanced A/V sync
+// These methods implement timestamp-based synchronization for improved
+// audio/video sync with variable frame rate content or complex timing scenarios.
+// Currently using simpler frame-rate based timing, but these are preserved
+// for potential future enhancements.
 double PBVideo::getVideoClock() {
     if (!videoFrame || videoStreamIndex < 0) {
         return 0.0;
@@ -1043,7 +1040,6 @@ void PBVideo::pbvPrintDecoderInfo() const {
         case PBV_FINISHED: printf("FINISHED\n"); break;
     }
     
-    printf("Audio Buffer Status: %d/%d frames buffered\n", audioBufferedSamples, AUDIO_BUFFER_FRAMES);
     printf("Video Queue Size: %zu packets\n", videoPacketQueue.size());
     printf("Audio Queue Size: %zu packets\n", audioPacketQueue.size());
     printf("===================================\n");
