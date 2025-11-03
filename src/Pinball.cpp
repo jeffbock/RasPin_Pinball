@@ -357,10 +357,11 @@ void SendAllStagedLED() {
 void ProcessLEDSequenceMessage(const stOutputMessage& message) {
     if (message.outputState == PB_ON && message.options != nullptr) {
         // Start LED sequence mode
+        unsigned long currentTick = g_PBEngine.GetTickCountGfx();
         g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = true;
         g_PBEngine.m_LEDSequenceInfo.firstTime = true;
-        g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = message.sentTick;
-        g_PBEngine.m_LEDSequenceInfo.stepStartTick = message.sentTick;
+        g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = currentTick;
+        g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick;
         g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
         g_PBEngine.m_LEDSequenceInfo.previousSeqIndex = -1; // Initialize to indicate never set
         g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
@@ -591,10 +592,14 @@ void ProcessActiveLEDSequence() {
         int nextSeqIndex = g_PBEngine.m_LEDSequenceInfo.currentSeqIndex;
         bool shouldAdvanceSequence = false;
         
-        // Initialize step timing on first run or when starting a new step
-        if (g_PBEngine.m_LEDSequenceInfo.firstTime || 
-            g_PBEngine.m_LEDSequenceInfo.previousSeqIndex != g_PBEngine.m_LEDSequenceInfo.currentSeqIndex) {
+        // Initialize step timing when index changes (but not on firstTime, as it's already set in ProcessLEDSequenceMessage)
+        if (g_PBEngine.m_LEDSequenceInfo.previousSeqIndex != g_PBEngine.m_LEDSequenceInfo.currentSeqIndex &&
+            !g_PBEngine.m_LEDSequenceInfo.firstTime) {
             g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick;
+        }
+        
+        // Clear firstTime flag after using it
+        if (g_PBEngine.m_LEDSequenceInfo.firstTime) {
             g_PBEngine.m_LEDSequenceInfo.firstTime = false;
         }
         
