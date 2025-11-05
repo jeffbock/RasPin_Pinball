@@ -34,6 +34,7 @@
                 "/Fd${fileDirname}/../winbuild/${fileBasenameNoExtension}.pdb",
                 "${file}",
                 "/I${workspaceFolder}/src/include_ogl_win",
+                "/I${workspaceFolder}/src/3rdparty",
                 "/link",
                 "/LIBPATH:${workspaceFolder}/src/lib_ogl_win",
                 "/LIBPATH:C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64",
@@ -77,6 +78,7 @@
                 "${workspaceFolder}/rpi_build/${fileBasenameNoExtension}",
                 "${file}",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
+                "-I${workspaceFolder}/src/3rdparty",
                 "-L${workspaceFolder}/src/lib_ogl_raspi"
             ],
             "options": {
@@ -105,7 +107,7 @@
                 "/Fo${workspaceFolder}/winbuild/",
                 "/Fe${workspaceFolder}/winbuild/Pinball.exe",
                 "/Fd${workspaceFolder}/winbuild/Pinball.pdb",
-                "${workspaceFolder}/src/stb_image.cpp",
+                "${workspaceFolder}/src/3rdparty/stb_image.cpp",
                 "${workspaceFolder}/src/PBOGLES.cpp",
                 "${workspaceFolder}/src/PBGfx.cpp",
                 "${workspaceFolder}/src/PBWinRender.cpp",
@@ -120,6 +122,7 @@
                 "${workspaceFolder}/src/Pinball_Engine.cpp",
                 "${workspaceFolder}/src/Pinball.cpp",
                 "/I${workspaceFolder}/src/include_ogl_win",
+                "/I${workspaceFolder}/src/3rdparty",
                 "/link",
                 "/LIBPATH:${workspaceFolder}/src/lib_ogl_win",
                 "/LIBPATH:C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64",
@@ -167,7 +170,7 @@
                 "-g",
                 "-o",
                 "${workspaceFolder}/raspibuild/Pinball",
-                "${workspaceFolder}/src/stb_image.cpp",
+                "${workspaceFolder}/src/3rdparty/stb_image.cpp",
                 "${workspaceFolder}/src/PBOGLES.cpp",
                 "${workspaceFolder}/src/PBGfx.cpp",
                 "${workspaceFolder}/src/PBRaspPiRender.cpp",
@@ -182,6 +185,7 @@
                 "${workspaceFolder}/src/Pinball_Engine.cpp",
                 "${workspaceFolder}/src/Pinball.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
+                "-I${workspaceFolder}/src/3rdparty",
                 "-I/usr/include/EGL",
                 "-I/usr/include/GLES3",
                 "-I/usr/include/KHR",
@@ -227,10 +231,11 @@
                 "/Fo${workspaceFolder}/winbuild/",
                 "/Fe${workspaceFolder}/winbuild/FontGen.exe",
                 "/Fd${workspaceFolder}/winbuild/FontGen.pdb",
-                "${workspaceFolder}/src/stb_truetype.cpp",
-                "${workspaceFolder}/src/stb_image_write.cpp",
-                "${workspaceFolder}/src/FontGen.cpp",
+                "${workspaceFolder}/src/3rdparty/stb_truetype.cpp",
+                "${workspaceFolder}/src/3rdparty/stb_image_write.cpp",
+                "${workspaceFolder}/src/PButils/FontGen.cpp",
                 "/I${workspaceFolder}/src/include_ogl_win",
+                "/I${workspaceFolder}/src/3rdparty",
                 "/link",
                 "/LIBPATH:C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64",
                 "kernel32.lib",
@@ -269,10 +274,11 @@
                 "-g",
                 "-o",
                 "${workspaceFolder}/rpi_build/FontGen",
-                "${workspaceFolder}/src/stb_truetype.cpp",
-                "${workspaceFolder}/src/stb_image_write.cpp",
-                "${workspaceFolder}/src/FontGen.cpp",
+                "${workspaceFolder}/src/3rdparty/stb_truetype.cpp",
+                "${workspaceFolder}/src/3rdparty/stb_image_write.cpp",
+                "${workspaceFolder}/src/PButils/FontGen.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
+                "-I${workspaceFolder}/src/3rdparty",
                 "-L${workspaceFolder}/src/lib_ogl_raspi",
                 "-lEGL",
                 "-lGLESv2",
@@ -289,6 +295,96 @@
                 "isDefault": false
             },
             "detail": "Raspberry Pi: FontGen Build"
+        },
+
+        // Raspberry Pi: pblistdevices Build
+        {
+            "type": "cppbuild",
+            "label": "Raspberry Pi: pblistdevices Build",
+            "command": "/usr/bin/g++",
+            "args": [
+                "-g",
+                "-o",
+                "${workspaceFolder}/rpi_build/pblistdevices",
+                "${workspaceFolder}/src/PButils/pblistdevices.cpp",
+                "-I${workspaceFolder}/src/include_ogl_raspi",
+                "-I${workspaceFolder}/src/3rdparty",
+                "-L${workspaceFolder}/src/lib_ogl_raspi",
+                "-lwiringPi",
+                "-lpthread"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "Raspberry Pi: pblistdevices Build"
+        },
+
+        // Raspberry Pi: pbsetamp Build
+        {
+            "type": "cppbuild",
+            "label": "Raspberry Pi: pbsetamp Build",
+            "command": "/usr/bin/g++",
+            "args": [
+                "-g",
+                "-o",
+                "${workspaceFolder}/rpi_build/pbsetamp",
+                "${workspaceFolder}/src/PButils/pbsetamp.cpp",
+                "-I${workspaceFolder}/src/include_ogl_raspi",
+                "-I${workspaceFolder}/src/3rdparty",
+                "-L${workspaceFolder}/src/lib_ogl_raspi",
+                "-lwiringPi",
+                "-lpthread"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "Raspberry Pi: pbsetamp Build"
+        },
+
+        // Windows: Build All PBUtils
+        {
+            "label": "Windows: Build All PBUtils",
+            "dependsOn": [
+                "Windows: FontGen Build"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "Build all PBUtils executables for Windows (FontGen only - pblistdevices and pbsetamp require wiringPi)"
+        },
+
+        // Raspberry Pi: Build All PBUtils
+        {
+            "label": "Raspberry Pi: Build All PBUtils",
+            "dependsOn": [
+                "Raspberry Pi: FontGen Build",
+                "Raspberry Pi: pblistdevices Build",
+                "Raspberry Pi: pbsetamp Build"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "Build all PBUtils executables for Raspberry Pi"
         },
 
         // Windows Release Build (Optimized)
@@ -308,7 +404,7 @@
                 "/nologo",
                 "/Fo${workspaceFolder}/winbuild/release/",
                 "/Fe${workspaceFolder}/winbuild/release/Pinball.exe",
-                "${workspaceFolder}/src/stb_image.cpp",
+                "${workspaceFolder}/src/3rdparty/stb_image.cpp",
                 "${workspaceFolder}/src/PBOGLES.cpp",
                 "${workspaceFolder}/src/PBGfx.cpp",
                 "${workspaceFolder}/src/PBWinRender.cpp",
@@ -323,6 +419,7 @@
                 "${workspaceFolder}/src/Pinball_Engine.cpp",
                 "${workspaceFolder}/src/Pinball.cpp",
                 "/I${workspaceFolder}/src/include_ogl_win",
+                "/I${workspaceFolder}/src/3rdparty",
                 "/link",
                 "/LTCG",                  // Link-time code generation
                 "/OPT:REF",               // Remove unreferenced functions
@@ -379,7 +476,7 @@
                 "-DNDEBUG",               // Define NDEBUG for release
                 "-o",
                 "${workspaceFolder}/raspibuild/release/Pinball",
-                "${workspaceFolder}/src/stb_image.cpp",
+                "${workspaceFolder}/src/3rdparty/stb_image.cpp",
                 "${workspaceFolder}/src/PBOGLES.cpp",
                 "${workspaceFolder}/src/PBGfx.cpp",
                 "${workspaceFolder}/src/PBRaspPiRender.cpp",
@@ -394,6 +491,7 @@
                 "${workspaceFolder}/src/Pinball_Engine.cpp",
                 "${workspaceFolder}/src/Pinball.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
+                "-I${workspaceFolder}/src/3rdparty",
                 "-I/usr/include/EGL",
                 "-I/usr/include/GLES3",
                 "-I/usr/include/KHR",

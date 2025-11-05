@@ -19,7 +19,7 @@ add_custom_target(update_version
 
 # Define source files
 set(PINBALL_SOURCES
-    src/stb_image.cpp
+    src/3rdparty/stb_image.cpp
     src/PBOGLES.cpp
     src/PBGfx.cpp
     src/PBRaspPiRender.cpp
@@ -41,6 +41,7 @@ add_dependencies(Pinball update_version)
 # Include directories
 target_include_directories(Pinball PRIVATE
     src/include_ogl_raspi
+    src/3rdparty
     /usr/include/EGL
     /usr/include/GLES3
     /usr/include/KHR
