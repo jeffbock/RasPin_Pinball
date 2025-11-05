@@ -75,7 +75,7 @@
             "args": [
                 "-g",
                 "-o",
-                "${workspaceFolder}/rpi_build/${fileBasenameNoExtension}",
+                "${workspaceFolder}/raspibuild/${fileBasenameNoExtension}",
                 "${file}",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
                 "-I${workspaceFolder}/src/3rdparty",
@@ -273,7 +273,7 @@
             "args": [
                 "-g",
                 "-o",
-                "${workspaceFolder}/rpi_build/FontGen",
+                "${workspaceFolder}/raspibuild/FontGen",
                 "${workspaceFolder}/src/3rdparty/stb_truetype.cpp",
                 "${workspaceFolder}/src/3rdparty/stb_image_write.cpp",
                 "${workspaceFolder}/src/PButils/FontGen.cpp",
@@ -305,7 +305,7 @@
             "args": [
                 "-g",
                 "-o",
-                "${workspaceFolder}/rpi_build/pblistdevices",
+                "${workspaceFolder}/raspibuild/pblistdevices",
                 "${workspaceFolder}/src/PButils/pblistdevices.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
                 "-I${workspaceFolder}/src/3rdparty",
@@ -334,7 +334,7 @@
             "args": [
                 "-g",
                 "-o",
-                "${workspaceFolder}/rpi_build/pbsetamp",
+                "${workspaceFolder}/raspibuild/pbsetamp",
                 "${workspaceFolder}/src/PButils/pbsetamp.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
                 "-I${workspaceFolder}/src/3rdparty",

@@ -75,8 +75,15 @@ int main(void)
   // Check LED expander addresses (TLC59116)
   std::cout << "LED Expander (TLC59116) addresses:" << std::endl;
   for (int i = 0; i < LED_EXPANDER_ADDRESS_COUNT; i++) {
-    if (checkDevice(LED_EXPANDER_BASE_ADDRESS + i, "LED Expander", true)) {
-      foundLEDExpanders.push_back(LED_EXPANDER_BASE_ADDRESS + i);
+    int address = LED_EXPANDER_BASE_ADDRESS + i;
+    // Skip 0x68 as it's the All-Call address for TLC59116
+    if (address == 0x68) {
+      std::cout << "0x" << std::hex << std::setw(2) << std::setfill('0') 
+                << address << " - LED Expander: Skipped (All-Call address)" << std::endl;
+      continue;
+    }
+    if (checkDevice(address, "LED Expander", true)) {
+      foundLEDExpanders.push_back(address);
     }
   }
   std::cout << std::endl;
