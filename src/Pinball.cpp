@@ -366,9 +366,8 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
         // Clear any existing deferred messages from previous sequence
         {
             std::lock_guard<std::mutex> lock(g_PBEngine.m_deferredQMutex);
-            while (!g_PBEngine.m_deferredQueue.empty()) {
-                g_PBEngine.m_deferredQueue.pop();
-            }
+            // Use swap with empty queue for O(1) clearing
+            std::queue<stOutputMessage>().swap(g_PBEngine.m_deferredQueue);
         }
         
         // Copy activeLEDMask from output options to sequence info FIRST
@@ -485,8 +484,16 @@ void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& output
             std::lock_guard<std::mutex> lock(g_PBEngine.m_deferredQMutex);
             if (g_PBEngine.m_deferredQueue.size() < MAX_DEFERRED_LED_QUEUE) {
                 g_PBEngine.m_deferredQueue.push(message);
+            } else {
+                // Queue is full - drop message and log warning
+                // Use static counter to avoid spamming console
+                static int droppedMessageCount = 0;
+                droppedMessageCount++;
+                if (droppedMessageCount == 1 || (droppedMessageCount % 100) == 0) {
+                    g_PBEngine.pbeSendConsole("WARNING: Deferred LED queue full, dropped " + 
+                                             std::to_string(droppedMessageCount) + " message(s)");
+                }
             }
-            // Drop message if queue is full
             return;
         }
     }

@@ -84,7 +84,7 @@
     m_autoOutputEnable = false;
     
     // Initialize LED sequence info structure
-    m_LEDSequenceInfo.sequenceEnabled.store(false, std::memory_order_relaxed);
+    m_LEDSequenceInfo.sequenceEnabled.store(false, std::memory_order_release);
     m_LEDSequenceInfo.firstTime = false;
     m_LEDSequenceInfo.loopMode = PB_NOLOOP;
     m_LEDSequenceInfo.sequenceStartTick = 0;
