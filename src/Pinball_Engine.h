@@ -123,7 +123,7 @@ struct stOutputPulse {
 };
 
 struct stLEDSequenceInfo {
-    bool sequenceEnabled;
+    std::atomic<bool> sequenceEnabled;
     bool firstTime;
     PBSequenceLoopMode loopMode;              
     unsigned long sequenceStartTick;

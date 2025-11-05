@@ -317,8 +317,9 @@ bool PBProcessOutput() {
     SendAllStagedIO();
     
     // Handle LED sequence processing or deferred queue
-    // Check sequence enabled state atomically to prevent race condition
-    bool sequenceCurrentlyEnabled = g_PBEngine.m_LEDSequenceInfo.sequenceEnabled;
+    // Read sequence enabled state atomically to prevent race condition
+    // Using std::atomic<bool> ensures memory ordering and visibility across threads
+    bool sequenceCurrentlyEnabled = g_PBEngine.m_LEDSequenceInfo.sequenceEnabled.load(std::memory_order_acquire);
     
     if (sequenceCurrentlyEnabled) {
         ProcessActiveLEDSequence();
@@ -413,7 +414,6 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
         }
         
         // Set sequence info AFTER state is saved and staged changes are prepared
-        g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = true;
         g_PBEngine.m_LEDSequenceInfo.firstTime = true;
         g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = currentTick;
         g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick;
@@ -422,6 +422,9 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
         g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
         g_PBEngine.m_LEDSequenceInfo.loopMode = message.options->loopMode;
         g_PBEngine.m_LEDSequenceInfo.pLEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
+        
+        // Enable sequence LAST with release memory order to ensure all previous writes are visible
+        g_PBEngine.m_LEDSequenceInfo.sequenceEnabled.store(true, std::memory_order_release);
 } else {
     // Stop LED sequence mode
     EndLEDSequence();
@@ -471,7 +474,7 @@ void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& output
     // Check if LED sequence is active for this specific chip/pin (unless skip is requested)
     if (!skipSequenceCheck) {
         bool sequenceActiveForPin = false;
-        if (g_PBEngine.m_LEDSequenceInfo.sequenceEnabled && 
+        if (g_PBEngine.m_LEDSequenceInfo.sequenceEnabled.load(std::memory_order_acquire) && 
             outputDef.boardIndex < NUM_LED_CHIPS) {
             // Check if this specific pin is in the active LED mask
             sequenceActiveForPin = (g_PBEngine.m_LEDSequenceInfo.activeLEDMask[outputDef.boardIndex] & (1 << outputDef.pin)) != 0;
@@ -734,7 +737,8 @@ void HandleLEDSequenceBoundaries() {
 // End LED sequence and restore saved values
 void EndLEDSequence() {
     // Disable sequence mode FIRST to prevent new messages from being deferred
-    g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = false;
+    // Use release memory order to ensure change is immediately visible to other threads
+    g_PBEngine.m_LEDSequenceInfo.sequenceEnabled.store(false, std::memory_order_release);
     
     // Send any pending staged LED values before restoring state
     // This ensures the sequence's final state is properly sent to hardware
