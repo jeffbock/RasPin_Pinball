@@ -22,7 +22,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-#include "stb_image.h"
+#include "3rdparty/stb_image.h"
 
 #define OGLES_BLACKCOLOR 0x0 
 #define OGLES_WHITECOLOR 0x1

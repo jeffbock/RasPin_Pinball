@@ -75,10 +75,9 @@
             "args": [
                 "-g",
                 "-o",
-                "${workspaceFolder}/rpi_build/${fileBasenameNoExtension}",
+                "${workspaceFolder}/raspibuild/${fileBasenameNoExtension}",
                 "${file}",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
-                "-I${workspaceFolder}/src/3rdparty",
                 "-L${workspaceFolder}/src/lib_ogl_raspi"
             ],
             "options": {
@@ -185,7 +184,6 @@
                 "${workspaceFolder}/src/Pinball_Engine.cpp",
                 "${workspaceFolder}/src/Pinball.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
-                "-I${workspaceFolder}/src/3rdparty",
                 "-I/usr/include/EGL",
                 "-I/usr/include/GLES3",
                 "-I/usr/include/KHR",
@@ -273,12 +271,11 @@
             "args": [
                 "-g",
                 "-o",
-                "${workspaceFolder}/rpi_build/FontGen",
+                "${workspaceFolder}/raspibuild/FontGen",
                 "${workspaceFolder}/src/3rdparty/stb_truetype.cpp",
                 "${workspaceFolder}/src/3rdparty/stb_image_write.cpp",
                 "${workspaceFolder}/src/PButils/FontGen.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
-                "-I${workspaceFolder}/src/3rdparty",
                 "-L${workspaceFolder}/src/lib_ogl_raspi",
                 "-lEGL",
                 "-lGLESv2",
@@ -305,10 +302,9 @@
             "args": [
                 "-g",
                 "-o",
-                "${workspaceFolder}/rpi_build/pblistdevices",
+                "${workspaceFolder}/raspibuild/pblistdevices",
                 "${workspaceFolder}/src/PButils/pblistdevices.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
-                "-I${workspaceFolder}/src/3rdparty",
                 "-L${workspaceFolder}/src/lib_ogl_raspi",
                 "-lwiringPi",
                 "-lpthread"
@@ -334,10 +330,9 @@
             "args": [
                 "-g",
                 "-o",
-                "${workspaceFolder}/rpi_build/pbsetamp",
+                "${workspaceFolder}/raspibuild/pbsetamp",
                 "${workspaceFolder}/src/PButils/pbsetamp.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
-                "-I${workspaceFolder}/src/3rdparty",
                 "-L${workspaceFolder}/src/lib_ogl_raspi",
                 "-lwiringPi",
                 "-lpthread"
@@ -491,7 +486,6 @@
                 "${workspaceFolder}/src/Pinball_Engine.cpp",
                 "${workspaceFolder}/src/Pinball.cpp",
                 "-I${workspaceFolder}/src/include_ogl_raspi",
-                "-I${workspaceFolder}/src/3rdparty",
                 "-I/usr/include/EGL",
                 "-I/usr/include/GLES3",
                 "-I/usr/include/KHR",
