@@ -29,6 +29,7 @@
 #include <chrono>
 #include <string>
 #include <array>
+#include <atomic>
 
 // Hardware configuration defines
 #define NUM_IO_CHIPS    3

@@ -363,11 +363,11 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
         // Start LED sequence mode
         unsigned long currentTick = g_PBEngine.GetTickCountGfx();
         
-        // Clear any existing deferred messages from previous sequence
+        // Clear any existing deferred messages before starting new sequence
         {
             std::lock_guard<std::mutex> lock(g_PBEngine.m_deferredQMutex);
-            // Use swap with empty queue for O(1) clearing
-            std::queue<stOutputMessage>().swap(g_PBEngine.m_deferredQueue);
+            // Clear queue with O(1) move assignment
+            g_PBEngine.m_deferredQueue = std::queue<stOutputMessage>();
         }
         
         // Copy activeLEDMask from output options to sequence info FIRST
@@ -486,12 +486,12 @@ void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& output
                 g_PBEngine.m_deferredQueue.push(message);
             } else {
                 // Queue is full - drop message and log warning
-                // Use static counter to avoid spamming console
-                static int droppedMessageCount = 0;
-                droppedMessageCount++;
-                if (droppedMessageCount == 1 || (droppedMessageCount % 100) == 0) {
+                // Use atomic counter for thread-safe tracking
+                static std::atomic<int> droppedMessageCount{0};
+                int currentCount = droppedMessageCount.fetch_add(1, std::memory_order_relaxed) + 1;
+                if (currentCount == 1 || (currentCount % 100) == 0) {
                     g_PBEngine.pbeSendConsole("WARNING: Deferred LED queue full, dropped " + 
-                                             std::to_string(droppedMessageCount) + " message(s)");
+                                             std::to_string(currentCount) + " message(s)");
                 }
             }
             return;
