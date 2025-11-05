@@ -18,9 +18,9 @@
 #include <map>
 #include <vector>
 #include <cstring>
-#include "stb_truetype.h"
-#include "stb_image_write.h"
-#include "json.hpp"
+#include "../3rdparty/stb_truetype.h"
+#include "../3rdparty/stb_image_write.h"
+#include "../3rdparty/json.hpp"
 
 using json = nlohmann::json;
 
