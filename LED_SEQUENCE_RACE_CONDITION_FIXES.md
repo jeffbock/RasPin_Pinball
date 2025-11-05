@@ -72,6 +72,11 @@ while (!g_PBEngine.m_deferredQueue.empty()) {
 
 **Impact**: Prevents queue corruption and ensures thread-safe access to deferred messages.
 
+**Additional Improvements**:
+- Queue clearing optimized using swap() for O(1) performance instead of O(n) loop
+- Added warning logging when deferred queue is full and messages are dropped
+- Static counter tracks dropped messages and logs every 100th occurrence to avoid console spam
+
 ---
 
 ### 3. State Restoration Before Final Sequence State Sent (MAJOR)
@@ -152,6 +157,37 @@ if (sequenceCurrentlyEnabled) {
 
 ---
 
+### 6. Thread-Safe Atomic Flag Operations (CRITICAL)
+**Location**: Multiple files - header and implementation
+
+**Problem**:
+- The `sequenceEnabled` flag was a plain `bool` without synchronization
+- Multiple threads could read/write this flag simultaneously
+- Compiler optimizations or CPU caching could cause threads to see stale values
+- Result: Thread checking flag might not see recent enable/disable changes
+
+**Fix**:
+```cpp
+// Changed flag type in header:
+std::atomic<bool> sequenceEnabled;
+
+// All writes use release memory order:
+g_PBEngine.m_LEDSequenceInfo.sequenceEnabled.store(true, std::memory_order_release);
+g_PBEngine.m_LEDSequenceInfo.sequenceEnabled.store(false, std::memory_order_release);
+
+// All reads use acquire memory order:
+bool enabled = g_PBEngine.m_LEDSequenceInfo.sequenceEnabled.load(std::memory_order_acquire);
+```
+
+**Memory Ordering Explanation**:
+- `memory_order_release`: When writing, ensures all previous writes in this thread are visible to other threads before the flag change
+- `memory_order_acquire`: When reading, ensures we see all writes that happened before the flag was set
+- This creates a happens-before relationship that prevents data races
+
+**Impact**: Guarantees that when a thread sees the sequence enabled/disabled, it also sees all the related state changes (masks, saved values, etc.)
+
+---
+
 ## Testing Recommendations
 
 ### Test Case 1: Rapid Sequence Start/Stop
@@ -200,13 +236,20 @@ SendSeqMsg(&PBSeq_RGBColorCycle, PBSeq_RGBColorCycleMask, PB_LOOP, PB_OFF);
 
 ## Summary of Changes
 
-All changes were made to `/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp`:
+Changes were made to three files:
 
-1. **ProcessLEDSequenceMessage()**: Reordered operations to save state correctly, added deferred queue clearing, moved `sequenceEnabled = true` to end
-2. **ProcessLEDOutputMessage()**: Added mutex lock when adding to deferred queue
-3. **EndLEDSequence()**: Added SendAllStagedLED() before restoration, improved comments
+### `/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp`:
+1. **ProcessLEDSequenceMessage()**: Reordered operations to save state correctly, added deferred queue clearing with efficient swap, moved `sequenceEnabled = true` to end with release memory order
+2. **ProcessLEDOutputMessage()**: Added mutex lock when adding to deferred queue, added logging for dropped messages
+3. **EndLEDSequence()**: Added SendAllStagedLED() before restoration, use release memory order for flag
 4. **ProcessDeferredLEDQueue()**: Added mutex lock when processing queue
-5. **PBProcessOutput()**: Made sequenceEnabled check atomic
+5. **PBProcessOutput()**: Made sequenceEnabled check atomic with acquire memory order
+
+### `/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.h`:
+1. Changed `sequenceEnabled` from `bool` to `std::atomic<bool>` for thread-safe access
+
+### `/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.cpp`:
+1. Added explicit initialization of `m_LEDSequenceInfo` in PBEngine constructor with proper atomic initialization
 
 ## Benefits
 
