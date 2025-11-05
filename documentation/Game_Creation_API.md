@@ -926,6 +926,610 @@ g_PBEngine.m_soundSystem.pbsPlayMusic(MUSICFANTASY);
 
 ---
 
+## PBVideoPlayer Class - Video Playback System
+
+The `PBVideoPlayer` class provides full-motion video playback with synchronized audio, integrating FFmpeg for decoding, PBGfx for rendering, and PBSound for audio. Videos are rendered as sprites and support all standard sprite transformations (scale, rotation, position, alpha).
+
+### Overview
+
+**Key Features:**
+- Play video files (MP4, AVI, WebM, MKV, MOV)
+- Synchronized audio playback (Raspberry Pi only)
+- Sprite-like transformations (scale, rotate, alpha, position)
+- Playback control (play, pause, stop, seek)
+- Looping and speed control
+- Query video information (resolution, duration, FPS)
+
+**Platform Support:**
+- **Windows:** Video playback only (audio stubbed)
+- **Raspberry Pi:** Full video and audio support via SDL2
+
+### Initialization
+
+Create a `PBVideoPlayer` instance with references to your graphics and sound systems:
+
+**Signature:**
+```cpp
+PBVideoPlayer(PBGfx* gfx, PBSound* sound);
+```
+
+**Example:**
+```cpp
+// In your class header (Pinball_Engine.h or similar)
+PBVideoPlayer m_videoPlayer;
+
+// In your constructor
+PBEngine::PBEngine() : 
+    m_videoPlayer(this, &m_soundSystem)  // 'this' is PBGfx*, m_soundSystem is PBSound*
+{
+    // ... other initialization
+}
+```
+
+### Loading Videos
+
+#### pbvpLoadVideo()
+
+Loads a video file and creates a sprite for it.
+
+**Signature:**
+```cpp
+unsigned int pbvpLoadVideo(const std::string& videoFilePath, 
+                          int x, int y, 
+                          bool keepResident = false);
+```
+
+**Parameters:**
+- `videoFilePath` - Path to video file (MP4, AVI, WebM, etc.)
+- `x, y` - Initial sprite position
+- `keepResident` - Keep video in memory (true) or allow unloading (false)
+
+**Returns:** Sprite ID on success, `NOSPRITE` on failure
+
+**Example:**
+```cpp
+#define VIDEO_INTRO "src/resources/videos/intro.mp4"
+
+// In load function
+m_introVideoId = m_videoPlayer.pbvpLoadVideo(VIDEO_INTRO, 0, 0, false);
+
+if (m_introVideoId == NOSPRITE) {
+    pbeSendConsole("Error: Failed to load intro video");
+    return false;
+}
+```
+
+#### pbvpUnloadVideo()
+
+Unloads the video and frees all resources.
+
+**Signature:**
+```cpp
+void pbvpUnloadVideo();
+```
+
+**Example:**
+```cpp
+// When leaving screen or switching videos
+m_videoPlayer.pbvpUnloadVideo();
+```
+
+### Playback Control
+
+#### pbvpPlay()
+
+Starts or resumes video playback.
+
+**Signature:**
+```cpp
+bool pbvpPlay();
+```
+
+**Returns:** `true` if playback started successfully
+
+**Example:**
+```cpp
+if (m_introVideoId != NOSPRITE) {
+    m_videoPlayer.pbvpPlay();
+}
+```
+
+#### pbvpPause()
+
+Pauses playback at current position.
+
+**Signature:**
+```cpp
+void pbvpPause();
+```
+
+**Example:**
+```cpp
+// Pause when player enters menu
+m_videoPlayer.pbvpPause();
+```
+
+#### pbvpStop()
+
+Stops playback and resets to beginning.
+
+**Signature:**
+```cpp
+void pbvpStop();
+```
+
+**Example:**
+```cpp
+// Stop video and reset
+m_videoPlayer.pbvpStop();
+```
+
+### Update and Render
+
+#### pbvpUpdate()
+
+Decodes the next frame, updates texture, and plays audio. **Must be called every frame** when video is playing.
+
+**Signature:**
+```cpp
+bool pbvpUpdate(unsigned long currentTick);
+```
+
+**Parameters:**
+- `currentTick` - Current game tick count (from `GetTickCountGfx()`)
+
+**Returns:** `true` if still playing, `false` if stopped/finished
+
+**Example:**
+```cpp
+bool PBEngine::pbeRenderAttractMode(unsigned long currentTick, unsigned long lastTick) {
+    // Update video (decode frame, update texture, play audio)
+    bool isPlaying = m_videoPlayer.pbvpUpdate(currentTick);
+    
+    // Render the video
+    m_videoPlayer.pbvpRender();
+    
+    // Check if video finished
+    if (!isPlaying && !m_videoLooping) {
+        // Video finished, transition to next screen
+        pbeSetGameState(PBE_STATE_STARTMENU);
+    }
+    
+    return true;
+}
+```
+
+#### pbvpRender()
+
+Renders the video sprite. Multiple overloads available for different use cases.
+
+**Signatures:**
+```cpp
+bool pbvpRender();                                    // Render at current position
+bool pbvpRender(int x, int y);                       // Render at specific position
+bool pbvpRender(int x, int y, float scale, float rotation);  // With transformations
+```
+
+**Example:**
+```cpp
+// Simple render at current position
+m_videoPlayer.pbvpRender();
+
+// Render at specific position
+m_videoPlayer.pbvpRender(100, 200);
+
+// Render with scale and rotation
+m_videoPlayer.pbvpRender(PB_SCREENWIDTH/2, PB_SCREENHEIGHT/2, 0.75f, 15.0f);
+```
+
+### Sprite Manipulation
+
+Videos are rendered as sprites, so you can apply all standard transformations:
+
+#### pbvpSetXY()
+
+Set video position on screen.
+
+**Signature:**
+```cpp
+void pbvpSetXY(int x, int y);
+```
+
+**Example:**
+```cpp
+// Center video on screen
+m_videoPlayer.pbvpSetXY(PB_SCREENWIDTH/2, PB_SCREENHEIGHT/2);
+```
+
+#### pbvpSetAlpha()
+
+Set video transparency.
+
+**Signature:**
+```cpp
+void pbvpSetAlpha(float alpha);
+```
+
+**Parameters:**
+- `alpha` - Transparency (0.0 = invisible, 1.0 = opaque)
+
+**Example:**
+```cpp
+// Fade video to 50% opacity
+m_videoPlayer.pbvpSetAlpha(0.5f);
+```
+
+#### pbvpSetScaleFactor()
+
+Scale video size.
+
+**Signature:**
+```cpp
+void pbvpSetScaleFactor(float scale);
+```
+
+**Parameters:**
+- `scale` - Scale multiplier (0.5 = half size, 2.0 = double size)
+
+**Example:**
+```cpp
+// Scale to 75% of original size
+m_videoPlayer.pbvpSetScaleFactor(0.75f);
+```
+
+#### pbvpSetRotation()
+
+Rotate video sprite.
+
+**Signature:**
+```cpp
+void pbvpSetRotation(float degrees);
+```
+
+**Parameters:**
+- `degrees` - Rotation angle in degrees
+
+**Example:**
+```cpp
+// Rotate 45 degrees
+m_videoPlayer.pbvpSetRotation(45.0f);
+```
+
+### Advanced Playback Control
+
+#### pbvpSeekTo()
+
+Jump to specific time in video.
+
+**Signature:**
+```cpp
+bool pbvpSeekTo(float timeSec);
+```
+
+**Parameters:**
+- `timeSec` - Time to seek to in seconds
+
+**Returns:** `true` if seek successful
+
+**Example:**
+```cpp
+// Jump to 30 seconds into video
+m_videoPlayer.pbvpSeekTo(30.0f);
+```
+
+#### pbvpSetPlaybackSpeed()
+
+Change playback speed.
+
+**Signature:**
+```cpp
+void pbvpSetPlaybackSpeed(float speed);
+```
+
+**Parameters:**
+- `speed` - Playback speed multiplier (0.5 = half speed, 2.0 = double speed)
+- Typical range: 0.5 to 4.0
+
+**Example:**
+```cpp
+// Play at 2x speed
+m_videoPlayer.pbvpSetPlaybackSpeed(2.0f);
+
+// Slow motion (half speed)
+m_videoPlayer.pbvpSetPlaybackSpeed(0.5f);
+```
+
+#### pbvpSetLooping()
+
+Enable or disable video looping.
+
+**Signature:**
+```cpp
+void pbvpSetLooping(bool loop);
+```
+
+**Example:**
+```cpp
+// Loop video continuously for attract mode
+m_videoPlayer.pbvpSetLooping(true);
+```
+
+#### pbvpSetAudioEnabled()
+
+Enable or disable audio playback (video continues playing).
+
+**Signature:**
+```cpp
+void pbvpSetAudioEnabled(bool enabled);
+```
+
+**Example:**
+```cpp
+// Mute video audio
+m_videoPlayer.pbvpSetAudioEnabled(false);
+```
+
+### Query Functions
+
+#### pbvpGetVideoInfo()
+
+Get video information including resolution, duration, and format details.
+
+**Signature:**
+```cpp
+stVideoInfo pbvpGetVideoInfo() const;
+```
+
+**Returns:** `stVideoInfo` structure containing:
+```cpp
+struct stVideoInfo {
+    std::string videoFilePath;  // Path to video file
+    unsigned int width;         // Video width in pixels
+    unsigned int height;        // Video height in pixels
+    float fps;                  // Frames per second
+    float durationSec;          // Total duration in seconds
+    bool hasAudio;              // Has audio track
+    bool hasVideo;              // Has video track
+};
+```
+
+**Example:**
+```cpp
+stVideoInfo info = m_videoPlayer.pbvpGetVideoInfo();
+pbeSendConsole("Video: " + std::to_string(info.width) + "x" + 
+               std::to_string(info.height) + " @ " + 
+               std::to_string(info.fps) + " fps");
+pbeSendConsole("Duration: " + std::to_string(info.durationSec) + " seconds");
+pbeSendConsole("Has audio: " + std::string(info.hasAudio ? "Yes" : "No"));
+```
+
+#### pbvpGetPlaybackState()
+
+Get current playback state.
+
+**Signature:**
+```cpp
+pbvPlaybackState pbvpGetPlaybackState() const;
+```
+
+**Returns:** One of:
+- `PBV_STOPPED` - Video stopped or not started
+- `PBV_PLAYING` - Currently playing
+- `PBV_PAUSED` - Paused
+- `PBV_FINISHED` - Finished playing (not looping)
+
+**Example:**
+```cpp
+pbvPlaybackState state = m_videoPlayer.pbvpGetPlaybackState();
+
+if (state == PBV_FINISHED) {
+    pbeSendConsole("Video playback complete");
+    pbeSetGameState(PBE_STATE_STARTMENU);
+}
+```
+
+#### pbvpGetCurrentTimeSec()
+
+Get current playback position in seconds.
+
+**Signature:**
+```cpp
+float pbvpGetCurrentTimeSec() const;
+```
+
+**Example:**
+```cpp
+float currentTime = m_videoPlayer.pbvpGetCurrentTimeSec();
+pbeSendConsole("Video time: " + std::to_string(currentTime) + " sec");
+```
+
+#### pbvpIsLoaded()
+
+Check if video is currently loaded.
+
+**Signature:**
+```cpp
+bool pbvpIsLoaded() const;
+```
+
+**Example:**
+```cpp
+if (!m_videoPlayer.pbvpIsLoaded()) {
+    // Load video
+    m_videoPlayer.pbvpLoadVideo(VIDEO_INTRO, 0, 0, false);
+}
+```
+
+#### pbvpGetSpriteId()
+
+Get the sprite ID for manual sprite manipulation via PBGfx.
+
+**Signature:**
+```cpp
+unsigned int pbvpGetSpriteId() const;
+```
+
+**Example:**
+```cpp
+unsigned int videoSpriteId = m_videoPlayer.pbvpGetSpriteId();
+// Can now use standard gfx functions on this sprite ID
+gfxSetColor(videoSpriteId, 255, 200, 200, 255);
+```
+
+### Supported Video Formats
+
+**Containers:** MP4, AVI, MOV, WebM, MKV, FLV
+
+**Video Codecs:** H.264 (recommended), H.265/HEVC, VP8, VP9, MPEG-4
+
+**Audio Codecs:** AAC (recommended), MP3, Vorbis, PCM
+
+**Recommended Settings:**
+- Container: MP4
+- Video: H.264, 30fps
+- Audio: AAC, 44.1kHz stereo
+- Resolution: ≤1280x720 for Raspberry Pi
+
+### Complete Example - Attract Mode Video
+
+```cpp
+// In Pinball_Engine.h
+class PBEngine : public PBGfx {
+public:
+    bool pbeLoadAttractMode(bool forceReload);
+    bool pbeRenderAttractMode(unsigned long currentTick, unsigned long lastTick);
+    
+    PBVideoPlayer m_videoPlayer;
+    unsigned int m_attractVideoId;
+    bool m_RestartAttractMode;
+};
+
+// In Pinball_Engine.cpp
+#define VIDEO_ATTRACT "src/resources/videos/attract_loop.mp4"
+
+bool PBEngine::pbeLoadAttractMode(bool forceReload) {
+    static bool loaded = false;
+    if (forceReload) {
+        loaded = false;
+        m_videoPlayer.pbvpUnloadVideo();
+    }
+    if (loaded) return true;
+    
+    // Load and configure video
+    m_attractVideoId = m_videoPlayer.pbvpLoadVideo(VIDEO_ATTRACT, 0, 0, true);
+    
+    if (m_attractVideoId == NOSPRITE) {
+        pbeSendConsole("Error: Failed to load attract mode video");
+        return false;
+    }
+    
+    // Configure video playback
+    m_videoPlayer.pbvpSetLooping(true);           // Loop continuously
+    m_videoPlayer.pbvpSetScaleFactor(1.0f);       // Full size
+    m_videoPlayer.pbvpSetXY(0, 0);                // Top-left corner
+    
+    // Get video info
+    stVideoInfo info = m_videoPlayer.pbvpGetVideoInfo();
+    pbeSendConsole("Loaded attract video: " + 
+                   std::to_string(info.width) + "x" + 
+                   std::to_string(info.height) + " @ " + 
+                   std::to_string(info.fps) + " fps");
+    
+    loaded = true;
+    return true;
+}
+
+bool PBEngine::pbeRenderAttractMode(unsigned long currentTick, unsigned long lastTick) {
+    // Load resources
+    if (!pbeLoadAttractMode(false)) return false;
+    
+    // Start playback on first frame
+    if (m_RestartAttractMode) {
+        m_RestartAttractMode = false;
+        m_videoPlayer.pbvpPlay();
+    }
+    
+    // Clear screen
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    
+    // Update video (decode frame, update texture, play audio)
+    m_videoPlayer.pbvpUpdate(currentTick);
+    
+    // Render video
+    m_videoPlayer.pbvpRender();
+    
+    // Optional: Overlay text on video
+    gfxSetColor(m_titleFontId, 255, 255, 255, 255);
+    gfxRenderShadowString(m_titleFontId, "PRESS START", 
+                         PB_SCREENWIDTH/2, PB_SCREENHEIGHT - 100, 
+                         2, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+    
+    return true;
+}
+```
+
+### Performance Considerations
+
+**Raspberry Pi:**
+- Keep videos at 720p or lower resolution
+- Use moderate bitrates (2-4 Mbps)
+- Video decoding is CPU-intensive
+- Limit to one video at a time
+
+**Memory Usage:**
+- Each frame uses: width × height × 4 bytes
+- 1280x720 video = ~3.6 MB per frame
+
+**Optimization Tips:**
+1. Use `keepResident = true` for looping videos
+2. Preload videos during loading screens
+3. Lower resolution for background videos
+4. Limit playback speed changes (affects synchronization)
+5. Use simple codecs (H.264 better than H.265 for Pi)
+
+### Video Conversion
+
+Use FFmpeg to prepare videos for optimal playback:
+
+```bash
+# Convert to recommended format
+ffmpeg -i input.avi -c:v libx264 -preset fast -crf 23 \
+       -c:a aac -b:a 128k output.mp4
+
+# Scale down for Raspberry Pi (720p)
+ffmpeg -i input.mp4 -vf scale=1280:720 -c:v libx264 \
+       -preset fast -crf 23 -c:a aac -b:a 128k output_720p.mp4
+
+# Create looping video (trim and loop)
+ffmpeg -i input.mp4 -t 30 -c copy output_30sec.mp4
+```
+
+### Troubleshooting
+
+**Video Won't Load:**
+- Check file path is correct
+- Verify FFmpeg libraries are installed
+- Check console for error messages
+- Test with simple H.264 MP4 file
+
+**No Audio (Raspberry Pi):**
+- Ensure `pbsInitialize()` was called
+- Verify video has audio: `info.hasAudio`
+- Check `pbvpSetAudioEnabled(true)` was called
+
+**Stuttering/Frame Drops:**
+- Lower video resolution
+- Reduce bitrate
+- Check CPU usage
+- Ensure game loop runs >30 FPS
+
+**Texture Not Updating:**
+- Verify `pbvpUpdate()` is called every frame
+- Check video is in `PBV_PLAYING` state
+- Ensure sprite is being rendered
+
+---
+
 ## Screen State Management
 
 Use state flags to control screen behavior and trigger events.
@@ -988,6 +1592,16 @@ if (!m_animationComplete && gfxAnimateActive(m_doorId)) {
 - **Volume Balance:** Keep music lower than effects (e.g., 80% vs 100%)
 - **Limit Simultaneous:** Maximum 4 effects at once
 - **Effect Management:** Track effect IDs if you need to stop specific sounds
+- **Video Audio:** Video uses dedicated channel (Raspberry Pi), doesn't count toward 4-effect limit
+
+### Video
+
+- **Resolution:** Keep ≤720p for Raspberry Pi, 1080p okay for Windows
+- **Format:** Use MP4 with H.264 video and AAC audio for best compatibility
+- **Looping:** Set `pbvpSetLooping(true)` for attract modes and backgrounds
+- **Update Every Frame:** Always call `pbvpUpdate(currentTick)` before rendering
+- **Memory Management:** Unload videos when switching screens to free resources
+- **Single Video:** Limit to one active video at a time for best performance
 
 ---
 
@@ -1089,4 +1703,5 @@ bool PBEngine::pbeRenderMyScreen(unsigned long currentTick, unsigned long lastTi
 
 - **PBEngine_API.md** - Core engine class and state management
 - **Platform_Init_API.md** - Main loop and initialization
+- **PBVideo_README.md** - Detailed video system documentation and FFmpeg setup
 - **UsersGuide.md** - Complete framework documentation

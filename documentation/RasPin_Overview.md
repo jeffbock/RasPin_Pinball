@@ -41,13 +41,13 @@ The RasPin Pinball Framework is a complete software and hardware solution for bu
 └──┬──────────────┬─────────────────┬────────────────┬───────────┘
    │              │                 │                │
    ▼              ▼                 ▼                ▼
-┌────────┐  ┌──────────┐  ┌─────────────┐  ┌─────────────┐
-│ PBGfx  │  │ PBSound  │  │ I/O System  │  │ LED System  │
-│        │  │          │  │             │  │             │
-│Sprites │  │ Music    │  │ Input Msg   │  │ Sequences   │
-│Anims   │  │ Effects  │  │ Output Msg  │  │ Patterns    │
-│Text    │  │ Volume   │  │ Debounce    │  │ Brightness  │
-└────────┘  └──────────┘  └─────────────┘  └─────────────┘
+┌────────┐  ┌──────────┐  ┌──────────┐  ┌─────────────┐  ┌─────────────┐
+│ PBGfx  │  │ PBSound  │  │PBVideo   │  │ I/O System  │  │ LED System  │
+│        │  │          │  │Player    │  │             │  │             │
+│Sprites │  │ Music    │  │          │  │ Input Msg   │  │ Sequences   │
+│Anims   │  │ Effects  │  │FFmpeg    │  │ Output Msg  │  │ Patterns    │
+│Text    │  │ Volume   │  │Sync      │  │ Debounce    │  │ Brightness  │
+└────────┘  └──────────┘  └──────────┘  └─────────────┘  └─────────────┘
 ```
 
 ### Data Flow Architecture
@@ -139,7 +139,113 @@ Load Sprite → Create Instances → Configure Properties → Animate → Render
 
 ---
 
-### 4. Input/Output System
+### 4. Video Playback System (PBVideoPlayer)
+
+**What It Does:**
+- Full-motion video playback with synchronized audio
+- FFmpeg-based decoding for broad format support
+- Integration with PBGfx for texture rendering
+- Integration with PBSound for audio playback
+- Sprite-like transformations (scale, rotate, position, alpha)
+
+**Video Playback Pipeline:**
+```
+┌─────────────┐
+│ Video File  │ (MP4, AVI, WebM, etc.)
+└──────┬──────┘
+       │ FFmpeg Decode
+       ▼
+┌──────────────────────┐
+│  Video Frames (RGBA) │───────────┐
+└──────────────────────┘           │
+                                   ▼
+┌──────────────────────┐     ┌──────────┐
+│  Audio Samples       │────→│  PBGfx   │
+└──────────────────────┘     │ Texture  │
+       │                     │ Update   │
+       ▼                     └─────┬────┘
+┌──────────────────────┐           │
+│     PBSound          │           │ Render as Sprite
+│  (Raspberry Pi)      │           ▼
+└──────────────────────┘    ┌──────────┐
+                            │  Screen  │
+                            └──────────┘
+```
+
+**Key Features:**
+- Plays videos like animated sprites
+- Supports seeking, looping, speed control
+- Automatic frame synchronization
+- Standard sprite transformations work on video
+- Audio playback (Raspberry Pi only)
+
+**Use Cases:**
+- Attract mode loops
+- Tutorial videos
+- Cutscenes and story elements
+- Animated backgrounds
+- Dynamic content displays
+
+**Basic Usage:**
+```cpp
+// Initialize video player
+PBVideoPlayer videoPlayer(&gfx, &sound);
+
+// Load and play video
+unsigned int sprite = videoPlayer.pbvpLoadVideo(
+    "src/resources/videos/intro.mp4", 
+    100, 100,  // x, y position
+    false      // keepResident
+);
+
+videoPlayer.pbvpSetLooping(true);
+videoPlayer.pbvpPlay();
+
+// In render loop
+videoPlayer.pbvpUpdate(currentTick);  // Decode & sync
+videoPlayer.pbvpRender();             // Draw to screen
+```
+
+**Advanced Features:**
+```cpp
+// Transform video like any sprite
+videoPlayer.pbvpSetScaleFactor(0.5f);   // Scale to 50%
+videoPlayer.pbvpSetAlpha(0.8f);         // 80% opacity
+videoPlayer.pbvpSetRotation(45.0f);     // Rotate 45°
+
+// Playback control
+videoPlayer.pbvpSetPlaybackSpeed(2.0f); // 2x speed
+videoPlayer.pbvpSeekTo(30.0f);          // Jump to 30s
+
+// Query video info
+stVideoInfo info = videoPlayer.pbvpGetVideoInfo();
+// width, height, fps, duration, hasAudio, hasVideo
+```
+
+**Supported Formats:**
+- **Containers:** MP4, AVI, MOV, WebM, MKV
+- **Video Codecs:** H.264, H.265, VP8, VP9, MPEG-4
+- **Audio Codecs:** AAC, MP3, Vorbis, PCM
+- **Recommended:** MP4 + H.264 + AAC for best compatibility
+
+**Performance Considerations:**
+- Raspberry Pi: Keep videos ≤720p for smooth playback
+- CPU-intensive decoding (no HW acceleration yet)
+- Each frame uses width × height × 4 bytes of memory
+- Limit simultaneous videos
+
+**Platform Differences:**
+| Feature | Windows | Raspberry Pi |
+|---------|---------|--------------|
+| Video playback | ✅ Supported | ✅ Supported |
+| Audio playback | ❌ Stubbed | ✅ Via SDL2 |
+| Hardware decode | ❌ Not yet | ❌ Not yet |
+
+**Documentation:** [PBVideo_README.md](PBVideo_README.md)
+
+---
+
+### 5. Input/Output System
 
 **What It Does:**
 - Message-based I/O decouples hardware from game logic
@@ -181,7 +287,7 @@ Load Sprite → Create Instances → Configure Properties → Animate → Render
 
 ---
 
-### 5. LED Control System
+### 6. LED Control System
 
 **What It Does:**
 - Individual LED on/off/brightness control
@@ -614,17 +720,18 @@ This PR includes comprehensive documentation for each subsystem:
 1. **[Platform_Init_API.md](Platform_Init_API.md)** - Start here to understand initialization and the main loop
 2. **[PBEngine_API.md](PBEngine_API.md)** - Core engine functions and state management
 
-### Graphics and Audio
+### Graphics, Audio, and Video
 3. **[Game_Creation_API.md](Game_Creation_API.md)** - Complete guide to sprites, animations, and sound
 4. **[FontGen_Guide.md](FontGen_Guide.md)** - Creating custom fonts for text rendering
+5. **[PBVideo_README.md](PBVideo_README.md)** - Video playback system with PBVideoPlayer
 
 ### Hardware Control
-5. **[IO_Processing_API.md](IO_Processing_API.md)** - Input/output message system and hardware communication
-6. **[LED_Control_API.md](LED_Control_API.md)** - LED control and animation sequences
+6. **[IO_Processing_API.md](IO_Processing_API.md)** - Input/output message system and hardware communication
+7. **[LED_Control_API.md](LED_Control_API.md)** - LED control and animation sequences
 
 ### Additional Resources
-7. **[HowToBuild.md](HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
-8. **[UsersGuide.md](UsersGuide.md)** - Comprehensive framework guide (pre-existing)
+8. **[HowToBuild.md](HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
+9. **[UsersGuide.md](UsersGuide.md)** - Comprehensive framework guide (pre-existing)
 
 ---
 
@@ -722,12 +829,13 @@ The RasPin Pinball Framework provides a complete, flexible foundation for buildi
 
 ---
 
-**Documentation Created in This PR:**
+**Documentation in Framework:**
 - PBEngine_API.md - Core engine class
 - IO_Processing_API.md - Message-based I/O system  
 - LED_Control_API.md - LED control and sequences
 - Platform_Init_API.md - Initialization and main loop
 - Game_Creation_API.md - Graphics, sound, and screen management
 - FontGen_Guide.md - Font generation utility
+- PBVideo_README.md - Video playback system (FFmpeg integration)
 
 Each document contains detailed API references, code examples, and best practices based on actual framework usage.

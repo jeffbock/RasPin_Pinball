@@ -54,9 +54,32 @@ Windows development assumes VS Code and Visual Studio 2022 are already installed
 - PInball should now be set up to build in windows and use VS Code as the primary debugger.
     - Hit Crtl-Shift-P to bring up the task menu, select "Windows: Full Pinball Build".
     - Run the EXE either through debug with F5 or by launching the app outside VS Code.
-    
  
 - Note: At some point, the Windows setup may be updated to use the headers / libraries directly from the Angle locations, but it does not currently do that, unlike the Raspberry Pi setup.
+
+### FFMPEG Video Support Windows(PBVideoPlayer)
+
+For Windows the libs and DLLs are already included in the source code, but can be re-installed if need with details below.
+
+1. Download FFmpeg shared libraries:
+   ```
+   https://github.com/BtbN/FFmpeg-Builds/releases
+   ```
+   Choose: `ffmpeg-master-latest-win64-gpl-shared.zip`
+
+2. Extract and copy files:
+   ```
+   DLLs → winbuild/
+   include/ → src/include_ogl_win/
+   lib/ → src/lib_ogl_win/
+   ```
+
+3. Required DLLs:
+   - `avcodec-*.dll`
+   - `avformat-*.dll`
+   - `avutil-*.dll`
+   - `swscale-*.dll`
+   - `swresample-*.dll`
 
  # Build Natively on Raspberry Pi 5
 
@@ -71,6 +94,8 @@ XRandR - Multi-monitor support:  `sudo apt-get install x11-xserver-utils`
 WiringPi - I/O and I2C: `sudo apt install ./wiringpi-3.0-1.deb`
 
 SDL_Mixer - Sound Library: `sudo apt install libsdl2-dev libsdl2-mixer-dev`
+
+FFMPEG - Video Playback: `sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev`
 
 PInball is currently designed to run along with X11 and XRandR, and assumes that it will find an 800x480 display to utilize as a full screen display.  The current tested configuration is a 800x480 display on the HDMI1 port, while a larger monitor is used on HDMI2 for running VS Code and full screen debugging.
 
