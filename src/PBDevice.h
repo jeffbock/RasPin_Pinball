@@ -1,0 +1,45 @@
+// PBDevice base class for managing complex pinball device states and flows
+// Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
+// The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
+// Additional details can also be found in the license file in the root of the project.
+
+#ifndef PBDevice_h
+#define PBDevice_h
+
+#include "PBGfx.h"
+#include "Pinball_IO.h"
+#include "Pinball_Engine.h"
+
+// Base class for pinball device management
+class PBDevice {
+public:
+    PBDevice(PBEngine* pEngine);
+    virtual ~PBDevice();
+
+    // Base class functions that can be overridden by derived classes
+    // Derived classes should call base class implementation at the end
+    virtual void pbdInit();
+    virtual void pbdEnable(bool enable);
+    virtual void pdbStartRun();
+    
+    // Base class functions (non-virtual)
+    bool pdbIsRunning() const;
+    bool pbdIsError() const;
+    int pbdResetError();
+    void pbdSetState(unsigned int state);
+    unsigned int pbdGetState() const;
+
+    // Pure virtual function to be implemented by derived classes
+    virtual void pbdExecute() = 0;
+
+protected:
+    // Member variables
+    unsigned long m_startTimeMS;  // Time the flow was started in MS
+    bool m_enabled;               // Device enabled or not
+    unsigned int m_state;         // Key state of the device
+    bool m_running;               // Current run is done or not
+    int m_error;                  // Error state (0 = no error)
+    PBEngine* m_pEngine;          // Pointer to PBEngine (provides GetTickCountGfx and SendOutputMsg)
+};
+
+#endif // PBDevice_h

@@ -1,6 +1,9 @@
 # Ignore the build directory and Angle libs, don't want to commmit it
 winbuild/
 raspibuild/
+RasPi_CMake/build/
+RasPi_CMake/_codeql_build_dir/
+RasPi_CMake/RasPi_CMake
 src/lib_ogl_win/libEGL.dll.lib
 src/lib_ogl_win/libGLESv2.dll.lib
 src/lib_ogl_raspi/libEGL.dll.lib

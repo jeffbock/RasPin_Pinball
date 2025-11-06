@@ -17,6 +17,10 @@
 #include "PBDebounce.h"
 #include "PBVideoPlayer.h"
 
+// Forward declarations
+class PBDevice;
+class pbdEjector;
+
 // Standard library includes
 #include <iostream>
 #include <stdio.h>
@@ -204,6 +208,11 @@ public:
     void SetAutoOutputEnable(bool enable) { m_autoOutputEnable = enable; }
     bool GetAutoOutputEnable() const { return m_autoOutputEnable; }
     
+    // Device management functions
+    void pbeAddDevice(PBDevice* device);
+    void pbeClearDevices();
+    void pbeExecuteDevices();
+    
     #ifdef EXE_MODE_RASPI
         // This map is used for whatever arbitrary Raspberry Pi inputs are used (from the main board)
         // Note: IO expansion chips are not included in the structure
@@ -275,6 +284,9 @@ public:
     bool m_sandboxVideoLoaded;
     unsigned long m_videoFadeStartTick;
     bool m_videoFadingIn;
+    bool m_videoFadingOut;
+    float m_videoFadeDurationSec;
+    pbdEjector* m_sandboxEjector;
     bool m_videoFadingOut;
     float m_videoFadeDurationSec;
 
@@ -360,6 +372,9 @@ private:
     void pbeReleaseMenuTextures();
 
     // Main Table functions - these will need to be modified per table
+    
+    // Device management - vector of all registered devices
+    std::vector<PBDevice*> m_devices;
 };
 
 // Global variable declaration

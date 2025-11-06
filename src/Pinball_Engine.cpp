@@ -5,6 +5,7 @@
 #include "Pinball_Engine.h"
 #include "Pinball.h"
 #include "PBSequences.h"
+#include "PBDevice.h"
 
 // Class functions for PBEngine
  PBEngine::PBEngine() {
@@ -61,6 +62,7 @@
     m_videoFadingIn = false;
     m_videoFadingOut = false;
     m_videoFadeDurationSec = 2.0f;  // 2 second fade in/out
+    m_sandboxEjector = nullptr;
 
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
@@ -91,6 +93,9 @@
         delete m_sandboxVideoPlayer;
         m_sandboxVideoPlayer = nullptr;
     }
+    
+    // Clean up all registered devices
+    pbeClearDevices();
 
 }
 
@@ -683,6 +688,12 @@ bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long las
 bool PBEngine::pbeLoadTestSandbox(bool forceReload){
     if (!pbeLoadStartMenu(false)) return (false);
     
+    // Create and register sandbox ejector device if not already created
+    if (!m_sandboxEjector && !forceReload) {
+        m_sandboxEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
+        pbeAddDevice(m_sandboxEjector);
+    }
+    
     // Initialize video player if not already created
     if (!m_sandboxVideoPlayer && !forceReload) {
         m_sandboxVideoPlayer = new PBVideoPlayer(this, &m_soundSystem);
@@ -783,7 +794,8 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 64, 192, 255, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Right Activate" + raState + ":", centerX - 200, startY + (3 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Test 4", centerX + 50, startY + (3 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    std::string ejectorStatus = (m_sandboxEjector && m_sandboxEjector->pdbIsRunning()) ? "RUNNING" : "STOPPED";
+    gfxRenderShadowString(m_defaultFontSpriteId, "Ejector Test - " + ejectorStatus, centerX + 50, startY + (3 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Reset scale
     gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
@@ -1375,6 +1387,16 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         m_sandboxVideoLoaded = false;
                     }
                     
+                    // Clean up sandbox ejector device before exiting
+                    if (m_sandboxEjector) {
+                        m_sandboxEjector->pbdEnable(false);
+                        m_sandboxEjector->pbdInit();
+                        m_sandboxEjector = nullptr;  // Will be deleted by pbeClearDevices
+                    }
+                    
+                    // Clear all devices when exiting sandbox
+                    pbeClearDevices();
+                    
                     // Resume background music when exiting sandbox
                     m_soundSystem.pbsResumeMusic();
                     
@@ -1469,9 +1491,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     }
                 }
                 
-                // Right Activate - Test 4
+                // Right Activate - Test 4 - Ejector Device Test
                 if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
-                    // To be defined
+                    if (m_sandboxEjector) {
+                        if (m_sandboxEjector->pdbIsRunning()) {
+                            // If running, stop and reset
+                            m_sandboxEjector->pbdEnable(false);
+                            m_sandboxEjector->pbdInit();
+                        } else {
+                            // If not running, start the ejector
+                            m_sandboxEjector->pdbStartRun();
+                        }
+                    }
                 }
             }
         break;
@@ -1706,4 +1737,33 @@ bool PBEngine::SetAutoOutput(unsigned int id, bool autoOutputEnabled)
         return true;  // Valid index, updated
     }
     return false;  // Invalid index
+}
+//==============================================================================
+// Device Management Functions
+//==============================================================================
+
+// Add a device to the device vector
+void PBEngine::pbeAddDevice(PBDevice* device) {
+    if (device != nullptr) {
+        m_devices.push_back(device);
+    }
+}
+
+// Clear all devices and free memory
+void PBEngine::pbeClearDevices() {
+    for (auto device : m_devices) {
+        if (device != nullptr) {
+            delete device;
+        }
+    }
+    m_devices.clear();
+}
+
+// Execute all registered devices
+void PBEngine::pbeExecuteDevices() {
+    for (auto device : m_devices) {
+        if (device != nullptr) {
+            device->pbdExecute();
+        }
+    }
 }

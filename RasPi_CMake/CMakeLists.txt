@@ -12,24 +12,25 @@ endif()
 
 # Custom target to update version before building
 add_custom_target(update_version
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/update_version.py
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/../src/update_version.py
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..
     COMMENT "Updating build version number..."
 )
 
 # Define source files
 set(PINBALL_SOURCES
-    src/3rdparty/stb_image.cpp
-    src/PBOGLES.cpp
-    src/PBGfx.cpp
-    src/PBRaspPiRender.cpp
-    src/PBDebounce.cpp
-    src/Pinball_IO.cpp
-    src/Pinball_Table.cpp
-    src/PBSound.cpp
-    src/PinballMenus.cpp
-    src/Pinball_Engine.cpp
-    src/Pinball.cpp
+    ../src/3rdparty/stb_image.cpp
+    ../src/PBOGLES.cpp
+    ../src/PBGfx.cpp
+    ../src/PBRaspPiRender.cpp
+    ../src/PBDebounce.cpp
+    ../src/PBDevice.cpp
+    ../src/Pinball_IO.cpp
+    ../src/Pinball_Table.cpp
+    ../src/PBSound.cpp
+    ../src/PinballMenus.cpp
+    ../src/Pinball_Engine.cpp
+    ../src/Pinball.cpp
 )
 
 # Create the executable
@@ -40,8 +41,8 @@ add_dependencies(Pinball update_version)
 
 # Include directories
 target_include_directories(Pinball PRIVATE
-    src/include_ogl_raspi
-    src/3rdparty
+    ../src/include_ogl_raspi
+    ../src/3rdparty
     /usr/include/EGL
     /usr/include/GLES3
     /usr/include/KHR
@@ -91,16 +92,16 @@ target_link_libraries(Pinball
 
 # Set output directory
 set_target_properties(Pinball PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/raspibuild/release
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/../raspibuild/release
 )
 
 # Create output directory if it doesn't exist
-file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/raspibuild/release)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/../raspibuild/release)
 
 # Print build information
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Compiler: ${CMAKE_CXX_COMPILER}")
-message(STATUS "Output directory: ${CMAKE_SOURCE_DIR}/raspibuild/release")
+message(STATUS "Output directory: ${CMAKE_SOURCE_DIR}/../raspibuild/release")
 
 # Custom target for easy building
 add_custom_target(build_release
