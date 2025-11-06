@@ -317,11 +317,7 @@ bool PBProcessOutput() {
     SendAllStagedIO();
     
     // Handle LED sequence processing or deferred queue
-    // Read sequence enabled state atomically to prevent race condition
-    // Using std::atomic<bool> ensures memory ordering and visibility across threads
-    bool sequenceCurrentlyEnabled = g_PBEngine.m_LEDSequenceInfo.sequenceEnabled.load(std::memory_order_acquire);
-    
-    if (sequenceCurrentlyEnabled) {
+    if (g_PBEngine.m_LEDSequenceInfo.sequenceEnabled) {
         ProcessActiveLEDSequence();
     } else {
         ProcessDeferredLEDQueue();
@@ -362,22 +358,24 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
     if (message.outputState == PB_ON && message.options != nullptr) {
         // Start LED sequence mode
         unsigned long currentTick = g_PBEngine.GetTickCountGfx();
+        g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = true;
+        g_PBEngine.m_LEDSequenceInfo.firstTime = true;
+        g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = currentTick;
+        g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick;
+        g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
+        g_PBEngine.m_LEDSequenceInfo.previousSeqIndex = -1; // Initialize to indicate never set
+        g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
         
-        // Clear any existing deferred messages before starting new sequence
-        {
-            std::lock_guard<std::mutex> lock(g_PBEngine.m_deferredQMutex);
-            // Clear queue efficiently with O(1) swap
-            std::queue<stOutputMessage> emptyQueue;
-            g_PBEngine.m_deferredQueue.swap(emptyQueue);
-        }
-        
-        // Copy activeLEDMask from output options to sequence info FIRST
+        g_PBEngine.m_LEDSequenceInfo.loopMode = message.options->loopMode;
+        g_PBEngine.m_LEDSequenceInfo.pLEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
+            
+        // Copy activeLEDMask from output options to sequence info
         for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
             g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex] = message.options->activeLEDMask[chipIndex];
         }
         
         // Send all staged LED values to hardware BEFORE saving state
-        // This ensures we capture the actual current state, not pending staged changes
+        // This ensures we capture the actual current hardware state, not pending staged changes
         SendAllStagedLED();
         
         // Now save the current hardware state for later restoration
@@ -412,19 +410,6 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
                 }
             }
         }
-        
-        // Set sequence info AFTER state is saved and staged changes are prepared
-        g_PBEngine.m_LEDSequenceInfo.firstTime = true;
-        g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = currentTick;
-        g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick;
-        g_PBEngine.m_LEDSequenceInfo.currentSeqIndex = 0;
-        g_PBEngine.m_LEDSequenceInfo.previousSeqIndex = -1; // Initialize to indicate never set
-        g_PBEngine.m_LEDSequenceInfo.indexStep = 1;
-        g_PBEngine.m_LEDSequenceInfo.loopMode = message.options->loopMode;
-        g_PBEngine.m_LEDSequenceInfo.pLEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
-        
-        // Enable sequence LAST with release memory order to ensure all previous writes are visible
-        g_PBEngine.m_LEDSequenceInfo.sequenceEnabled.store(true, std::memory_order_release);
 } else {
     // Stop LED sequence mode
     EndLEDSequence();
@@ -474,27 +459,18 @@ void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& output
     // Check if LED sequence is active for this specific chip/pin (unless skip is requested)
     if (!skipSequenceCheck) {
         bool sequenceActiveForPin = false;
-        if (g_PBEngine.m_LEDSequenceInfo.sequenceEnabled.load(std::memory_order_acquire) && 
+        if (g_PBEngine.m_LEDSequenceInfo.sequenceEnabled && 
             outputDef.boardIndex < NUM_LED_CHIPS) {
             // Check if this specific pin is in the active LED mask
             sequenceActiveForPin = (g_PBEngine.m_LEDSequenceInfo.activeLEDMask[outputDef.boardIndex] & (1 << outputDef.pin)) != 0;
         }
         
         if (sequenceActiveForPin) {
-            // Push message to deferred queue with mutex protection
-            std::lock_guard<std::mutex> lock(g_PBEngine.m_deferredQMutex);
+            // Push message to deferred queue, but check size limit
             if (g_PBEngine.m_deferredQueue.size() < MAX_DEFERRED_LED_QUEUE) {
                 g_PBEngine.m_deferredQueue.push(message);
-            } else {
-                // Queue is full - drop message and log warning
-                // Use atomic counter for thread-safe tracking
-                static std::atomic<int> droppedMessageCount(0);
-                int currentCount = droppedMessageCount.fetch_add(1, std::memory_order_relaxed) + 1;
-                if (currentCount == 1 || (currentCount % 100) == 0) {
-                    g_PBEngine.pbeSendConsole("WARNING: Deferred LED queue full, dropped " + 
-                                             std::to_string(currentCount) + " message(s)");
-                }
             }
+            // Drop message if queue is full
             return;
         }
     }
@@ -744,11 +720,9 @@ void HandleLEDSequenceBoundaries() {
 
 // End LED sequence and restore saved values
 void EndLEDSequence() {
-    // Disable sequence mode FIRST to prevent new messages from being deferred
-    // Use release memory order to ensure change is immediately visible to other threads
-    g_PBEngine.m_LEDSequenceInfo.sequenceEnabled.store(false, std::memory_order_release);
+    g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = false;
     
-    // Send any pending staged LED values before restoring state
+    // Send any pending staged LED values from the sequence before restoring state
     // This ensures the sequence's final state is properly sent to hardware
     SendAllStagedLED();
     
@@ -784,9 +758,6 @@ void EndLEDSequence() {
 
 // Process deferred LED messages when sequence is not active
 void ProcessDeferredLEDQueue() {
-    // Lock mutex and process all deferred messages
-    std::lock_guard<std::mutex> lock(g_PBEngine.m_deferredQMutex);
-    
     while (!g_PBEngine.m_deferredQueue.empty()) {
         stOutputMessage deferredMessage = g_PBEngine.m_deferredQueue.front();
         g_PBEngine.m_deferredQueue.pop();

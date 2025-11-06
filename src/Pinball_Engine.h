@@ -29,7 +29,6 @@
 #include <chrono>
 #include <string>
 #include <array>
-#include <atomic>
 
 // Hardware configuration defines
 #define NUM_IO_CHIPS    3
@@ -124,7 +123,7 @@ struct stOutputPulse {
 };
 
 struct stLEDSequenceInfo {
-    std::atomic<bool> sequenceEnabled;
+    bool sequenceEnabled;
     bool firstTime;
     PBSequenceLoopMode loopMode;              
     unsigned long sequenceStartTick;

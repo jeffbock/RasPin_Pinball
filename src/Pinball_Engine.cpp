@@ -82,23 +82,6 @@
     
     // Auto output control - default to disable since the menus launch first
     m_autoOutputEnable = false;
-    
-    // Initialize LED sequence info structure
-    m_LEDSequenceInfo.sequenceEnabled.store(false, std::memory_order_release);
-    m_LEDSequenceInfo.firstTime = false;
-    m_LEDSequenceInfo.loopMode = PB_NOLOOP;
-    m_LEDSequenceInfo.sequenceStartTick = 0;
-    m_LEDSequenceInfo.stepStartTick = 0;
-    m_LEDSequenceInfo.currentSeqIndex = 0;
-    m_LEDSequenceInfo.previousSeqIndex = -1;
-    m_LEDSequenceInfo.indexStep = 1;
-    m_LEDSequenceInfo.pLEDSequence = nullptr;
-    for (int i = 0; i < NUM_LED_CHIPS; i++) {
-        m_LEDSequenceInfo.activeLEDMask[i] = 0;
-        for (int j = 0; j < 4; j++) {
-            m_LEDSequenceInfo.previousLEDValues[i][j] = 0;
-        }
-    }
  }
 
  PBEngine::~PBEngine(){
