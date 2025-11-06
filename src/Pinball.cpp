@@ -869,6 +869,9 @@ int main(int argc, char const *argv[])
         // Don't want to do it on the first render loop since all the state may not be set up yet
         if (!firstLoop){
 
+            // Execute all registered devices
+            g_PBEngine.pbeExecuteDevices();
+
             PBProcessIO();
             // Process all the input message queue and update the game state
             if (!g_PBEngine.m_inputQueue.empty()){
@@ -905,9 +908,6 @@ int main(int argc, char const *argv[])
 
             if (!g_PBEngine.m_GameStarted)g_PBEngine.pbeRenderScreen(currentTick, lastTick);
             else g_PBEngine.pbeRenderGameScreen(currentTick, lastTick);
-
-            // Execute all registered devices
-            g_PBEngine.ExecuteDevices();
 
             // Show the IO overlay if enabled
             if (g_PBEngine.m_EnableOverlay) g_PBEngine.pbeRenderOverlay(currentTick, lastTick);

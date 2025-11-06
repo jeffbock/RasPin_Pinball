@@ -106,7 +106,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
 
     // Initialize and register the ball ejector device (using example IDs - can be configured per table)
     pbdEjector* ballEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
-    AddDevice(ballEjector);
+    pbeAddDevice(ballEjector);
 
     gameStartLoaded = true;
 

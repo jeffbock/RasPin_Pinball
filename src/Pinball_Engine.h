@@ -208,9 +208,9 @@ public:
     bool GetAutoOutputEnable() const { return m_autoOutputEnable; }
     
     // Device management functions
-    void AddDevice(PBDevice* device);
-    void ClearDevices();
-    void ExecuteDevices();
+    void pbeAddDevice(PBDevice* device);
+    void pbeClearDevices();
+    void pbeExecuteDevices();
     
     #ifdef EXE_MODE_RASPI
         // This map is used for whatever arbitrary Raspberry Pi inputs are used (from the main board)

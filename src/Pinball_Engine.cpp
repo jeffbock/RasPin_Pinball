@@ -94,7 +94,7 @@
     }
     
     // Clean up all registered devices
-    ClearDevices();
+    pbeClearDevices();
 
 }
 
@@ -1716,14 +1716,14 @@ bool PBEngine::SetAutoOutput(unsigned int id, bool autoOutputEnabled)
 //==============================================================================
 
 // Add a device to the device vector
-void PBEngine::AddDevice(PBDevice* device) {
+void PBEngine::pbeAddDevice(PBDevice* device) {
     if (device != nullptr) {
         m_devices.push_back(device);
     }
 }
 
 // Clear all devices and free memory
-void PBEngine::ClearDevices() {
+void PBEngine::pbeClearDevices() {
     for (auto device : m_devices) {
         if (device != nullptr) {
             delete device;
@@ -1733,7 +1733,7 @@ void PBEngine::ClearDevices() {
 }
 
 // Execute all registered devices
-void PBEngine::ExecuteDevices() {
+void PBEngine::pbeExecuteDevices() {
     for (auto device : m_devices) {
         if (device != nullptr) {
             device->pbdExecute();
