@@ -85,7 +85,10 @@ public:
     pbdEjector(unsigned int inputPin, unsigned int ledOutputId, unsigned int solenoidOutputId);
     ~pbdEjector();
 
-    // Override base class virtual function
+    // Override base class virtual functions
+    void pbdInit() override;
+    void pbdEnable(bool enable) override;
+    void pdbStartRun() override;
     void pbdExecute() override;
 
 private:
@@ -121,6 +124,50 @@ pbdEjector::pbdEjector(unsigned int inputPin, unsigned int ledOutputId, unsigned
 
 pbdEjector::~pbdEjector() {
     // Cleanup if needed
+}
+
+// Override pbdInit - reset derived class variables, then call base class
+void pbdEjector::pbdInit() {
+    m_solenoidStartMS = 0;
+    m_solenoidOffMS = 0;
+    m_solenoidActive = false;
+    m_ledActive = false;
+    
+    // Call base class implementation at the end
+    PBDevice::pbdInit();
+}
+
+// Override pbdEnable - perform any pre-enable work, then call base class
+void pbdEjector::pbdEnable(bool enable) {
+    // Derived class pre-work before enabling
+    if (!enable) {
+        // If disabling, ensure outputs are turned off
+        if (m_ledActive) {
+            // TODO: Replace with actual output message
+            // Example: sendOutputMessage(m_ledOutputId, PB_OFF);
+            m_ledActive = false;
+        }
+        if (m_solenoidActive) {
+            // TODO: Replace with actual output message
+            // Example: sendOutputMessage(m_solenoidOutputId, PB_OFF);
+            m_solenoidActive = false;
+        }
+    }
+    
+    // Call base class implementation at the end
+    PBDevice::pbdEnable(enable);
+}
+
+// Override pdbStartRun - perform any pre-start work, then call base class
+void pbdEjector::pdbStartRun() {
+    // Reset derived class state for new run
+    m_solenoidStartMS = 0;
+    m_solenoidOffMS = 0;
+    m_solenoidActive = false;
+    m_ledActive = false;
+    
+    // Call base class implementation at the end
+    PBDevice::pdbStartRun();
 }
 
 void pbdEjector::pbdExecute() {

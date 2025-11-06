@@ -14,17 +14,20 @@ public:
     PBDevice();
     virtual ~PBDevice();
 
-    // Base class functions
-    void pbdInit();
-    void pbdEnable(bool enable);
-    void pdbStartRun();
+    // Base class functions that can be overridden by derived classes
+    // Derived classes should call base class implementation at the end
+    virtual void pbdInit();
+    virtual void pbdEnable(bool enable);
+    virtual void pdbStartRun();
+    
+    // Base class functions (non-virtual)
     bool pdbIsRunning() const;
     bool pbdIsError() const;
     int pbdResetError();
     void pbdSetState(unsigned int state);
     unsigned int pbdGetState() const;
 
-    // Virtual function to be overridden by derived classes
+    // Pure virtual function to be implemented by derived classes
     virtual void pbdExecute() = 0;
 
 protected:
