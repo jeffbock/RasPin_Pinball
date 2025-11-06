@@ -83,9 +83,6 @@
     
     // Auto output control - default to disable since the menus launch first
     m_autoOutputEnable = false;
-    
-    // Initialize ball ejector device (using example IDs - can be configured per table)
-    m_ballEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
  }
 
  PBEngine::~PBEngine(){
@@ -96,11 +93,8 @@
         m_sandboxVideoPlayer = nullptr;
     }
     
-    // Clean up ball ejector device
-    if (m_ballEjector) {
-        delete m_ballEjector;
-        m_ballEjector = nullptr;
-    }
+    // Clean up all registered devices
+    ClearDevices();
 
 }
 
@@ -1716,4 +1710,33 @@ bool PBEngine::SetAutoOutput(unsigned int id, bool autoOutputEnabled)
         return true;  // Valid index, updated
     }
     return false;  // Invalid index
+}
+//==============================================================================
+// Device Management Functions
+//==============================================================================
+
+// Add a device to the device vector
+void PBEngine::AddDevice(PBDevice* device) {
+    if (device != nullptr) {
+        m_devices.push_back(device);
+    }
+}
+
+// Clear all devices and free memory
+void PBEngine::ClearDevices() {
+    for (auto device : m_devices) {
+        if (device != nullptr) {
+            delete device;
+        }
+    }
+    m_devices.clear();
+}
+
+// Execute all registered devices
+void PBEngine::ExecuteDevices() {
+    for (auto device : m_devices) {
+        if (device != nullptr) {
+            device->pbdExecute();
+        }
+    }
 }

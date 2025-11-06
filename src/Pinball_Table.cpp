@@ -1,4 +1,3 @@
-
 // Pinball_Table.cpp:  Class functions and code for the specific pinball table
 
 // Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
@@ -8,6 +7,7 @@
 #include "Pinball_Table.h"
 #include "Pinball_TableStr.h"
 #include "PBSequences.h"
+#include "PBDevice.h"
 
 // PBEgine Class Fucntions for the main pinball game
 
@@ -103,6 +103,10 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxCreateAnimation(animateData, true);
 
     // Note:  So many things to check for loading, it's not worth doing.  Assume the sprites will be loaded.  If texture fails, it will just render incorrectly.
+
+    // Initialize and register the ball ejector device (using example IDs - can be configured per table)
+    pbdEjector* ballEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
+    AddDevice(ballEjector);
 
     gameStartLoaded = true;
 
