@@ -19,6 +19,7 @@
 
 // Forward declarations
 class PBDevice;
+class pbdEjector;
 
 // Standard library includes
 #include <iostream>
@@ -283,6 +284,9 @@ public:
     bool m_sandboxVideoLoaded;
     unsigned long m_videoFadeStartTick;
     bool m_videoFadingIn;
+    bool m_videoFadingOut;
+    float m_videoFadeDurationSec;
+    pbdEjector* m_sandboxEjector;
     bool m_videoFadingOut;
     float m_videoFadeDurationSec;
 
