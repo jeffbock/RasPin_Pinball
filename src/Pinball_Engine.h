@@ -17,6 +17,9 @@
 #include "PBDebounce.h"
 #include "PBVideoPlayer.h"
 
+// Forward declarations
+class pbdEjector;
+
 // Standard library includes
 #include <iostream>
 #include <stdio.h>
@@ -360,6 +363,9 @@ private:
     void pbeReleaseMenuTextures();
 
     // Main Table functions - these will need to be modified per table
+    
+    // Device management - ball ejector example
+    pbdEjector* m_ballEjector;
 };
 
 // Global variable declaration

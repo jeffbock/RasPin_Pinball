@@ -5,6 +5,7 @@
 #include "Pinball_Engine.h"
 #include "Pinball.h"
 #include "PBSequences.h"
+#include "PBDevice.h"
 
 // Class functions for PBEngine
  PBEngine::PBEngine() {
@@ -82,6 +83,9 @@
     
     // Auto output control - default to disable since the menus launch first
     m_autoOutputEnable = false;
+    
+    // Initialize ball ejector device (using example IDs - can be configured per table)
+    m_ballEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
  }
 
  PBEngine::~PBEngine(){
@@ -90,6 +94,12 @@
     if (m_sandboxVideoPlayer) {
         delete m_sandboxVideoPlayer;
         m_sandboxVideoPlayer = nullptr;
+    }
+    
+    // Clean up ball ejector device
+    if (m_ballEjector) {
+        delete m_ballEjector;
+        m_ballEjector = nullptr;
     }
 
 }
