@@ -1,5 +1,0 @@
-/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/build/CMakeFiles/update_version.dir
-/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/build/CMakeFiles/Pinball.dir
-/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/build/CMakeFiles/build_release.dir
-/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/build/CMakeFiles/edit_cache.dir
-/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/build/CMakeFiles/rebuild_cache.dir
