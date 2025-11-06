@@ -9,8 +9,8 @@
 // PBDevice Base Class Implementation
 //==============================================================================
 
-PBDevice::PBDevice(PBGfx* pGfx) {
-    m_pGfx = pGfx;
+PBDevice::PBDevice(PBEngine* pEngine) {
+    m_pEngine = pEngine;
     m_startTimeMS = 0;
     m_enabled = false;
     m_state = 0;
@@ -24,7 +24,7 @@ PBDevice::~PBDevice() {
 
 // Reset the start time to current time, disable the device
 void PBDevice::pbdInit() {
-    m_startTimeMS = m_pGfx->GetTickCountGfx();
+    m_startTimeMS = m_pEngine->GetTickCountGfx();
     m_enabled = false;
     m_running = false;
     m_error = 0;
@@ -40,7 +40,7 @@ void PBDevice::pbdEnable(bool enable) {
 void PBDevice::pdbStartRun() {
     m_enabled = true;
     m_running = true;
-    m_startTimeMS = m_pGfx->GetTickCountGfx();
+    m_startTimeMS = m_pEngine->GetTickCountGfx();
 }
 
 // Return the m_running boolean
@@ -76,7 +76,7 @@ unsigned int PBDevice::pbdGetState() const {
 
 class pbdEjector : public PBDevice {
 public:
-    pbdEjector(PBGfx* pGfx, PBEngine* pEngine, unsigned int inputId, unsigned int ledOutputId, unsigned int solenoidOutputId);
+    pbdEjector(PBEngine* pEngine, unsigned int inputId, unsigned int ledOutputId, unsigned int solenoidOutputId);
     ~pbdEjector();
 
     // Override base class virtual functions
@@ -87,7 +87,6 @@ public:
 
 private:
     // Derived class specific member variables
-    PBEngine* m_pEngine;              // Pointer to PBEngine for SendOutputMsg
     unsigned int m_inputId;           // Input ID (not pin) to check (ball in ejector)
     unsigned int m_ledOutputId;       // LED output ID
     unsigned int m_solenoidOutputId;  // Solenoid output ID
@@ -106,9 +105,8 @@ private:
     };
 };
 
-pbdEjector::pbdEjector(PBGfx* pGfx, PBEngine* pEngine, unsigned int inputId, unsigned int ledOutputId, unsigned int solenoidOutputId) 
-    : PBDevice(pGfx) {
-    m_pEngine = pEngine;
+pbdEjector::pbdEjector(PBEngine* pEngine, unsigned int inputId, unsigned int ledOutputId, unsigned int solenoidOutputId) 
+    : PBDevice(pEngine) {
     m_inputId = inputId;
     m_ledOutputId = ledOutputId;
     m_solenoidOutputId = solenoidOutputId;
@@ -168,7 +166,7 @@ void pbdEjector::pdbStartRun() {
 void pbdEjector::pbdExecute() {
     if (!m_enabled) return;
 
-    unsigned long currentTimeMS = m_pGfx->GetTickCountGfx();
+    unsigned long currentTimeMS = m_pEngine->GetTickCountGfx();
     
     switch (m_state) {
         case STATE_IDLE:

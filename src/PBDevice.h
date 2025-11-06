@@ -13,7 +13,7 @@
 // Base class for pinball device management
 class PBDevice {
 public:
-    PBDevice(PBGfx* pGfx);
+    PBDevice(PBEngine* pEngine);
     virtual ~PBDevice();
 
     // Base class functions that can be overridden by derived classes
@@ -39,7 +39,7 @@ protected:
     unsigned int m_state;         // Key state of the device
     bool m_running;               // Current run is done or not
     int m_error;                  // Error state (0 = no error)
-    PBGfx* m_pGfx;                // Pointer to PBGfx for GetTickCountGfx()
+    PBEngine* m_pEngine;          // Pointer to PBEngine (provides GetTickCountGfx and SendOutputMsg)
 };
 
 #endif // PBDevice_h
