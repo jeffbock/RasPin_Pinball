@@ -368,14 +368,18 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
         
         g_PBEngine.m_LEDSequenceInfo.loopMode = message.options->loopMode;
         g_PBEngine.m_LEDSequenceInfo.pLEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
-
-        // Make sure all LEDs are cleared for the sequence - all HW updated w/ last staged values
-        SendAllStagedLED();
             
         // Copy activeLEDMask from output options to sequence info
         for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
             g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex] = message.options->activeLEDMask[chipIndex];
-
+        }
+        
+        // Send all staged LED values to hardware BEFORE saving state
+        // This ensures we capture the actual current hardware state, not pending staged changes
+        SendAllStagedLED();
+        
+        // Now save the current hardware state for later restoration
+        for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
             // Save all 4 LED control registers for later restore 
             for (int regIndex = 0; regIndex < 4; regIndex++) {
                 g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex][regIndex] = g_PBEngine.m_LEDChip[chipIndex].ReadLEDControl(CurrentHW, regIndex);
@@ -718,6 +722,10 @@ void HandleLEDSequenceBoundaries() {
 void EndLEDSequence() {
     g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = false;
     
+    // Send any pending staged LED values from the sequence before restoring state
+    // This ensures the sequence's final state is properly sent to hardware
+    SendAllStagedLED();
+    
     // Restore saved LED values only for pins that were in the active mask
     for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
         uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
@@ -744,7 +752,7 @@ void EndLEDSequence() {
         }
     }
 
-    // Send all the staged LED outputs to HW
+    // Send all the staged LED outputs to HW to restore previous state
     SendAllStagedLED();
 }
 
