@@ -313,6 +313,135 @@ Define Sequence Steps ──→ Start Sequence ──→ Auto-Play Animation ─
 
 ---
 
+### 7. Device Management System (PBDevice)
+
+**What It Does:**
+- Base class for managing complex pinball device states and flows
+- Structured framework for multi-step device operations
+- Built-in state tracking, timing control, and error handling
+- Integration with PBEngine for timing and output control
+
+**Device Architecture:**
+```
+┌─────────────────────────────────────────────────┐
+│              PBDevice Base Class                │
+│                                                 │
+│  • State management (m_state)                  │
+│  • Timing control (m_startTimeMS)              │
+│  • Enable/disable control (m_enabled)          │
+│  • Run status tracking (m_running)             │
+│  • Error handling (m_error)                    │
+│  • Engine access (m_pEngine)                   │
+└───────────────┬─────────────────────────────────┘
+                │
+                │ Derive Custom Devices
+                │
+    ┌───────────┴──────────┬──────────────┐
+    ▼                      ▼              ▼
+┌─────────┐          ┌──────────┐    ┌──────────┐
+│Ejector  │          │  Scoop   │    │ Diverter │
+│         │          │          │    │          │
+│Ball     │          │Ball      │    │Ball      │
+│Detection│          │Capture   │    │Routing   │
+│LED Ctrl │          │Hold      │    │Direction │
+│Solenoid │          │Release   │    │Control   │
+└─────────┘          └──────────┘    └──────────┘
+```
+
+**When to Use PBDevice:**
+
+Use for devices requiring:
+- Multi-step operations (e.g., ball ejectors, scoops, diverters)
+- Precise timing between states
+- Multiple coordinated outputs (LEDs, solenoids, motors)
+- State persistence across game ticks
+- Error tracking and recovery
+
+Simple devices (basic slingshots, bumpers) can use direct output messages.
+
+**Base Class Functions:**
+```cpp
+// Virtual functions (override in derived classes)
+virtual void pbdInit();           // Initialize/reset device
+virtual void pbdEnable(bool);     // Enable/disable device
+virtual void pdbStartRun();       // Start device operation
+virtual void pbdExecute() = 0;    // Update device (pure virtual)
+
+// Utility functions
+bool pdbIsRunning() const;        // Check if operation in progress
+bool pbdIsError() const;          // Check for error state
+int pbdResetError();              // Get and clear error
+void pbdSetState(unsigned int);   // Set current state
+unsigned int pbdGetState() const; // Get current state
+```
+
+**Example: pbdEjector Class**
+
+The framework includes a complete implementation of a ball ejector:
+
+```cpp
+class pbdEjector : public PBDevice {
+    // Manages ball ejection with LED and solenoid control
+    
+    States:
+        IDLE → BALL_DETECTED → SOLENOID_ON → SOLENOID_OFF
+                                    ↓              ↓
+                                    └──(retry)─────┘
+                                    ↓
+                                COMPLETE
+};
+
+// Usage in game code
+pbdEjector* m_scoop = new pbdEjector(&g_PBEngine, 
+                                    INPUT_SCOOP,
+                                    LED_SCOOP,
+                                    OUTPUT_SCOOP_EJECT);
+m_scoop->pbdEnable(true);
+
+// In game loop
+m_scoop->pbdExecute();  // Call every frame
+
+// Check completion
+if (!m_scoop->pdbIsRunning()) {
+    // Ejection complete, award points
+}
+```
+
+**Device Flow Pattern:**
+```
+Initialize Device ──→ Enable ──→ Start Run ──→ Execute Loop
+       │                             │              │
+       └───────────────────────────┘              │
+              (Reset/Cleanup)                      │
+                                                   ▼
+                                          ┌──────────────┐
+                                          │ State Machine│
+                                          │              │
+                                          │ IDLE         │
+                                          │   ↓          │
+                                          │ ACTIVE       │
+                                          │   ↓          │
+                                          │ COMPLETE     │
+                                          └──────────────┘
+```
+
+**Key Features:**
+- **Timing Access:** Get current time via `m_pEngine->GetTickCountGfx()`
+- **Output Control:** Send outputs via `m_pEngine->SendOutputMsg()`
+- **State Persistence:** State maintained across frames automatically
+- **Error Handling:** Built-in error flag and reporting
+- **Extensibility:** Easy to create new device types
+
+**Common Patterns:**
+- **Retry Pattern:** Repeat operation if conditions not met
+- **Timeout Pattern:** Error out after maximum time
+- **Multi-Phase:** Sequential operations with timing between phases
+- **Feedback Loop:** Check sensor state between actions
+
+**Documentation:** [PBDevice_API.md](PBDevice_API.md)
+
+---
+
 ## Platform Architecture
 
 ### Cross-Platform Design
@@ -728,10 +857,11 @@ This PR includes comprehensive documentation for each subsystem:
 ### Hardware Control
 6. **[IO_Processing_API.md](IO_Processing_API.md)** - Input/output message system and hardware communication
 7. **[LED_Control_API.md](LED_Control_API.md)** - LED control and animation sequences
+8. **[PBDevice_API.md](PBDevice_API.md)** - Device management for complex pinball mechanisms
 
 ### Additional Resources
-8. **[HowToBuild.md](HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
-9. **[UsersGuide.md](UsersGuide.md)** - Comprehensive framework guide (pre-existing)
+9. **[HowToBuild.md](HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
+10. **[UsersGuide.md](UsersGuide.md)** - Comprehensive framework guide (pre-existing)
 
 ---
 
@@ -833,6 +963,7 @@ The RasPin Pinball Framework provides a complete, flexible foundation for buildi
 - PBEngine_API.md - Core engine class
 - IO_Processing_API.md - Message-based I/O system  
 - LED_Control_API.md - LED control and sequences
+- PBDevice_API.md - Device management framework for complex mechanisms
 - Platform_Init_API.md - Initialization and main loop
 - Game_Creation_API.md - Graphics, sound, and screen management
 - FontGen_Guide.md - Font generation utility
