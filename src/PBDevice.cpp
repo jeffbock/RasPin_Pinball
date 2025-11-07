@@ -74,37 +74,6 @@ unsigned int PBDevice::pbdGetState() const {
 // pbdEjector Derived Class - Sample Implementation
 //==============================================================================
 
-class pbdEjector : public PBDevice {
-public:
-    pbdEjector(PBEngine* pEngine, unsigned int inputId, unsigned int ledOutputId, unsigned int solenoidOutputId);
-    ~pbdEjector();
-
-    // Override base class virtual functions
-    void pbdInit() override;
-    void pbdEnable(bool enable) override;
-    void pdbStartRun() override;
-    void pbdExecute() override;
-
-private:
-    // Derived class specific member variables
-    unsigned int m_inputId;           // Input ID (not pin) to check (ball in ejector)
-    unsigned int m_ledOutputId;       // LED output ID
-    unsigned int m_solenoidOutputId;  // Solenoid output ID
-    unsigned long m_solenoidStartMS;  // Time when solenoid was turned on
-    unsigned long m_solenoidOffMS;    // Time when solenoid was turned off
-    bool m_solenoidActive;            // Solenoid currently active
-    bool m_ledActive;                 // LED currently active
-
-    // State definitions for the ejector
-    enum EjectorState {
-        STATE_IDLE = 0,
-        STATE_BALL_DETECTED = 1,
-        STATE_SOLENOID_ON = 2,
-        STATE_SOLENOID_OFF = 3,
-        STATE_COMPLETE = 4
-    };
-};
-
 pbdEjector::pbdEjector(PBEngine* pEngine, unsigned int inputId, unsigned int ledOutputId, unsigned int solenoidOutputId) 
     : PBDevice(pEngine) {
     m_inputId = inputId;

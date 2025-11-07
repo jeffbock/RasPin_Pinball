@@ -287,8 +287,6 @@ public:
     bool m_videoFadingOut;
     float m_videoFadeDurationSec;
     pbdEjector* m_sandboxEjector;
-    bool m_videoFadingOut;
-    float m_videoFadeDurationSec;
 
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;

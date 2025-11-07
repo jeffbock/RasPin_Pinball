@@ -28,7 +28,10 @@ set(PINBALL_SOURCES
     ../src/Pinball_IO.cpp
     ../src/Pinball_Table.cpp
     ../src/PBSound.cpp
+    ../src/PBVideo.cpp
+    ../src/PBVideoPlayer.cpp
     ../src/PinballMenus.cpp
+    ../src/PBSequences.cpp
     ../src/Pinball_Engine.cpp
     ../src/Pinball.cpp
 )
