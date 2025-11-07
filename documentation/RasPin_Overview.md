@@ -241,7 +241,7 @@ stVideoInfo info = videoPlayer.pbvpGetVideoInfo();
 | Audio playback | ❌ Stubbed | ✅ Via SDL2 |
 | Hardware decode | ❌ Not yet | ❌ Not yet |
 
-**Documentation:** [PBVideo_README.md](PBVideo_README.md)
+**Documentation:** [Game_Creation_API.md](Game_Creation_API.md) (PBVideoPlayer section)
 
 ---
 
@@ -850,18 +850,17 @@ This PR includes comprehensive documentation for each subsystem:
 2. **[PBEngine_API.md](PBEngine_API.md)** - Core engine functions and state management
 
 ### Graphics, Audio, and Video
-3. **[Game_Creation_API.md](Game_Creation_API.md)** - Complete guide to sprites, animations, and sound
+3. **[Game_Creation_API.md](Game_Creation_API.md)** - Complete guide to sprites, animations, sound, and video playback
 4. **[FontGen_Guide.md](FontGen_Guide.md)** - Creating custom fonts for text rendering
-5. **[PBVideo_README.md](PBVideo_README.md)** - Video playback system with PBVideoPlayer
 
 ### Hardware Control
-6. **[IO_Processing_API.md](IO_Processing_API.md)** - Input/output message system and hardware communication
-7. **[LED_Control_API.md](LED_Control_API.md)** - LED control and animation sequences
-8. **[PBDevice_API.md](PBDevice_API.md)** - Device management for complex pinball mechanisms
+5. **[IO_Processing_API.md](IO_Processing_API.md)** - Input/output message system and hardware communication
+6. **[LED_Control_API.md](LED_Control_API.md)** - LED control and animation sequences
+7. **[PBDevice_API.md](PBDevice_API.md)** - Device management for complex pinball mechanisms
 
 ### Additional Resources
-9. **[HowToBuild.md](HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
-10. **[UsersGuide.md](UsersGuide.md)** - Comprehensive framework guide (pre-existing)
+8. **[HowToBuild.md](HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
+9. **[UsersGuide.md](UsersGuide.md)** - Comprehensive framework guide (pre-existing)
 
 ---
 
@@ -965,8 +964,7 @@ The RasPin Pinball Framework provides a complete, flexible foundation for buildi
 - LED_Control_API.md - LED control and sequences
 - PBDevice_API.md - Device management framework for complex mechanisms
 - Platform_Init_API.md - Initialization and main loop
-- Game_Creation_API.md - Graphics, sound, and screen management
+- Game_Creation_API.md - Graphics, sound, video playback, and screen management
 - FontGen_Guide.md - Font generation utility
-- PBVideo_README.md - Video playback system (FFmpeg integration)
 
 Each document contains detailed API references, code examples, and best practices based on actual framework usage.
