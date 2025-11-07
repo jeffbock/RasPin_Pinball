@@ -1605,6 +1605,272 @@ if (!m_animationComplete && gfxAnimateActive(m_doorId)) {
 
 ---
 
+## PBDevice Class - Complex Device Management
+
+The `PBDevice` class provides a structured framework for managing complex pinball devices that require multi-step operations, state tracking, and timing control. This is particularly useful for devices like ball ejectors, scoops, diverters, and other mechanisms that need coordinated control of multiple outputs.
+
+### When to Use PBDevice
+
+**Use PBDevice for:**
+- Multi-step device operations (e.g., ball ejectors, scoops)
+- Devices requiring precise timing between states
+- Coordinating multiple outputs (LEDs + solenoids)
+- State persistence across game ticks
+- Error tracking and recovery
+
+**Use direct output messages for:**
+- Simple one-shot actions (slingshots, bumpers)
+- Instant feedback mechanisms
+- Basic LED control
+
+### Basic Usage Pattern
+
+```cpp
+// In your game class header
+class PBTable : public PBEngine {
+private:
+    pbdEjector* m_leftScoop;   // Ejector device
+};
+
+// Initialize device
+void PBTable::pbtInitTable() {
+    // Create ejector with input sensor, LED, and solenoid
+    m_leftScoop = new pbdEjector(&g_PBEngine,
+                                INPUT_LEFT_SCOOP,     // Ball sensor
+                                LED_SCOOP_LEFT,       // Status LED
+                                OUTPUT_SCOOP_EJECT);  // Ejector solenoid
+    
+    // Enable the device
+    m_leftScoop->pbdEnable(true);
+}
+
+// Update in game loop
+void PBTable::pbtUpdateGameLogic() {
+    // Execute device state machine every frame
+    m_leftScoop->pbdExecute();
+    
+    // Check if ejection completed
+    if (!m_leftScoop->pdbIsRunning() && 
+        m_leftScoop->pbdGetState() == 4) {  // STATE_COMPLETE
+        // Ball ejected successfully
+        AddScore(5000);
+        pbeSendConsole("Ball ejected from left scoop");
+    }
+    
+    // Check for errors
+    if (m_leftScoop->pbdIsError()) {
+        int error = m_leftScoop->pbdResetError();
+        pbeSendConsole("Scoop error: " + std::to_string(error));
+    }
+}
+
+// Cleanup
+void PBTable::pbtCleanup() {
+    delete m_leftScoop;
+}
+```
+
+### pbdEjector Example Device
+
+The framework includes a complete implementation: `pbdEjector`, a ball ejector that:
+1. Detects ball presence via input sensor
+2. Turns on LED when ball detected
+3. Fires solenoid to eject ball
+4. Waits and checks if ball ejected
+5. Repeats if ball still present
+6. Cleans up outputs on completion
+
+**State Machine Flow:**
+```
+IDLE
+  ↓ (ball detected)
+BALL_DETECTED (turn on LED and solenoid)
+  ↓ (250ms elapsed)
+SOLENOID_OFF (turn off solenoid)
+  ↓ (250ms elapsed)
+  ├─ Ball still present → SOLENOID_ON (retry)
+  └─ Ball ejected → COMPLETE
+```
+
+### Creating Custom Devices
+
+```cpp
+// Define your custom device
+class MyCustomDevice : public PBDevice {
+public:
+    MyCustomDevice(PBEngine* pEngine, unsigned int outputId);
+    ~MyCustomDevice();
+    
+    // Override base class functions
+    void pbdInit() override;
+    void pbdEnable(bool enable) override;
+    void pdbStartRun() override;
+    void pbdExecute() override;
+
+private:
+    unsigned int m_outputId;
+    unsigned long m_timer;
+    
+    enum States {
+        STATE_IDLE = 0,
+        STATE_ACTIVE = 1,
+        STATE_COMPLETE = 2
+    };
+};
+
+// Implement pbdExecute with state machine
+void MyCustomDevice::pbdExecute() {
+    if (!m_enabled) return;
+    
+    unsigned long currentTimeMS = m_pEngine->GetTickCountGfx();
+    
+    switch (m_state) {
+        case STATE_IDLE:
+            // Wait for trigger condition
+            break;
+            
+        case STATE_ACTIVE:
+            // Turn on output
+            m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_outputId, 
+                                    PB_ON, false);
+            m_timer = currentTimeMS;
+            m_state = STATE_COMPLETE;
+            break;
+            
+        case STATE_COMPLETE:
+            // Wait for duration then turn off
+            if ((currentTimeMS - m_timer) >= 500) {
+                m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_outputId, 
+                                        PB_OFF, false);
+                m_running = false;
+                m_state = STATE_IDLE;
+            }
+            break;
+            
+        default:
+            m_error = 1;  // Unknown state
+            m_state = STATE_IDLE;
+            m_running = false;
+            break;
+    }
+}
+```
+
+### Key Features
+
+**State Management:**
+- Built-in `m_state` variable for state machine logic
+- `pbdSetState()` and `pbdGetState()` helpers
+- Persistent state across frames
+
+**Timing Control:**
+- Access to `m_startTimeMS` for run timing
+- Get current time via `m_pEngine->GetTickCountGfx()`
+- Calculate elapsed time for state transitions
+
+**Output Control:**
+- Send outputs via `m_pEngine->SendOutputMsg()`
+- Control solenoids, LEDs, motors, etc.
+- Track active outputs in derived class
+
+**Error Handling:**
+- Built-in `m_error` flag
+- `pbdIsError()` checks for errors
+- `pbdResetError()` returns and clears error code
+
+**Enable/Disable:**
+- Global enable/disable via `pbdEnable()`
+- Override to cleanup outputs when disabling
+- Check `m_enabled` in `pbdExecute()`
+
+### Integration Example
+
+```cpp
+// Complete table class with multiple devices
+class PBTable : public PBEngine {
+private:
+    pbdEjector* m_leftScoop;
+    pbdEjector* m_rightScoop;
+    MyCustomDevice* m_diverter;
+    
+public:
+    void pbtInitTable() {
+        // Create devices
+        m_leftScoop = new pbdEjector(&g_PBEngine, 
+                                    INPUT_LEFT_SCOOP,
+                                    LED_SCOOP_LEFT,
+                                    OUTPUT_SCOOP_LEFT);
+        
+        m_rightScoop = new pbdEjector(&g_PBEngine,
+                                     INPUT_RIGHT_SCOOP,
+                                     LED_SCOOP_RIGHT,
+                                     OUTPUT_SCOOP_RIGHT);
+        
+        m_diverter = new MyCustomDevice(&g_PBEngine, OUTPUT_DIVERTER);
+        
+        // Enable all devices
+        m_leftScoop->pbdEnable(true);
+        m_rightScoop->pbdEnable(true);
+        m_diverter->pbdEnable(true);
+    }
+    
+    void pbtUpdateGameLogic() {
+        // Execute all devices every frame
+        m_leftScoop->pbdExecute();
+        m_rightScoop->pbdExecute();
+        m_diverter->pbdExecute();
+        
+        // Check for completions and handle game logic
+        if (!m_leftScoop->pdbIsRunning()) {
+            // Left scoop finished
+        }
+        
+        if (!m_rightScoop->pdbIsRunning()) {
+            // Right scoop finished
+        }
+    }
+    
+    ~PBTable() {
+        delete m_leftScoop;
+        delete m_rightScoop;
+        delete m_diverter;
+    }
+};
+```
+
+### Best Practices
+
+**State Machine Design:**
+- Use enum for states (readable, type-safe)
+- Document state transitions with comments
+- Always handle default/unknown states
+- Keep each state's logic simple and focused
+
+**Timing:**
+- Use relative timing (elapsed from start)
+- Never use blocking delays
+- Calculate: `elapsed = currentTime - m_startTimeMS`
+
+**Output Management:**
+- Turn off outputs in `pbdEnable(false)`
+- Track active outputs with boolean flags
+- Use `usePulse=true` for timed solenoids
+
+**Error Handling:**
+- Define meaningful error codes
+- Log errors with `pbeSendConsole()`
+- Reset to safe state on errors
+- Check and clear errors regularly
+
+**Memory Management:**
+- Create devices with `new` in initialization
+- Delete in game class destructor
+- Avoid creating devices in loops
+
+For complete API reference, device patterns, and troubleshooting, see **[PBDevice_API.md](PBDevice_API.md)**.
+
+---
+
 ## Complete Game Screen Template
 
 ```cpp
@@ -1702,6 +1968,8 @@ bool PBEngine::pbeRenderMyScreen(unsigned long currentTick, unsigned long lastTi
 ## See Also
 
 - **PBEngine_API.md** - Core engine class and state management
+- **PBDevice_API.md** - Device management API reference and examples
 - **Platform_Init_API.md** - Main loop and initialization
-- **PBVideo_README.md** - Detailed video system documentation and FFmpeg setup
+- **IO_Processing_API.md** - Input/output message processing
+- **LED_Control_API.md** - LED sequences and patterns
 - **UsersGuide.md** - Complete framework documentation
