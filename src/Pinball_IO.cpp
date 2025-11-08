@@ -264,19 +264,42 @@ void LEDDriver::SendStagedLED() {
         // Send only staged PWM brightness values
         for (int i = 0; i < 16; i++) {
             if (m_pwmStaged[i]) {
-                wiringPiI2CWriteReg8(m_i2cFd, TLC59116_PWM0 + i, m_ledBrightness[i]);
-                m_currentBrightness[i] = m_ledBrightness[i];  // Update current state tracking
-                m_pwmStaged[i] = false;  // Clear the staged flag after sending
+                int result = wiringPiI2CWriteReg8(m_i2cFd, TLC59116_PWM0 + i, m_ledBrightness[i]);
+                if (result >= 0) {
+                    // Success - update current state tracking and clear staged flag
+                    m_currentBrightness[i] = m_ledBrightness[i];
+                    m_pwmStaged[i] = false;
+                } 
+                // On failure, keep staged flag set so value will be retried on next call
             }
         }
         
         // Send only staged LEDOUT control values
         for (int i = 0; i < 4; i++) {
             if (m_ledOutStaged[i]) {
-                wiringPiI2CWriteReg8(m_i2cFd, TLC59116_LEDOUT0 + i, m_ledControl[i]);
-                m_currentControl[i] = m_ledControl[i];  // Update current state tracking
-                m_ledOutStaged[i] = false;  // Clear the staged flag after sending
+                int result = wiringPiI2CWriteReg8(m_i2cFd, TLC59116_LEDOUT0 + i, m_ledControl[i]);
+                if (result >= 0) {
+                    // Success - update current state tracking and clear staged flag
+                    m_currentControl[i] = m_ledControl[i];
+                    m_ledOutStaged[i] = false;
+                }
+                // On failure, keep staged flag set so value will be retried on next call
             }
+        }
+    }
+#else
+    // Windows mode simulation - update tracking and clear flags without hardware writes
+    for (int i = 0; i < 16; i++) {
+        if (m_pwmStaged[i]) {
+            m_currentBrightness[i] = m_ledBrightness[i];
+            m_pwmStaged[i] = false;
+        }
+    }
+    
+    for (int i = 0; i < 4; i++) {
+        if (m_ledOutStaged[i]) {
+            m_currentControl[i] = m_ledControl[i];
+            m_ledOutStaged[i] = false;
         }
     }
 #endif
