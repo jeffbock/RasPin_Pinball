@@ -824,6 +824,157 @@ void HandleLEDSequenceBoundaries() {
     }
 }
 
+// ============================================================================
+// DEBUG: LED Hardware Verification Functions
+// These functions verify that hardware state matches expected state
+// Can be removed by setting DEBUG_LED_VERIFICATION to 0
+// ============================================================================
+#define DEBUG_LED_VERIFICATION 1
+
+#if DEBUG_LED_VERIFICATION
+
+// Shared state for deferred message simulation and verification
+static uint8_t s_simulatedControl[NUM_LED_CHIPS][4];
+static bool s_affectedRegs[NUM_LED_CHIPS][4];
+
+// Helper function to verify hardware LED control registers match expected values
+static void DebugVerifyLEDHardware(const char* checkpointName, int chipIndex, 
+                                    const uint8_t* expectedValues, const uint16_t* activeMask) {
+    std::string logMsg = std::string("DEBUG_LED [") + checkpointName + "] Chip " + std::to_string(chipIndex) + ": ";
+    bool mismatch = false;
+    
+    for (int regIndex = 0; regIndex < 4; regIndex++) {
+        // Read actual hardware value
+        uint8_t hwValue = g_PBEngine.m_LEDChip[chipIndex].ReadLEDOutRegister(regIndex);
+        uint8_t expectedValue = expectedValues[regIndex];
+        
+        // Calculate which LEDs in this register are in the active mask
+        uint16_t regMask = 0;
+        if (activeMask) {
+            for (int ledPin = regIndex * 4; ledPin < (regIndex + 1) * 4 && ledPin < 16; ledPin++) {
+                if (activeMask[chipIndex] & (1 << ledPin)) {
+                    int bitPos = (ledPin % 4) * 2;
+                    regMask |= (0x03 << bitPos);
+                }
+            }
+        } else {
+            regMask = 0xFFFF; // Check all bits if no mask provided
+        }
+        
+        // Mask both values to only compare relevant bits
+        uint8_t maskedHW = hwValue & regMask;
+        uint8_t maskedExpected = expectedValue & regMask;
+        
+        if (maskedHW != maskedExpected) {
+            mismatch = true;
+            logMsg += "Reg" + std::to_string(regIndex) + " MISMATCH! ";
+            logMsg += "HW=0x" + std::to_string(hwValue) + " Expected=0x" + std::to_string(expectedValue) + " ";
+        } else {
+            logMsg += "Reg" + std::to_string(regIndex) + " OK ";
+        }
+    }
+    
+    if (mismatch) {
+        g_PBEngine.pbeSendConsole(logMsg);
+    }
+}
+
+// Simulate deferred message processing and verify final hardware state
+static void DebugSimulateAndVerifyDeferred(const std::queue<stOutputMessage>& deferredQueue) {
+    // Make a copy of the queue to simulate without consuming it
+    std::queue<stOutputMessage> queueCopy = deferredQueue;
+    
+    // Initialize simulated register values starting from current staged values
+    for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+        for (int regIndex = 0; regIndex < 4; regIndex++) {
+            s_simulatedControl[chipIndex][regIndex] = g_PBEngine.m_LEDChip[chipIndex].ReadLEDControl(StagedHW, regIndex);
+            s_affectedRegs[chipIndex][regIndex] = false;
+        }
+    }
+    
+    // Simulate each deferred message
+    int msgCount = 0;
+    while (!queueCopy.empty()) {
+        stOutputMessage msg = queueCopy.front();
+        queueCopy.pop();
+        msgCount++;
+        
+        // Find the output definition
+        int outputDefIndex = FindOutputDefIndex(msg.outputId);
+        if (outputDefIndex != -1) {
+            stOutputDef& outputDef = g_outputDef[outputDefIndex];
+            
+            if (outputDef.boardType == PB_LED && msg.outputMsg == PB_OMSG_LED) {
+                int chipIndex = outputDef.boardIndex;
+                int ledPin = outputDef.pin;
+                int regIndex = ledPin / 4;
+                int bitPos = (ledPin % 4) * 2;
+                
+                // Simulate staging the LED - exactly as StageLEDControl does
+                uint8_t controlValue = (msg.outputState == PB_ON) ? 0x01 : 0x00;
+                s_simulatedControl[chipIndex][regIndex] &= ~(0x03 << bitPos);
+                s_simulatedControl[chipIndex][regIndex] |= (controlValue << bitPos);
+                s_affectedRegs[chipIndex][regIndex] = true;
+            }
+        }
+    }
+    
+    g_PBEngine.pbeSendConsole("DEBUG_LED Simulated " + std::to_string(msgCount) + " deferred messages");
+}
+
+// Verify hardware after deferred messages are sent
+static void DebugVerifyDeferredHardware() {
+    // Compare actual hardware with our simulation for affected registers
+    for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+        std::string logMsg = "DEBUG_LED [After Deferred] Chip " + std::to_string(chipIndex) + ": ";
+        bool anyAffected = false;
+        bool mismatch = false;
+        
+        for (int regIndex = 0; regIndex < 4; regIndex++) {
+            if (s_affectedRegs[chipIndex][regIndex]) {
+                anyAffected = true;
+                uint8_t hwValue = g_PBEngine.m_LEDChip[chipIndex].ReadLEDOutRegister(regIndex);
+                uint8_t simulated = s_simulatedControl[chipIndex][regIndex];
+                
+                if (hwValue != simulated) {
+                    mismatch = true;
+                    logMsg += "Reg" + std::to_string(regIndex) + " MISMATCH! ";
+                    logMsg += "HW=0x";
+                    char buf[8];
+                    snprintf(buf, sizeof(buf), "%02X", hwValue);
+                    logMsg += buf;
+                    logMsg += " Simulated=0x";
+                    snprintf(buf, sizeof(buf), "%02X", simulated);
+                    logMsg += buf;
+                    logMsg += " ";
+                } else {
+                    logMsg += "Reg" + std::to_string(regIndex) + " OK ";
+                }
+            }
+        }
+        
+        if (anyAffected) {
+            if (mismatch) {
+                logMsg += "*** VERIFICATION FAILED ***";
+            } else {
+                logMsg += "All OK";
+            }
+            g_PBEngine.pbeSendConsole(logMsg);
+        }
+    }
+}
+
+#else
+// Stub functions when debug is disabled
+#define DebugVerifyLEDHardware(name, chip, expected, mask) ((void)0)
+#define DebugSimulateAndVerifyDeferred(queue) ((void)0)
+#define DebugVerifyDeferredHardware() ((void)0)
+#endif
+
+// ============================================================================
+// End DEBUG Section
+// ============================================================================
+
 // End LED sequence and restore saved values
 void EndLEDSequence() {
     g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = false;
@@ -866,6 +1017,19 @@ void EndLEDSequence() {
         }
     }
     
+#if DEBUG_LED_VERIFICATION
+    // DEBUG: After restore, send to hardware and verify saved values match
+    SendAllStagedLED();
+    for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+        DebugVerifyLEDHardware("After Restore", chipIndex, 
+                               g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex],
+                               g_PBEngine.m_LEDSequenceInfo.activeLEDMask);
+    }
+    
+    // DEBUG: Simulate deferred messages before processing them
+    DebugSimulateAndVerifyDeferred(g_PBEngine.m_deferredQueue);
+#endif
+    
     // Process deferred LED queue immediately after restoring state
     // Deferred messages will overwrite restored values in m_ledControl before sending to hardware
     // DO NOT send restored values before processing deferred queue - this would cause deferred
@@ -874,6 +1038,11 @@ void EndLEDSequence() {
     
     // Now send all staged values (restored + deferred) to hardware
     SendAllStagedLED();
+    
+#if DEBUG_LED_VERIFICATION
+    // DEBUG: Verify hardware after deferred messages are sent
+    DebugVerifyDeferredHardware();
+#endif
 }
 
 // Process deferred LED messages when sequence is not active
