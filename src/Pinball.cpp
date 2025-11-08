@@ -866,13 +866,14 @@ void EndLEDSequence() {
         }
     }
     
-    // Send restored values to hardware so that m_currentControl matches m_ledControl
-    // This ensures deferred messages will properly detect changes and set staged flags
-    SendAllStagedLED();
-
     // Process deferred LED queue immediately after restoring state
-    // This ensures deferred messages overwrite restored values before sending to hardware
+    // Deferred messages will overwrite restored values in m_ledControl before sending to hardware
+    // DO NOT send restored values before processing deferred queue - this would cause deferred
+    // messages that match restored states to be incorrectly skipped during staging
     ProcessDeferredLEDQueue();
+    
+    // Now send all staged values (restored + deferred) to hardware
+    SendAllStagedLED();
 }
 
 // Process deferred LED messages when sequence is not active
