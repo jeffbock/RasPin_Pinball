@@ -690,7 +690,7 @@ bool PBEngine::pbeLoadTestSandbox(bool forceReload){
     
     // Create and register sandbox ejector device if not already created
     if (!m_sandboxEjector && !forceReload) {
-        m_sandboxEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
+        m_sandboxEjector = new pbdEjector(this, IDI_SENSOR1, IDO_SLINGSHOT, IDO_BALLEJECT2);
         pbeAddDevice(m_sandboxEjector);
     }
     
@@ -1663,7 +1663,16 @@ void PBEngine::SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPin
     outputMessage.outputState = outputState;
     outputMessage.usePulse = usePulse;
     outputMessage.sentTick = GetTickCountGfx();
-    outputMessage.options = options;
+    
+    // Copy options data if provided, otherwise mark as not having options
+    if (options != nullptr) {
+        outputMessage.optionsCopy = *options;  // Copy the data
+        outputMessage.options = &outputMessage.optionsCopy;  // Point to our copy
+        outputMessage.hasOptions = true;
+    } else {
+        outputMessage.options = nullptr;
+        outputMessage.hasOptions = false;
+    }
     
     // Lock the output queue mutex and add the message
     // std::lock_guard<std::mutex> lock(m_outputQMutex);

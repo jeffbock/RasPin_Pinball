@@ -116,7 +116,9 @@ struct stOutputMessage {
     PBPinState outputState;
     bool usePulse;
     unsigned long sentTick;
-    stOutputOptions *options;
+    stOutputOptions *options;  // Pointer for backward compatibility, but will be copied
+    stOutputOptions optionsCopy;  // Actual storage for options data
+    bool hasOptions;  // Flag to indicate if options are valid
 };
 
 struct stOutputPulse {

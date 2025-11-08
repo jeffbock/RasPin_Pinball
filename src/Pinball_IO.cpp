@@ -22,6 +22,7 @@ stOutputDef g_outputDef[] = {
     {"IO0P8 Sling Shot", PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, 8, PB_IO, 0, PB_OFF, 500, 500}, 
     {"IO1P8 Pop Bumper", PB_OMSG_GENERIC_IO, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF, 1000, 1000},
     {"IO2P8 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF, 2000, 2000},
+    {"IO0P15 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT2, 15, PB_IO, 0, PB_OFF, 500, 500},
     {"Start LED", PB_OMSG_GENERIC_IO, IDO_LED1, 23, PB_RASPI, 0, PB_ON, 0, 0},
     {"LED0P08 LED", PB_OMSG_LED, IDO_LED2, 8, PB_LED, 0, PB_OFF, 100, 100},
     {"LED0P09 LED", PB_OMSG_LED, IDO_LED3, 9, PB_LED, 0, PB_OFF, 150, 50},
@@ -42,7 +43,7 @@ stInputDef g_inputDef[] = {
     {"Left Activate", "Q", PB_IMSG_BUTTON, IDI_LEFTACTIVATE, 5, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
     {"Right Activate", "E", PB_IMSG_BUTTON, IDI_RIGHTACTIVATE,22, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
     {"Start", "Z", PB_IMSG_BUTTON, IDI_START, 6, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
-    {"IO0P07", "1", PB_IMSG_SENSOR, IDI_SENSOR1, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
+    {"IO0P07 Eject SW2", "1", PB_IMSG_SENSOR, IDI_SENSOR1, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
     {"IO1P07", "2", PB_IMSG_SENSOR, IDI_SENSOR2, 7, PB_IO, 1, PB_OFF, 0, 5, false, 0, PB_OFF},
     {"IO2P07", "3", PB_IMSG_SENSOR, IDI_SENSOR3, 7, PB_IO, 2, PB_OFF, 0, 5, false, 0, PB_OFF}
 };
@@ -201,14 +202,16 @@ void LEDDriver::StageLEDControl(bool setAll, unsigned int LEDIndex, LEDState sta
             uint8_t regIndex = LEDIndex / 4;      // Which LEDOUT register (0-3)
             uint8_t bitPos = (LEDIndex % 4) * 2;  // Bit position within register (0,2,4,6)
             
-            // Calculate new register value
-            uint8_t newRegValue = m_ledControl[regIndex];  // Start with the last staged state
+            // Calculate new register value starting from the last staged state
+            uint8_t newRegValue = m_ledControl[regIndex];
             newRegValue &= ~(0x03 << bitPos);     // Clear the 2 bits for this LED
             newRegValue |= (controlValue << bitPos);  // Set new value
             
-            // Only stage if the value differs from what was last sent to hardware
+            // Always update m_ledControl to keep it in sync with intended state
+            m_ledControl[regIndex] = newRegValue;
+            
+            // Only set the staged flag if the value differs from what was last sent to hardware
             if (m_currentControl[regIndex] != newRegValue) {
-                m_ledControl[regIndex] = newRegValue;
                 m_ledOutStaged[regIndex] = true;  // Mark this LEDOUT register as staged
             }
         }
@@ -220,8 +223,16 @@ void LEDDriver::StageLEDControl(unsigned int registerIndex, uint8_t value) {
         // Only stage if the value differs from what was last sent to hardware
         if (m_currentControl[registerIndex] != value) {
             m_ledControl[registerIndex] = value;
-            m_ledOutStaged[registerIndex] = true;  // Mark this LEDOUT register as staged
+            m_ledOutStaged[registerIndex] = true;
         }
+    }
+}
+
+void LEDDriver::SyncStagedWithHardware(unsigned int registerIndex) {
+    // Sync the staged register value with current hardware state
+    // This ensures subsequent staging operations build upon the correct baseline
+    if (registerIndex < 4) {
+        m_ledControl[registerIndex] = m_currentControl[registerIndex];
     }
 }
 

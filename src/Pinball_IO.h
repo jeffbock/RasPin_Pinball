@@ -107,8 +107,8 @@ struct stOutputDef{
 #define IDO_LED8 10
 #define IDO_LED9 11
 #define IDO_LED10 12
-
-#define NUM_OUTPUTS 13
+#define IDO_BALLEJECT2 13
+#define NUM_OUTPUTS 14
 
 #define IDI_LEFTFLIPPER 0
 #define IDI_RIGHTFLIPPER 1
@@ -179,6 +179,7 @@ public:
     void SetGroupMode(LEDGroupMode groupMode, unsigned int brightness, unsigned int msTimeOn, unsigned int msTimeOff);
     void StageLEDControl(bool setAll, unsigned int LEDIndex, LEDState state);
     void StageLEDControl(unsigned int registerIndex, uint8_t value);
+    void SyncStagedWithHardware(unsigned int registerIndex);  // Sync m_ledControl with m_currentControl
     void StageLEDBrightness(bool setAll, unsigned int LEDIndex, uint8_t brightness);
     void SendStagedLED();
     LEDGroupMode GetGroupMode() const;

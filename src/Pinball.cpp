@@ -276,6 +276,11 @@ bool PBProcessOutput() {
     while (!g_PBEngine.m_outputQueue.empty()) {    
         stOutputMessage tempMessage = g_PBEngine.m_outputQueue.front();
         g_PBEngine.m_outputQueue.pop();
+        
+        // Fix the options pointer to point to our copied data
+        if (tempMessage.hasOptions) {
+            tempMessage.options = &tempMessage.optionsCopy;
+        }
 
         // Find the output definition that matches this outputId
         int outputDefIndex = FindOutputDefIndex(tempMessage.outputId);
@@ -358,6 +363,8 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
     if (message.outputState == PB_ON && message.options != nullptr) {
         // Start LED sequence mode
         unsigned long currentTick = g_PBEngine.GetTickCountGfx();
+        bool sequenceAlreadyActive = g_PBEngine.m_LEDSequenceInfo.sequenceEnabled;
+        
         g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = true;
         g_PBEngine.m_LEDSequenceInfo.firstTime = true;
         g_PBEngine.m_LEDSequenceInfo.sequenceStartTick = currentTick;
@@ -374,17 +381,24 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
             g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex] = message.options->activeLEDMask[chipIndex];
         }
         
-        // Send all staged LED values to hardware BEFORE saving state
-        // This ensures we capture the actual current hardware state, not pending staged changes
-        SendAllStagedLED();
-        
-        // Now save the current hardware state for later restoration
-        for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
-            // Save all 4 LED control registers for later restore 
-            for (int regIndex = 0; regIndex < 4; regIndex++) {
-                g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex][regIndex] = g_PBEngine.m_LEDChip[chipIndex].ReadLEDControl(CurrentHW, regIndex);
-            }
+        // Only save hardware state if no sequence was already active
+        // We want to preserve the original pre-sequence state, not intermediate sequence states
+        if (!sequenceAlreadyActive) {
+            // Send all staged LED values to hardware BEFORE saving state
+            // This ensures we capture the actual current hardware state, not pending staged changes
+            SendAllStagedLED();
             
+            // Now save the current hardware state for later restoration
+            for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+                // Save all 4 LED control registers for later restore 
+                for (int regIndex = 0; regIndex < 4; regIndex++) {
+                    g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex][regIndex] = g_PBEngine.m_LEDChip[chipIndex].ReadLEDControl(CurrentHW, regIndex);
+                }
+            }
+        }
+        
+        // Clear pulse map and stage LEDs to OFF for all active pins
+        for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
             // For each active pin, clear it from pulse map and stage to OFF
             uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
             for (int pin = 0; pin < 16; pin++) {
@@ -595,16 +609,19 @@ void ProcessActiveLEDSequence() {
         unsigned long currentTick = g_PBEngine.GetTickCountGfx();
         int nextSeqIndex = g_PBEngine.m_LEDSequenceInfo.currentSeqIndex;
         bool shouldAdvanceSequence = false;
+        bool isFirstTime = g_PBEngine.m_LEDSequenceInfo.firstTime;
         
-        // Initialize step timing when index changes (but not on firstTime, as it's already set in ProcessLEDSequenceMessage)
-        if (g_PBEngine.m_LEDSequenceInfo.previousSeqIndex != g_PBEngine.m_LEDSequenceInfo.currentSeqIndex &&
-            !g_PBEngine.m_LEDSequenceInfo.firstTime) {
+        // On first time through, reset the step start tick to current time
+        // This ensures we don't skip the first step due to time elapsed during initialization
+        if (isFirstTime) {
             g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick;
+            g_PBEngine.m_LEDSequenceInfo.firstTime = false;
         }
         
-        // Clear firstTime flag after using it
-        if (g_PBEngine.m_LEDSequenceInfo.firstTime) {
-            g_PBEngine.m_LEDSequenceInfo.firstTime = false;
+        // Initialize step timing when index changes (but not on firstTime, as it's already set above)
+        if (g_PBEngine.m_LEDSequenceInfo.previousSeqIndex != g_PBEngine.m_LEDSequenceInfo.currentSeqIndex &&
+            !isFirstTime) {
+            g_PBEngine.m_LEDSequenceInfo.stepStartTick = currentTick;
         }
         
         // Calculate timing for current step
@@ -622,9 +639,10 @@ void ProcessActiveLEDSequence() {
             }
         }
         
-        // Only stage LED values if the sequence index has changed or this is the first time
+        // Stage LED values if: the sequence index has changed, OR this is the first time, OR previousSeqIndex == -1
         if (g_PBEngine.m_LEDSequenceInfo.previousSeqIndex != g_PBEngine.m_LEDSequenceInfo.currentSeqIndex ||
-            g_PBEngine.m_LEDSequenceInfo.previousSeqIndex == -1) { // -1 indicates never set
+            g_PBEngine.m_LEDSequenceInfo.previousSeqIndex == -1 ||
+            isFirstTime) {
             
             // Stage current sequence values to LED chips
             if (g_PBEngine.m_LEDSequenceInfo.currentSeqIndex >= 0 && 
@@ -722,9 +740,17 @@ void HandleLEDSequenceBoundaries() {
 void EndLEDSequence() {
     g_PBEngine.m_LEDSequenceInfo.sequenceEnabled = false;
     
-    // Send any pending staged LED values from the sequence before restoring state
-    // This ensures the sequence's final state is properly sent to hardware
-    SendAllStagedLED();
+    // Don't send staged values here - we want to restore first, then let deferred 
+    // messages overwrite, then send everything together
+    // SendAllStagedLED();  // REMOVED - was causing issues with deferred message processing
+    
+    // Before restoration, sync m_ledControl with current hardware state to ensure we have
+    // a clean baseline for restoration and deferred message processing
+    for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+        for (int regIndex = 0; regIndex < 4; regIndex++) {
+            g_PBEngine.m_LEDChip[chipIndex].SyncStagedWithHardware(regIndex);
+        }
+    }
     
     // Restore saved LED values only for pins that were in the active mask
     for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
@@ -751,9 +777,14 @@ void EndLEDSequence() {
             }
         }
     }
-
-    // Send all the staged LED outputs to HW to restore previous state
+    
+    // Send restored values to hardware so that m_currentControl matches m_ledControl
+    // This ensures deferred messages will properly detect changes and set staged flags
     SendAllStagedLED();
+
+    // Process deferred LED queue immediately after restoring state
+    // This ensures deferred messages overwrite restored values before sending to hardware
+    ProcessDeferredLEDQueue();
 }
 
 // Process deferred LED messages when sequence is not active
@@ -761,6 +792,11 @@ void ProcessDeferredLEDQueue() {
     while (!g_PBEngine.m_deferredQueue.empty()) {
         stOutputMessage deferredMessage = g_PBEngine.m_deferredQueue.front();
         g_PBEngine.m_deferredQueue.pop();
+        
+        // Fix the options pointer to point to our copied data
+        if (deferredMessage.hasOptions) {
+            deferredMessage.options = &deferredMessage.optionsCopy;
+        }
         
         // Find the output definition
         int outputDefIndex = FindOutputDefIndex(deferredMessage.outputId);

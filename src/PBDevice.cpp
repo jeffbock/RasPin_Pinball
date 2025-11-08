@@ -143,7 +143,7 @@ void pbdEjector::pbdExecute() {
             if (g_inputDef[m_inputId].lastState == PB_ON) {
                 m_state = STATE_BALL_DETECTED;
                 m_solenoidStartMS = currentTimeMS;
-                m_pEngine->SendOutputMsg(PB_OMSG_LED, m_ledOutputId, PB_ON, false);
+                 m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_ledOutputId, PB_OFF, true);
                 m_ledActive = true;
                 m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_solenoidOutputId, PB_ON, false);
                 m_solenoidActive = true;
@@ -152,8 +152,9 @@ void pbdEjector::pbdExecute() {
 
         case STATE_BALL_DETECTED:
         case STATE_SOLENOID_ON:
-            if ((currentTimeMS - m_solenoidStartMS) >= 250) {
+            if ((currentTimeMS - m_solenoidStartMS) >= EJECTOR_ON_MS) {
                 m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_solenoidOutputId, PB_OFF, false);
+                m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_ledOutputId, PB_OFF, false);
                 m_solenoidActive = false;
                 m_solenoidOffMS = currentTimeMS;
                 m_state = STATE_SOLENOID_OFF;
@@ -161,17 +162,17 @@ void pbdEjector::pbdExecute() {
             break;
 
         case STATE_SOLENOID_OFF:
-            if ((currentTimeMS - m_solenoidOffMS) >= 250) {
+            if ((currentTimeMS - m_solenoidOffMS) >= EJECTOR_OFF_MS) {
                 if (g_inputDef[m_inputId].lastState == PB_ON) {
                     // Ball still there, repeat the cycle
                     m_solenoidStartMS = currentTimeMS;
                     m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_solenoidOutputId, PB_ON, false);
+                    m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_ledOutputId, PB_ON, true);
                     m_solenoidActive = true;
                     m_state = STATE_SOLENOID_ON;
                 } else {
                     // Ball ejected successfully
                     m_state = STATE_COMPLETE;
-                    m_pEngine->SendOutputMsg(PB_OMSG_LED, m_ledOutputId, PB_OFF, false);
                     m_ledActive = false;
                     m_running = false;
                 }

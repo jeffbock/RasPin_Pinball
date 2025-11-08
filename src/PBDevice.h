@@ -46,6 +46,9 @@ protected:
 // pbdEjector Derived Class - Ball Ejector Device
 //==============================================================================
 
+#define EJECTOR_ON_MS 1500  // Time to keep solenoid on
+#define EJECTOR_OFF_MS 1000  // Time to wait after solenoid off before completing
+
 class pbdEjector : public PBDevice {
 public:
     pbdEjector(PBEngine* pEngine, unsigned int inputId, unsigned int ledOutputId, unsigned int solenoidOutputId);
