@@ -85,7 +85,6 @@ bool AdjustWorkingDirectory(const char* exePath) {
     
     if (cwdStr == absExeDirStr) {
         // Current directory is the same as executable directory, change to parent
-        std::cout << "Working directory is the same as executable directory. Changing to parent directory..." << std::endl;
         
         // Get parent directory
         size_t lastSlashInExeDir = absExeDirStr.find_last_of("/\\");
@@ -103,7 +102,11 @@ bool AdjustWorkingDirectory(const char* exePath) {
             return false;
         }
         
-        std::cout << "Successfully changed working directory to: " << parentDir << std::endl;
+        // Get the new working directory after change
+        char newCwd[PATH_MAX];
+        if (getcwd(newCwd, sizeof(newCwd)) != NULL) {
+            g_PBEngine.pbeSendConsole("RasPin: Adjusted working directory to " + std::string(newCwd));
+        }
     }
     
     return true;
