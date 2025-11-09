@@ -44,6 +44,68 @@
  // Global pinball engine object
 PBEngine g_PBEngine;
 
+// Check and adjust working directory if needed
+// Returns true on success, false on failure
+bool CheckAndAdjustWorkingDirectory(const char* exePath) {
+    // Check current working directory and change if necessary
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        std::cerr << "ERROR: Failed to get current working directory: " << strerror(errno) << std::endl;
+        return false;
+    }
+    
+    // Extract the directory path from the executable path
+    std::string exePathStr(exePath);
+    size_t lastSlash = exePathStr.find_last_of("/\\");
+    std::string exeDir;
+    
+    if (lastSlash != std::string::npos) {
+        exeDir = exePathStr.substr(0, lastSlash);
+    } else {
+        exeDir = ".";
+    }
+    
+    // Get absolute path of exe directory
+    char absExeDir[PATH_MAX];
+    #ifdef EXE_MODE_WINDOWS
+    if (_fullpath(absExeDir, exeDir.c_str(), PATH_MAX) == NULL) {
+    #else
+    if (realpath(exeDir.c_str(), absExeDir) == NULL) {
+    #endif
+        std::cerr << "ERROR: Failed to resolve executable directory path: " << strerror(errno) << std::endl;
+        return false;
+    }
+    
+    // Compare current working directory with executable directory
+    std::string cwdStr(cwd);
+    std::string absExeDirStr(absExeDir);
+    
+    if (cwdStr == absExeDirStr) {
+        // Current directory is the same as executable directory, change to parent
+        std::cout << "Working directory is the same as executable directory. Changing to parent directory..." << std::endl;
+        
+        // Get parent directory
+        size_t lastSlashInExeDir = absExeDirStr.find_last_of("/\\");
+        std::string parentDir;
+        
+        if (lastSlashInExeDir != std::string::npos) {
+            parentDir = absExeDirStr.substr(0, lastSlashInExeDir);
+        } else {
+            parentDir = "..";
+        }
+        
+        // Change to parent directory
+        if (chdir(parentDir.c_str()) != 0) {
+            std::cerr << "ERROR: Failed to change working directory to parent: " << strerror(errno) << std::endl;
+            return false;
+        }
+        
+        std::cout << "Successfully changed working directory to: " << parentDir << std::endl;
+    }
+    
+    return true;
+}
+
 // Version display function
 void ShowVersion() {
     std::string versionStr = "RasPin Pinball Engine v" + 
@@ -848,60 +910,9 @@ bool PBProcessIO() {
 // Main program start!!   
 int main(int argc, char const *argv[])
 {
-    // Check current working directory and change if necessary
-    char cwd[PATH_MAX];
-    if (getcwd(cwd, sizeof(cwd)) == NULL) {
-        std::cerr << "ERROR: Failed to get current working directory: " << strerror(errno) << std::endl;
+    // Check and adjust working directory if needed
+    if (!CheckAndAdjustWorkingDirectory(argv[0])) {
         return 1;
-    }
-    
-    // Extract the directory path from the executable path (argv[0])
-    std::string exePath(argv[0]);
-    size_t lastSlash = exePath.find_last_of("/\\");
-    std::string exeDir;
-    
-    if (lastSlash != std::string::npos) {
-        exeDir = exePath.substr(0, lastSlash);
-    } else {
-        exeDir = ".";
-    }
-    
-    // Get absolute path of exe directory
-    char absExeDir[PATH_MAX];
-    #ifdef EXE_MODE_WINDOWS
-    if (_fullpath(absExeDir, exeDir.c_str(), PATH_MAX) == NULL) {
-    #else
-    if (realpath(exeDir.c_str(), absExeDir) == NULL) {
-    #endif
-        std::cerr << "ERROR: Failed to resolve executable directory path: " << strerror(errno) << std::endl;
-        return 1;
-    }
-    
-    // Compare current working directory with executable directory
-    std::string cwdStr(cwd);
-    std::string absExeDirStr(absExeDir);
-    
-    if (cwdStr == absExeDirStr) {
-        // Current directory is the same as executable directory, change to parent
-        std::cout << "Working directory is the same as executable directory. Changing to parent directory..." << std::endl;
-        
-        // Get parent directory
-        size_t lastSlashInExeDir = absExeDirStr.find_last_of("/\\");
-        std::string parentDir;
-        
-        if (lastSlashInExeDir != std::string::npos) {
-            parentDir = absExeDirStr.substr(0, lastSlashInExeDir);
-        } else {
-            parentDir = "..";
-        }
-        
-        // Change to parent directory
-        if (chdir(parentDir.c_str()) != 0) {
-            std::cerr << "ERROR: Failed to change working directory to parent: " << strerror(errno) << std::endl;
-            return 1;
-        }
-        
-        std::cout << "Successfully changed working directory to: " << parentDir << std::endl;
     }
     
     std::string temp;
