@@ -37,10 +37,18 @@
 #include <stdlib.h>
 #define getcwd _getcwd
 #define chdir _chdir
+// Define PATH_MAX using Windows MAX_PATH value
+#ifndef PATH_MAX
+#define PATH_MAX 260
+#endif
 #endif
 
 #ifdef EXE_MODE_RASPI
 #include <unistd.h>
+// PATH_MAX should be defined in limits.h on POSIX systems, but provide fallback
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 #endif
 
  // Global pinball engine object
@@ -101,14 +109,14 @@ bool AdjustWorkingDirectory(const char* exePath) {
             std::cerr << "ERROR: Failed to change working directory to parent: " << strerror(errno) << std::endl;
             return false;
         }
-        
-        // Get the new working directory after change
-        char newCwd[PATH_MAX];
-        if (getcwd(newCwd, sizeof(newCwd)) != NULL) {
-            g_PBEngine.pbeSendConsole("RasPin: Adjusted working directory to " + std::string(newCwd));
-        }
     }
-    
+
+    // Get the new working directory after change and output it
+    char newCwd[PATH_MAX];
+    if (getcwd(newCwd, sizeof(newCwd)) != NULL) {
+      g_PBEngine.pbeSendConsole("RasPin: Confirmed correct working directory: " + std::string(newCwd));
+    }
+
     return true;
 }
 
@@ -916,6 +924,9 @@ bool PBProcessIO() {
 // Main program start!!   
 int main(int argc, char const *argv[])
 {
+    // Show version information first
+    ShowVersion();
+
     // Check and adjust working directory if needed
     if (!AdjustWorkingDirectory(argv[0])) {
         return 1;
@@ -924,9 +935,6 @@ int main(int argc, char const *argv[])
     std::string temp;
     static unsigned int startFrameTime = 0;
     static bool didLimitRender = false;
-    
-    // Show version information first
-    ShowVersion();
     
     g_PBEngine.pbeSendConsole("OpenGL ES: Initialize");
     if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
