@@ -37,7 +37,9 @@
 #include <stdlib.h>
 #define getcwd _getcwd
 #define chdir _chdir
-#else
+#endif
+
+#ifdef EXE_MODE_RASPI
 #include <unistd.h>
 #endif
 
@@ -46,7 +48,7 @@ PBEngine g_PBEngine;
 
 // Check and adjust working directory if needed
 // Returns true on success, false on failure
-bool CheckAndAdjustWorkingDirectory(const char* exePath) {
+bool AdjustWorkingDirectory(const char* exePath) {
     // Check current working directory and change if necessary
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
@@ -69,7 +71,8 @@ bool CheckAndAdjustWorkingDirectory(const char* exePath) {
     char absExeDir[PATH_MAX];
     #ifdef EXE_MODE_WINDOWS
     if (_fullpath(absExeDir, exeDir.c_str(), PATH_MAX) == NULL) {
-    #else
+    #endif
+    #ifdef EXE_MODE_RASPI
     if (realpath(exeDir.c_str(), absExeDir) == NULL) {
     #endif
         std::cerr << "ERROR: Failed to resolve executable directory path: " << strerror(errno) << std::endl;
@@ -911,7 +914,7 @@ bool PBProcessIO() {
 int main(int argc, char const *argv[])
 {
     // Check and adjust working directory if needed
-    if (!CheckAndAdjustWorkingDirectory(argv[0])) {
+    if (!AdjustWorkingDirectory(argv[0])) {
         return 1;
     }
     
