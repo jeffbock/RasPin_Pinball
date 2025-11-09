@@ -28,9 +28,89 @@
 //      - When sequences are active, LED messages are put in a defferred queue and processed when the sequence is stopped
 
 #include "Pinball.h"
+#include <string.h>
+#include <limits.h>
+#include <errno.h>
+
+#ifdef EXE_MODE_WINDOWS
+#include <direct.h>
+#include <stdlib.h>
+#define getcwd _getcwd
+#define chdir _chdir
+#endif
+
+#ifdef EXE_MODE_RASPI
+#include <unistd.h>
+#endif
 
  // Global pinball engine object
 PBEngine g_PBEngine;
+
+// Check and adjust working directory if needed
+// Returns true on success, false on failure
+bool AdjustWorkingDirectory(const char* exePath) {
+    // Check current working directory and change if necessary
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        std::cerr << "ERROR: Failed to get current working directory: " << strerror(errno) << std::endl;
+        return false;
+    }
+    
+    // Extract the directory path from the executable path
+    std::string exePathStr(exePath);
+    size_t lastSlash = exePathStr.find_last_of("/\\");
+    std::string exeDir;
+    
+    if (lastSlash != std::string::npos) {
+        exeDir = exePathStr.substr(0, lastSlash);
+    } else {
+        exeDir = ".";
+    }
+    
+    // Get absolute path of exe directory
+    char absExeDir[PATH_MAX];
+    #ifdef EXE_MODE_WINDOWS
+    if (_fullpath(absExeDir, exeDir.c_str(), PATH_MAX) == NULL) {
+    #endif
+    #ifdef EXE_MODE_RASPI
+    if (realpath(exeDir.c_str(), absExeDir) == NULL) {
+    #endif
+        std::cerr << "ERROR: Failed to resolve executable directory path: " << strerror(errno) << std::endl;
+        return false;
+    }
+    
+    // Compare current working directory with executable directory
+    std::string cwdStr(cwd);
+    std::string absExeDirStr(absExeDir);
+    
+    if (cwdStr == absExeDirStr) {
+        // Current directory is the same as executable directory, change to parent
+        
+        // Get parent directory
+        size_t lastSlashInExeDir = absExeDirStr.find_last_of("/\\");
+        std::string parentDir;
+        
+        if (lastSlashInExeDir != std::string::npos) {
+            parentDir = absExeDirStr.substr(0, lastSlashInExeDir);
+        } else {
+            parentDir = "..";
+        }
+        
+        // Change to parent directory
+        if (chdir(parentDir.c_str()) != 0) {
+            std::cerr << "ERROR: Failed to change working directory to parent: " << strerror(errno) << std::endl;
+            return false;
+        }
+        
+        // Get the new working directory after change
+        char newCwd[PATH_MAX];
+        if (getcwd(newCwd, sizeof(newCwd)) != NULL) {
+            g_PBEngine.pbeSendConsole("RasPin: Adjusted working directory to " + std::string(newCwd));
+        }
+    }
+    
+    return true;
+}
 
 // Version display function
 void ShowVersion() {
@@ -836,6 +916,11 @@ bool PBProcessIO() {
 // Main program start!!   
 int main(int argc, char const *argv[])
 {
+    // Check and adjust working directory if needed
+    if (!AdjustWorkingDirectory(argv[0])) {
+        return 1;
+    }
+    
     std::string temp;
     static unsigned int startFrameTime = 0;
     static bool didLimitRender = false;
