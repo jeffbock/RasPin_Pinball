@@ -818,7 +818,8 @@ unsigned int PBGfx::gfxGetSystemFontSpriteId(){
 // Load the animate data for a sprite
 void PBGfx::gfxLoadAnimateData(stAnimateData *animateData, unsigned int animateSpriteId, unsigned int startSpriteId, unsigned int endSpriteId, unsigned int startTick, 
     unsigned int typeMask, float animateTimeSec, float accelPixelPerSecX, float accelPixelPerSecY, float accelDegPerSec, 
-    float randomPercent, bool isActive, bool rotateClockwise, gfxLoopType loop, gfxAnimType animType){
+    float randomPercent, float initialVelocityX, float initialVelocityY, float initialVelocityDeg,
+    bool isActive, bool rotateClockwise, gfxLoopType loop, gfxAnimType animType){
 
     // Set the values in the animateData struct
     animateData->animateSpriteId = animateSpriteId;
@@ -831,13 +832,16 @@ void PBGfx::gfxLoadAnimateData(stAnimateData *animateData, unsigned int animateS
     animateData->accelPixelPerSecY = accelPixelPerSecY;
     animateData->accelDegPerSec = accelDegPerSec;
     animateData->randomPercent = randomPercent;
+    animateData->initialVelocityX = initialVelocityX;
+    animateData->initialVelocityY = initialVelocityY;
+    animateData->initialVelocityDeg = initialVelocityDeg;
     animateData->isActive = isActive;
     animateData->rotateClockwise = rotateClockwise;
     animateData->loop = loop;
     animateData->animType = animType;
-    animateData->currentVelocityX = 0.0f;
-    animateData->currentVelocityY = 0.0f;
-    animateData->currentVelocityDeg = 0.0f;
+    animateData->currentVelocityX = initialVelocityX;
+    animateData->currentVelocityY = initialVelocityY;
+    animateData->currentVelocityDeg = initialVelocityDeg;
 }
 
 // Creation of the animation will add it to the active animation list
@@ -928,11 +932,11 @@ bool PBGfx::gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentT
                     switch (it->second.loop) {
                     case GFX_RESTART:
                         it->second.startTick = currentTick;
-                        // Reset velocity for acceleration animations
+                        // Reset velocity to initial values for acceleration animations
                         if (it->second.animType == GFX_ANIM_ACCL) {
-                            it->second.currentVelocityX = 0.0f;
-                            it->second.currentVelocityY = 0.0f;
-                            it->second.currentVelocityDeg = 0.0f;
+                            it->second.currentVelocityX = it->second.initialVelocityX;
+                            it->second.currentVelocityY = it->second.initialVelocityY;
+                            it->second.currentVelocityDeg = it->second.initialVelocityDeg;
                         }
                         break;
                     case GFX_REVERSE:
@@ -940,11 +944,10 @@ bool PBGfx::gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentT
                         it->second.startSpriteId = it->second.endSpriteId;
                         it->second.endSpriteId = temp;
                         it->second.startTick = currentTick;
-                        // Reverse acceleration direction and set velocity to zero
+                        // For reverse mode, keep current velocity but reverse acceleration direction
                         if (it->second.animType == GFX_ANIM_ACCL) {
-                            it->second.currentVelocityX = 0.0f;
-                            it->second.currentVelocityY = 0.0f;
-                            it->second.currentVelocityDeg = 0.0f;
+                            // Current velocities are preserved (not reset)
+                            // Only reverse the acceleration direction
                             it->second.accelPixelPerSecX = -it->second.accelPixelPerSecX;
                             it->second.accelPixelPerSecY = -it->second.accelPixelPerSecY;
                             it->second.accelDegPerSec = -it->second.accelDegPerSec;

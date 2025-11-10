@@ -448,7 +448,12 @@ struct stAnimateData {
     gfxLoopType loop;              // Loop behavior
     gfxAnimType animType;          // Animation type
     
-    // Internal state (read-only)
+    // Initial velocity values (set when animation is created)
+    float initialVelocityX;         // Initial X velocity (pixels/sec)
+    float initialVelocityY;         // Initial Y velocity (pixels/sec)
+    float initialVelocityDeg;       // Initial rotation velocity (degrees/sec)
+    
+    // Internal state (read-only, updated during animation)
     float currentVelocityX;         // Current X velocity
     float currentVelocityY;         // Current Y velocity
     float currentVelocityDeg;       // Current rotation velocity
@@ -470,7 +475,7 @@ enum gfxAnimType {
 
 **GFX_ANIM_NORMAL**: Standard linear interpolation between start and end states. Smooth, predictable motion. Use for most animations.
 
-**GFX_ANIM_ACCL**: Applies physics-based acceleration to X position, Y position, and rotation. Other properties (scale, color, etc.) use linear interpolation. The sprite accelerates from rest using the specified acceleration values. For GFX_REVERSE loops, velocity resets to zero and acceleration reverses direction at endpoints.
+**GFX_ANIM_ACCL**: Applies physics-based acceleration to X position, Y position, and rotation. Other properties (scale, color, etc.) use linear interpolation. The sprite uses initial velocity values and accelerates over time. For GFX_RESTART loops, velocity resets to initial values. For GFX_REVERSE loops, current velocity is preserved but acceleration direction reverses at endpoints.
 
 **GFX_ANIM_JUMP**: At each time interval (`animateTimeSec`), instantly sets the sprite to the end instance values. No interpolation or randomness - creates a discrete "snap" from start to end. GFX_NOLOOP performs one jump only. GFX_RESTART continues jumping from start to end repeatedly. GFX_REVERSE alternates between start and end positions.
 
@@ -521,6 +526,9 @@ void gfxLoadAnimateData(stAnimateData *animateData,
                        float accelPixelPerSecY,
                        float accelDegPerSec,
                        float randomPercent,
+                       float initialVelocityX,
+                       float initialVelocityY,
+                       float initialVelocityDeg,
                        bool isActive, 
                        bool rotateClockwise, 
                        gfxLoopType loop,
@@ -539,6 +547,9 @@ void gfxLoadAnimateData(stAnimateData *animateData,
 - `accelPixelPerSecY` - Y acceleration in pixels/sec² (GFX_ANIM_ACCL only)
 - `accelDegPerSec` - Rotation acceleration in degrees/sec² (GFX_ANIM_ACCL only)
 - `randomPercent` - Jump probability 0.0-1.0 (GFX_ANIM_JUMPRANDOM only)
+- `initialVelocityX` - Starting X velocity in pixels/sec (GFX_ANIM_ACCL only)
+- `initialVelocityY` - Starting Y velocity in pixels/sec (GFX_ANIM_ACCL only)
+- `initialVelocityDeg` - Starting rotation velocity in degrees/sec (GFX_ANIM_ACCL only)
 - `isActive` - Whether animation starts active
 - `rotateClockwise` - Rotation direction (GFX_ANIM_NORMAL with ANIMATE_ROTATE_MASK)
 - `loop` - Looping behavior (GFX_NOLOOP, GFX_RESTART, or GFX_REVERSE)
@@ -581,6 +592,9 @@ gfxLoadAnimateData(&animateData,
                    0.0f,                // No Y acceleration
                    0.0f,                // No rotation acceleration
                    0.0f,                // No random percent
+                   0.0f,                // No initial X velocity
+                   0.0f,                // No initial Y velocity
+                   0.0f,                // No initial rotation velocity
                    false,               // Not active yet
                    true,                // N/A for position
                    GFX_NOLOOP,         // Play once
@@ -617,6 +631,9 @@ gfxLoadAnimateData(&animateData,
                    0.0f,                // No acceleration
                    0.0f,                // No acceleration
                    0.25f,               // 25% chance to jump
+                   0.0f,                // No initial velocity
+                   0.0f,                // No initial velocity
+                   0.0f,                // No initial velocity
                    true,                // Start active
                    true,                // N/A for scale
                    GFX_RESTART,        // Loop continuously
@@ -647,6 +664,9 @@ gfxLoadAnimateData(&animateData,
                    0.0f,                // No acceleration
                    0.0f,                // No acceleration
                    0.0f,                // No random percent
+                   0.0f,                // No initial velocity
+                   0.0f,                // No initial velocity
+                   0.0f,                // No initial velocity
                    true,                // Start active
                    true,                // N/A for color
                    GFX_NOLOOP,         // Play once
@@ -679,6 +699,9 @@ gfxLoadAnimateData(&animateData,
                    -20.0f,              // Y acceleration (pixels/sec²)
                    30.0f,               // Rotation acceleration (deg/sec²)
                    0.0f,                // No random percent
+                   100.0f,              // Initial X velocity (pixels/sec)
+                   50.0f,               // Initial Y velocity (pixels/sec)
+                   0.0f,                // Initial rotation velocity (deg/sec)
                    true,                // Start active
                    true,                // Clockwise rotation
                    GFX_NOLOOP,         // Play once
@@ -708,6 +731,9 @@ gfxLoadAnimateData(&animateData,
                    0.0f,                // No acceleration
                    0.0f,                // No acceleration
                    0.0f,                // N/A for jump
+                   0.0f,                // No initial velocity
+                   0.0f,                // No initial velocity
+                   0.0f,                // No initial velocity
                    true,                // Start active
                    true,                // N/A for color
                    GFX_REVERSE,        // Alternate between states

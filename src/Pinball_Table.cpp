@@ -31,7 +31,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetXY(m_PBTBLeftDoorStartId, ACTIVEDISPX + 315, ACTIVEDISPY + 112, false); 
     m_PBTBLeftDoorEndId = gfxInstanceSprite(m_PBTBLLeftDoorId);
     gfxSetXY(m_PBTBLeftDoorEndId, ACTIVEDISPX + 90, ACTIVEDISPY + 112, false); 
-    gfxLoadAnimateData(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, 0, ANIMATE_X_MASK, 1.25f, 0.0f, 0.0f, 0.0f, 0.0f, false, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
+    gfxLoadAnimateData(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, 0, ANIMATE_X_MASK, 1.25f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, false, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
     gfxCreateAnimation(animateData, true);
 
     m_PBTBLRightDoorId = gfxLoadSprite("RightDoor", "src/resources/textures/DoorRight2.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
@@ -39,7 +39,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetXY(m_PBTBRightDoorStartId, ACTIVEDISPX + 460, ACTIVEDISPY + 112, false);
     m_PBTBRightDoorEndId = gfxInstanceSprite(m_PBTBLRightDoorId);
     gfxSetXY(m_PBTBRightDoorEndId, ACTIVEDISPX + 754, ACTIVEDISPY + 112, false);
-    gfxLoadAnimateData(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, 0, ANIMATE_X_MASK, 1.25f, 0.0f, 0.0f, 0.0f, 0.0f, false, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
+    gfxLoadAnimateData(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, 0, ANIMATE_X_MASK, 1.25f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, false, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
     gfxCreateAnimation(animateData, true);
     
     m_PBTBLDoorDragonId = gfxLoadSprite("DoorDragon", "src/resources/textures/Dragon.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
@@ -61,7 +61,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetColor(m_PBTBLFlame1EndId, 255, 255, 255, 92);
     gfxSetScaleFactor(m_PBTBLFlame1EndId, 1.2, false);
 
-    gfxLoadAnimateData(&animateData, m_PBTBLFlame1Id, m_PBTBLFlame1StartId, m_PBTBLFlame1EndId, 0, ANIMATE_SCALE_MASK, 0.1f, 0.0f, 0.0f, 0.0f, 0.8f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
+    gfxLoadAnimateData(&animateData, m_PBTBLFlame1Id, m_PBTBLFlame1StartId, m_PBTBLFlame1EndId, 0, ANIMATE_SCALE_MASK, 0.1f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
     gfxCreateAnimation(animateData, true);
 
     m_PBTBLFlame2Id = gfxLoadSprite("Flame2", "src/resources/textures/flame2.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
@@ -76,7 +76,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetColor(m_PBTBLFlame2EndId, 255, 255, 255, 92);
     gfxSetScaleFactor(m_PBTBLFlame2EndId, 1.2, false);
 
-    gfxLoadAnimateData(&animateData, m_PBTBLFlame2Id, m_PBTBLFlame2StartId, m_PBTBLFlame2EndId, 0, ANIMATE_SCALE_MASK, 0.1f, 0.0f, 0.0f, 0.0f, 0.8f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
+    gfxLoadAnimateData(&animateData, m_PBTBLFlame2Id, m_PBTBLFlame2StartId, m_PBTBLFlame2EndId, 0, ANIMATE_SCALE_MASK, 0.1f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
     gfxCreateAnimation(animateData, true);
     
     m_PBTBLFlame3Id = gfxLoadSprite("Flame3", "src/resources/textures/flame3.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
@@ -91,7 +91,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetColor(m_PBTBLFlame3EndId, 255, 255, 255, 92);
     gfxSetScaleFactor(m_PBTBLFlame3EndId, 1.2, false);
 
-    gfxLoadAnimateData(&animateData, m_PBTBLFlame3Id, m_PBTBLFlame3StartId, m_PBTBLFlame3EndId, 0, ANIMATE_SCALE_MASK, 0.1f, 0.0f, 0.0f, 0.0f, 0.8f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
+    gfxLoadAnimateData(&animateData, m_PBTBLFlame3Id, m_PBTBLFlame3StartId, m_PBTBLFlame3EndId, 0, ANIMATE_SCALE_MASK, 0.1f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
     gfxCreateAnimation(animateData, true);
 
     // Create the fade animation instances for the text
@@ -99,7 +99,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetColor(m_PBTBLTextStartId, 0, 0, 0, 0);
     m_PBTBLTextEndId = gfxInstanceSprite(m_StartMenuFontId);
     gfxSetColor(m_PBTBLTextEndId, 255, 255, 255, 255);
-    gfxLoadAnimateData(&animateData, m_StartMenuFontId, m_PBTBLTextStartId, m_PBTBLTextEndId, 0, ANIMATE_COLOR_MASK, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, true, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
+    gfxLoadAnimateData(&animateData, m_StartMenuFontId, m_PBTBLTextStartId, m_PBTBLTextEndId, 0, ANIMATE_COLOR_MASK, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, true, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
     gfxCreateAnimation(animateData, true);
 
     // Note:  So many things to check for loading, it's not worth doing.  Assume the sprites will be loaded.  If texture fails, it will just render incorrectly.

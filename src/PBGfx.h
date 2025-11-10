@@ -162,7 +162,12 @@ struct stAnimateData {
     gfxLoopType loop;
     gfxAnimType animType;
     
-    // Internal state for acceleration animations
+    // Initial velocity values (set when animation is created)
+    float initialVelocityX;
+    float initialVelocityY;
+    float initialVelocityDeg;
+    
+    // Internal state for acceleration animations (updated during animation)
     float currentVelocityX;
     float currentVelocityY;
     float currentVelocityDeg;
@@ -238,7 +243,8 @@ public:
     bool          gfxAnimateRestart(unsigned int animateSpriteId, unsigned long startTick);
     void          gfxLoadAnimateData(stAnimateData *animateData, unsigned int animateSpriteId, unsigned int startSpriteId, unsigned int endSpriteId, unsigned int startTick, 
                                      unsigned int typeMask, float animateTimeSec, float accelPixelPerSecX, float accelPixelPerSecY, float accelDegPerSec, 
-                                     float randomPercent, bool isActive, bool rotateClockwise, gfxLoopType loop, gfxAnimType animType);
+                                     float randomPercent, float initialVelocityX, float initialVelocityY, float initialVelocityDeg, 
+                                     bool isActive, bool rotateClockwise, gfxLoopType loop, gfxAnimType animType);
 
     // Rendering functions
     void         gfxSwap();
