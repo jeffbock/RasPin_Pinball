@@ -31,7 +31,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetXY(m_PBTBLeftDoorStartId, ACTIVEDISPX + 315, ACTIVEDISPY + 112, false); 
     m_PBTBLeftDoorEndId = gfxInstanceSprite(m_PBTBLLeftDoorId);
     gfxSetXY(m_PBTBLeftDoorEndId, ACTIVEDISPX + 90, ACTIVEDISPY + 112, false); 
-    gfxLoadAnimateData(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLLeftDoorEndId, 0, ANIMATE_X_MASK, 1.25f, 0.0f, 0.0f, 0.0f, 0.0f, false, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
+    gfxLoadAnimateData(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, 0, ANIMATE_X_MASK, 1.25f, 0.0f, 0.0f, 0.0f, 0.0f, false, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
     gfxCreateAnimation(animateData, true);
 
     m_PBTBLRightDoorId = gfxLoadSprite("RightDoor", "src/resources/textures/DoorRight2.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
@@ -61,7 +61,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetColor(m_PBTBLFlame1EndId, 255, 255, 255, 92);
     gfxSetScaleFactor(m_PBTBLFlame1EndId, 1.2, false);
 
-    gfxLoadAnimateData(&animateData, m_PBTBLFlame1Id, m_PBTBLFlame1StartId, m_PBTBLFlame1EndId, 0, ANIMATE_SCALE_MASK, 0.5f, 0.0f, 0.0f, 0.0f, 0.25f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
+    gfxLoadAnimateData(&animateData, m_PBTBLFlame1Id, m_PBTBLFlame1StartId, m_PBTBLFlame1EndId, 0, ANIMATE_SCALE_MASK, 0.1f, 0.0f, 0.0f, 0.0f, 0.8f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
     gfxCreateAnimation(animateData, true);
 
     m_PBTBLFlame2Id = gfxLoadSprite("Flame2", "src/resources/textures/flame2.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
@@ -76,7 +76,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetColor(m_PBTBLFlame2EndId, 255, 255, 255, 92);
     gfxSetScaleFactor(m_PBTBLFlame2EndId, 1.2, false);
 
-    gfxLoadAnimateData(&animateData, m_PBTBLFlame2Id, m_PBTBLFlame2StartId, m_PBTBLFlame2EndId, 0, ANIMATE_SCALE_MASK, 0.5f, 0.0f, 0.0f, 0.0f, 0.25f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
+    gfxLoadAnimateData(&animateData, m_PBTBLFlame2Id, m_PBTBLFlame2StartId, m_PBTBLFlame2EndId, 0, ANIMATE_SCALE_MASK, 0.1f, 0.0f, 0.0f, 0.0f, 0.8f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
     gfxCreateAnimation(animateData, true);
     
     m_PBTBLFlame3Id = gfxLoadSprite("Flame3", "src/resources/textures/flame3.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
@@ -91,7 +91,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetColor(m_PBTBLFlame3EndId, 255, 255, 255, 92);
     gfxSetScaleFactor(m_PBTBLFlame3EndId, 1.2, false);
 
-    gfxLoadAnimateData(&animateData, m_PBTBLFlame3Id, m_PBTBLFlame3StartId, m_PBTBLFlame3EndId, 0, ANIMATE_SCALE_MASK, 0.5f, 0.0f, 0.0f, 0.0f, 0.25f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
+    gfxLoadAnimateData(&animateData, m_PBTBLFlame3Id, m_PBTBLFlame3StartId, m_PBTBLFlame3EndId, 0, ANIMATE_SCALE_MASK, 0.1f, 0.0f, 0.0f, 0.0f, 0.8f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
     gfxCreateAnimation(animateData, true);
 
     // Create the fade animation instances for the text

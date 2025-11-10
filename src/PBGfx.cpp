@@ -881,18 +881,48 @@ bool PBGfx::gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentT
     // Loop through all the animateList, and update the sprite instance values
     // If animateSpriteId is 0 then update all animations otherwise skip everything but the one with the animateSpriteId
 
+    static unsigned long lastDebugTick = 0;
+    bool foundAnimation = false;
+
     for (auto it = m_animateList.begin(); it != m_animateList.end(); ++it) {
         if ((animateSpriteId == NOSPRITE) || (it->first == animateSpriteId)) {
+            foundAnimation = true;
 
             // Calculate the time since the animation started
             float timeSinceStart = (float)(currentTick -  it->second.startTick) / 1000.0f;
-
+            
             // If the animation is active, then update the sprite instance values
             if ((it->second.isActive) && (timeSinceStart > 0.0f)) {
                 // Calculate the percentage of the animation that has been completed
                 float percentComplete = timeSinceStart / it->second.animateTimeSec;
 
-                // Handle animation completion and looping
+                // Dispatch to appropriate animation handler based on type
+                // JUMP and JUMPRANDOM need to run even when percentComplete >= 1.0
+                switch (it->second.animType) {
+                case GFX_ANIM_NORMAL:
+                    if (percentComplete < 1.0f) {
+                        gfxAnimateNormal(it->second, currentTick, timeSinceStart, percentComplete);
+                    }
+                    break;
+                case GFX_ANIM_ACCL:
+                    if (percentComplete < 1.0f) {
+                        gfxAnimateAcceleration(it->second, currentTick, timeSinceStart);
+                    }
+                    break;
+                case GFX_ANIM_JUMP:
+                    gfxAnimateJump(it->second, currentTick, timeSinceStart);
+                    break;
+                case GFX_ANIM_JUMPRANDOM:
+                    gfxAnimateJumpRandom(it->second, currentTick, timeSinceStart);
+                    break;
+                default:
+                    if (percentComplete < 1.0f) {
+                        gfxAnimateNormal(it->second, currentTick, timeSinceStart, percentComplete);
+                    }
+                    break;
+                }
+
+                // Handle animation completion and looping AFTER animation functions run
                 if (percentComplete >= 1.0f) {
                     unsigned long temp;
                     switch (it->second.loop) {
@@ -925,26 +955,6 @@ bool PBGfx::gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentT
                         gfxSetFinalAnimationValues(it->second);
                         break;
                     default: break;
-                    }
-                }
-                else {
-                    // Dispatch to appropriate animation handler based on type
-                    switch (it->second.animType) {
-                    case GFX_ANIM_NORMAL:
-                        gfxAnimateNormal(it->second, currentTick, timeSinceStart, percentComplete);
-                        break;
-                    case GFX_ANIM_ACCL:
-                        gfxAnimateAcceleration(it->second, currentTick, timeSinceStart);
-                        break;
-                    case GFX_ANIM_JUMP:
-                        gfxAnimateJump(it->second, currentTick, timeSinceStart);
-                        break;
-                    case GFX_ANIM_JUMPRANDOM:
-                        gfxAnimateJumpRandom(it->second, currentTick, timeSinceStart);
-                        break;
-                    default:
-                        gfxAnimateNormal(it->second, currentTick, timeSinceStart, percentComplete);
-                        break;
                     }
                 }
             }   
@@ -1243,6 +1253,13 @@ void PBGfx::gfxAnimateJumpRandom(stAnimateData& animateData, unsigned int curren
         
         if (randomCheck <= animateData.randomPercent) {
             // Jump! Pick random values between start and end for all animated properties
+            if (animateData.typeMask & ANIMATE_SCALE_MASK) {
+                float startScale = m_instanceList[animateData.startSpriteId].scaleFactor;
+                float endScale = m_instanceList[animateData.endSpriteId].scaleFactor;
+                float newScale = startScale + gfxGetRandomFloat(0.0f, 1.0f) * (endScale - startScale);
+                m_instanceList[animateData.animateSpriteId].scaleFactor = newScale;
+            }
+            
             if (animateData.typeMask & ANIMATE_X_MASK) {
                 int startX = m_instanceList[animateData.startSpriteId].x;
                 int endX = m_instanceList[animateData.endSpriteId].x;

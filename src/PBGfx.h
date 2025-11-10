@@ -6,6 +6,13 @@
 #ifndef PBGfx_h
 #define PBGfx_h
 
+// Prevent Windows min/max macros from interfering with std::min/std::max
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#endif
+
 //#include "include_ogl/egl.h"
 //#include "include_ogl/gl31.h"
 // #include <egl.h>
@@ -15,6 +22,7 @@
 #include <fstream>
 #include <string>
 #include <map>
+#include <algorithm>
 #include <cmath>
 #include <chrono>
 #include <random>
