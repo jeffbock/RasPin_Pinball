@@ -4,6 +4,7 @@
 // Additional details can also be found in the license file in the root of the project.
 
 #include "PBVideoPlayer.h"
+#include "Pinball_Engine.h"  // For PBEngine access
 #include <sstream>
 
 PBVideoPlayer::PBVideoPlayer(PBGfx* gfx, PBSound* sound) {
@@ -37,6 +38,19 @@ unsigned int PBVideoPlayer::pbvpLoadVideo(const std::string& videoFilePath, int 
     if (!info.hasVideo) {
         m_video.pbvUnloadVideo();
         return NOSPRITE;
+    }
+    
+    // Log decoder configuration once (first time only)
+    static bool firstVideoLoad = true;
+    if (firstVideoLoad) {
+        firstVideoLoad = false;
+        std::string decoderInfo = m_video.pbvGetDecoderInfo();
+        if (!decoderInfo.empty()) {
+            // Cast m_gfx to PBEngine to access pbeSendConsole
+            // Safe since PBEngine inherits from PBGfx and is the only class used in practice
+            PBEngine* engine = static_cast<PBEngine*>(m_gfx);
+            engine->pbeSendConsole("PBVideo Config: " + decoderInfo);
+        }
     }
     
     // Create a video sprite with dimensions matching the video

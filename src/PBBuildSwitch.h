@@ -7,14 +7,14 @@
 
 // This header file only serves as the build switch between Windows and PiOS.  Uncomment the appropriate linefor the desired platform.
 
-#define EXE_MODE_WINDOWS
-// #define EXE_MODE_RASPI
+// #define EXE_MODE_WINDOWS
+#define EXE_MODE_RASPI
 
 // Enable/Disable Test Sandbox menu item - set to 1 to enable, 0 to disable
 #define ENABLE_TEST_SANDBOX 1
 
 // Enable hardware video decoding on Raspberry Pi (requires V4L2 M2M support)
 // Set to 1 to enable hardware decode, 0 for software decode
-#define ENABLE_HW_VIDEO_DECODE 1
+#define ENABLE_HW_VIDEO_DECODE 0
 
 #endif

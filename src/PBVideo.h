@@ -105,7 +105,8 @@ public:
     
     // Debug and monitoring functions
     bool pbvIsUsingHardwareDecoder() const;
-    void pbvPrintDecoderInfo() const;
+    std::string pbvGetDecoderInfo() const;  // Returns decoder configuration string
+    void pbvPrintDecoderInfo() const;  // Deprecated - kept for compatibility
     
     // Set looping behavior
     void pbvSetLooping(bool loop);
@@ -140,6 +141,9 @@ private:
     bool audioEnabled;
     float playbackSpeed;
     bool justLooped;  // Flag set when video loops (cleared by pbvDidJustLoop())
+    
+    // Configuration logging
+    std::string decoderConfigInfo;  // Stores decoder configuration for one-time logging
     
     // Timing information
     unsigned long startTick;       // Tick when playback started

@@ -17,6 +17,7 @@ extern "C" {
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
 #include <libavutil/channel_layout.h>
+#include <libavutil/log.h>
 }
 
 PBVideo::PBVideo() {
@@ -61,6 +62,7 @@ PBVideo::PBVideo() {
     audioAccumulatorIndex = 0;
     
     videoInfo = {"", 0, 0, 0.0f, 0.0f, false, false};
+    decoderConfigInfo = "";
 }
 
 PBVideo::~PBVideo() {
@@ -74,6 +76,10 @@ bool PBVideo::pbvInitialize() {
     
     // FFmpeg is available on both Windows and Raspberry Pi
     // Note: FFmpeg libraries must be installed on the system
+    
+    // Suppress FFmpeg log messages (warnings about no accelerated conversions, etc.)
+    // Set to AV_LOG_ERROR to only show actual errors, or AV_LOG_QUIET to suppress all
+    av_log_set_level(AV_LOG_ERROR);
     
     initialized = true;
     return true;
@@ -497,24 +503,28 @@ bool PBVideo::openCodecs() {
         if (codecParams->codec_id == AV_CODEC_ID_H264) {
             codec = avcodec_find_decoder_by_name("h264_v4l2m2m");
             if (codec) {
-                printf("PBVideo: Using H.264 hardware decoder (V4L2 M2M)\n");
+                decoderConfigInfo = "Video: H.264 hardware decoder (V4L2 M2M)";
             } else {
-                printf("PBVideo: H.264 hardware decoder not found, falling back to software\n");
                 codec = avcodec_find_decoder(codecParams->codec_id);
+                if (codec) {
+                    decoderConfigInfo = "Video: H.264 software decoder (hardware not available)";
+                }
             }
         } else if (codecParams->codec_id == AV_CODEC_ID_HEVC) {
             codec = avcodec_find_decoder_by_name("hevc_v4l2m2m");
             if (codec) {
-                printf("PBVideo: Using HEVC hardware decoder (V4L2 M2M)\n");
+                decoderConfigInfo = "Video: HEVC hardware decoder (V4L2 M2M)";
             } else {
-                printf("PBVideo: HEVC hardware decoder not found, falling back to software\n");
                 codec = avcodec_find_decoder(codecParams->codec_id);
+                if (codec) {
+                    decoderConfigInfo = "Video: HEVC software decoder (hardware not available)";
+                }
             }
         } else {
             // Use software decoder for other codecs
             codec = avcodec_find_decoder(codecParams->codec_id);
             if (codec) {
-                printf("PBVideo: Using software decoder for codec: %s\n", codec->name);
+                decoderConfigInfo = std::string("Video: ") + codec->name + " software decoder";
             }
         }
 #else
@@ -522,23 +532,20 @@ bool PBVideo::openCodecs() {
         // or when hardware decode is disabled
         codec = avcodec_find_decoder(codecParams->codec_id);
         if (codec) {
-            printf("PBVideo: Using software decoder: %s\n", codec->name);
+            decoderConfigInfo = std::string("Video: ") + codec->name + " software decoder";
         }
 #endif
         
         if (!codec) {
-            printf("PBVideo: No decoder found for codec ID: %d\n", codecParams->codec_id);
             return false;
         }
         
         videoCodecContext = avcodec_alloc_context3(codec);
         if (!videoCodecContext) {
-            printf("PBVideo: Failed to allocate codec context\n");
             return false;
         }
         
         if (avcodec_parameters_to_context(videoCodecContext, codecParams) < 0) {
-            printf("PBVideo: Failed to copy codec parameters to context\n");
             return false;
         }
         
@@ -550,8 +557,6 @@ bool PBVideo::openCodecs() {
             // Just configure buffer counts for better performance
             av_opt_set_int(videoCodecContext->priv_data, "num_output_buffers", 16, 0);
             av_opt_set_int(videoCodecContext->priv_data, "num_capture_buffers", 16, 0);
-            
-            printf("PBVideo: Configured V4L2 M2M decoder (auto-detect device)\n");
         }
 #endif
         
@@ -559,8 +564,6 @@ bool PBVideo::openCodecs() {
 #if defined(EXE_MODE_RASPI) && ENABLE_HW_VIDEO_DECODE
             // If hardware decoder fails, try software decoder as fallback
             if (strstr(codec->name, "v4l2m2m") != nullptr) {
-                printf("PBVideo: Hardware decoder failed, falling back to software\n");
-                
                 // Clean up failed hardware context
                 avcodec_free_context(&videoCodecContext);
                 
@@ -571,29 +574,23 @@ bool PBVideo::openCodecs() {
                     if (videoCodecContext) {
                         if (avcodec_parameters_to_context(videoCodecContext, codecParams) >= 0) {
                             if (avcodec_open2(videoCodecContext, codec, nullptr) >= 0) {
-                                printf("PBVideo: Software decoder fallback successful\n");
+                                decoderConfigInfo += " (fallback to software successful)";
                             } else {
-                                printf("PBVideo: Software decoder fallback failed\n");
                                 return false;
                             }
                         } else {
-                            printf("PBVideo: Failed to copy parameters for software fallback\n");
                             return false;
                         }
                     } else {
-                        printf("PBVideo: Failed to allocate context for software fallback\n");
                         return false;
                     }
                 } else {
-                    printf("PBVideo: No software decoder available for fallback\n");
                     return false;
                 }
             } else {
-                printf("PBVideo: Software decoder failed to open\n");
                 return false;
             }
 #else
-            printf("PBVideo: Failed to open codec\n");
             return false;
 #endif
         }
@@ -1008,39 +1005,11 @@ bool PBVideo::pbvIsUsingHardwareDecoder() const {
             strstr(codecName, "qsv") != nullptr);
 }
 
+std::string PBVideo::pbvGetDecoderInfo() const {
+    return decoderConfigInfo;
+}
+
 void PBVideo::pbvPrintDecoderInfo() const {
-    printf("=== PBVideo Decoder Information ===\n");
-    
-    if (videoCodecContext) {
-        printf("Video Codec: %s\n", videoCodecContext->codec->long_name);
-        printf("Video Decoder: %s\n", videoCodecContext->codec->name);
-        printf("Hardware Acceleration: %s\n", pbvIsUsingHardwareDecoder() ? "YES" : "NO");
-        printf("Video Resolution: %dx%d\n", videoCodecContext->width, videoCodecContext->height);
-        printf("Video Pixel Format: %s\n", av_get_pix_fmt_name(videoCodecContext->pix_fmt));
-        printf("Video Time Base: %.6f\n", videoTimeBase);
-    } else {
-        printf("No video codec loaded\n");
-    }
-    
-    if (audioCodecContext) {
-        printf("Audio Codec: %s\n", audioCodecContext->codec->long_name);
-        printf("Audio Decoder: %s\n", audioCodecContext->codec->name);
-        printf("Audio Sample Rate: %d Hz\n", audioCodecContext->sample_rate);
-        printf("Audio Channels: %d\n", audioCodecContext->ch_layout.nb_channels);
-        printf("Audio Time Base: %.6f\n", audioTimeBase);
-    } else {
-        printf("No audio codec loaded\n");
-    }
-    
-    printf("Playback State: ");
-    switch (playbackState) {
-        case PBV_STOPPED: printf("STOPPED\n"); break;
-        case PBV_PLAYING: printf("PLAYING\n"); break;
-        case PBV_PAUSED: printf("PAUSED\n"); break;
-        case PBV_FINISHED: printf("FINISHED\n"); break;
-    }
-    
-    printf("Video Queue Size: %zu packets\n", videoPacketQueue.size());
-    printf("Audio Queue Size: %zu packets\n", audioPacketQueue.size());
-    printf("===================================\n");
+    // Deprecated - kept for compatibility
+    // No longer prints, use pbvGetDecoderInfo() instead
 }

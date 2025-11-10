@@ -11,6 +11,9 @@
 #include "PBSound.h"
 #include <string>
 
+// Forward declaration
+class PBEngine;
+
 // Video player wrapper that combines video, graphics, and sound
 class PBVideoPlayer {
 public:
