@@ -573,6 +573,7 @@ void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& output
                 g_PBEngine.m_deferredQueue.push(message);
             }
             // Drop message if queue is full
+             g_PBEngine.pbeSendConsole("WARNING: Deferred LED queue full, dropping messages");
             return;
         }
     }
