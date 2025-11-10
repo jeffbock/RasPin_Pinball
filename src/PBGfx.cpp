@@ -817,7 +817,8 @@ unsigned int PBGfx::gfxGetSystemFontSpriteId(){
 
 // Load the animate data for a sprite
 void PBGfx::gfxLoadAnimateData(stAnimateData *animateData, unsigned int animateSpriteId, unsigned int startSpriteId, unsigned int endSpriteId, unsigned int startTick, 
-    unsigned int typeMask, float animateTimeSec, float accelPixPerSec, bool isActive, bool rotateClockwise, gfxLoopType loop){
+    unsigned int typeMask, float animateTimeSec, float accelPixelPerSecX, float accelPixelPerSecY, float accelDegPerSec, 
+    float randomPercent, bool isActive, bool rotateClockwise, gfxLoopType loop, gfxAnimType animType){
 
     // Set the values in the animateData struct
     animateData->animateSpriteId = animateSpriteId;
@@ -826,10 +827,17 @@ void PBGfx::gfxLoadAnimateData(stAnimateData *animateData, unsigned int animateS
     animateData->startTick = GetTickCountGfx();
     animateData->typeMask = typeMask;   
     animateData->animateTimeSec = animateTimeSec;
-    animateData->accelPixPerSec = accelPixPerSec;
+    animateData->accelPixelPerSecX = accelPixelPerSecX;
+    animateData->accelPixelPerSecY = accelPixelPerSecY;
+    animateData->accelDegPerSec = accelDegPerSec;
+    animateData->randomPercent = randomPercent;
     animateData->isActive = isActive;
     animateData->rotateClockwise = rotateClockwise;
     animateData->loop = loop;
+    animateData->animType = animType;
+    animateData->currentVelocityX = 0.0f;
+    animateData->currentVelocityY = 0.0f;
+    animateData->currentVelocityDeg = 0.0f;
 }
 
 // Creation of the animation will add it to the active animation list
@@ -876,77 +884,67 @@ bool PBGfx::gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentT
     for (auto it = m_animateList.begin(); it != m_animateList.end(); ++it) {
         if ((animateSpriteId == NOSPRITE) || (it->first == animateSpriteId)) {
 
-            // Get the animateData struct
-            stAnimateData animateData = it->second;
-
             // Calculate the time since the animation started
             float timeSinceStart = (float)(currentTick -  it->second.startTick) / 1000.0f;
 
             // If the animation is active, then update the sprite instance values
-            if (( it->second.isActive) && (timeSinceStart > 0.0f)) {
-                // Calculate the percentage of the animation that has been completed.  Ignore aceleration for now, not sure if we should keep it for this type of animation
+            if ((it->second.isActive) && (timeSinceStart > 0.0f)) {
+                // Calculate the percentage of the animation that has been completed
                 float percentComplete = timeSinceStart / it->second.animateTimeSec;
-                unsigned long temp;
 
-                // If the animation is complete, need to check if it should restart or stop
+                // Handle animation completion and looping
                 if (percentComplete >= 1.0f) {
-                    // m_instanceList[animateData.animateSpriteId] = m_instanceList[animateData.endSpriteId]; 
+                    unsigned long temp;
                     switch (it->second.loop) {
                     case GFX_RESTART:
                         it->second.startTick = currentTick;
+                        // Reset velocity for acceleration animations
+                        if (it->second.animType == GFX_ANIM_ACCL) {
+                            it->second.currentVelocityX = 0.0f;
+                            it->second.currentVelocityY = 0.0f;
+                            it->second.currentVelocityDeg = 0.0f;
+                        }
                         break;
                     case GFX_REVERSE:
                         temp = it->second.startSpriteId;
                         it->second.startSpriteId = it->second.endSpriteId;
                         it->second.endSpriteId = temp;
                         it->second.startTick = currentTick;
+                        // Reverse acceleration direction and set velocity to zero
+                        if (it->second.animType == GFX_ANIM_ACCL) {
+                            it->second.currentVelocityX = 0.0f;
+                            it->second.currentVelocityY = 0.0f;
+                            it->second.currentVelocityDeg = 0.0f;
+                            it->second.accelPixelPerSecX = -it->second.accelPixelPerSecX;
+                            it->second.accelPixelPerSecY = -it->second.accelPixelPerSecY;
+                            it->second.accelDegPerSec = -it->second.accelDegPerSec;
+                        }
                         break;
                     case GFX_NOLOOP:
                         it->second.isActive = false;
-                        // Depending on the mask, set the final values so the sprite ends up in the right place - a lot of code but should really only change the items that are masked to be active
-                        if (animateData.typeMask & ANIMATE_X_MASK) m_instanceList[animateData.animateSpriteId].x = m_instanceList[animateData.endSpriteId].x;
-                        if (animateData.typeMask & ANIMATE_Y_MASK) m_instanceList[animateData.animateSpriteId].y = m_instanceList[animateData.endSpriteId].y;
-                        if (animateData.typeMask & ANIMATE_SCALE_MASK) m_instanceList[animateData.animateSpriteId].scaleFactor = m_instanceList[animateData.endSpriteId].scaleFactor;
-                        if (animateData.typeMask & ANIMATE_ROTATE_MASK) m_instanceList[animateData.animateSpriteId].rotateDegrees = m_instanceList[animateData.endSpriteId].rotateDegrees;
-                        if (animateData.typeMask & ANIMATE_TEXALPHA_MASK) m_instanceList[animateData.animateSpriteId].textureAlpha = m_instanceList[animateData.endSpriteId].textureAlpha;
-                        if (animateData.typeMask & ANIMATE_COLOR_MASK) {
-                            m_instanceList[animateData.animateSpriteId].vertRed = m_instanceList[animateData.endSpriteId].vertRed;
-                            m_instanceList[animateData.animateSpriteId].vertGreen = m_instanceList[animateData.endSpriteId].vertGreen;
-                            m_instanceList[animateData.animateSpriteId].vertBlue = m_instanceList[animateData.endSpriteId].vertBlue;
-                            m_instanceList[animateData.animateSpriteId].vertAlpha = m_instanceList[animateData.endSpriteId].vertAlpha;
-                        }
-                        if (animateData.typeMask & ANIMATE_U_MASK) m_instanceList[animateData.animateSpriteId].u1 = m_instanceList[animateData.endSpriteId].u1;
-                        if (animateData.typeMask & ANIMATE_V_MASK) m_instanceList[animateData.animateSpriteId].v1 = m_instanceList[animateData.endSpriteId].v1;
+                        gfxSetFinalAnimationValues(it->second);
                         break;
-
                     default: break;
                     }
                 }
                 else {
-                    // Calculate the new sprite instance values based on the percent complete, using the masks to only calculate what's needed
-                    if (animateData.typeMask & ANIMATE_X_MASK) m_instanceList[animateData.animateSpriteId].x = m_instanceList[animateData.startSpriteId].x + (m_instanceList[animateData.endSpriteId].x - m_instanceList[animateData.startSpriteId].x) * percentComplete;
-                    if (animateData.typeMask & ANIMATE_Y_MASK) m_instanceList[animateData.animateSpriteId].y = m_instanceList[animateData.startSpriteId].y + (m_instanceList[animateData.endSpriteId].y - m_instanceList[animateData.startSpriteId].y) * percentComplete;
-                    if (animateData.typeMask & ANIMATE_SCALE_MASK) m_instanceList[animateData.animateSpriteId].scaleFactor = m_instanceList[animateData.startSpriteId].scaleFactor + (m_instanceList[animateData.endSpriteId].scaleFactor - m_instanceList[animateData.startSpriteId].scaleFactor) * percentComplete;
-                    if (animateData.typeMask & ANIMATE_TEXALPHA_MASK) m_instanceList[animateData.animateSpriteId].textureAlpha = m_instanceList[animateData.startSpriteId].textureAlpha + (m_instanceList[animateData.endSpriteId].textureAlpha - m_instanceList[animateData.startSpriteId].textureAlpha) * percentComplete;
-                    if (animateData.typeMask & ANIMATE_COLOR_MASK) {
-                        m_instanceList[animateData.animateSpriteId].vertRed = m_instanceList[animateData.startSpriteId].vertRed + (m_instanceList[animateData.endSpriteId].vertRed - m_instanceList[animateData.startSpriteId].vertRed) * percentComplete;
-                        m_instanceList[animateData.animateSpriteId].vertGreen = m_instanceList[animateData.startSpriteId].vertGreen + (m_instanceList[animateData.endSpriteId].vertGreen - m_instanceList[animateData.startSpriteId].vertGreen) * percentComplete;
-                        m_instanceList[animateData.animateSpriteId].vertBlue = m_instanceList[animateData.startSpriteId].vertBlue + (m_instanceList[animateData.endSpriteId].vertBlue - m_instanceList[animateData.startSpriteId].vertBlue) * percentComplete;
-                        m_instanceList[animateData.animateSpriteId].vertAlpha = m_instanceList[animateData.startSpriteId].vertAlpha + (m_instanceList[animateData.endSpriteId].vertAlpha - m_instanceList[animateData.startSpriteId].vertAlpha) * percentComplete;
-                    }
-                    if (animateData.typeMask & ANIMATE_U_MASK) m_instanceList[animateData.animateSpriteId].u1 = m_instanceList[animateData.startSpriteId].u1 + (m_instanceList[animateData.endSpriteId].u1 - m_instanceList[animateData.startSpriteId].u1) * percentComplete;
-                    if (animateData.typeMask & ANIMATE_V_MASK) m_instanceList[animateData.animateSpriteId].v1 = m_instanceList[animateData.startSpriteId].v1 + (m_instanceList[animateData.endSpriteId].v1 - m_instanceList[animateData.startSpriteId].v1) * percentComplete;
-
-                    // Rotate is a special case.  Depending on rotateClockwise bool, we should rotate clockwise or counter clockwise and make sure to roll over at 360 degrees
-                    if (animateData.typeMask & ANIMATE_ROTATE_MASK) {
-                        if (animateData.rotateClockwise) {
-                            m_instanceList[animateData.animateSpriteId].rotateDegrees = m_instanceList[animateData.startSpriteId].rotateDegrees - (m_instanceList[animateData.endSpriteId].rotateDegrees - m_instanceList[animateData.startSpriteId].rotateDegrees) * percentComplete;
-                            if (m_instanceList[animateData.animateSpriteId].rotateDegrees > 360.0f) m_instanceList[animateData.animateSpriteId].rotateDegrees -= 360.0f;
-                        }
-                        else {
-                            m_instanceList[animateData.animateSpriteId].rotateDegrees = m_instanceList[animateData.startSpriteId].rotateDegrees + (m_instanceList[animateData.endSpriteId].rotateDegrees - m_instanceList[animateData.startSpriteId].rotateDegrees) * percentComplete;
-                            if (m_instanceList[animateData.animateSpriteId].rotateDegrees < 0.0f) m_instanceList[animateData.animateSpriteId].rotateDegrees += 360.0f;
-                        }
+                    // Dispatch to appropriate animation handler based on type
+                    switch (it->second.animType) {
+                    case GFX_ANIM_NORMAL:
+                        gfxAnimateNormal(it->second, currentTick, timeSinceStart, percentComplete);
+                        break;
+                    case GFX_ANIM_ACCL:
+                        gfxAnimateAcceleration(it->second, currentTick, timeSinceStart);
+                        break;
+                    case GFX_ANIM_JUMP:
+                        gfxAnimateJump(it->second, currentTick, timeSinceStart);
+                        break;
+                    case GFX_ANIM_JUMPRANDOM:
+                        gfxAnimateJumpRandom(it->second, currentTick, timeSinceStart);
+                        break;
+                    default:
+                        gfxAnimateNormal(it->second, currentTick, timeSinceStart, percentComplete);
+                        break;
                     }
                 }
             }   
@@ -1015,6 +1013,333 @@ bool PBGfx::gfxAnimateRestart(unsigned int animateSpriteId, unsigned long startT
 // This can cause issues if a given rendering function is using a saved value for the current tick, but then also trying to animate during the same frame after restarting the animation.
 bool PBGfx::gfxAnimateRestart(unsigned int animateSpriteId){
     return gfxAnimateRestart(animateSpriteId, GetTickCountGfx());
+}
+
+// Helper function to set final animation values when animation completes with GFX_NOLOOP
+void PBGfx::gfxSetFinalAnimationValues(const stAnimateData& animateData) {
+    // Depending on the mask, set the final values so the sprite ends up in the right place
+    if (animateData.typeMask & ANIMATE_X_MASK) 
+        m_instanceList[animateData.animateSpriteId].x = m_instanceList[animateData.endSpriteId].x;
+    if (animateData.typeMask & ANIMATE_Y_MASK) 
+        m_instanceList[animateData.animateSpriteId].y = m_instanceList[animateData.endSpriteId].y;
+    if (animateData.typeMask & ANIMATE_SCALE_MASK) 
+        m_instanceList[animateData.animateSpriteId].scaleFactor = m_instanceList[animateData.endSpriteId].scaleFactor;
+    if (animateData.typeMask & ANIMATE_ROTATE_MASK) 
+        m_instanceList[animateData.animateSpriteId].rotateDegrees = m_instanceList[animateData.endSpriteId].rotateDegrees;
+    if (animateData.typeMask & ANIMATE_TEXALPHA_MASK) 
+        m_instanceList[animateData.animateSpriteId].textureAlpha = m_instanceList[animateData.endSpriteId].textureAlpha;
+    if (animateData.typeMask & ANIMATE_COLOR_MASK) {
+        m_instanceList[animateData.animateSpriteId].vertRed = m_instanceList[animateData.endSpriteId].vertRed;
+        m_instanceList[animateData.animateSpriteId].vertGreen = m_instanceList[animateData.endSpriteId].vertGreen;
+        m_instanceList[animateData.animateSpriteId].vertBlue = m_instanceList[animateData.endSpriteId].vertBlue;
+        m_instanceList[animateData.animateSpriteId].vertAlpha = m_instanceList[animateData.endSpriteId].vertAlpha;
+    }
+    if (animateData.typeMask & ANIMATE_U_MASK) 
+        m_instanceList[animateData.animateSpriteId].u1 = m_instanceList[animateData.endSpriteId].u1;
+    if (animateData.typeMask & ANIMATE_V_MASK) 
+        m_instanceList[animateData.animateSpriteId].v1 = m_instanceList[animateData.endSpriteId].v1;
+}
+
+// Helper function to generate random float between min and max
+float PBGfx::gfxGetRandomFloat(float min, float max) {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dis(min, max);
+    return dis(gen);
+}
+
+// GFX_ANIM_NORMAL: Linear interpolation without acceleration
+void PBGfx::gfxAnimateNormal(stAnimateData& animateData, unsigned int currentTick, float timeSinceStart, float percentComplete) {
+    // Calculate the new sprite instance values based on the percent complete, using the masks to only calculate what's needed
+    if (animateData.typeMask & ANIMATE_X_MASK) 
+        m_instanceList[animateData.animateSpriteId].x = m_instanceList[animateData.startSpriteId].x + 
+            (m_instanceList[animateData.endSpriteId].x - m_instanceList[animateData.startSpriteId].x) * percentComplete;
+    
+    if (animateData.typeMask & ANIMATE_Y_MASK) 
+        m_instanceList[animateData.animateSpriteId].y = m_instanceList[animateData.startSpriteId].y + 
+            (m_instanceList[animateData.endSpriteId].y - m_instanceList[animateData.startSpriteId].y) * percentComplete;
+    
+    if (animateData.typeMask & ANIMATE_SCALE_MASK) 
+        m_instanceList[animateData.animateSpriteId].scaleFactor = m_instanceList[animateData.startSpriteId].scaleFactor + 
+            (m_instanceList[animateData.endSpriteId].scaleFactor - m_instanceList[animateData.startSpriteId].scaleFactor) * percentComplete;
+    
+    if (animateData.typeMask & ANIMATE_TEXALPHA_MASK) 
+        m_instanceList[animateData.animateSpriteId].textureAlpha = m_instanceList[animateData.startSpriteId].textureAlpha + 
+            (m_instanceList[animateData.endSpriteId].textureAlpha - m_instanceList[animateData.startSpriteId].textureAlpha) * percentComplete;
+    
+    if (animateData.typeMask & ANIMATE_COLOR_MASK) {
+        m_instanceList[animateData.animateSpriteId].vertRed = m_instanceList[animateData.startSpriteId].vertRed + 
+            (m_instanceList[animateData.endSpriteId].vertRed - m_instanceList[animateData.startSpriteId].vertRed) * percentComplete;
+        m_instanceList[animateData.animateSpriteId].vertGreen = m_instanceList[animateData.startSpriteId].vertGreen + 
+            (m_instanceList[animateData.endSpriteId].vertGreen - m_instanceList[animateData.startSpriteId].vertGreen) * percentComplete;
+        m_instanceList[animateData.animateSpriteId].vertBlue = m_instanceList[animateData.startSpriteId].vertBlue + 
+            (m_instanceList[animateData.endSpriteId].vertBlue - m_instanceList[animateData.startSpriteId].vertBlue) * percentComplete;
+        m_instanceList[animateData.animateSpriteId].vertAlpha = m_instanceList[animateData.startSpriteId].vertAlpha + 
+            (m_instanceList[animateData.endSpriteId].vertAlpha - m_instanceList[animateData.startSpriteId].vertAlpha) * percentComplete;
+    }
+    
+    if (animateData.typeMask & ANIMATE_U_MASK) 
+        m_instanceList[animateData.animateSpriteId].u1 = m_instanceList[animateData.startSpriteId].u1 + 
+            (m_instanceList[animateData.endSpriteId].u1 - m_instanceList[animateData.startSpriteId].u1) * percentComplete;
+    
+    if (animateData.typeMask & ANIMATE_V_MASK) 
+        m_instanceList[animateData.animateSpriteId].v1 = m_instanceList[animateData.startSpriteId].v1 + 
+            (m_instanceList[animateData.endSpriteId].v1 - m_instanceList[animateData.startSpriteId].v1) * percentComplete;
+
+    // Rotate is a special case. Depending on rotateClockwise bool, we should rotate clockwise or counter clockwise and make sure to roll over at 360 degrees
+    if (animateData.typeMask & ANIMATE_ROTATE_MASK) {
+        if (animateData.rotateClockwise) {
+            m_instanceList[animateData.animateSpriteId].rotateDegrees = m_instanceList[animateData.startSpriteId].rotateDegrees - 
+                (m_instanceList[animateData.endSpriteId].rotateDegrees - m_instanceList[animateData.startSpriteId].rotateDegrees) * percentComplete;
+            if (m_instanceList[animateData.animateSpriteId].rotateDegrees > 360.0f) 
+                m_instanceList[animateData.animateSpriteId].rotateDegrees -= 360.0f;
+        }
+        else {
+            m_instanceList[animateData.animateSpriteId].rotateDegrees = m_instanceList[animateData.startSpriteId].rotateDegrees + 
+                (m_instanceList[animateData.endSpriteId].rotateDegrees - m_instanceList[animateData.startSpriteId].rotateDegrees) * percentComplete;
+            if (m_instanceList[animateData.animateSpriteId].rotateDegrees < 0.0f) 
+                m_instanceList[animateData.animateSpriteId].rotateDegrees += 360.0f;
+        }
+    }
+}
+
+// GFX_ANIM_ACCL: Animation with acceleration for X, Y, and Rotation
+void PBGfx::gfxAnimateAcceleration(stAnimateData& animateData, unsigned int currentTick, float timeSinceStart) {
+    // For X position with acceleration
+    if (animateData.typeMask & ANIMATE_X_MASK) {
+        int startX = m_instanceList[animateData.startSpriteId].x;
+        int endX = m_instanceList[animateData.endSpriteId].x;
+        float distance = (float)(endX - startX);
+        
+        // Update velocity: v = v0 + a*t
+        animateData.currentVelocityX += animateData.accelPixelPerSecX * (timeSinceStart - (animateData.currentVelocityX / animateData.accelPixelPerSecX));
+        
+        // Calculate position: x = x0 + v0*t + 0.5*a*t^2
+        float newX = (float)startX + animateData.currentVelocityX * timeSinceStart + 
+                     0.5f * animateData.accelPixelPerSecX * timeSinceStart * timeSinceStart;
+        m_instanceList[animateData.animateSpriteId].x = (int)newX;
+    }
+    
+    // For Y position with acceleration
+    if (animateData.typeMask & ANIMATE_Y_MASK) {
+        int startY = m_instanceList[animateData.startSpriteId].y;
+        int endY = m_instanceList[animateData.endSpriteId].y;
+        float distance = (float)(endY - startY);
+        
+        // Update velocity: v = v0 + a*t
+        animateData.currentVelocityY += animateData.accelPixelPerSecY * (timeSinceStart - (animateData.currentVelocityY / animateData.accelPixelPerSecY));
+        
+        // Calculate position: y = y0 + v0*t + 0.5*a*t^2
+        float newY = (float)startY + animateData.currentVelocityY * timeSinceStart + 
+                     0.5f * animateData.accelPixelPerSecY * timeSinceStart * timeSinceStart;
+        m_instanceList[animateData.animateSpriteId].y = (int)newY;
+    }
+    
+    // For rotation with acceleration
+    if (animateData.typeMask & ANIMATE_ROTATE_MASK) {
+        float startDeg = m_instanceList[animateData.startSpriteId].rotateDegrees;
+        float endDeg = m_instanceList[animateData.endSpriteId].rotateDegrees;
+        
+        // Update velocity: v = v0 + a*t
+        animateData.currentVelocityDeg += animateData.accelDegPerSec * (timeSinceStart - (animateData.currentVelocityDeg / animateData.accelDegPerSec));
+        
+        // Calculate rotation: deg = deg0 + v0*t + 0.5*a*t^2
+        float newDeg = startDeg + animateData.currentVelocityDeg * timeSinceStart + 
+                       0.5f * animateData.accelDegPerSec * timeSinceStart * timeSinceStart;
+        
+        // Handle wrapping
+        while (newDeg >= 360.0f) newDeg -= 360.0f;
+        while (newDeg < 0.0f) newDeg += 360.0f;
+        
+        m_instanceList[animateData.animateSpriteId].rotateDegrees = newDeg;
+    }
+    
+    // All other properties use normal linear interpolation (no acceleration)
+    float percentComplete = timeSinceStart / animateData.animateTimeSec;
+    
+    if (animateData.typeMask & ANIMATE_SCALE_MASK) 
+        m_instanceList[animateData.animateSpriteId].scaleFactor = m_instanceList[animateData.startSpriteId].scaleFactor + 
+            (m_instanceList[animateData.endSpriteId].scaleFactor - m_instanceList[animateData.startSpriteId].scaleFactor) * percentComplete;
+    
+    if (animateData.typeMask & ANIMATE_TEXALPHA_MASK) 
+        m_instanceList[animateData.animateSpriteId].textureAlpha = m_instanceList[animateData.startSpriteId].textureAlpha + 
+            (m_instanceList[animateData.endSpriteId].textureAlpha - m_instanceList[animateData.startSpriteId].textureAlpha) * percentComplete;
+    
+    if (animateData.typeMask & ANIMATE_COLOR_MASK) {
+        m_instanceList[animateData.animateSpriteId].vertRed = m_instanceList[animateData.startSpriteId].vertRed + 
+            (m_instanceList[animateData.endSpriteId].vertRed - m_instanceList[animateData.startSpriteId].vertRed) * percentComplete;
+        m_instanceList[animateData.animateSpriteId].vertGreen = m_instanceList[animateData.startSpriteId].vertGreen + 
+            (m_instanceList[animateData.endSpriteId].vertGreen - m_instanceList[animateData.startSpriteId].vertGreen) * percentComplete;
+        m_instanceList[animateData.animateSpriteId].vertBlue = m_instanceList[animateData.startSpriteId].vertBlue + 
+            (m_instanceList[animateData.endSpriteId].vertBlue - m_instanceList[animateData.startSpriteId].vertBlue) * percentComplete;
+        m_instanceList[animateData.animateSpriteId].vertAlpha = m_instanceList[animateData.startSpriteId].vertAlpha + 
+            (m_instanceList[animateData.endSpriteId].vertAlpha - m_instanceList[animateData.startSpriteId].vertAlpha) * percentComplete;
+    }
+    
+    if (animateData.typeMask & ANIMATE_U_MASK) 
+        m_instanceList[animateData.animateSpriteId].u1 = m_instanceList[animateData.startSpriteId].u1 + 
+            (m_instanceList[animateData.endSpriteId].u1 - m_instanceList[animateData.startSpriteId].u1) * percentComplete;
+    
+    if (animateData.typeMask & ANIMATE_V_MASK) 
+        m_instanceList[animateData.animateSpriteId].v1 = m_instanceList[animateData.startSpriteId].v1 + 
+            (m_instanceList[animateData.endSpriteId].v1 - m_instanceList[animateData.startSpriteId].v1) * percentComplete;
+}
+
+// GFX_ANIM_JUMP: Jump to random position when time expires
+void PBGfx::gfxAnimateJump(stAnimateData& animateData, unsigned int currentTick, float timeSinceStart) {
+    // Check if it's time to jump
+    float percentComplete = timeSinceStart / animateData.animateTimeSec;
+    
+    if (percentComplete >= 1.0f) {
+        // Time to jump - pick random values between start and end for all animated properties
+        if (animateData.typeMask & ANIMATE_X_MASK) {
+            int startX = m_instanceList[animateData.startSpriteId].x;
+            int endX = m_instanceList[animateData.endSpriteId].x;
+            int minX = std::min(startX, endX);
+            int maxX = std::max(startX, endX);
+            m_instanceList[animateData.animateSpriteId].x = minX + (int)(gfxGetRandomFloat(0.0f, 1.0f) * (maxX - minX));
+        }
+        
+        if (animateData.typeMask & ANIMATE_Y_MASK) {
+            int startY = m_instanceList[animateData.startSpriteId].y;
+            int endY = m_instanceList[animateData.endSpriteId].y;
+            int minY = std::min(startY, endY);
+            int maxY = std::max(startY, endY);
+            m_instanceList[animateData.animateSpriteId].y = minY + (int)(gfxGetRandomFloat(0.0f, 1.0f) * (maxY - minY));
+        }
+        
+        if (animateData.typeMask & ANIMATE_SCALE_MASK) {
+            float startScale = m_instanceList[animateData.startSpriteId].scaleFactor;
+            float endScale = m_instanceList[animateData.endSpriteId].scaleFactor;
+            m_instanceList[animateData.animateSpriteId].scaleFactor = startScale + gfxGetRandomFloat(0.0f, 1.0f) * (endScale - startScale);
+        }
+        
+        if (animateData.typeMask & ANIMATE_ROTATE_MASK) {
+            float startDeg = m_instanceList[animateData.startSpriteId].rotateDegrees;
+            float endDeg = m_instanceList[animateData.endSpriteId].rotateDegrees;
+            m_instanceList[animateData.animateSpriteId].rotateDegrees = startDeg + gfxGetRandomFloat(0.0f, 1.0f) * (endDeg - startDeg);
+        }
+        
+        if (animateData.typeMask & ANIMATE_TEXALPHA_MASK) {
+            float startAlpha = m_instanceList[animateData.startSpriteId].textureAlpha;
+            float endAlpha = m_instanceList[animateData.endSpriteId].textureAlpha;
+            m_instanceList[animateData.animateSpriteId].textureAlpha = startAlpha + gfxGetRandomFloat(0.0f, 1.0f) * (endAlpha - startAlpha);
+        }
+        
+        if (animateData.typeMask & ANIMATE_COLOR_MASK) {
+            float startRed = m_instanceList[animateData.startSpriteId].vertRed;
+            float endRed = m_instanceList[animateData.endSpriteId].vertRed;
+            m_instanceList[animateData.animateSpriteId].vertRed = startRed + gfxGetRandomFloat(0.0f, 1.0f) * (endRed - startRed);
+            
+            float startGreen = m_instanceList[animateData.startSpriteId].vertGreen;
+            float endGreen = m_instanceList[animateData.endSpriteId].vertGreen;
+            m_instanceList[animateData.animateSpriteId].vertGreen = startGreen + gfxGetRandomFloat(0.0f, 1.0f) * (endGreen - startGreen);
+            
+            float startBlue = m_instanceList[animateData.startSpriteId].vertBlue;
+            float endBlue = m_instanceList[animateData.endSpriteId].vertBlue;
+            m_instanceList[animateData.animateSpriteId].vertBlue = startBlue + gfxGetRandomFloat(0.0f, 1.0f) * (endBlue - startBlue);
+            
+            float startAlpha = m_instanceList[animateData.startSpriteId].vertAlpha;
+            float endAlpha = m_instanceList[animateData.endSpriteId].vertAlpha;
+            m_instanceList[animateData.animateSpriteId].vertAlpha = startAlpha + gfxGetRandomFloat(0.0f, 1.0f) * (endAlpha - startAlpha);
+        }
+        
+        if (animateData.typeMask & ANIMATE_U_MASK) {
+            float startU = m_instanceList[animateData.startSpriteId].u1;
+            float endU = m_instanceList[animateData.endSpriteId].u1;
+            m_instanceList[animateData.animateSpriteId].u1 = startU + gfxGetRandomFloat(0.0f, 1.0f) * (endU - startU);
+        }
+        
+        if (animateData.typeMask & ANIMATE_V_MASK) {
+            float startV = m_instanceList[animateData.startSpriteId].v1;
+            float endV = m_instanceList[animateData.endSpriteId].v1;
+            m_instanceList[animateData.animateSpriteId].v1 = startV + gfxGetRandomFloat(0.0f, 1.0f) * (endV - startV);
+        }
+        
+        // Reset timer for next jump (handled by loop logic in main function)
+        animateData.startTick = currentTick;
+    }
+}
+
+// GFX_ANIM_JUMPRANDOM: Randomly decide to jump based on randomPercent
+void PBGfx::gfxAnimateJumpRandom(stAnimateData& animateData, unsigned int currentTick, float timeSinceStart) {
+    // Check if it's time to potentially jump
+    float percentComplete = timeSinceStart / animateData.animateTimeSec;
+    
+    if (percentComplete >= 1.0f) {
+        // Time to check if we should jump - compare randomPercent to a random value
+        float randomCheck = gfxGetRandomFloat(0.0f, 1.0f);
+        
+        if (randomCheck <= animateData.randomPercent) {
+            // Jump! Pick random values between start and end for all animated properties
+            if (animateData.typeMask & ANIMATE_X_MASK) {
+                int startX = m_instanceList[animateData.startSpriteId].x;
+                int endX = m_instanceList[animateData.endSpriteId].x;
+                int minX = std::min(startX, endX);
+                int maxX = std::max(startX, endX);
+                m_instanceList[animateData.animateSpriteId].x = minX + (int)(gfxGetRandomFloat(0.0f, 1.0f) * (maxX - minX));
+            }
+            
+            if (animateData.typeMask & ANIMATE_Y_MASK) {
+                int startY = m_instanceList[animateData.startSpriteId].y;
+                int endY = m_instanceList[animateData.endSpriteId].y;
+                int minY = std::min(startY, endY);
+                int maxY = std::max(startY, endY);
+                m_instanceList[animateData.animateSpriteId].y = minY + (int)(gfxGetRandomFloat(0.0f, 1.0f) * (maxY - minY));
+            }
+            
+            if (animateData.typeMask & ANIMATE_SCALE_MASK) {
+                float startScale = m_instanceList[animateData.startSpriteId].scaleFactor;
+                float endScale = m_instanceList[animateData.endSpriteId].scaleFactor;
+                m_instanceList[animateData.animateSpriteId].scaleFactor = startScale + gfxGetRandomFloat(0.0f, 1.0f) * (endScale - startScale);
+            }
+            
+            if (animateData.typeMask & ANIMATE_ROTATE_MASK) {
+                float startDeg = m_instanceList[animateData.startSpriteId].rotateDegrees;
+                float endDeg = m_instanceList[animateData.endSpriteId].rotateDegrees;
+                m_instanceList[animateData.animateSpriteId].rotateDegrees = startDeg + gfxGetRandomFloat(0.0f, 1.0f) * (endDeg - startDeg);
+            }
+            
+            if (animateData.typeMask & ANIMATE_TEXALPHA_MASK) {
+                float startAlpha = m_instanceList[animateData.startSpriteId].textureAlpha;
+                float endAlpha = m_instanceList[animateData.endSpriteId].textureAlpha;
+                m_instanceList[animateData.animateSpriteId].textureAlpha = startAlpha + gfxGetRandomFloat(0.0f, 1.0f) * (endAlpha - startAlpha);
+            }
+            
+            if (animateData.typeMask & ANIMATE_COLOR_MASK) {
+                float startRed = m_instanceList[animateData.startSpriteId].vertRed;
+                float endRed = m_instanceList[animateData.endSpriteId].vertRed;
+                m_instanceList[animateData.animateSpriteId].vertRed = startRed + gfxGetRandomFloat(0.0f, 1.0f) * (endRed - startRed);
+                
+                float startGreen = m_instanceList[animateData.startSpriteId].vertGreen;
+                float endGreen = m_instanceList[animateData.endSpriteId].vertGreen;
+                m_instanceList[animateData.animateSpriteId].vertGreen = startGreen + gfxGetRandomFloat(0.0f, 1.0f) * (endGreen - startGreen);
+                
+                float startBlue = m_instanceList[animateData.startSpriteId].vertBlue;
+                float endBlue = m_instanceList[animateData.endSpriteId].vertBlue;
+                m_instanceList[animateData.animateSpriteId].vertBlue = startBlue + gfxGetRandomFloat(0.0f, 1.0f) * (endBlue - startBlue);
+                
+                float startAlpha = m_instanceList[animateData.startSpriteId].vertAlpha;
+                float endAlpha = m_instanceList[animateData.endSpriteId].vertAlpha;
+                m_instanceList[animateData.animateSpriteId].vertAlpha = startAlpha + gfxGetRandomFloat(0.0f, 1.0f) * (endAlpha - startAlpha);
+            }
+            
+            if (animateData.typeMask & ANIMATE_U_MASK) {
+                float startU = m_instanceList[animateData.startSpriteId].u1;
+                float endU = m_instanceList[animateData.endSpriteId].u1;
+                m_instanceList[animateData.animateSpriteId].u1 = startU + gfxGetRandomFloat(0.0f, 1.0f) * (endU - startU);
+            }
+            
+            if (animateData.typeMask & ANIMATE_V_MASK) {
+                float startV = m_instanceList[animateData.startSpriteId].v1;
+                float endV = m_instanceList[animateData.endSpriteId].v1;
+                m_instanceList[animateData.animateSpriteId].v1 = startV + gfxGetRandomFloat(0.0f, 1.0f) * (endV - startV);
+            }
+        }
+        
+        // Reset timer for next check (handled by loop logic in main function)
+        animateData.startTick = currentTick;
+    }
 }
 
 // Update a video texture with new frame data

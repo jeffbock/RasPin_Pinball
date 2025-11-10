@@ -17,6 +17,7 @@
 #include <map>
 #include <cmath>
 #include <chrono>
+#include <random>
 #include "3rdparty/json.hpp"
 #include "PBOGLES.h"
  
@@ -130,6 +131,13 @@ enum gfxLoopType {
     GFX_REVERSE = 2
 };
 
+enum gfxAnimType {
+    GFX_ANIM_NORMAL = 0,      // Linear interpolation, no acceleration
+    GFX_ANIM_ACCL = 1,        // Acceleration for X, Y, and Rotation
+    GFX_ANIM_JUMP = 2,        // Jump to random position at time intervals
+    GFX_ANIM_JUMPRANDOM = 3   // Randomly decide to jump based on randomPercent
+};
+
 struct stAnimateData {
     unsigned int animateSpriteId;
     unsigned int startSpriteId;
@@ -137,11 +145,19 @@ struct stAnimateData {
     unsigned int startTick;
     unsigned int typeMask;
     float animateTimeSec;
-    float accelPixPerSec;
+    float accelPixelPerSecX;
+    float accelPixelPerSecY;
+    float accelDegPerSec;
+    float randomPercent;
     bool isActive;
     bool rotateClockwise;
     gfxLoopType loop;
+    gfxAnimType animType;
     
+    // Internal state for acceleration animations
+    float currentVelocityX;
+    float currentVelocityY;
+    float currentVelocityDeg;
 };
 
 // Define a class for the OGL ES code
@@ -213,7 +229,8 @@ public:
     bool          gfxAnimateRestart(unsigned int animateSpriteId);
     bool          gfxAnimateRestart(unsigned int animateSpriteId, unsigned long startTick);
     void          gfxLoadAnimateData(stAnimateData *animateData, unsigned int animateSpriteId, unsigned int startSpriteId, unsigned int endSpriteId, unsigned int startTick, 
-                                     unsigned int typeMask, float animateTimeSec, float accelPixPerSec, bool isActive, bool rotateClockwise, gfxLoopType loop);
+                                     unsigned int typeMask, float animateTimeSec, float accelPixelPerSecX, float accelPixelPerSecY, float accelDegPerSec, 
+                                     float randomPercent, bool isActive, bool rotateClockwise, gfxLoopType loop, gfxAnimType animType);
 
     // Rendering functions
     void         gfxSwap();
@@ -228,6 +245,14 @@ public:
     
 private:
     unsigned int gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem);
+    
+    // Helper functions for animation types
+    void gfxAnimateNormal(stAnimateData& animateData, unsigned int currentTick, float timeSinceStart, float percentComplete);
+    void gfxAnimateAcceleration(stAnimateData& animateData, unsigned int currentTick, float timeSinceStart);
+    void gfxAnimateJump(stAnimateData& animateData, unsigned int currentTick, float timeSinceStart);
+    void gfxAnimateJumpRandom(stAnimateData& animateData, unsigned int currentTick, float timeSinceStart);
+    void gfxSetFinalAnimationValues(const stAnimateData& animateData);
+    float gfxGetRandomFloat(float min, float max);
 
     // User sprites start at 100. System sprites will use lower numbers
     unsigned int m_nextSystemSpriteId;
