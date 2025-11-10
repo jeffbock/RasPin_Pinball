@@ -23,7 +23,7 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
 # Documentation
 - **[RasPin Overview](documentation/RasPin_Overview.md)** - **START HERE** - High-level architecture overview with diagrams and introduction to all documentation
 - **[How To Build](documentation/HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
-- **[FontGen Guide](documentation/FontGen_Guide.md)** - Font generation utility for creating custom fonts from TrueType files
+
 - **API Reference Documentation:**
   - **[PBEngine API](documentation/PBEngine_API.md)** - Core engine class, game state, and output control
   - **[I/O Processing API](documentation/IO_Processing_API.md)** - Input/output message processing and hardware communication
@@ -31,6 +31,11 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
   - **[PBDevice API](documentation/PBDevice_API.md)** - Device management framework for complex pinball mechanisms
   - **[Platform Init API](documentation/Platform_Init_API.md)** - Platform initialization, main loop, and configuration
   - **[Game Creation API](documentation/Game_Creation_API.md)** - Graphics (PBGfx), sound (PBSound), video playback (PBVideoPlayer), sprites, animations, and screen management 
+
+- **[Utilities Guide](documentation/Utilities_Guide.md)** - Complete guide for all RasPin utilities:
+  - **FontGen** (Windows & Raspberry Pi) - Converts TrueType fonts to texture atlases for text rendering
+  - **pblistdevices** (Raspberry Pi only) - Scans I2C bus and lists all connected hardware devices
+  - **pbsetamp** (Raspberry Pi only) - Controls MAX9744 amplifier volume settings
 
 # Design and Development guidelines
 -  Actual machine based on Raspberry Pi 5 and PiOS for ease of development and debug.  Full power of Linux OS.  
