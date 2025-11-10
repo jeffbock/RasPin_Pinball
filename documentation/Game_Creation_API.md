@@ -439,12 +439,42 @@ struct stAnimateData {
     unsigned int startTick;         // When to start (0 = immediate)
     unsigned int typeMask;          // What properties to animate
     float animateTimeSec;           // Duration in seconds
-    float accelPixPerSec;           // Acceleration (usually 0.0)
+    float accelPixelPerSecX;        // X acceleration (pixels/sec²)
+    float accelPixelPerSecY;        // Y acceleration (pixels/sec²)
+    float accelDegPerSec;           // Rotation acceleration (degrees/sec²)
+    float randomPercent;            // Jump probability (0.0-1.0)
     bool isActive;                  // Start active
     bool rotateClockwise;           // Rotation direction
     gfxLoopType loop;              // Loop behavior
+    gfxAnimType animType;          // Animation type
+    
+    // Internal state (read-only)
+    float currentVelocityX;         // Current X velocity
+    float currentVelocityY;         // Current Y velocity
+    float currentVelocityDeg;       // Current rotation velocity
 };
 ```
+
+### Animation Types
+
+Different animation behaviors for various effects:
+
+```cpp
+enum gfxAnimType {
+    GFX_ANIM_NORMAL = 0,      // Linear interpolation, no acceleration
+    GFX_ANIM_ACCL = 1,        // Physics-based acceleration (X, Y, Rotation only)
+    GFX_ANIM_JUMP = 2,        // Jump to random position at time intervals
+    GFX_ANIM_JUMPRANDOM = 3   // Randomly jump based on probability
+};
+```
+
+**GFX_ANIM_NORMAL**: Standard linear interpolation between start and end states. Smooth, predictable motion. Use for most animations.
+
+**GFX_ANIM_ACCL**: Applies physics-based acceleration to X position, Y position, and rotation. Other properties (scale, color, etc.) use linear interpolation. The sprite accelerates from rest using the specified acceleration values. For GFX_REVERSE loops, velocity resets to zero and acceleration reverses direction at endpoints.
+
+**GFX_ANIM_JUMP**: At each time interval (`animateTimeSec`), randomly picks new values between start and end for all animated properties. Creates instant "teleport" effect. GFX_NOLOOP performs one jump only. GFX_RESTART and GFX_REVERSE both continue jumping indefinitely.
+
+**GFX_ANIM_JUMPRANDOM**: Similar to GFX_ANIM_JUMP but uses `randomPercent` to probabilistically decide whether to jump. At each interval, generates a random value (0.0-1.0) and jumps only if the value is ≤ `randomPercent`. Creates flickering or sporadic effects. Perfect for flames, glitches, or random sparkles.
 
 ### Animation Type Masks
 
@@ -487,11 +517,32 @@ void gfxLoadAnimateData(stAnimateData *animateData,
                        unsigned int startTick,
                        unsigned int typeMask, 
                        float animateTimeSec, 
-                       float accelPixPerSec, 
+                       float accelPixelPerSecX,
+                       float accelPixelPerSecY,
+                       float accelDegPerSec,
+                       float randomPercent,
                        bool isActive, 
                        bool rotateClockwise, 
-                       gfxLoopType loop);
+                       gfxLoopType loop,
+                       gfxAnimType animType);
 ```
+
+**Parameters:**
+- `animateData` - Pointer to animation data structure to populate
+- `animateSpriteId` - The sprite instance to animate
+- `startSpriteId` - Sprite instance defining starting state
+- `endSpriteId` - Sprite instance defining ending state  
+- `startTick` - Start time (usually 0 for immediate)
+- `typeMask` - Bitmask of properties to animate (see Animation Type Masks)
+- `animateTimeSec` - Duration or interval time in seconds
+- `accelPixelPerSecX` - X acceleration in pixels/sec² (GFX_ANIM_ACCL only)
+- `accelPixelPerSecY` - Y acceleration in pixels/sec² (GFX_ANIM_ACCL only)
+- `accelDegPerSec` - Rotation acceleration in degrees/sec² (GFX_ANIM_ACCL only)
+- `randomPercent` - Jump probability 0.0-1.0 (GFX_ANIM_JUMPRANDOM only)
+- `isActive` - Whether animation starts active
+- `rotateClockwise` - Rotation direction (GFX_ANIM_NORMAL with ANIMATE_ROTATE_MASK)
+- `loop` - Looping behavior (GFX_NOLOOP, GFX_RESTART, or GFX_REVERSE)
+- `animType` - Animation algorithm type
 
 #### gfxCreateAnimation()
 
@@ -502,7 +553,7 @@ Registers an animation with the system.
 bool gfxCreateAnimation(stAnimateData animateData, bool replaceExisting);
 ```
 
-**Complete Example - Sliding Door:**
+**Complete Example - Sliding Door (GFX_ANIM_NORMAL):**
 ```cpp
 // Load sprite
 m_leftDoorId = gfxLoadSprite("LeftDoor", "textures/DoorLeft.png", 
@@ -526,20 +577,25 @@ gfxLoadAnimateData(&animateData,
                    0,                   // Start immediately
                    ANIMATE_X_MASK,      // Animate X position only
                    1.25f,               // 1.25 seconds duration
-                   0.0f,                // No acceleration
+                   0.0f,                // No X acceleration
+                   0.0f,                // No Y acceleration
+                   0.0f,                // No rotation acceleration
+                   0.0f,                // No random percent
                    false,               // Not active yet
                    true,                // N/A for position
-                   GFX_NOLOOP);        // Play once
+                   GFX_NOLOOP,         // Play once
+                   GFX_ANIM_NORMAL);   // Linear interpolation
 
 // Register the animation
 gfxCreateAnimation(animateData, true);
 ```
 
-**Example - Pulsing Flame:**
+**Example - Flickering Flame (GFX_ANIM_JUMPRANDOM):**
 ```cpp
 m_flameId = gfxLoadSprite("Flame", "textures/flame.png", 
                          GFX_PNG, GFX_NOMAP, GFX_CENTER, 
                          false, true);
+gfxSetColor(m_flameId, 255, 255, 255, 92);
 
 // Small instance
 m_flameStartId = gfxInstanceSprite(m_flameId);
@@ -556,16 +612,20 @@ gfxLoadAnimateData(&animateData,
                    m_flameEndId, 
                    0, 
                    ANIMATE_SCALE_MASK,  // Animate scale
-                   1.0f,                // 1 second
-                   0.0f, 
+                   0.5f,                // Check every 0.5 seconds
+                   0.0f,                // No acceleration
+                   0.0f,                // No acceleration
+                   0.0f,                // No acceleration
+                   0.25f,               // 25% chance to jump
                    true,                // Start active
-                   true, 
-                   GFX_REVERSE);       // Ping-pong
+                   true,                // N/A for scale
+                   GFX_RESTART,        // Loop continuously
+                   GFX_ANIM_JUMPRANDOM); // Random jump animation
 
 gfxCreateAnimation(animateData, true);
 ```
 
-**Example - Text Fade In:**
+**Example - Text Fade In (GFX_ANIM_NORMAL):**
 ```cpp
 // Create transparent instance
 m_textStartId = gfxInstanceSprite(m_fontId);
@@ -583,10 +643,75 @@ gfxLoadAnimateData(&animateData,
                    0, 
                    ANIMATE_COLOR_MASK,  // Fade color/alpha
                    2.0f,                // 2 seconds
-                   0.0f, 
-                   true, 
-                   true, 
-                   GFX_NOLOOP);
+                   0.0f,                // No acceleration
+                   0.0f,                // No acceleration
+                   0.0f,                // No acceleration
+                   0.0f,                // No random percent
+                   true,                // Start active
+                   true,                // N/A for color
+                   GFX_NOLOOP,         // Play once
+                   GFX_ANIM_NORMAL);   // Linear interpolation
+
+gfxCreateAnimation(animateData, true);
+```
+
+**Example - Accelerating Projectile (GFX_ANIM_ACCL):**
+```cpp
+// Create start position
+m_projectileStartId = gfxInstanceSprite(m_projectileId);
+gfxSetXY(m_projectileStartId, 100, 400, false);
+gfxSetRotateDegrees(m_projectileStartId, 0.0f, false);
+
+// Create end position
+m_projectileEndId = gfxInstanceSprite(m_projectileId);
+gfxSetXY(m_projectileEndId, 700, 100, false);
+gfxSetRotateDegrees(m_projectileEndId, 180.0f, false);
+
+stAnimateData animateData;
+gfxLoadAnimateData(&animateData, 
+                   m_projectileId, 
+                   m_projectileStartId, 
+                   m_projectileEndId, 
+                   0, 
+                   ANIMATE_X_MASK | ANIMATE_Y_MASK | ANIMATE_ROTATE_MASK,
+                   3.0f,                // 3 seconds
+                   50.0f,               // X acceleration (pixels/sec²)
+                   -20.0f,              // Y acceleration (pixels/sec²)
+                   30.0f,               // Rotation acceleration (deg/sec²)
+                   0.0f,                // No random percent
+                   true,                // Start active
+                   true,                // Clockwise rotation
+                   GFX_NOLOOP,         // Play once
+                   GFX_ANIM_ACCL);     // Physics-based acceleration
+
+gfxCreateAnimation(animateData, true);
+```
+
+**Example - Teleporting Object (GFX_ANIM_JUMP):**
+```cpp
+// Define teleport area bounds
+m_objectStartId = gfxInstanceSprite(m_objectId);
+gfxSetXY(m_objectStartId, 100, 100, false);  // Top-left corner
+
+m_objectEndId = gfxInstanceSprite(m_objectId);
+gfxSetXY(m_objectEndId, 700, 400, false);    // Bottom-right corner
+
+stAnimateData animateData;
+gfxLoadAnimateData(&animateData, 
+                   m_objectId, 
+                   m_objectStartId, 
+                   m_objectEndId, 
+                   0, 
+                   ANIMATE_X_MASK | ANIMATE_Y_MASK,
+                   1.5f,                // Jump every 1.5 seconds
+                   0.0f,                // No acceleration
+                   0.0f,                // No acceleration
+                   0.0f,                // No acceleration
+                   0.0f,                // N/A for jump
+                   true,                // Start active
+                   true,                // N/A for position
+                   GFX_RESTART,        // Keep jumping
+                   GFX_ANIM_JUMP);     // Instant random jumps
 
 gfxCreateAnimation(animateData, true);
 ```
@@ -646,6 +771,50 @@ if (m_openDoors) {
     // Render door in closed position
     gfxRenderSprite(m_leftDoorId, 315, 112);
 }
+```
+
+### Animation Type Selection Guide
+
+**When to use each animation type:**
+
+| Animation Type | Best For | Loop Types | Notes |
+|---------------|----------|------------|-------|
+| **GFX_ANIM_NORMAL** | Doors, menus, fades, most animations | All | Smooth, predictable. Default choice. |
+| **GFX_ANIM_ACCL** | Projectiles, falling objects, realistic motion | NOLOOP, RESTART | Physics-based. Only affects X, Y, rotation. |
+| **GFX_ANIM_JUMP** | Teleportation, glitch effects, instant position changes | RESTART | Discrete jumps, no interpolation. |
+| **GFX_ANIM_JUMPRANDOM** | Flames, sparks, flickering lights, random effects | RESTART | Probabilistic. Use `randomPercent` to control frequency. |
+
+**Performance Considerations:**
+- **GFX_ANIM_NORMAL** is most efficient (simple linear interpolation)
+- **GFX_ANIM_ACCL** has moderate overhead (velocity calculations)
+- **GFX_ANIM_JUMP** and **GFX_ANIM_JUMPRANDOM** have similar cost (random number generation)
+- All animation types support the same property masks (ANIMATE_X_MASK, etc.)
+- Only X, Y, and rotation use acceleration in GFX_ANIM_ACCL; other properties use linear interpolation
+
+**Common Patterns:**
+
+*Smooth sliding motion:*
+```cpp
+// Use GFX_ANIM_NORMAL with X/Y masks
+gfxLoadAnimateData(&animData, sprite, start, end, 0, ANIMATE_X_MASK, 
+                   1.0f, 0.0f, 0.0f, 0.0f, 0.0f, true, true, 
+                   GFX_NOLOOP, GFX_ANIM_NORMAL);
+```
+
+*Realistic falling with gravity:*
+```cpp
+// Use GFX_ANIM_ACCL with negative Y acceleration
+gfxLoadAnimateData(&animData, sprite, start, end, 0, ANIMATE_Y_MASK, 
+                   2.0f, 0.0f, -100.0f, 0.0f, 0.0f, true, true, 
+                   GFX_NOLOOP, GFX_ANIM_ACCL);
+```
+
+*Flickering flame effect:*
+```cpp
+// Use GFX_ANIM_JUMPRANDOM with 25% probability
+gfxLoadAnimateData(&animData, sprite, start, end, 0, ANIMATE_SCALE_MASK, 
+                   0.5f, 0.0f, 0.0f, 0.0f, 0.25f, true, true, 
+                   GFX_RESTART, GFX_ANIM_JUMPRANDOM);
 ```
 
 ---
