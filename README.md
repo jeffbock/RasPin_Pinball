@@ -6,7 +6,7 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
 <img width="400" alt="RasPinStart" src="https://github.com/user-attachments/assets/6ad23313-8f80-4c98-af07-982c786c6f57" />
 <img width="363" alt="RasPin" src="https://github.com/user-attachments/assets/a15879aa-0a3b-4ca7-8cfd-c8a9cbe4cf9a" />
 
-# Current Features - This is a work in progress and changing constantly
+# Current Features - This is changing constantly as work continues...
 - Intended to be a hobby level, low cost system for creating full feature, half scale pinball machines with Raspberry Pi hardware
 - Cross platform VS Code environment for Raspberry Pi (full HW) and Windows (simulation / fast development)
 - Supports a primary Pinball HDMI screen, plus 2nd monitor support for ease of debug / development
