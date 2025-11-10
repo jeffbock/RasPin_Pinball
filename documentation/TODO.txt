@@ -5,7 +5,6 @@ Currently no planned work - that's pretty cool.
 
 ** Generic arch improvements
 Add some more interesting animation options (Any movement that makes animations better?)
-Add strucutre for "devices" in the pinball table - general class to control things that require multi-step operation to work - so game code can "fire and forget" vs. tightly control in the game loop.
 Add structure for pinball game state
     Super complicated state machine for normal gameplay (eg: the game) - probably need a class to / sub classes to manage the various pinball items
 
@@ -31,7 +30,6 @@ Nothing plan for now, but user guide should be updated as needed.  It's AI manag
 Refactor redudant input messages (output messages now not type (eg: flipper) specific) - do same for inputs?
 Bug: Fix sprite animation acceleration parameter
 Bug: Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
-Bug:  Sometimes the sequnce code missing restoring or starting properly... 
 Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
 Align sounds to less popping - align sample modes, use WAV?
 Protect input / output queues with mutex and make them multi-thread?  May not be needed with current design

@@ -11,6 +11,7 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
 - Cross platform VS Code environment for Raspberry Pi (full HW) and Windows (simulation / fast development)
 - Supports a primary Pinball HDMI screen, plus 2nd monitor support for ease of debug / development
 - Built on OpenGL ES for graphics rendering, with sprite, animation and text rendering support
+- Video playback through FFMPEG integrated into sprite / rendering system
 - Simplified HW architecture for easy debug, understanding and implemention
 - Message based input and output processing utilizing Raspberry Pi, and TI I2C IO and LED expanders optimized to decrease latency and minimize HW traffic
 - Automatic LED control and sequence animation for dynamic lighting effects
@@ -21,7 +22,6 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
 
 # Documentation
 - **[RasPin Overview](documentation/RasPin_Overview.md)** - **START HERE** - High-level architecture overview with diagrams and introduction to all documentation
-- **[Users Guide](documentation/UsersGuide.md)** - Complete framework guide for pinball programmers
 - **[How To Build](documentation/HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
 - **[FontGen Guide](documentation/FontGen_Guide.md)** - Font generation utility for creating custom fonts from TrueType files
 - **API Reference Documentation:**
@@ -30,7 +30,7 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
   - **[LED Control API](documentation/LED_Control_API.md)** - LED control, sequences, and animation patterns
   - **[PBDevice API](documentation/PBDevice_API.md)** - Device management framework for complex pinball mechanisms
   - **[Platform Init API](documentation/Platform_Init_API.md)** - Platform initialization, main loop, and configuration
-  - **[Game Creation API](documentation/Game_Creation_API.md)** - Graphics (PBGfx), sound (PBSound), sprites, animations, and screen management 
+  - **[Game Creation API](documentation/Game_Creation_API.md)** - Graphics (PBGfx), sound (PBSound), video playback (PBVideoPlayer), sprites, animations, and screen management 
 
 # Design and Development guidelines
 -  Actual machine based on Raspberry Pi 5 and PiOS for ease of development and debug.  Full power of Linux OS.  
