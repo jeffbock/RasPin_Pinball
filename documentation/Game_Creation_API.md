@@ -463,7 +463,7 @@ Different animation behaviors for various effects:
 enum gfxAnimType {
     GFX_ANIM_NORMAL = 0,      // Linear interpolation, no acceleration
     GFX_ANIM_ACCL = 1,        // Physics-based acceleration (X, Y, Rotation only)
-    GFX_ANIM_JUMP = 2,        // Jump to random position at time intervals
+    GFX_ANIM_JUMP = 2,        // Jump from start to end instance at time intervals
     GFX_ANIM_JUMPRANDOM = 3   // Randomly jump based on probability
 };
 ```
@@ -472,9 +472,9 @@ enum gfxAnimType {
 
 **GFX_ANIM_ACCL**: Applies physics-based acceleration to X position, Y position, and rotation. Other properties (scale, color, etc.) use linear interpolation. The sprite accelerates from rest using the specified acceleration values. For GFX_REVERSE loops, velocity resets to zero and acceleration reverses direction at endpoints.
 
-**GFX_ANIM_JUMP**: At each time interval (`animateTimeSec`), randomly picks new values between start and end for all animated properties. Creates instant "teleport" effect. GFX_NOLOOP performs one jump only. GFX_RESTART and GFX_REVERSE both continue jumping indefinitely.
+**GFX_ANIM_JUMP**: At each time interval (`animateTimeSec`), instantly sets the sprite to the end instance values. No interpolation or randomness - creates a discrete "snap" from start to end. GFX_NOLOOP performs one jump only. GFX_RESTART continues jumping from start to end repeatedly. GFX_REVERSE alternates between start and end positions.
 
-**GFX_ANIM_JUMPRANDOM**: Similar to GFX_ANIM_JUMP but uses `randomPercent` to probabilistically decide whether to jump. At each interval, generates a random value (0.0-1.0) and jumps only if the value is ≤ `randomPercent`. Creates flickering or sporadic effects. Perfect for flames, glitches, or random sparkles.
+**GFX_ANIM_JUMPRANDOM**: At each time interval, randomly picks values between start and end for all animated properties. Uses `randomPercent` to probabilistically decide whether to jump. At each interval, generates a random value (0.0-1.0) and jumps only if the value is ≤ `randomPercent`. Creates flickering or sporadic effects. Perfect for flames, glitches, or random sparkles.
 
 ### Animation Type Masks
 
@@ -687,31 +687,31 @@ gfxLoadAnimateData(&animateData,
 gfxCreateAnimation(animateData, true);
 ```
 
-**Example - Teleporting Object (GFX_ANIM_JUMP):**
+**Example - Blinking Indicator (GFX_ANIM_JUMP):**
 ```cpp
-// Define teleport area bounds
-m_objectStartId = gfxInstanceSprite(m_objectId);
-gfxSetXY(m_objectStartId, 100, 100, false);  // Top-left corner
+// Create indicator with two states - off and on
+m_indicatorOffId = gfxInstanceSprite(m_indicatorId);
+gfxSetColor(m_indicatorOffId, 50, 50, 50, 255);  // Dim/off state
 
-m_objectEndId = gfxInstanceSprite(m_objectId);
-gfxSetXY(m_objectEndId, 700, 400, false);    // Bottom-right corner
+m_indicatorOnId = gfxInstanceSprite(m_indicatorId);
+gfxSetColor(m_indicatorOnId, 255, 0, 0, 255);    // Bright red/on state
 
 stAnimateData animateData;
 gfxLoadAnimateData(&animateData, 
-                   m_objectId, 
-                   m_objectStartId, 
-                   m_objectEndId, 
+                   m_indicatorId, 
+                   m_indicatorOffId, 
+                   m_indicatorOnId, 
                    0, 
-                   ANIMATE_X_MASK | ANIMATE_Y_MASK,
-                   1.5f,                // Jump every 1.5 seconds
+                   ANIMATE_COLOR_MASK,
+                   0.5f,                // Jump every 0.5 seconds
                    0.0f,                // No acceleration
                    0.0f,                // No acceleration
                    0.0f,                // No acceleration
                    0.0f,                // N/A for jump
                    true,                // Start active
-                   true,                // N/A for position
-                   GFX_RESTART,        // Keep jumping
-                   GFX_ANIM_JUMP);     // Instant random jumps
+                   true,                // N/A for color
+                   GFX_REVERSE,        // Alternate between states
+                   GFX_ANIM_JUMP);     // Instant state changes
 
 gfxCreateAnimation(animateData, true);
 ```
@@ -781,13 +781,14 @@ if (m_openDoors) {
 |---------------|----------|------------|-------|
 | **GFX_ANIM_NORMAL** | Doors, menus, fades, most animations | All | Smooth, predictable. Default choice. |
 | **GFX_ANIM_ACCL** | Projectiles, falling objects, realistic motion | NOLOOP, RESTART | Physics-based. Only affects X, Y, rotation. |
-| **GFX_ANIM_JUMP** | Teleportation, glitch effects, instant position changes | RESTART | Discrete jumps, no interpolation. |
+| **GFX_ANIM_JUMP** | Blinking indicators, toggle states, discrete changes | ALL | Instant snap from start to end. No interpolation or randomness. |
 | **GFX_ANIM_JUMPRANDOM** | Flames, sparks, flickering lights, random effects | RESTART | Probabilistic. Use `randomPercent` to control frequency. |
 
 **Performance Considerations:**
 - **GFX_ANIM_NORMAL** is most efficient (simple linear interpolation)
 - **GFX_ANIM_ACCL** has moderate overhead (velocity calculations)
-- **GFX_ANIM_JUMP** and **GFX_ANIM_JUMPRANDOM** have similar cost (random number generation)
+- **GFX_ANIM_JUMP** is very efficient (direct value assignment, no calculations)
+- **GFX_ANIM_JUMPRANDOM** has moderate cost (random number generation)
 - All animation types support the same property masks (ANIMATE_X_MASK, etc.)
 - Only X, Y, and rotation use acceleration in GFX_ANIM_ACCL; other properties use linear interpolation
 

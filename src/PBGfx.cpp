@@ -1185,75 +1185,46 @@ void PBGfx::gfxAnimateAcceleration(stAnimateData& animateData, unsigned int curr
             (m_instanceList[animateData.endSpriteId].v1 - m_instanceList[animateData.startSpriteId].v1) * percentComplete;
 }
 
-// GFX_ANIM_JUMP: Jump to random position when time expires
+// GFX_ANIM_JUMP: Jump from start to end instance when time expires
 void PBGfx::gfxAnimateJump(stAnimateData& animateData, unsigned int currentTick, float timeSinceStart) {
     // Check if it's time to jump
     float percentComplete = timeSinceStart / animateData.animateTimeSec;
     
     if (percentComplete >= 1.0f) {
-        // Time to jump - pick random values between start and end for all animated properties
+        // Time to jump - set to end instance values for all animated properties
         if (animateData.typeMask & ANIMATE_X_MASK) {
-            int startX = m_instanceList[animateData.startSpriteId].x;
-            int endX = m_instanceList[animateData.endSpriteId].x;
-            int minX = std::min(startX, endX);
-            int maxX = std::max(startX, endX);
-            m_instanceList[animateData.animateSpriteId].x = minX + (int)(gfxGetRandomFloat(0.0f, 1.0f) * (maxX - minX));
+            m_instanceList[animateData.animateSpriteId].x = m_instanceList[animateData.endSpriteId].x;
         }
         
         if (animateData.typeMask & ANIMATE_Y_MASK) {
-            int startY = m_instanceList[animateData.startSpriteId].y;
-            int endY = m_instanceList[animateData.endSpriteId].y;
-            int minY = std::min(startY, endY);
-            int maxY = std::max(startY, endY);
-            m_instanceList[animateData.animateSpriteId].y = minY + (int)(gfxGetRandomFloat(0.0f, 1.0f) * (maxY - minY));
+            m_instanceList[animateData.animateSpriteId].y = m_instanceList[animateData.endSpriteId].y;
         }
         
         if (animateData.typeMask & ANIMATE_SCALE_MASK) {
-            float startScale = m_instanceList[animateData.startSpriteId].scaleFactor;
-            float endScale = m_instanceList[animateData.endSpriteId].scaleFactor;
-            m_instanceList[animateData.animateSpriteId].scaleFactor = startScale + gfxGetRandomFloat(0.0f, 1.0f) * (endScale - startScale);
+            m_instanceList[animateData.animateSpriteId].scaleFactor = m_instanceList[animateData.endSpriteId].scaleFactor;
         }
         
         if (animateData.typeMask & ANIMATE_ROTATE_MASK) {
-            float startDeg = m_instanceList[animateData.startSpriteId].rotateDegrees;
-            float endDeg = m_instanceList[animateData.endSpriteId].rotateDegrees;
-            m_instanceList[animateData.animateSpriteId].rotateDegrees = startDeg + gfxGetRandomFloat(0.0f, 1.0f) * (endDeg - startDeg);
+            m_instanceList[animateData.animateSpriteId].rotateDegrees = m_instanceList[animateData.endSpriteId].rotateDegrees;
         }
         
         if (animateData.typeMask & ANIMATE_TEXALPHA_MASK) {
-            float startAlpha = m_instanceList[animateData.startSpriteId].textureAlpha;
-            float endAlpha = m_instanceList[animateData.endSpriteId].textureAlpha;
-            m_instanceList[animateData.animateSpriteId].textureAlpha = startAlpha + gfxGetRandomFloat(0.0f, 1.0f) * (endAlpha - startAlpha);
+            m_instanceList[animateData.animateSpriteId].textureAlpha = m_instanceList[animateData.endSpriteId].textureAlpha;
         }
         
         if (animateData.typeMask & ANIMATE_COLOR_MASK) {
-            float startRed = m_instanceList[animateData.startSpriteId].vertRed;
-            float endRed = m_instanceList[animateData.endSpriteId].vertRed;
-            m_instanceList[animateData.animateSpriteId].vertRed = startRed + gfxGetRandomFloat(0.0f, 1.0f) * (endRed - startRed);
-            
-            float startGreen = m_instanceList[animateData.startSpriteId].vertGreen;
-            float endGreen = m_instanceList[animateData.endSpriteId].vertGreen;
-            m_instanceList[animateData.animateSpriteId].vertGreen = startGreen + gfxGetRandomFloat(0.0f, 1.0f) * (endGreen - startGreen);
-            
-            float startBlue = m_instanceList[animateData.startSpriteId].vertBlue;
-            float endBlue = m_instanceList[animateData.endSpriteId].vertBlue;
-            m_instanceList[animateData.animateSpriteId].vertBlue = startBlue + gfxGetRandomFloat(0.0f, 1.0f) * (endBlue - startBlue);
-            
-            float startAlpha = m_instanceList[animateData.startSpriteId].vertAlpha;
-            float endAlpha = m_instanceList[animateData.endSpriteId].vertAlpha;
-            m_instanceList[animateData.animateSpriteId].vertAlpha = startAlpha + gfxGetRandomFloat(0.0f, 1.0f) * (endAlpha - startAlpha);
+            m_instanceList[animateData.animateSpriteId].vertRed = m_instanceList[animateData.endSpriteId].vertRed;
+            m_instanceList[animateData.animateSpriteId].vertGreen = m_instanceList[animateData.endSpriteId].vertGreen;
+            m_instanceList[animateData.animateSpriteId].vertBlue = m_instanceList[animateData.endSpriteId].vertBlue;
+            m_instanceList[animateData.animateSpriteId].vertAlpha = m_instanceList[animateData.endSpriteId].vertAlpha;
         }
         
         if (animateData.typeMask & ANIMATE_U_MASK) {
-            float startU = m_instanceList[animateData.startSpriteId].u1;
-            float endU = m_instanceList[animateData.endSpriteId].u1;
-            m_instanceList[animateData.animateSpriteId].u1 = startU + gfxGetRandomFloat(0.0f, 1.0f) * (endU - startU);
+            m_instanceList[animateData.animateSpriteId].u1 = m_instanceList[animateData.endSpriteId].u1;
         }
         
         if (animateData.typeMask & ANIMATE_V_MASK) {
-            float startV = m_instanceList[animateData.startSpriteId].v1;
-            float endV = m_instanceList[animateData.endSpriteId].v1;
-            m_instanceList[animateData.animateSpriteId].v1 = startV + gfxGetRandomFloat(0.0f, 1.0f) * (endV - startV);
+            m_instanceList[animateData.animateSpriteId].v1 = m_instanceList[animateData.endSpriteId].v1;
         }
         
         // Reset timer for next jump (handled by loop logic in main function)
