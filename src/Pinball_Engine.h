@@ -311,6 +311,10 @@ public:
     unsigned int m_PBTBLTextStartId, m_PBTBLTextEndId;
     bool m_PBTBLStartDoorsDone, m_PBTBLOpenDoors;
 
+    // ===== DEBUG TEST CODE - REMOVE AFTER TESTING =====
+    unsigned int m_TestFlame1Id, m_TestFlame2Id, m_TestFlame3Id;
+    // ===== END DEBUG TEST CODE =====
+
     bool m_RestartTable;
 private:
 

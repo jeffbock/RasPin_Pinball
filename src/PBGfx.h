@@ -241,10 +241,12 @@ public:
     bool          gfxAnimateClear(unsigned int animateSpriteId);
     bool          gfxAnimateRestart(unsigned int animateSpriteId);
     bool          gfxAnimateRestart(unsigned int animateSpriteId, unsigned long startTick);
-    void          gfxLoadAnimateData(stAnimateData *animateData, unsigned int animateSpriteId, unsigned int startSpriteId, unsigned int endSpriteId, unsigned int startTick, 
-                                     unsigned int typeMask, float animateTimeSec, float accelPixelPerSecX, float accelPixelPerSecY, float accelDegPerSec, 
-                                     float randomPercent, float initialVelocityX, float initialVelocityY, float initialVelocityDeg, 
-                                     bool isActive, bool rotateClockwise, gfxLoopType loop, gfxAnimType animType);
+    void          gfxLoadAnimateData(stAnimateData *animateData, unsigned int animateSpriteId, unsigned int startSpriteId, unsigned int endSpriteId, 
+                                     unsigned int typeMask, float animateTimeSec, bool isActive, gfxLoopType loop, gfxAnimType animType, 
+                                     unsigned int startTick, float accelPixelPerSecX, float accelPixelPerSecY, float accelDegPerSec, 
+                                     float randomPercent, bool rotateClockwise, float initialVelocityX, float initialVelocityY, float initialVelocityDeg);
+    void          gfxLoadAnimateDataShort(stAnimateData *animateData, unsigned int animateSpriteId, unsigned int startSpriteId, unsigned int endSpriteId, 
+                                          unsigned int typeMask, float animateTimeSec, bool isActive, gfxLoopType loop, gfxAnimType animType);
 
     // Rendering functions
     void         gfxSwap();

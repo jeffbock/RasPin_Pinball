@@ -31,7 +31,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetXY(m_PBTBLeftDoorStartId, ACTIVEDISPX + 315, ACTIVEDISPY + 112, false); 
     m_PBTBLeftDoorEndId = gfxInstanceSprite(m_PBTBLLeftDoorId);
     gfxSetXY(m_PBTBLeftDoorEndId, ACTIVEDISPX + 90, ACTIVEDISPY + 112, false); 
-    gfxLoadAnimateData(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, 0, ANIMATE_X_MASK, 1.25f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, false, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
+    gfxLoadAnimateDataShort(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, ANIMATE_X_MASK, 1.25f, false, GFX_NOLOOP, GFX_ANIM_NORMAL);
     gfxCreateAnimation(animateData, true);
 
     m_PBTBLRightDoorId = gfxLoadSprite("RightDoor", "src/resources/textures/DoorRight2.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
@@ -39,7 +39,7 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetXY(m_PBTBRightDoorStartId, ACTIVEDISPX + 460, ACTIVEDISPY + 112, false);
     m_PBTBRightDoorEndId = gfxInstanceSprite(m_PBTBLRightDoorId);
     gfxSetXY(m_PBTBRightDoorEndId, ACTIVEDISPX + 754, ACTIVEDISPY + 112, false);
-    gfxLoadAnimateData(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, 0, ANIMATE_X_MASK, 1.25f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, false, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
+    gfxLoadAnimateDataShort(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, ANIMATE_X_MASK, 1.25f, false, GFX_NOLOOP, GFX_ANIM_NORMAL);
     gfxCreateAnimation(animateData, true);
     
     m_PBTBLDoorDragonId = gfxLoadSprite("DoorDragon", "src/resources/textures/Dragon.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
@@ -57,7 +57,9 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
 
     m_PBTBLFlame1EndId = gfxInstanceSprite(m_PBTBLFlame1Id, 2, 2, 92, 255, 255, 255, 92, 1.25f, 4.0f);
 
-    gfxLoadAnimateData(&animateData, m_PBTBLFlame1Id, m_PBTBLFlame1StartId, m_PBTBLFlame1EndId, 0, ANIMATE_SCALE_MASK | ANIMATE_X_MASK | ANIMATE_Y_MASK | ANIMATE_ROTATE_MASK, 0.1f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
+    gfxLoadAnimateData(&animateData, m_PBTBLFlame1Id, m_PBTBLFlame1StartId, m_PBTBLFlame1EndId, 
+                       ANIMATE_SCALE_MASK | ANIMATE_X_MASK | ANIMATE_Y_MASK | ANIMATE_ROTATE_MASK, 0.1f, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM,
+                       0, 0.0f, 0.0f, 0.0f, 0.6f, true, 0.0f, 0.0f, 0.0f);
     gfxCreateAnimation(animateData, true);
 
     m_PBTBLFlame2Id = gfxLoadSprite("Flame2", "src/resources/textures/flame2.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
@@ -68,7 +70,9 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
 
     m_PBTBLFlame2EndId = gfxInstanceSprite(m_PBTBLFlame2Id, 2, 2, 92, 255, 255, 255, 92, 1.25f, 4.0f);
 
-    gfxLoadAnimateData(&animateData, m_PBTBLFlame2Id, m_PBTBLFlame2StartId, m_PBTBLFlame2EndId, 0, ANIMATE_SCALE_MASK | ANIMATE_X_MASK | ANIMATE_Y_MASK | ANIMATE_ROTATE_MASK, 0.1f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
+    gfxLoadAnimateData(&animateData, m_PBTBLFlame2Id, m_PBTBLFlame2StartId, m_PBTBLFlame2EndId, 
+                       ANIMATE_SCALE_MASK | ANIMATE_X_MASK | ANIMATE_Y_MASK | ANIMATE_ROTATE_MASK, 0.1f, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM,
+                       0, 0.0f, 0.0f, 0.0f, 0.6f, true, 0.0f, 0.0f, 0.0f);
     gfxCreateAnimation(animateData, true);
     
     m_PBTBLFlame3Id = gfxLoadSprite("Flame3", "src/resources/textures/flame3.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
@@ -79,7 +83,9 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     
     m_PBTBLFlame3EndId = gfxInstanceSprite(m_PBTBLFlame3Id, 2, 2, 92, 255, 255, 255, 92, 1.25f, 4.0f);
 
-    gfxLoadAnimateData(&animateData, m_PBTBLFlame3Id, m_PBTBLFlame3StartId, m_PBTBLFlame3EndId, 0, ANIMATE_SCALE_MASK | ANIMATE_X_MASK | ANIMATE_Y_MASK | ANIMATE_ROTATE_MASK, 0.1f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, true, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM);
+    gfxLoadAnimateData(&animateData, m_PBTBLFlame3Id, m_PBTBLFlame3StartId, m_PBTBLFlame3EndId, 
+                       ANIMATE_SCALE_MASK | ANIMATE_X_MASK | ANIMATE_Y_MASK | ANIMATE_ROTATE_MASK, 0.1f, true, GFX_RESTART, GFX_ANIM_JUMPRANDOM,
+                       0, 0.0f, 0.0f, 0.0f, 0.6f, true, 0.0f, 0.0f, 0.0f);
     gfxCreateAnimation(animateData, true);
 
     // Create the fade animation instances for the text
@@ -87,8 +93,44 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetColor(m_PBTBLTextStartId, 0, 0, 0, 0);
     m_PBTBLTextEndId = gfxInstanceSprite(m_StartMenuFontId);
     gfxSetColor(m_PBTBLTextEndId, 255, 255, 255, 255);
-    gfxLoadAnimateData(&animateData, m_StartMenuFontId, m_PBTBLTextStartId, m_PBTBLTextEndId, 0, ANIMATE_COLOR_MASK, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, true, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
+    gfxLoadAnimateDataShort(&animateData, m_StartMenuFontId, m_PBTBLTextStartId, m_PBTBLTextEndId, ANIMATE_COLOR_MASK, 2.0f, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
     gfxCreateAnimation(animateData, true);
+
+    // ===== DEBUG TEST CODE - REMOVE AFTER TESTING =====
+    // Test acceleration animation: flame moves from upper-left to lower-right with acceleration
+    m_TestFlame1Id = gfxLoadSprite("TestFlame1", "src/resources/textures/flame1.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
+    gfxSetColor(m_TestFlame1Id, 255, 255, 0, 255); // Yellow for visibility
+    gfxSetScaleFactor(m_TestFlame1Id, 1.5, false);
+    
+    // Start position: upper-left of active display area
+    m_TestFlame2Id = gfxInstanceSprite(m_TestFlame1Id);
+    gfxSetXY(m_TestFlame2Id, ACTIVEDISPX + 100, ACTIVEDISPY + 100, false);
+    
+    // End position: lower-right of active display area
+    m_TestFlame3Id = gfxInstanceSprite(m_TestFlame1Id);
+    gfxSetXY(m_TestFlame3Id, ACTIVEDISPX + 1023, ACTIVEDISPY + 767, false);
+    
+    // Create acceleration animation: 10 seconds, X and Y accel = 5 pixels/sec²
+    gfxLoadAnimateData(&animateData, 
+                       m_TestFlame1Id,          // Sprite to animate
+                       m_TestFlame2Id,          // Start instance (upper-left)
+                       m_TestFlame3Id,          // End instance (lower-right)
+                       ANIMATE_X_MASK | ANIMATE_Y_MASK | ANIMATE_ROTATE_MASK,  // Animate X and Y position
+                       4.0f,                   // 10 seconds duration
+                       false,                   // Not active yet (will activate in render)
+                       GFX_RESTART,             // Play once
+                       GFX_ANIM_ACCL,          // Acceleration animation
+                       0,                       // Start immediately
+                       200.0f,                    // X acceleration: 5 pixels/sec²
+                       300.0f,                    // Y acceleration: 5 pixels/sec²
+                       10.0f,                    // No rotation acceleration
+                       0.0f,                    // No random percent
+                       true,                    // Clockwise (N/A for position)
+                       20.0f,                    // Initial X velocity
+                       10.0f,                    // Initial Y velocity
+                       5.0f);                   // Initial rotation velocity
+    gfxCreateAnimation(animateData, true);
+    // ===== END DEBUG TEST CODE =====
 
     // Note:  So many things to check for loading, it's not worth doing.  Assume the sprites will be loaded.  If texture fails, it will just render incorrectly.
 
@@ -152,6 +194,11 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     gfxRenderSprite(m_PBTBLFlame1Id, ACTIVEDISPX + 852, ACTIVEDISPY + 392);
     gfxRenderSprite(m_PBTBLFlame2Id, ACTIVEDISPX + 852, ACTIVEDISPY + 392);
     gfxRenderSprite(m_PBTBLFlame3Id, ACTIVEDISPX + 852, ACTIVEDISPY + 392);
+
+    // ===== DEBUG TEST CODE - REMOVE AFTER TESTING ====
+    // gfxAnimateSprite(m_TestFlame1Id, currentTick);
+    // gfxRenderSprite(m_TestFlame1Id);  // Render at animated position
+    // ===== END DEBUG TEST CODE =====
 
     if (lastScreenState != m_tableScreenState) {
         timeoutTicks = 18000; // Reset the timeout if we change screens
