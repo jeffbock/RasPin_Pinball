@@ -66,6 +66,13 @@ enum gfxTextJustify {
     GFX_TJEND
 };
 
+struct stBoundingBox {
+    int x1;  // Upper Left
+    int y1;  // Upper Left
+    int x2;  // Lower Right
+    int y2;  // Lower Right
+};
+
 // Define a struct for sprite information
 struct stSpriteInfo {
     // Input information for sprites, the calling app will supply these values and can change some of them

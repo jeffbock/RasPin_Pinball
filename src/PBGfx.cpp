@@ -605,7 +605,7 @@ void PBGfx::gfxClear(float red, float blue, float green, float alpha, bool doFli
 }
 
 void PBGfx::gfxSetScissor(bool enable, stBoundingBox rect){
-    oglSetScissor(enable, rect);
+    oglSetScissor(enable, rect.x1, rect.y1, rect.x2, rect.y2);
 }
 
 // Set function for scaleFactor
