@@ -27,6 +27,14 @@
 #define OGLES_BLACKCOLOR 0x0 
 #define OGLES_WHITECOLOR 0x1
 
+// Scissor rect structure (shared with PBGfx)
+struct stBoundingBox {
+    int x1;  // Upper Left X
+    int y1;  // Upper Left Y
+    int x2;  // Lower Right X
+    int y2;  // Lower Right Y
+};
+
 // Define a class for the OGL ES code
 class PBOGLES {
 
@@ -46,6 +54,7 @@ public:
     bool oglInit (long width, long height, NativeWindowType nativeWindow) ;
     bool oglClear (float red, float blue, float green, float alpha, bool doFlip);
     bool oglSwap (bool flush);
+    void oglSetScissor (bool enable, stBoundingBox rect);
     unsigned int oglGetScreenHeight();
     unsigned int oglGetScreenWidth();
 
