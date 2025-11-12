@@ -219,6 +219,7 @@ public:
     void         gfxSwap();
     void         gfxSwap(bool flush);
     void         gfxClear(float red, float blue, float green, float alpha, bool doFlip);
+    void         gfxSetScissor(bool enable, stBoundingBox rect);
 
     // System Clock Function
     unsigned long GetTickCountGfx();
