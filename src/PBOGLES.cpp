@@ -172,6 +172,29 @@ bool PBOGLES::oglSwap(bool flush){
     return (true);
 }
 
+// Set or disable scissor test using OpenGL ES 3.1
+void PBOGLES::oglSetScissor(bool enable, stBoundingBox rect) {
+    if (enable) {
+        // Enable scissor test
+        glEnable(GL_SCISSOR_TEST);
+        
+        // Convert screen space coordinates to OpenGL scissor coordinates
+        // OpenGL scissor uses bottom-left origin, so we need to convert Y coordinate
+        // rect.x1, rect.y1 = upper left corner
+        // rect.x2, rect.y2 = lower right corner
+        int x = rect.x1;
+        int y = m_height - rect.y2;  // Convert from top-left to bottom-left origin
+        int width = rect.x2 - rect.x1;
+        int height = rect.y2 - rect.y1;
+        
+        // Set the scissor rectangle
+        glScissor(x, y, width, height);
+    } else {
+        // Disable scissor test
+        glDisable(GL_SCISSOR_TEST);
+    }
+}
+
 // Function to compile shader
 GLuint PBOGLES::oglCompileShader(GLenum type, const char* source) {
     GLuint shader = glCreateShader(type);

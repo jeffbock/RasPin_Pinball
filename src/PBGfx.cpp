@@ -604,6 +604,10 @@ void PBGfx::gfxClear(float red, float blue, float green, float alpha, bool doFli
     oglClear(red, blue, green, alpha, doFlip);
 }
 
+void PBGfx::gfxSetScissor(bool enable, stBoundingBox rect){
+    oglSetScissor(enable, rect);
+}
+
 // Set function for scaleFactor
 unsigned int PBGfx::gfxSetScaleFactor(unsigned int spriteId, float scaleFactor, bool addFactor) {
     auto it = m_instanceList.find(spriteId);
