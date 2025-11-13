@@ -12,6 +12,9 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #endif
 
 // Choose the EXE mode for the code - Windows is used for developent / debug, Rasberry Pi is used for the final build
@@ -57,7 +60,7 @@
 // Version Information
 #define PB_VERSION_MAJOR 0
 #define PB_VERSION_MINOR 5  
-#define PB_VERSION_BUILD 218
+#define PB_VERSION_BUILD 333
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 1920
