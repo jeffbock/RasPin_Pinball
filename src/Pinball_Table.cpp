@@ -110,25 +110,28 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     m_TestFlame3Id = gfxInstanceSprite(m_TestFlame1Id);
     gfxSetXY(m_TestFlame3Id, ACTIVEDISPX + 1023, ACTIVEDISPY + 767, false);
     
-    // Create acceleration animation: 10 seconds, X and Y accel = 5 pixels/sec²
+    // Set the animated sprite to start position
+    gfxSetXY(m_TestFlame1Id, ACTIVEDISPX + 100, ACTIVEDISPY + 100, false);
+    
+    // Create acceleration animation: 4 seconds, X and Y accel with initial velocity
     gfxLoadAnimateData(&animateData, 
                        m_TestFlame1Id,          // Sprite to animate
                        m_TestFlame2Id,          // Start instance (upper-left)
                        m_TestFlame3Id,          // End instance (lower-right)
                        ANIMATE_X_MASK | ANIMATE_Y_MASK | ANIMATE_ROTATE_MASK,  // Animate X and Y position
-                       4.0f,                   // 10 seconds duration
-                       false,                   // Not active yet (will activate in render)
-                       GFX_RESTART,             // Play once
-                       GFX_ANIM_ACCL,          // Acceleration animation
-                       0,                       // Start immediately
-                       200.0f,                    // X acceleration: 5 pixels/sec²
-                       300.0f,                    // Y acceleration: 5 pixels/sec²
-                       10.0f,                    // No rotation acceleration
-                       0.0f,                    // No random percent
+                       1.0f,                   // 4 seconds duration
+                       true,                   // Not active yet (will be activated via gfxAnimateRestart)
+                       GFX_NOLOOP,             // Play once
+                       GFX_ANIM_JUMP,          // Normal animation
+                       0,                       // Start immediately (will be reset by gfxAnimateRestart)
+                       200.0f,                    // X acceleration: 200 pixels/sec²
+                       300.0f,                    // Y acceleration: 300 pixels/sec²
+                       10.0f,                    // Rotation acceleration: 10 deg/sec²
+                       0.9f,                    // No random percent
                        true,                    // Clockwise (N/A for position)
-                       20.0f,                    // Initial X velocity
-                       10.0f,                    // Initial Y velocity
-                       5.0f);                   // Initial rotation velocity
+                       20.0f,                    // Initial X velocity: 20 pixels/sec
+                       10.0f,                    // Initial Y velocity: 10 pixels/sec
+                       5.0f);                   // Initial rotation velocity: 5 deg/sec
     gfxCreateAnimation(animateData, true);
     // ===== END DEBUG TEST CODE =====
 
@@ -196,8 +199,8 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     gfxRenderSprite(m_PBTBLFlame3Id, ACTIVEDISPX + 852, ACTIVEDISPY + 392);
 
     // ===== DEBUG TEST CODE - REMOVE AFTER TESTING ====
-    // gfxAnimateSprite(m_TestFlame1Id, currentTick);
-    // gfxRenderSprite(m_TestFlame1Id);  // Render at animated position
+     gfxAnimateSprite(m_TestFlame1Id, currentTick);
+     gfxRenderSprite(m_TestFlame1Id);  // Render at animated position
     // ===== END DEBUG TEST CODE =====
 
     if (lastScreenState != m_tableScreenState) {

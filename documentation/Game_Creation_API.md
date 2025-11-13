@@ -376,6 +376,77 @@ gfxRenderString(m_fontId, text, centerX, 100, 1, GFX_TEXTLEFT);
 
 ---
 
+## Rendering Control
+
+### gfxSetScissor()
+
+Restricts rendering to a specific rectangular region of the screen. Any pixels outside this region are discarded (clipped). Useful for creating scrollable areas, split-screen effects, or confining animations to specific zones.
+
+**Signature:**
+```cpp
+void gfxSetScissor(bool enable, stBoundingBox rect);
+```
+
+**Parameters:**
+- `enable` - `true` to activate scissor test, `false` to disable and render to full screen
+- `rect` - Bounding box defining the clipping region (only used when `enable` is `true`)
+
+**stBoundingBox Structure:**
+```cpp
+struct stBoundingBox {
+    int x1;  // Upper left X coordinate
+    int y1;  // Upper left Y coordinate
+    int x2;  // Lower right X coordinate
+    int y2;  // Lower right Y coordinate
+};
+```
+
+**Example - Restrict rendering to center area:**
+```cpp
+// Define a 500x400 region in the center of a 1920x1080 screen
+stBoundingBox clipRegion;
+clipRegion.x1 = 710;   // (1920-500)/2
+clipRegion.y1 = 340;   // (1080-400)/2
+clipRegion.x2 = 1210;  // 710 + 500
+clipRegion.y2 = 740;   // 340 + 400
+
+// Enable scissor - only this region will be visible
+gfxSetScissor(true, clipRegion);
+
+// Render sprites - only portions inside the region will appear
+gfxRenderSprite(m_backgroundId, 0, 0);
+gfxRenderSprite(m_animatedId);
+
+// Disable scissor to resume normal full-screen rendering
+gfxSetScissor(false, clipRegion);  // rect parameter ignored when disabling
+```
+
+**Example - Split screen effect:**
+```cpp
+// Render left half
+stBoundingBox leftHalf = {0, 0, PB_SCREENWIDTH/2, PB_SCREENHEIGHT};
+gfxSetScissor(true, leftHalf);
+gfxRenderSprite(m_player1View, 0, 0);
+
+// Render right half
+stBoundingBox rightHalf = {PB_SCREENWIDTH/2, 0, PB_SCREENWIDTH, PB_SCREENHEIGHT};
+gfxSetScissor(true, rightHalf);
+gfxRenderSprite(m_player2View, PB_SCREENWIDTH/2, 0);
+
+// Return to full screen
+gfxSetScissor(false, leftHalf);
+```
+
+**Notes:**
+- Scissor test is performed in screen coordinates after all transformations
+- Coordinates are in pixels with origin at upper-left corner (0, 0)
+- Rectangle must have x2 > x1 and y2 > y1
+- Scissor test persists until explicitly disabled
+- Text rendering is also affected by scissor test
+- Always disable scissor when done to avoid unintended clipping in subsequent frames
+
+---
+
 ## Sprite Instances
 
 Instances allow multiple renderable versions of the same sprite with different properties.
@@ -473,13 +544,19 @@ enum gfxAnimType {
 };
 ```
 
-**GFX_ANIM_NORMAL**: Standard linear interpolation between start and end states. Smooth, predictable motion. Use for most animations.
+**GFX_ANIM_NORMAL**: Standard linear interpolation between start and end states. Smooth, predictable motion. Use for most animations. With GFX_RESTART, the animation resets to start position and repeats. With GFX_REVERSE, the animation ping-pongs back and forth between start and end.
 
-**GFX_ANIM_ACCL**: Applies physics-based acceleration to X position, Y position, and rotation. Other properties (scale, color, etc.) use linear interpolation. The sprite uses initial velocity values and accelerates over time. For GFX_RESTART loops, velocity resets to initial values. For GFX_REVERSE loops, current velocity is preserved but acceleration direction reverses at endpoints.
+**GFX_ANIM_ACCL**: Applies physics-based acceleration to X position, Y position, and rotation. Other properties (scale, color, etc.) use linear interpolation. The sprite uses initial velocity values and accelerates over time according to the acceleration parameters. The animation completes when the sprite reaches the target end position. For GFX_RESTART loops, velocity resets to initial values. GFX_REVERSE is not supported for acceleration animations.
 
-**GFX_ANIM_JUMP**: At each time interval (`animateTimeSec`), instantly sets the sprite to the end instance values. No interpolation or randomness - creates a discrete "snap" from start to end. GFX_NOLOOP performs one jump only. GFX_RESTART continues jumping from start to end repeatedly. GFX_REVERSE alternates between start and end positions.
+**GFX_ANIM_JUMP**: Sprite remains at start position for the duration (`animateTimeSec`), then instantly jumps to end instance values. No interpolation - creates a discrete "snap" effect. 
+- **GFX_NOLOOP**: Performs one jump (start → end) and stops at end position.
+- **GFX_RESTART**: Alternates between positions - sprite stays at start for duration, jumps to end and stays for duration, then jumps back to start, repeating indefinitely. Behaves identically to GFX_REVERSE for JUMP animations.
+- **GFX_REVERSE**: Same as GFX_RESTART for JUMP - alternates between start and end positions, spending equal time at each location.
 
-**GFX_ANIM_JUMPRANDOM**: At each time interval, randomly picks values between start and end for all animated properties. Uses `randomPercent` to probabilistically decide whether to jump. At each interval, generates a random value (0.0-1.0) and jumps only if the value is ≤ `randomPercent`. Creates flickering or sporadic effects. Perfect for flames, glitches, or random sparkles.
+**GFX_ANIM_JUMPRANDOM**: At each time interval, randomly picks values between start and end for all animated properties. Uses `randomPercent` to probabilistically decide whether to jump. At each interval, generates a random value (0.0-1.0) and jumps only if the value is ≤ `randomPercent`. Creates flickering or sporadic effects. Perfect for flames, glitches, or random sparkles. Loop behavior:
+- **GFX_NOLOOP**: Single random jump after duration.
+- **GFX_RESTART**: Continuously generates new random values, alternating positions like JUMP.
+- **GFX_REVERSE**: Same as GFX_RESTART for JUMPRANDOM.
 
 ### Animation Type Masks
 

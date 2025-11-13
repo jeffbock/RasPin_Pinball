@@ -912,13 +912,20 @@ bool PBGfx::gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentT
         if ((animateSpriteId == NOSPRITE) || (it->first == animateSpriteId)) {
             foundAnimation = true;
 
+            // Safety check on startTick, it should not be in the future, if it is, then reset it to currentTick
+            if (it->second.startTick > currentTick) it->second.startTick = currentTick;
+
             // Calculate the time since the animation started
             float timeSinceStart = (float)(currentTick -  it->second.startTick) / 1000.0f;
             
             // If the animation is active, then update the sprite instance values
             if ((it->second.isActive) && (timeSinceStart >= 0.0f)) {
                 // Calculate the percentage of the animation that has been completed
-                float percentComplete = timeSinceStart / it->second.animateTimeSec;
+                float percentComplete;
+
+                // Handle case of zero or negative animateTimeSec (error case, but could happen in acceleration cases)
+                if (it->second.animateTimeSec <= 0.0f) percentComplete = 1.0f;
+                else percentComplete  = timeSinceStart / it->second.animateTimeSec;
 
                 // Dispatch to appropriate animation handler based on type
                 // JUMP and JUMPRANDOM need to run even when percentComplete >= 1.0
@@ -952,58 +959,63 @@ bool PBGfx::gfxAnimateSprite(unsigned int animateSpriteId, unsigned int currentT
                 if (it->second.animType == GFX_ANIM_ACCL) {
                     animationComplete = !it->second.isActive;
                 } else {
-                    animationComplete = (percentComplete >= 1.0f);
+                    if (percentComplete >= 1.0f) animationComplete = true;
                 }
                 
                 if (animationComplete) {
                     unsigned long temp;
                     switch (it->second.loop) {
                     case GFX_RESTART:
-                        // Restart from beginning: start to end again
-                        it->second.startTick = currentTick;
-                        it->second.isActive = true;
-                        // Reset sprite to start position (but not for JUMP/JUMPRANDOM - they set their own values)
-                        if (it->second.animType != GFX_ANIM_JUMP && it->second.animType != GFX_ANIM_JUMPRANDOM) {
+                        // For JUMP/JUMPRANDOM, RESTART behaves like REVERSE - swap positions and jump back
+                        // This makes the sprite stay at each position for the full duration
+                        if (it->second.animType == GFX_ANIM_JUMP || it->second.animType == GFX_ANIM_JUMPRANDOM) {
+                            // Swap start and end sprites to reverse direction
+                            temp = it->second.startSpriteId;
+                            it->second.startSpriteId = it->second.endSpriteId;
+                            it->second.endSpriteId = temp;
+                            it->second.startTick = currentTick;
+                            it->second.isActive = true;
+                            // Sprite stays at current position (which becomes the new "start")
+                            // It will jump to the new "end" (old start) when time elapses
+                        } else {
+                            // For other animation types, restart means go back to original start
+                            it->second.startTick = currentTick;
+                            it->second.isActive = true;
                             m_instanceList[it->second.animateSpriteId] = m_instanceList[it->second.startSpriteId];
-                        }
-                        // Reset velocity to initial values for acceleration animations
-                        if (it->second.animType == GFX_ANIM_ACCL) {
-                            it->second.currentVelocityX = it->second.initialVelocityX;
-                            it->second.currentVelocityY = it->second.initialVelocityY;
-                            it->second.currentVelocityDeg = it->second.initialVelocityDeg;
+                            // Reset velocity to initial values for acceleration animations
+                            if (it->second.animType == GFX_ANIM_ACCL) {
+                                it->second.currentVelocityX = it->second.initialVelocityX;
+                                it->second.currentVelocityY = it->second.initialVelocityY;
+                                it->second.currentVelocityDeg = it->second.initialVelocityDeg;
+                            }
                         }
                         break;
                     case GFX_REVERSE:
-                        // Swap start and end sprites to reverse direction
-                        temp = it->second.startSpriteId;
-                        it->second.startSpriteId = it->second.endSpriteId;
-                        it->second.endSpriteId = temp;
-                        it->second.startTick = currentTick;
-                        it->second.isActive = true;
-                        // Reset sprite to new start position (but not for JUMP/JUMPRANDOM or ACCL)
-                        // ACCL animations should stay where they are and just reverse direction
-                        if (it->second.animType != GFX_ANIM_JUMP && 
-                            it->second.animType != GFX_ANIM_JUMPRANDOM && 
-                            it->second.animType != GFX_ANIM_ACCL) {
-                            m_instanceList[it->second.animateSpriteId] = m_instanceList[it->second.startSpriteId];
+                        // Note: REVERSE looping not supported on ACCL, because completion position and rotation depends on velocity and acceleration
+                        if (it->second.animType != GFX_ANIM_ACCL) {
+                            // Swap start and end sprites to reverse direction
+                            temp = it->second.startSpriteId;
+                            it->second.startSpriteId = it->second.endSpriteId;
+                            it->second.endSpriteId = temp;
+                            it->second.startTick = currentTick;
+                            it->second.isActive = true;
+
+                            // Reset sprite to new start position
+                            // For NORMAL animations, copy all properties from start sprite
+                            // For JUMP/JUMPRANDOM animations, they will set their own values on the next jump
+                            // but we still need to position them at the start for consistency
+                            if (it->second.animType == GFX_ANIM_NORMAL || 
+                                it->second.animType == GFX_ANIM_JUMP || 
+                                it->second.animType == GFX_ANIM_JUMPRANDOM) {
+                                m_instanceList[it->second.animateSpriteId] = m_instanceList[it->second.startSpriteId];
+                            }
                         }
-                        // For acceleration animations, toggle acceleration and velocity sign to reverse direction
-                        // This works because we toggle each time we reverse, so forward/back/forward/back...
-                        if (it->second.animType == GFX_ANIM_ACCL) {
-                            it->second.accelPixelPerSecX = -it->second.accelPixelPerSecX;
-                            it->second.accelPixelPerSecY = -it->second.accelPixelPerSecY;
-                            it->second.accelDegPerSec = -it->second.accelDegPerSec;
-                            it->second.initialVelocityX = -it->second.initialVelocityX;
-                            it->second.initialVelocityY = -it->second.initialVelocityY;
-                            it->second.initialVelocityDeg = -it->second.initialVelocityDeg;
-                            it->second.currentVelocityX = it->second.initialVelocityX;
-                            it->second.currentVelocityY = it->second.initialVelocityY;
-                            it->second.currentVelocityDeg = it->second.initialVelocityDeg;
-                        }
+
                         break;
                     case GFX_NOLOOP:
                         it->second.isActive = false;
-                        gfxSetFinalAnimationValues(it->second);
+                        // Configure final values based on type mask.  ACCL does not set final values since final position depends on velocity/accel
+                        if (it->second.animType != GFX_ANIM_ACCL) gfxSetFinalAnimationValues(it->second);
                         break;
                     default: break;
                     }
@@ -1065,11 +1077,9 @@ bool PBGfx::gfxAnimateRestart(unsigned int animateSpriteId, unsigned long startT
         it->second.startTick = startTick;
         it->second.isActive = true;
         
-        // Reset the animate sprite to the start sprite's values
-        // (but not for JUMP/JUMPRANDOM - they set their own values)
-        if (it->second.animType != GFX_ANIM_JUMP && it->second.animType != GFX_ANIM_JUMPRANDOM) {
-            m_instanceList[it->second.animateSpriteId] = m_instanceList[it->second.startSpriteId];
-        }
+        // Reset the animate sprite to the start sprite's values for all animation types
+        // JUMP/JUMPRANDOM animations need to be at start so they can jump to end when time elapses
+        m_instanceList[it->second.animateSpriteId] = m_instanceList[it->second.startSpriteId];
         
         // Reset velocity to initial values for acceleration animations
         if (it->second.animType == GFX_ANIM_ACCL) {
@@ -1356,8 +1366,8 @@ void PBGfx::gfxAnimateJump(stAnimateData& animateData, unsigned int currentTick,
             m_instanceList[animateData.animateSpriteId].v1 = m_instanceList[animateData.endSpriteId].v1;
         }
         
-        // Reset timer for next jump (handled by loop logic in main function)
-        animateData.startTick = currentTick;
+        // Note: Do NOT reset startTick here - let the loop handling code in gfxAnimateSprite handle it
+        // Otherwise it interferes with loop completion detection
     }
 }
 
