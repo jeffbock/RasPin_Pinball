@@ -96,45 +96,6 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxLoadAnimateDataShort(&animateData, m_StartMenuFontId, m_PBTBLTextStartId, m_PBTBLTextEndId, ANIMATE_COLOR_MASK, 2.0f, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
     gfxCreateAnimation(animateData, true);
 
-    // ===== DEBUG TEST CODE - REMOVE AFTER TESTING =====
-    // Test acceleration animation: flame moves from upper-left to lower-right with acceleration
-    m_TestFlame1Id = gfxLoadSprite("TestFlame1", "src/resources/textures/flame1.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
-    gfxSetColor(m_TestFlame1Id, 255, 255, 0, 255); // Yellow for visibility
-    gfxSetScaleFactor(m_TestFlame1Id, 1.5, false);
-    
-    // Start position: upper-left of active display area
-    m_TestFlame2Id = gfxInstanceSprite(m_TestFlame1Id);
-    gfxSetXY(m_TestFlame2Id, ACTIVEDISPX + 100, ACTIVEDISPY + 100, false);
-    
-    // End position: lower-right of active display area
-    m_TestFlame3Id = gfxInstanceSprite(m_TestFlame1Id);
-    gfxSetXY(m_TestFlame3Id, ACTIVEDISPX + 1023, ACTIVEDISPY + 767, false);
-    
-    // Set the animated sprite to start position
-    gfxSetXY(m_TestFlame1Id, ACTIVEDISPX + 100, ACTIVEDISPY + 100, false);
-    
-    // Create acceleration animation: 4 seconds, X and Y accel with initial velocity
-    gfxLoadAnimateData(&animateData, 
-                       m_TestFlame1Id,          // Sprite to animate
-                       m_TestFlame2Id,          // Start instance (upper-left)
-                       m_TestFlame3Id,          // End instance (lower-right)
-                       ANIMATE_X_MASK | ANIMATE_Y_MASK | ANIMATE_ROTATE_MASK,  // Animate X and Y position
-                       1.0f,                   // 4 seconds duration
-                       true,                   // Not active yet (will be activated via gfxAnimateRestart)
-                       GFX_NOLOOP,             // Play once
-                       GFX_ANIM_JUMP,          // Normal animation
-                       0,                       // Start immediately (will be reset by gfxAnimateRestart)
-                       200.0f,                    // X acceleration: 200 pixels/sec²
-                       300.0f,                    // Y acceleration: 300 pixels/sec²
-                       10.0f,                    // Rotation acceleration: 10 deg/sec²
-                       0.9f,                    // No random percent
-                       true,                    // Clockwise (N/A for position)
-                       20.0f,                    // Initial X velocity: 20 pixels/sec
-                       10.0f,                    // Initial Y velocity: 10 pixels/sec
-                       5.0f);                   // Initial rotation velocity: 5 deg/sec
-    gfxCreateAnimation(animateData, true);
-    // ===== END DEBUG TEST CODE =====
-
     // Note:  So many things to check for loading, it's not worth doing.  Assume the sprites will be loaded.  If texture fails, it will just render incorrectly.
 
     // Initialize and register the ball ejector device (using example IDs - can be configured per table)
@@ -197,11 +158,6 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     gfxRenderSprite(m_PBTBLFlame1Id, ACTIVEDISPX + 852, ACTIVEDISPY + 392);
     gfxRenderSprite(m_PBTBLFlame2Id, ACTIVEDISPX + 852, ACTIVEDISPY + 392);
     gfxRenderSprite(m_PBTBLFlame3Id, ACTIVEDISPX + 852, ACTIVEDISPY + 392);
-
-    // ===== DEBUG TEST CODE - REMOVE AFTER TESTING ====
-     gfxAnimateSprite(m_TestFlame1Id, currentTick);
-     gfxRenderSprite(m_TestFlame1Id);  // Render at animated position
-    // ===== END DEBUG TEST CODE =====
 
     if (lastScreenState != m_tableScreenState) {
         timeoutTicks = 18000; // Reset the timeout if we change screens
