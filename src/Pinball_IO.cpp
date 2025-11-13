@@ -32,7 +32,8 @@ stOutputDef g_outputDef[] = {
     {"LED1P10 LED", PB_OMSG_LED, IDO_LED7, 10, PB_LED, 1, PB_OFF, 50, 0},
     {"LED2P08 LED", PB_OMSG_LED, IDO_LED8, 8, PB_LED, 2, PB_OFF, 500, 0},
     {"LED2P09 LED", PB_OMSG_LED, IDO_LED9, 9, PB_LED, 2, PB_OFF, 300, 0},
-    {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 100, 0}
+    {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 100, 0},
+    {"NeoPixel LED0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 0, PB_NEOPIXEL, 0, PB_OFF, 0, 0}  // Example NeoPixel - LED 0 on driver 0
 };
 
 // Input definitions
@@ -715,4 +716,174 @@ uint8_t AmpDriver::PercentToRegisterValue(uint8_t percent) const {
     }
     
     return value;
+}
+
+//==============================================================================
+// NeoPixelDriver Class Implementation for WS2812B RGB LED Strips
+//==============================================================================
+
+NeoPixelDriver::NeoPixelDriver(unsigned int outputPin, unsigned int numLEDs) 
+    : m_outputPin(outputPin), m_numLEDs(numLEDs), m_hasChanges(false) {
+    
+    // Allocate arrays for staged and current LED values
+    m_stagedValues = new stNeoPixelNode[numLEDs];
+    m_currentValues = new stNeoPixelNode[numLEDs];
+    
+    // Initialize all LEDs to off (black)
+    for (unsigned int i = 0; i < numLEDs; i++) {
+        m_stagedValues[i].red = 0;
+        m_stagedValues[i].green = 0;
+        m_stagedValues[i].blue = 0;
+        m_currentValues[i].red = 0;
+        m_currentValues[i].green = 0;
+        m_currentValues[i].blue = 0;
+    }
+
+#ifdef EXE_MODE_RASPI
+    // Configure the output pin
+    pinMode(m_outputPin, OUTPUT);
+    digitalWrite(m_outputPin, LOW);
+    
+    // Send initial reset to ensure LEDs are in known state
+    SendReset();
+#endif
+}
+
+NeoPixelDriver::~NeoPixelDriver() {
+#ifdef EXE_MODE_RASPI
+    // Turn off all LEDs before cleanup
+    for (unsigned int i = 0; i < m_numLEDs; i++) {
+        m_stagedValues[i].red = 0;
+        m_stagedValues[i].green = 0;
+        m_stagedValues[i].blue = 0;
+    }
+    m_hasChanges = true;
+    SendStagedNeoPixels();
+#endif
+    
+    // Free allocated memory
+    delete[] m_stagedValues;
+    delete[] m_currentValues;
+}
+
+void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue) {
+    if (ledIndex < m_numLEDs) {
+        // Only mark as changed if values actually differ from current hardware
+        if (m_currentValues[ledIndex].red != red ||
+            m_currentValues[ledIndex].green != green ||
+            m_currentValues[ledIndex].blue != blue) {
+            m_stagedValues[ledIndex].red = red;
+            m_stagedValues[ledIndex].green = green;
+            m_stagedValues[ledIndex].blue = blue;
+            m_hasChanges = true;
+        }
+    }
+}
+
+void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node) {
+    StageNeoPixel(ledIndex, node.red, node.green, node.blue);
+}
+
+void NeoPixelDriver::StageNeoPixelArray(const stNeoPixelNode* nodeArray, unsigned int count) {
+    unsigned int numToStage = (count < m_numLEDs) ? count : m_numLEDs;
+    for (unsigned int i = 0; i < numToStage; i++) {
+        StageNeoPixel(i, nodeArray[i]);
+    }
+}
+
+void NeoPixelDriver::SendStagedNeoPixels() {
+    // Only send if there are changes
+    if (!m_hasChanges) {
+        return;
+    }
+
+#ifdef EXE_MODE_RASPI
+    // Disable interrupts for timing-critical bit-banging
+    // Note: This is critical for WS2812B timing accuracy
+    __asm__ volatile("cpsid i");  // Disable interrupts
+    
+    // Send data for each LED in the string
+    // WS2812B expects GRB format (not RGB)
+    for (unsigned int i = 0; i < m_numLEDs; i++) {
+        SendByte(m_stagedValues[i].green);  // Green first
+        SendByte(m_stagedValues[i].red);    // Red second
+        SendByte(m_stagedValues[i].blue);   // Blue third
+    }
+    
+    // Re-enable interrupts
+    __asm__ volatile("cpsie i");  // Enable interrupts
+    
+    // Send reset/latch signal
+    SendReset();
+#endif
+
+    // Update current values to match staged values
+    for (unsigned int i = 0; i < m_numLEDs; i++) {
+        m_currentValues[i] = m_stagedValues[i];
+    }
+    
+    // Clear the changes flag
+    m_hasChanges = false;
+
+#ifdef EXE_MODE_WINDOWS
+    // Windows mode simulation - just update tracking
+    // Changes flag already cleared above
+#endif
+}
+
+bool NeoPixelDriver::HasStagedChanges() const {
+    return m_hasChanges;
+}
+
+void NeoPixelDriver::SendByte(uint8_t byte) {
+#ifdef EXE_MODE_RASPI
+    // WS2812B timing (at 800kHz):
+    // Bit 1: High for ~0.8us, Low for ~0.45us (total ~1.25us)
+    // Bit 0: High for ~0.4us, Low for ~0.85us (total ~1.25us)
+    // These timings are approximate and may need tuning per hardware
+    
+    for (int bit = 7; bit >= 0; bit--) {
+        if (byte & (1 << bit)) {
+            // Send a '1' bit
+            digitalWrite(m_outputPin, HIGH);
+            // ~0.8us high time (tuned for Raspberry Pi 5)
+            __asm__ volatile(
+                "nop; nop; nop; nop; nop; nop; nop; nop;"
+                "nop; nop; nop; nop; nop; nop; nop; nop;"
+                "nop; nop; nop; nop; nop; nop; nop; nop;"
+                "nop; nop; nop; nop; nop; nop; nop; nop;"
+            );
+            digitalWrite(m_outputPin, LOW);
+            // ~0.45us low time
+            __asm__ volatile(
+                "nop; nop; nop; nop; nop; nop; nop; nop;"
+                "nop; nop; nop; nop; nop; nop; nop; nop;"
+            );
+        } else {
+            // Send a '0' bit
+            digitalWrite(m_outputPin, HIGH);
+            // ~0.4us high time
+            __asm__ volatile(
+                "nop; nop; nop; nop; nop; nop; nop; nop;"
+                "nop; nop; nop; nop; nop; nop; nop; nop;"
+            );
+            digitalWrite(m_outputPin, LOW);
+            // ~0.85us low time
+            __asm__ volatile(
+                "nop; nop; nop; nop; nop; nop; nop; nop;"
+                "nop; nop; nop; nop; nop; nop; nop; nop;"
+                "nop; nop; nop; nop; nop; nop; nop; nop;"
+                "nop; nop; nop; nop; nop; nop; nop; nop;"
+            );
+        }
+    }
+#endif
+}
+
+void NeoPixelDriver::SendReset() {
+#ifdef EXE_MODE_RASPI
+    // WS2812B requires >50us low signal to latch the data
+    digitalWrite(m_outputPin, LOW);
+    delayMicroseconds(60);  // 60us reset time
+#endif
 }

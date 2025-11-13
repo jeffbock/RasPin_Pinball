@@ -82,6 +82,20 @@
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
     m_RestartTable = true;
     
+    // Initialize NeoPixel sequence info
+    for (int i = 0; i < NUM_NEOPIXEL_DRIVERS; i++) {
+        m_NeoPixelSequenceInfo[i].sequenceEnabled = false;
+        m_NeoPixelSequenceInfo[i].firstTime = false;
+        m_NeoPixelSequenceInfo[i].loopMode = PB_NOLOOP;
+        m_NeoPixelSequenceInfo[i].sequenceStartTick = 0;
+        m_NeoPixelSequenceInfo[i].stepStartTick = 0;
+        m_NeoPixelSequenceInfo[i].currentSeqIndex = 0;
+        m_NeoPixelSequenceInfo[i].previousSeqIndex = -1;
+        m_NeoPixelSequenceInfo[i].indexStep = 1;
+        m_NeoPixelSequenceInfo[i].pNeoPixelSequence = nullptr;
+        m_NeoPixelSequenceInfo[i].driverIndex = i;
+    }
+    
     // Auto output control - default to disable since the menus launch first
     m_autoOutputEnable = false;
  }
@@ -486,7 +500,11 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
         gfxRenderString(m_defaultFontSpriteId, temp, 10 + ((i / 24) * 220), 60 + ((i % 24) * 26), 1, GFX_TEXTLEFT);
         
         // Print the state of the input (and highlight in RED) if ON
-        if (((g_inputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTINPUT)) || 
+        if (m_TestMode == PB_TESTOUTPUT && g_outputDef[i].boardType == PB_NEOPIXEL) {
+            // NeoPixel outputs cannot be directly controlled in test mode
+            gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);
+            temp = "N/A";
+        } else if (((g_inputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTINPUT)) || 
             ((g_outputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTOUTPUT))) {
             gfxSetColor(m_defaultFontSpriteId, 255,0, 0, 255);
             temp = "ON";
@@ -563,27 +581,33 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
         
         // Render state with appropriate color
         std::string stateText;
-        switch (g_outputDef[i].lastState) {
-            case PB_ON:
-                stateText = "ON";
-                gfxSetColor(m_defaultFontSpriteId, 0, 255, 0, 255);  // Green for ON
-                break;
-            case PB_OFF:
-                stateText = "OFF";
-                gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);  // Gray for OFF
-                break;
-            case PB_BLINK:
-                stateText = "BLNK";
-                gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for BLINK
-                break;
-            case PB_BRIGHTNESS:
-                stateText = "BRGT";
-                gfxSetColor(m_defaultFontSpriteId, 255, 128, 0, 255);  // Orange for BRIGHTNESS
-                break;
-            default:
-                stateText = "UNK";
-                gfxSetColor(m_defaultFontSpriteId, 255, 0, 255, 255);  // Magenta for unknown
-                break;
+        // Check if this is a NeoPixel output
+        if (g_outputDef[i].boardType == PB_NEOPIXEL) {
+            stateText = "N/A";
+            gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);  // Gray for N/A
+        } else {
+            switch (g_outputDef[i].lastState) {
+                case PB_ON:
+                    stateText = "ON";
+                    gfxSetColor(m_defaultFontSpriteId, 0, 255, 0, 255);  // Green for ON
+                    break;
+                case PB_OFF:
+                    stateText = "OFF";
+                    gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);  // Gray for OFF
+                    break;
+                case PB_BLINK:
+                    stateText = "BLNK";
+                    gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for BLINK
+                    break;
+                case PB_BRIGHTNESS:
+                    stateText = "BRGT";
+                    gfxSetColor(m_defaultFontSpriteId, 255, 128, 0, 255);  // Orange for BRIGHTNESS
+                    break;
+                default:
+                    stateText = "UNK";
+                    gfxSetColor(m_defaultFontSpriteId, 255, 0, 255, 255);  // Magenta for unknown
+                    break;
+            }
         }
         gfxRenderShadowString(m_defaultFontSpriteId, stateText, x + 180, y, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
     }
@@ -1203,15 +1227,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
 
                 if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
-                    if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
-                    else g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
+                    // Skip NeoPixel outputs - they cannot be directly controlled in test mode
+                    if (g_outputDef[m_CurrentOutputItem].boardType != PB_NEOPIXEL) {
+                        if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
+                        else g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
 
-                     // Send the message to the output queue using SendOutputMsg function
-                    SendOutputMsg(g_outputDef[m_CurrentOutputItem].outputMsg, 
-                                g_outputDef[m_CurrentOutputItem].id, 
-                                g_outputDef[m_CurrentOutputItem].lastState, 
-                                false);
+                         // Send the message to the output queue using SendOutputMsg function
+                        SendOutputMsg(g_outputDef[m_CurrentOutputItem].outputMsg, 
+                                    g_outputDef[m_CurrentOutputItem].id, 
+                                    g_outputDef[m_CurrentOutputItem].lastState, 
+                                    false);
                     }
+                }
             }
             
             // If both left and right flippers are pressed, toggle the test mode
