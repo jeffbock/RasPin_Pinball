@@ -956,14 +956,12 @@ void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& o
                     message.options->neoPixelArrayCount
                 );
             } else {
-                // Single LED update - use brightness field for red, onBlinkMS for green, offBlinkMS for blue
-                // This is a bit of a hack to fit RGB into existing structure
-                uint8_t red = (message.options->brightness & 0xFF);
-                uint8_t green = (message.options->onBlinkMS & 0xFF);
-                uint8_t blue = (message.options->offBlinkMS & 0xFF);
+                // Single LED update - use dedicated RGB fields
+                uint8_t red = message.options->neoPixelRed;
+                uint8_t green = message.options->neoPixelGreen;
+                uint8_t blue = message.options->neoPixelBlue;
                 
-                // The outputId represents the LED index within the driver
-                // We need to map it properly - for now assume pin is the LED index
+                // The pin field represents the LED index within the driver
                 g_PBEngine.m_NeoPixelDriver[outputDef.boardIndex].StageNeoPixel(
                     outputDef.pin, red, green, blue
                 );

@@ -569,9 +569,9 @@ The NeoPixel system provides control for WS2812B-style addressable RGB LED strip
 ```cpp
 // Set LED 0 to red (RGB: 255, 0, 0)
 stOutputOptions options;
-options.brightness = 255;    // Red channel
-options.onBlinkMS = 0;       // Green channel
-options.offBlinkMS = 0;      // Blue channel
+options.neoPixelRed = 255;
+options.neoPixelGreen = 0;
+options.neoPixelBlue = 0;
 
 g_PBEngine.SendOutputMsg(PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, PB_ON, false, &options);
 ```
@@ -684,13 +684,15 @@ Where:
 3. **No Direct Control in Test Mode**: NeoPixel outputs show "N/A" in diagnostics/test modes
 4. **Sequence Exclusive**: During sequences, direct LED messages are ignored
 5. **GPIO Only**: NeoPixels use direct GPIO pins, not I2C like LED drivers
+6. **CPU Frequency Independent**: Uses `clock_gettime()` with nanosecond precision instead of CPU-dependent instruction counting
 
 ### Timing Parameters
 
-WS2812B timing (automatically handled):
-- Bit 1: ~0.8µs high, ~0.45µs low
-- Bit 0: ~0.4µs high, ~0.85µs low  
-- Reset: >50µs low signal
+WS2812B timing (automatically handled using `clock_gettime()` with `CLOCK_MONOTONIC`):
+- Bit 1: 0.8µs high, 0.45µs low
+- Bit 0: 0.4µs high, 0.85µs low  
+- Reset: 60µs low signal
+- Timing is CPU frequency independent and robust to system load changes
 
 ---
 

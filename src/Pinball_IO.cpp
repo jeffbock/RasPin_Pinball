@@ -14,6 +14,7 @@
 #ifdef EXE_MODE_RASPI
 #include "wiringPi.h"
 #include "wiringPiI2C.h"
+#include <time.h>  // For clock_gettime with nanosecond precision
 #endif
 
 // Output definitions
@@ -837,44 +838,50 @@ bool NeoPixelDriver::HasStagedChanges() const {
 
 void NeoPixelDriver::SendByte(uint8_t byte) {
 #ifdef EXE_MODE_RASPI
-    // WS2812B timing (at 800kHz):
-    // Bit 1: High for ~0.8us, Low for ~0.45us (total ~1.25us)
-    // Bit 0: High for ~0.4us, Low for ~0.85us (total ~1.25us)
-    // These timings are approximate and may need tuning per hardware
+    // WS2812B timing requirements (at 800kHz):
+    // Bit 1: 0.8us high, 0.45us low (1.25us total)
+    // Bit 0: 0.4us high, 0.85us low (1.25us total)
+    // 
+    // Using nanosecond-precision timing with clock_gettime instead of nop instructions
+    // to avoid CPU frequency scaling issues
+    
+    struct timespec ts_start, ts_now;
     
     for (int bit = 7; bit >= 0; bit--) {
         if (byte & (1 << bit)) {
-            // Send a '1' bit
+            // Send a '1' bit: 0.8us high, 0.45us low
             digitalWrite(m_outputPin, HIGH);
-            // ~0.8us high time (tuned for Raspberry Pi 5)
-            __asm__ volatile(
-                "nop; nop; nop; nop; nop; nop; nop; nop;"
-                "nop; nop; nop; nop; nop; nop; nop; nop;"
-                "nop; nop; nop; nop; nop; nop; nop; nop;"
-                "nop; nop; nop; nop; nop; nop; nop; nop;"
-            );
+            clock_gettime(CLOCK_MONOTONIC, &ts_start);
+            // Wait for 0.8us (800ns)
+            do {
+                clock_gettime(CLOCK_MONOTONIC, &ts_now);
+            } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                     (ts_now.tv_nsec - ts_start.tv_nsec) < 800);
+            
             digitalWrite(m_outputPin, LOW);
-            // ~0.45us low time
-            __asm__ volatile(
-                "nop; nop; nop; nop; nop; nop; nop; nop;"
-                "nop; nop; nop; nop; nop; nop; nop; nop;"
-            );
+            clock_gettime(CLOCK_MONOTONIC, &ts_start);
+            // Wait for 0.45us (450ns)
+            do {
+                clock_gettime(CLOCK_MONOTONIC, &ts_now);
+            } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                     (ts_now.tv_nsec - ts_start.tv_nsec) < 450);
         } else {
-            // Send a '0' bit
+            // Send a '0' bit: 0.4us high, 0.85us low
             digitalWrite(m_outputPin, HIGH);
-            // ~0.4us high time
-            __asm__ volatile(
-                "nop; nop; nop; nop; nop; nop; nop; nop;"
-                "nop; nop; nop; nop; nop; nop; nop; nop;"
-            );
+            clock_gettime(CLOCK_MONOTONIC, &ts_start);
+            // Wait for 0.4us (400ns)
+            do {
+                clock_gettime(CLOCK_MONOTONIC, &ts_now);
+            } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                     (ts_now.tv_nsec - ts_start.tv_nsec) < 400);
+            
             digitalWrite(m_outputPin, LOW);
-            // ~0.85us low time
-            __asm__ volatile(
-                "nop; nop; nop; nop; nop; nop; nop; nop;"
-                "nop; nop; nop; nop; nop; nop; nop; nop;"
-                "nop; nop; nop; nop; nop; nop; nop; nop;"
-                "nop; nop; nop; nop; nop; nop; nop; nop;"
-            );
+            clock_gettime(CLOCK_MONOTONIC, &ts_start);
+            // Wait for 0.85us (850ns)
+            do {
+                clock_gettime(CLOCK_MONOTONIC, &ts_now);
+            } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                     (ts_now.tv_nsec - ts_start.tv_nsec) < 850);
         }
     }
 #endif
