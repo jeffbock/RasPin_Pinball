@@ -333,8 +333,7 @@ public:
     pbdEjector* m_sandboxEjector;
     
     // NeoPixel test sandbox variables
-    NeoPixelDriver* m_sandboxNeoPixel24;  // GPIO 24, 4 LEDs
-    NeoPixelDriver* m_sandboxNeoPixel25;  // GPIO 25, 4 LEDs
+    NeoPixelDriver* m_sandboxNeoPixel24;  // GPIO 24, 4 LEDs (single-wire protocol)
     int m_sandboxNeoPixelRotation;        // Rotation counter for color cycling
 
     // Message queue variables

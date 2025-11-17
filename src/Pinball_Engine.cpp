@@ -66,7 +66,6 @@
     
     // NeoPixel test sandbox variables
     m_sandboxNeoPixel24 = nullptr;
-    m_sandboxNeoPixel25 = nullptr;
     m_sandboxNeoPixelRotation = 0;
 
     // Test Mode variables
@@ -113,14 +112,10 @@
         m_sandboxVideoPlayer = nullptr;
     }
     
-    // Clean up NeoPixel test drivers
+    // Clean up NeoPixel test driver
     if (m_sandboxNeoPixel24) {
         delete m_sandboxNeoPixel24;
         m_sandboxNeoPixel24 = nullptr;
-    }
-    if (m_sandboxNeoPixel25) {
-        delete m_sandboxNeoPixel25;
-        m_sandboxNeoPixel25 = nullptr;
     }
     
     // Clean up all registered devices
@@ -767,8 +762,9 @@ bool PBEngine::pbeLoadTestSandbox(bool forceReload){
         }
     }
     
-    // Initialize NeoPixel test drivers if not already created
-    // Using BCM GPIO numbering: 24 and 25
+    // Initialize NeoPixel test driver if not already created
+    // Using BCM GPIO numbering: 24
+    // Note: WS2812B is a single-wire protocol (data only, no separate clock)
     if (!m_sandboxNeoPixel24 && !forceReload) {
         m_sandboxNeoPixel24 = new NeoPixelDriver(24, 4);  // GPIO 24, 4 LEDs
         
@@ -781,20 +777,6 @@ bool PBEngine::pbeLoadTestSandbox(bool forceReload){
         
         m_sandboxNeoPixel24->StageNeoPixelArray(initialColors, 4);
         m_sandboxNeoPixel24->SendStagedNeoPixels();
-    }
-    
-    if (!m_sandboxNeoPixel25 && !forceReload) {
-        m_sandboxNeoPixel25 = new NeoPixelDriver(25, 4);  // GPIO 25, 4 LEDs
-        
-        // Initialize with white, red, blue, green
-        stNeoPixelNode initialColors[4];
-        initialColors[0] = {255, 255, 255};  // White
-        initialColors[1] = {255, 0, 0};      // Red
-        initialColors[2] = {0, 0, 255};      // Blue
-        initialColors[3] = {0, 255, 0};      // Green
-        
-        m_sandboxNeoPixel25->StageNeoPixelArray(initialColors, 4);
-        m_sandboxNeoPixel25->SendStagedNeoPixels();
     }
     
     return (true);
@@ -852,7 +834,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 255, 64, 64, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Right Flipper" + rfState + ":", centerX - 200, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "NeoPixel Rotation Test (GPIO 24/25)", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "NeoPixel Rotation Test (GPIO 24)", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Left Activate - Bright Cyan-Blue (like blue LED light)
     std::string laState = m_LAON ? " (ON)" : " (OFF)";
@@ -1462,14 +1444,10 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         m_sandboxVideoLoaded = false;
                     }
                     
-                    // Clean up NeoPixel test drivers before exiting
+                    // Clean up NeoPixel test driver before exiting
                     if (m_sandboxNeoPixel24) {
                         delete m_sandboxNeoPixel24;
                         m_sandboxNeoPixel24 = nullptr;
-                    }
-                    if (m_sandboxNeoPixel25) {
-                        delete m_sandboxNeoPixel25;
-                        m_sandboxNeoPixel25 = nullptr;
                     }
                     m_sandboxNeoPixelRotation = 0;
                     
@@ -1532,15 +1510,10 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         rotatedColors[i] = colors[sourceIndex];
                     }
                     
-                    // Send rotated colors to both NeoPixel drivers
+                    // Send rotated colors to NeoPixel driver
                     if (m_sandboxNeoPixel24) {
                         m_sandboxNeoPixel24->StageNeoPixelArray(rotatedColors, 4);
                         m_sandboxNeoPixel24->SendStagedNeoPixels();
-                    }
-                    
-                    if (m_sandboxNeoPixel25) {
-                        m_sandboxNeoPixel25->StageNeoPixelArray(rotatedColors, 4);
-                        m_sandboxNeoPixel25->SendStagedNeoPixels();
                     }
                     
                     // Increment rotation counter (wraps at 4 back to 0)
