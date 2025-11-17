@@ -298,8 +298,16 @@ struct stNeoPixelNode {
     uint8_t blue;
 };
 
+// NeoPixel timing and safety constants
+// Maximum recommended LEDs per driver to keep interrupt disable time < 2ms
+// Each LED takes ~30µs to transmit (24 bits × 1.25µs)
+// 60 LEDs = 1.8ms interrupt disable (safe for most systems)
+#define NEOPIXEL_MAX_LEDS_RECOMMENDED 60
+#define NEOPIXEL_MAX_LEDS_ABSOLUTE 100  // Absolute limit (3ms) - may cause issues
+
 // NeoPixel Driver class for controlling WS2812B-style RGB LED strips
 // Uses Raspberry Pi GPIO pins directly for bit-banged communication
+// IMPORTANT: Disables interrupts during transmission - limit LED count to avoid system issues
 class NeoPixelDriver {
 public:
     NeoPixelDriver(unsigned int outputPin, unsigned int numLEDs);

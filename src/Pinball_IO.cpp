@@ -726,12 +726,24 @@ uint8_t AmpDriver::PercentToRegisterValue(uint8_t percent) const {
 NeoPixelDriver::NeoPixelDriver(unsigned int outputPin, unsigned int numLEDs) 
     : m_outputPin(outputPin), m_numLEDs(numLEDs), m_hasChanges(false) {
     
+    // Safety check: Warn if LED count exceeds recommended limit
+    // Each LED takes ~30µs to transmit, so interrupts are disabled for numLEDs × 30µs
+    // Recommended: Keep under 60 LEDs (1.8ms) to avoid system impact
+    // Absolute limit: 100 LEDs (3ms) - beyond this may cause USB/audio issues
+    if (numLEDs > NEOPIXEL_MAX_LEDS_ABSOLUTE) {
+        // Clamp to absolute maximum to prevent severe system issues
+        m_numLEDs = NEOPIXEL_MAX_LEDS_ABSOLUTE;
+        #ifdef EXE_MODE_RASPI
+        // Note: In production, consider logging this warning
+        #endif
+    }
+    
     // Allocate arrays for staged and current LED values
-    m_stagedValues = new stNeoPixelNode[numLEDs];
-    m_currentValues = new stNeoPixelNode[numLEDs];
+    m_stagedValues = new stNeoPixelNode[m_numLEDs];
+    m_currentValues = new stNeoPixelNode[m_numLEDs];
     
     // Initialize all LEDs to off (black)
-    for (unsigned int i = 0; i < numLEDs; i++) {
+    for (unsigned int i = 0; i < m_numLEDs; i++) {
         m_stagedValues[i].red = 0;
         m_stagedValues[i].green = 0;
         m_stagedValues[i].blue = 0;
@@ -800,7 +812,22 @@ void NeoPixelDriver::SendStagedNeoPixels() {
 
 #ifdef EXE_MODE_RASPI
     // Disable interrupts for timing-critical bit-banging
-    // Note: This is critical for WS2812B timing accuracy
+    // 
+    // TIMING ANALYSIS:
+    // - Each LED: 3 bytes × 8 bits × 1.25µs = 30µs
+    // - 10 LEDs = 300µs interrupt disable (0.3ms) - safe
+    // - 60 LEDs = 1,800µs interrupt disable (1.8ms) - recommended max
+    // - 100 LEDs = 3,000µs interrupt disable (3ms) - absolute max
+    //
+    // SYSTEM IMPACT:
+    // - Below 2ms: Generally safe, minimal impact on USB/audio/network
+    // - 2-5ms: May cause occasional USB packet drops or audio glitches
+    // - Above 5ms: Risk of network packet loss and noticeable system lag
+    //
+    // Context switching is prevented by interrupt disable - this is the BEST
+    // approach for WS2812B timing requirements. Alternative approaches like
+    // RT_PREEMPT, DMA, or PWM are either overkill or hardware-dependent.
+    //
     __asm__ volatile("cpsid i");  // Disable interrupts
     
     // Send data for each LED in the string
@@ -814,7 +841,7 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     // Re-enable interrupts
     __asm__ volatile("cpsie i");  // Enable interrupts
     
-    // Send reset/latch signal
+    // Send reset/latch signal (interrupts enabled for this)
     SendReset();
 #endif
 

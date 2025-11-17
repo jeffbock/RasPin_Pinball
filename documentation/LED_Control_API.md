@@ -685,6 +685,11 @@ Where:
 4. **Sequence Exclusive**: During sequences, direct LED messages are ignored
 5. **GPIO Only**: NeoPixels use direct GPIO pins, not I2C like LED drivers
 6. **CPU Frequency Independent**: Uses `clock_gettime()` with nanosecond precision instead of CPU-dependent instruction counting
+7. **LED Count Limits**: 
+   - **Recommended maximum: 60 LEDs per driver** (1.8ms interrupt disable)
+   - **Absolute maximum: 100 LEDs per driver** (3ms interrupt disable)
+   - Exceeding limits may cause USB packet drops, audio glitches, or network issues
+   - Use multiple drivers for larger installations
 
 ### Timing Parameters
 
@@ -693,6 +698,25 @@ WS2812B timing (automatically handled using `clock_gettime()` with `CLOCK_MONOTO
 - Bit 0: 0.4µs high, 0.85µs low  
 - Reset: 60µs low signal
 - Timing is CPU frequency independent and robust to system load changes
+
+### Interrupt Disable Duration
+
+The implementation disables interrupts during LED data transmission for timing accuracy:
+
+| LED Count | Interrupt Disable Time | Impact Level |
+|-----------|------------------------|--------------|
+| 10 LEDs   | 0.3ms | Minimal - safe for all use cases |
+| 30 LEDs   | 0.9ms | Low - safe for most use cases |
+| 60 LEDs   | 1.8ms | **Recommended maximum** - generally safe |
+| 100 LEDs  | 3.0ms | **Absolute maximum** - may cause occasional issues |
+| 300 LEDs  | 9.0ms | Not recommended - will cause system problems |
+
+**Why interrupt disable is necessary**: The WS2812B protocol requires sub-microsecond timing precision. Context switching during transmission would corrupt the data stream. Disabling interrupts is the simplest and most reliable approach for userspace GPIO control.
+
+**Alternative approaches considered**:
+- RT_PREEMPT kernel: Overly complex for this use case
+- DMA/PWM hardware: Hardware-specific, less flexible
+- Higher-priority scheduling: Insufficient timing guarantee
 
 ---
 
