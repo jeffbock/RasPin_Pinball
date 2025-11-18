@@ -268,15 +268,17 @@ bool PBEngine::pbeLoadMainScreen(bool forceReload){
 }
 
 bool PBEngine::pbeTryAddPlayer(){
-    // Check if we can add another player
-    // First, count how many players are enabled
-    int enabledCount = 0;
+    // Find the first disabled player slot
+    int nextPlayerIdx = -1;
     for (int i = 0; i < 4; i++) {
-        if (m_playerStates[i].enabled) enabledCount++;
+        if (!m_playerStates[i].enabled) {
+            nextPlayerIdx = i;
+            break;
+        }
     }
     
-    // Only add a player if less than 4 are enabled
-    if (enabledCount >= 4) return false;
+    // If no disabled player found, cannot add
+    if (nextPlayerIdx == -1) return false;
     
     // Check if at least one enabled player is still on their first ball
     bool canAddPlayer = false;
@@ -289,25 +291,38 @@ bool PBEngine::pbeTryAddPlayer(){
     
     if (!canAddPlayer) return false;
     
-    // Find the next disabled player and enable them
-    for (int i = 0; i < 4; i++) {
-        if (!m_playerStates[i].enabled) {
-            m_playerStates[i].enabled = true;
-            m_playerStates[i].reset(m_saveFileData.ballsPerGame);
-            return true;
-        }
-    }
+    // Enable and initialize the new player
+    m_playerStates[nextPlayerIdx].enabled = true;
+    m_playerStates[nextPlayerIdx].reset(m_saveFileData.ballsPerGame);
     
-    return false;
+    return true;
 }
 
-bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
+PBTableState& PBEngine::getPlayerGameState(){
+    return m_playerStates[m_currentPlayer].mainGameState;
+}
+
+PBTBLMainScreenState& PBEngine::getPlayerScreenState(){
+    return m_playerStates[m_currentPlayer].screenState;
+}
+
+void PBEngine::addPlayerScore(unsigned long points){
+    m_playerStates[m_currentPlayer].score += points;
+}
+
+std::string PBEngine::formatScoreWithCommas(unsigned long score){
+    std::string scoreStr = std::to_string(score);
+    int insertPosition = scoreStr.length() - 3;
     
-    if (!pbeLoadMainScreen(false)) return (false);
+    while (insertPosition > 0) {
+        scoreStr.insert(insertPosition, ",");
+        insertPosition -= 3;
+    }
     
-    // Clear to black background
-    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-    
+    return scoreStr;
+}
+
+void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick){
     // Get the current player state
     pbGameState& currentPlayerState = m_playerStates[m_currentPlayer];
     
@@ -319,8 +334,8 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     std::string playerLabel = "Player " + std::to_string(m_currentPlayer + 1);
     gfxRenderString(m_StartMenuFontId, playerLabel, (PB_SCREENWIDTH/2), ACTIVEDISPY + 150, 5, GFX_TEXTCENTER);
     
-    // Render the current player's score
-    std::string scoreText = std::to_string(currentPlayerState.score);
+    // Render the current player's score with commas
+    std::string scoreText = formatScoreWithCommas(currentPlayerState.score);
     gfxSetScaleFactor(m_StartMenuFontId, 3.0, false);
     gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2), ACTIVEDISPY + 250, 5, GFX_TEXTCENTER);
     
@@ -350,11 +365,22 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
             std::string otherPlayerLabel = "Player " + std::to_string(playerIndex + 1);
             gfxRenderString(m_StartMenuFontId, otherPlayerLabel, xPos, ACTIVEDISPY + 500, 3, GFX_TEXTCENTER);
             
-            // Render player score
-            std::string otherScoreText = std::to_string(m_playerStates[playerIndex].score);
+            // Render player score with commas
+            std::string otherScoreText = formatScoreWithCommas(m_playerStates[playerIndex].score);
             gfxRenderString(m_StartMenuFontId, otherScoreText, xPos, ACTIVEDISPY + 540, 3, GFX_TEXTCENTER);
         }
     }
+}
+
+bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
+    
+    if (!pbeLoadMainScreen(false)) return (false);
+    
+    // Clear to black background
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    
+    // Render all player scores
+    pbeRenderPlayerScores(currentTick, lastTick);
     
     return (true);
 }
@@ -420,6 +446,10 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_START) {
                     pbeTryAddPlayer();
+                }
+                // Handle activate buttons to add score
+                else if (inputMessage.inputId == IDI_LEFTACTIVATE || inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                    addPlayerScore(100);
                 }
             }
             break;
