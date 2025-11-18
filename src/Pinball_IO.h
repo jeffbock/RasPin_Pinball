@@ -316,6 +316,7 @@ public:
     // Stage a single LED color value
     void StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue);
     void StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node);
+    void StageNeoPixel(unsigned int ledIndex, PBLEDColor color);
     
     // Stage an array of LED values
     void StageNeoPixelArray(const stNeoPixelNode* nodeArray, unsigned int count);
