@@ -421,6 +421,9 @@ private:
     bool pbeLoadGameStart(bool forceReload); // Load the start screen for the pinball game
     bool pbeLoadMainScreen(bool forceReload); // Load the main screen for the pinball game
 
+    // Player management functions
+    bool pbeTryAddPlayer(); // Try to add a new player, returns true if successful
+
     // Texture release functions
     void pbeReleaseMenuTextures();
 

@@ -267,6 +267,40 @@ bool PBEngine::pbeLoadMainScreen(bool forceReload){
     return (mainScreenLoaded);
 }
 
+bool PBEngine::pbeTryAddPlayer(){
+    // Check if we can add another player
+    // First, count how many players are enabled
+    int enabledCount = 0;
+    for (int i = 0; i < 4; i++) {
+        if (m_playerStates[i].enabled) enabledCount++;
+    }
+    
+    // Only add a player if less than 4 are enabled
+    if (enabledCount >= 4) return false;
+    
+    // Check if at least one enabled player is still on their first ball
+    bool canAddPlayer = false;
+    for (int i = 0; i < 4; i++) {
+        if (m_playerStates[i].enabled && m_playerStates[i].currentBall == 1) {
+            canAddPlayer = true;
+            break;
+        }
+    }
+    
+    if (!canAddPlayer) return false;
+    
+    // Find the next disabled player and enable them
+    for (int i = 0; i < 4; i++) {
+        if (!m_playerStates[i].enabled) {
+            m_playerStates[i].enabled = true;
+            m_playerStates[i].reset(m_saveFileData.ballsPerGame);
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
     
     if (!pbeLoadMainScreen(false)) return (false);
@@ -385,35 +419,7 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
             // Handle start button press to add players
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_START) {
-                    // Check if we can add another player
-                    // First, count how many players are enabled
-                    int enabledCount = 0;
-                    for (int i = 0; i < 4; i++) {
-                        if (m_playerStates[i].enabled) enabledCount++;
-                    }
-                    
-                    // Only add a player if less than 4 are enabled
-                    if (enabledCount < 4) {
-                        // Check if at least one enabled player is still on their first ball
-                        bool canAddPlayer = false;
-                        for (int i = 0; i < 4; i++) {
-                            if (m_playerStates[i].enabled && m_playerStates[i].currentBall == 1) {
-                                canAddPlayer = true;
-                                break;
-                            }
-                        }
-                        
-                        if (canAddPlayer) {
-                            // Find the next disabled player and enable them
-                            for (int i = 0; i < 4; i++) {
-                                if (!m_playerStates[i].enabled) {
-                                    m_playerStates[i].enabled = true;
-                                    m_playerStates[i].reset(m_saveFileData.ballsPerGame);
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                    pbeTryAddPlayer();
                 }
             }
             break;
