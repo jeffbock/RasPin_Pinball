@@ -13,7 +13,8 @@
 
 enum class PBTableState {
     PBTBL_START = 0,
-    PBTBL_STDPLAY = 1,
+    PBTBL_MAINSCREEN = 1,
+    PBTBL_STDPLAY = 2,
     PBTBL_END
 };
 
@@ -23,6 +24,39 @@ enum class PBTBLScreenState {
     START_SCORES = 2,
     START_OPENDOOR = 3,
     START_END
+};
+
+enum class PBTBLMainScreenState {
+    MAIN_SHOWSCORE = 0,
+    MAIN_END
+};
+
+// Per-player game state class
+class pbGameState {
+public:
+    PBTableState mainGameState;       // Main game state for this player
+    PBTBLMainScreenState screenState; // Screen state for this player
+    unsigned long score;              // Current score
+    bool enabled;                     // Is this player slot enabled/active
+    unsigned int currentBall;         // Current ball number (1-based)
+    bool ballSaveEnabled;             // Ball save active flag
+    bool extraBallEnabled;            // Extra ball earned flag
+
+    // Constructor
+    pbGameState() {
+        reset(3); // Default to 3 balls
+    }
+
+    // Reset to initial state based on game settings
+    void reset(unsigned int ballsPerGame) {
+        mainGameState = PBTableState::PBTBL_MAINSCREEN;
+        screenState = PBTBLMainScreenState::MAIN_SHOWSCORE;
+        score = 0;
+        enabled = false;
+        currentBall = 1;
+        ballSaveEnabled = false;
+        extraBallEnabled = false;
+    }
 };
 
 #define ACTIVEDISPX 448

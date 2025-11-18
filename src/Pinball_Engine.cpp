@@ -86,6 +86,12 @@
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
     m_RestartTable = true;
     
+    // Multi-player game state initialization
+    m_currentPlayer = 0;
+    for (int i = 0; i < 4; i++) {
+        m_playerStates[i].reset(3); // Will be updated from save data when game starts
+    }
+    
     // Initialize NeoPixel sequence info
     for (int i = 0; i < NUM_NEOPIXEL_DRIVERS; i++) {
         m_NeoPixelSequenceInfo[i].sequenceEnabled = false;

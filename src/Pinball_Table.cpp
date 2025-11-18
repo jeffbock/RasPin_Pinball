@@ -254,12 +254,84 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     return (true);
 }
 
+bool PBEngine::pbeLoadMainScreen(bool forceReload){
+    
+    static bool mainScreenLoaded = false;
+    if (forceReload) mainScreenLoaded = false;
+    if (mainScreenLoaded) return (true);
+
+    // Main screen uses the same font as the start menu
+    // The font should already be loaded from pbeLoadGameStart
+    
+    mainScreenLoaded = true;
+    return (mainScreenLoaded);
+}
+
+bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
+    
+    if (!pbeLoadMainScreen(false)) return (false);
+    
+    // Clear to black background
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    
+    // Get the current player state
+    pbGameState& currentPlayerState = m_playerStates[m_currentPlayer];
+    
+    // Render the current player's score in the center (large white text)
+    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 2.0, false);
+    
+    // Render "Player X" label above the score
+    std::string playerLabel = "Player " + std::to_string(m_currentPlayer + 1);
+    gfxRenderString(m_StartMenuFontId, playerLabel, (PB_SCREENWIDTH/2), ACTIVEDISPY + 150, 5, GFX_TEXTCENTER);
+    
+    // Render the current player's score
+    std::string scoreText = std::to_string(currentPlayerState.score);
+    gfxSetScaleFactor(m_StartMenuFontId, 3.0, false);
+    gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2), ACTIVEDISPY + 250, 5, GFX_TEXTCENTER);
+    
+    // Render other player scores at the bottom (small grey text)
+    gfxSetColor(m_StartMenuFontId, 128, 128, 128, 255); // Grey color
+    gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
+    
+    // Collect other enabled players in order, excluding the current player
+    std::vector<int> otherPlayers;
+    for (int i = 0; i < 4; i++) {
+        if (i != m_currentPlayer && m_playerStates[i].enabled) {
+            otherPlayers.push_back(i);
+        }
+    }
+    
+    // Render the other player scores across the bottom
+    int numOtherPlayers = otherPlayers.size();
+    if (numOtherPlayers > 0) {
+        int spacing = 300; // Horizontal spacing between player scores
+        int startX = (PB_SCREENWIDTH/2) - ((numOtherPlayers - 1) * spacing / 2);
+        
+        for (int i = 0; i < numOtherPlayers; i++) {
+            int playerIndex = otherPlayers[i];
+            int xPos = startX + (i * spacing);
+            
+            // Render player label
+            std::string otherPlayerLabel = "Player " + std::to_string(playerIndex + 1);
+            gfxRenderString(m_StartMenuFontId, otherPlayerLabel, xPos, ACTIVEDISPY + 500, 3, GFX_TEXTCENTER);
+            
+            // Render player score
+            std::string otherScoreText = std::to_string(m_playerStates[playerIndex].score);
+            gfxRenderString(m_StartMenuFontId, otherScoreText, xPos, ACTIVEDISPY + 540, 3, GFX_TEXTCENTER);
+        }
+    }
+    
+    return (true);
+}
+
 bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick){
     
     bool success = false;
 
     switch (m_tableState) {
         case PBTableState::PBTBL_START: success = pbeRenderGameStart(currentTick, lastTick); break;
+        case PBTableState::PBTBL_MAINSCREEN: success = pbeRenderMainScreen(currentTick, lastTick); break;
         default: success = false; break;
     }
 
@@ -278,7 +350,18 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
         case PBTableState::PBTBL_START: {
 
             if (m_PBTBLOpenDoors) {
-                if ((!gfxAnimateActive(m_PBTBLLeftDoorId)) && (!gfxAnimateActive(m_PBTBLRightDoorId))) m_tableState = PBTableState::PBTBL_STDPLAY; 
+                if ((!gfxAnimateActive(m_PBTBLLeftDoorId)) && (!gfxAnimateActive(m_PBTBLRightDoorId))) {
+                    // Transition to main screen and enable player 1
+                    m_tableState = PBTableState::PBTBL_MAINSCREEN;
+                    m_currentPlayer = 0;
+                    m_playerStates[0].enabled = true;
+                    m_playerStates[0].reset(m_saveFileData.ballsPerGame);
+                    // Make sure other players are disabled
+                    for (int i = 1; i < 4; i++) {
+                        m_playerStates[i].enabled = false;
+                        m_playerStates[i].reset(m_saveFileData.ballsPerGame);
+                    }
+                } 
             } 
             else {
                 if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
@@ -294,6 +377,43 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                     else {
                         m_tableScreenState = PBTBLScreenState::START_OPENDOOR;
                     }             
+                }
+            }
+            break;
+        }
+        case PBTableState::PBTBL_MAINSCREEN: {
+            // Handle start button press to add players
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputId == IDI_START) {
+                    // Check if we can add another player
+                    // First, count how many players are enabled
+                    int enabledCount = 0;
+                    for (int i = 0; i < 4; i++) {
+                        if (m_playerStates[i].enabled) enabledCount++;
+                    }
+                    
+                    // Only add a player if less than 4 are enabled
+                    if (enabledCount < 4) {
+                        // Check if at least one enabled player is still on their first ball
+                        bool canAddPlayer = false;
+                        for (int i = 0; i < 4; i++) {
+                            if (m_playerStates[i].enabled && m_playerStates[i].currentBall == 1) {
+                                canAddPlayer = true;
+                                break;
+                            }
+                        }
+                        
+                        if (canAddPlayer) {
+                            // Find the next disabled player and enable them
+                            for (int i = 0; i < 4; i++) {
+                                if (!m_playerStates[i].enabled) {
+                                    m_playerStates[i].enabled = true;
+                                    m_playerStates[i].reset(m_saveFileData.ballsPerGame);
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
             break;
