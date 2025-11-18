@@ -63,6 +63,10 @@
     m_videoFadingOut = false;
     m_videoFadeDurationSec = 2.0f;  // 2 second fade in/out
     m_sandboxEjector = nullptr;
+    
+    // NeoPixel test sandbox variables
+    m_sandboxNeoPixel24 = nullptr;
+    m_sandboxNeoPixelRotation = 0;
 
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
@@ -82,6 +86,20 @@
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
     m_RestartTable = true;
     
+    // Initialize NeoPixel sequence info
+    for (int i = 0; i < NUM_NEOPIXEL_DRIVERS; i++) {
+        m_NeoPixelSequenceInfo[i].sequenceEnabled = false;
+        m_NeoPixelSequenceInfo[i].firstTime = false;
+        m_NeoPixelSequenceInfo[i].loopMode = PB_NOLOOP;
+        m_NeoPixelSequenceInfo[i].sequenceStartTick = 0;
+        m_NeoPixelSequenceInfo[i].stepStartTick = 0;
+        m_NeoPixelSequenceInfo[i].currentSeqIndex = 0;
+        m_NeoPixelSequenceInfo[i].previousSeqIndex = -1;
+        m_NeoPixelSequenceInfo[i].indexStep = 1;
+        m_NeoPixelSequenceInfo[i].pNeoPixelSequence = nullptr;
+        m_NeoPixelSequenceInfo[i].driverIndex = i;
+    }
+    
     // Auto output control - default to disable since the menus launch first
     m_autoOutputEnable = false;
  }
@@ -92,6 +110,12 @@
     if (m_sandboxVideoPlayer) {
         delete m_sandboxVideoPlayer;
         m_sandboxVideoPlayer = nullptr;
+    }
+    
+    // Clean up NeoPixel test driver
+    if (m_sandboxNeoPixel24) {
+        delete m_sandboxNeoPixel24;
+        m_sandboxNeoPixel24 = nullptr;
     }
     
     // Clean up all registered devices
@@ -486,7 +510,11 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
         gfxRenderString(m_defaultFontSpriteId, temp, 10 + ((i / 24) * 220), 60 + ((i % 24) * 26), 1, GFX_TEXTLEFT);
         
         // Print the state of the input (and highlight in RED) if ON
-        if (((g_inputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTINPUT)) || 
+        if (m_TestMode == PB_TESTOUTPUT && g_outputDef[i].boardType == PB_NEOPIXEL) {
+            // NeoPixel outputs cannot be directly controlled in test mode
+            gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);
+            temp = "N/A";
+        } else if (((g_inputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTINPUT)) || 
             ((g_outputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTOUTPUT))) {
             gfxSetColor(m_defaultFontSpriteId, 255,0, 0, 255);
             temp = "ON";
@@ -563,27 +591,33 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
         
         // Render state with appropriate color
         std::string stateText;
-        switch (g_outputDef[i].lastState) {
-            case PB_ON:
-                stateText = "ON";
-                gfxSetColor(m_defaultFontSpriteId, 0, 255, 0, 255);  // Green for ON
-                break;
-            case PB_OFF:
-                stateText = "OFF";
-                gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);  // Gray for OFF
-                break;
-            case PB_BLINK:
-                stateText = "BLNK";
-                gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for BLINK
-                break;
-            case PB_BRIGHTNESS:
-                stateText = "BRGT";
-                gfxSetColor(m_defaultFontSpriteId, 255, 128, 0, 255);  // Orange for BRIGHTNESS
-                break;
-            default:
-                stateText = "UNK";
-                gfxSetColor(m_defaultFontSpriteId, 255, 0, 255, 255);  // Magenta for unknown
-                break;
+        // Check if this is a NeoPixel output
+        if (g_outputDef[i].boardType == PB_NEOPIXEL) {
+            stateText = "NeoPixel";
+            gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);  // Gray for NeoPixel
+        } else {
+            switch (g_outputDef[i].lastState) {
+                case PB_ON:
+                    stateText = "ON";
+                    gfxSetColor(m_defaultFontSpriteId, 0, 255, 0, 255);  // Green for ON
+                    break;
+                case PB_OFF:
+                    stateText = "OFF";
+                    gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);  // Gray for OFF
+                    break;
+                case PB_BLINK:
+                    stateText = "BLNK";
+                    gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for BLINK
+                    break;
+                case PB_BRIGHTNESS:
+                    stateText = "BRGT";
+                    gfxSetColor(m_defaultFontSpriteId, 255, 128, 0, 255);  // Orange for BRIGHTNESS
+                    break;
+                default:
+                    stateText = "UNK";
+                    gfxSetColor(m_defaultFontSpriteId, 255, 0, 255, 255);  // Magenta for unknown
+                    break;
+            }
         }
         gfxRenderShadowString(m_defaultFontSpriteId, stateText, x + 180, y, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
     }
@@ -728,6 +762,23 @@ bool PBEngine::pbeLoadTestSandbox(bool forceReload){
         }
     }
     
+    // Initialize NeoPixel test driver if not already created
+    // Using BCM GPIO numbering: 24
+    // Note: WS2812B is a single-wire protocol (data only, no separate clock)
+    if (!m_sandboxNeoPixel24 && !forceReload) {
+        m_sandboxNeoPixel24 = new NeoPixelDriver(24, 4);  // GPIO 24, 4 LEDs
+        
+        // Initialize with white, red, blue, green
+        stNeoPixelNode initialColors[4];
+        initialColors[0] = {255, 255, 255};  // White
+        initialColors[1] = {255, 0, 0};      // Red
+        initialColors[2] = {0, 0, 255};      // Blue
+        initialColors[3] = {0, 255, 0};      // Green
+        
+        m_sandboxNeoPixel24->StageNeoPixelArray(initialColors, 4);
+        m_sandboxNeoPixel24->SendStagedNeoPixels();
+    }
+    
     return (true);
 }
 
@@ -747,6 +798,9 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
             m_sandboxVideoSpriteId = NOSPRITE;
             m_sandboxVideoLoaded = false;
         }
+        
+        // Reset NeoPixel rotation counter when restarting
+        m_sandboxNeoPixelRotation = 0;
     }
 
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
@@ -780,7 +834,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 255, 64, 64, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Right Flipper" + rfState + ":", centerX - 200, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Force LED Send (R-G-B) Test", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "NeoPixel Rotation Test (GPIO 24)", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Left Activate - Bright Cyan-Blue (like blue LED light)
     std::string laState = m_LAON ? " (ON)" : " (OFF)";
@@ -1203,15 +1257,39 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
 
                 if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
-                    if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
-                    else g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
+                    // Handle NeoPixel outputs differently - initialize entire chain to black or white
+                    if (g_outputDef[m_CurrentOutputItem].boardType == PB_NEOPIXEL) {
+                        // Toggle state
+                        if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) {
+                            g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
+                        } else {
+                            g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
+                        }
+                        
+                        // Initialize NeoPixel chain to black (OFF) or white (ON)
+                        unsigned int boardIndex = g_outputDef[m_CurrentOutputItem].boardIndex;
+                        if (boardIndex < NUM_NEOPIXEL_DRIVERS) {
+                            if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) {
+                                // Set all LEDs to white
+                                m_NeoPixelDriver[boardIndex].StageNeoPixelAll(255, 255, 255);
+                            } else {
+                                // Set all LEDs to black (off)
+                                m_NeoPixelDriver[boardIndex].StageNeoPixelAll(0, 0, 0);
+                            }
+                            m_NeoPixelDriver[boardIndex].SendStagedNeoPixels();
+                        }
+                    } else {
+                        // Regular outputs - toggle state and send message
+                        if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
+                        else g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
 
-                     // Send the message to the output queue using SendOutputMsg function
-                    SendOutputMsg(g_outputDef[m_CurrentOutputItem].outputMsg, 
-                                g_outputDef[m_CurrentOutputItem].id, 
-                                g_outputDef[m_CurrentOutputItem].lastState, 
-                                false);
+                         // Send the message to the output queue using SendOutputMsg function
+                        SendOutputMsg(g_outputDef[m_CurrentOutputItem].outputMsg, 
+                                    g_outputDef[m_CurrentOutputItem].id, 
+                                    g_outputDef[m_CurrentOutputItem].lastState, 
+                                    false);
                     }
+                }
             }
             
             // If both left and right flippers are pressed, toggle the test mode
@@ -1387,6 +1465,13 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         m_sandboxVideoLoaded = false;
                     }
                     
+                    // Clean up NeoPixel test driver before exiting
+                    if (m_sandboxNeoPixel24) {
+                        delete m_sandboxNeoPixel24;
+                        m_sandboxNeoPixel24 = nullptr;
+                    }
+                    m_sandboxNeoPixelRotation = 0;
+                    
                     // Clean up sandbox ejector device before exiting
                     if (m_sandboxEjector) {
                         m_sandboxEjector->pbdEnable(false);
@@ -1430,28 +1515,30 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     testCount++;
                 }
                 
-                // Right Flipper - Test 2
+                // Right Flipper - NeoPixel Rotation Test
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                    static int testQCount = 0;
-
-                    if (testQCount % 3 == 0) {  
-                        // Sending Test Messages - these can be used to test out the pending message queue while sequences are running
-                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDRED, PB_ON, false);
-                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDRED, PB_ON, false);
-                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDRED, PB_ON, false);
-                    }
-                    else if (testQCount % 3 == 1) {
-                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDGREEN, PB_ON, false);
-                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDGREEN, PB_ON, false);
-                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDGREEN, PB_ON, false);
-                    }
-                    else {
-                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDBLUE, PB_ON, false);
-                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDBLUE, PB_ON, false);
-                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDBLUE, PB_ON, false);
-                    }       
+                    // Define the 4 colors: white, red, blue, green
+                    stNeoPixelNode colors[4];
+                    colors[0] = {255, 255, 255};  // White
+                    colors[1] = {255, 0, 0};      // Red
+                    colors[2] = {0, 0, 255};      // Blue
+                    colors[3] = {0, 255, 0};      // Green
                     
-                    testQCount++;
+                    // Rotate the colors based on rotation counter
+                    stNeoPixelNode rotatedColors[4];
+                    for (int i = 0; i < 4; i++) {
+                        int sourceIndex = (i + m_sandboxNeoPixelRotation) % 4;
+                        rotatedColors[i] = colors[sourceIndex];
+                    }
+                    
+                    // Send rotated colors to NeoPixel driver
+                    if (m_sandboxNeoPixel24) {
+                        m_sandboxNeoPixel24->StageNeoPixelArray(rotatedColors, 4);
+                        m_sandboxNeoPixel24->SendStagedNeoPixels();
+                    }
+                    
+                    // Increment rotation counter (wraps at 4 back to 0)
+                    m_sandboxNeoPixelRotation = (m_sandboxNeoPixelRotation + 1) % 4;
                 }
                 
                 // Left Activate - Test 3 - Video Playback Test (Toggle fade in/out)

@@ -14,6 +14,7 @@
 #ifdef EXE_MODE_RASPI
 #include "wiringPi.h"
 #include "wiringPiI2C.h"
+#include <time.h>  // For clock_gettime with nanosecond precision
 #endif
 
 // Output definitions
@@ -32,7 +33,8 @@ stOutputDef g_outputDef[] = {
     {"LED1P10 LED", PB_OMSG_LED, IDO_LED7, 10, PB_LED, 1, PB_OFF, 50, 0},
     {"LED2P08 LED", PB_OMSG_LED, IDO_LED8, 8, PB_LED, 2, PB_OFF, 500, 0},
     {"LED2P09 LED", PB_OMSG_LED, IDO_LED9, 9, PB_LED, 2, PB_OFF, 300, 0},
-    {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 100, 0}
+    {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 100, 0},
+    {"NeoPixel LED0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 0, PB_NEOPIXEL, 0, PB_OFF, 0, 0}  // Example NeoPixel - LED 0 on driver 0
 };
 
 // Input definitions
@@ -715,4 +717,379 @@ uint8_t AmpDriver::PercentToRegisterValue(uint8_t percent) const {
     }
     
     return value;
+}
+
+//==============================================================================
+// NeoPixelDriver Class Implementation for WS2812B RGB LED Strips
+//==============================================================================
+
+NeoPixelDriver::NeoPixelDriver(unsigned int outputPin, unsigned int numLEDs) 
+    : m_outputPin(outputPin), m_numLEDs(numLEDs), m_hasChanges(false) {
+    
+    // Safety check: Warn if LED count exceeds recommended limit
+    // Each LED takes ~30µs to transmit, so interrupts are disabled for numLEDs × 30µs
+    // Recommended: Keep under 60 LEDs (1.8ms) to avoid system impact
+    // Absolute limit: 100 LEDs (3ms) - beyond this may cause USB/audio issues
+    if (numLEDs > NEOPIXEL_MAX_LEDS_ABSOLUTE) {
+        // Clamp to absolute maximum to prevent severe system issues
+        m_numLEDs = NEOPIXEL_MAX_LEDS_ABSOLUTE;
+        #ifdef EXE_MODE_RASPI
+        // Note: In production, consider logging this warning
+        #endif
+    }
+    
+    // Allocate arrays for staged and current LED values
+    m_stagedValues = new stNeoPixelNode[m_numLEDs];
+    m_currentValues = new stNeoPixelNode[m_numLEDs];
+    
+    // Initialize all LEDs to off (black)
+    for (unsigned int i = 0; i < m_numLEDs; i++) {
+        m_stagedValues[i].red = 0;
+        m_stagedValues[i].green = 0;
+        m_stagedValues[i].blue = 0;
+        m_currentValues[i].red = 0;
+        m_currentValues[i].green = 0;
+        m_currentValues[i].blue = 0;
+    }
+
+#ifdef EXE_MODE_RASPI
+    // Configure the output pin
+    pinMode(m_outputPin, OUTPUT);
+    digitalWrite(m_outputPin, LOW);
+    
+    // Send initial reset to ensure LEDs are in known state
+    SendReset();
+#endif
+}
+
+NeoPixelDriver::~NeoPixelDriver() {
+#ifdef EXE_MODE_RASPI
+    // Turn off all LEDs before cleanup
+    for (unsigned int i = 0; i < m_numLEDs; i++) {
+        m_stagedValues[i].red = 0;
+        m_stagedValues[i].green = 0;
+        m_stagedValues[i].blue = 0;
+    }
+    m_hasChanges = true;
+    SendStagedNeoPixels();
+#endif
+    
+    // Free allocated memory
+    delete[] m_stagedValues;
+    delete[] m_currentValues;
+}
+
+void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue) {
+    if (ledIndex < m_numLEDs) {
+        // Only mark as changed if values actually differ from current hardware
+        if (m_currentValues[ledIndex].red != red ||
+            m_currentValues[ledIndex].green != green ||
+            m_currentValues[ledIndex].blue != blue) {
+            m_stagedValues[ledIndex].red = red;
+            m_stagedValues[ledIndex].green = green;
+            m_stagedValues[ledIndex].blue = blue;
+            m_hasChanges = true;
+        }
+    }
+}
+
+void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node) {
+    StageNeoPixel(ledIndex, node.red, node.green, node.blue);
+}
+
+void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness) {
+    // Apply brightness scaling to RGB values
+    // brightness: 0 = off, 255 = full brightness
+    uint8_t scaledRed = (red * brightness) / 255;
+    uint8_t scaledGreen = (green * brightness) / 255;
+    uint8_t scaledBlue = (blue * brightness) / 255;
+    
+    StageNeoPixel(ledIndex, scaledRed, scaledGreen, scaledBlue);
+}
+
+void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node, uint8_t brightness) {
+    StageNeoPixel(ledIndex, node.red, node.green, node.blue, brightness);
+}
+
+void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, PBLEDColor color) {
+    // Convert PBLEDColor to RGB values
+    // LED colors use full brightness (255) for active channels
+    uint8_t red = 0, green = 0, blue = 0;
+    
+    switch (color) {
+        case PB_LEDRED:
+            red = 255;
+            break;
+        case PB_LEDGREEN:
+            green = 255;
+            break;
+        case PB_LEDBLUE:
+            blue = 255;
+            break;
+        case PB_LEDWHITE:
+            red = green = blue = 255;
+            break;
+        case PB_LEDPURPLE:  // Magenta
+            red = blue = 255;
+            break;
+        case PB_LEDYELLOW:
+            red = green = 255;
+            break;
+        case PB_LEDCYAN:
+            green = blue = 255;
+            break;
+    }
+    
+    StageNeoPixel(ledIndex, red, green, blue);
+}
+
+void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, PBLEDColor color, uint8_t brightness) {
+    // Convert PBLEDColor to RGB values, then apply brightness
+    uint8_t red = 0, green = 0, blue = 0;
+    
+    switch (color) {
+        case PB_LEDRED:
+            red = 255;
+            break;
+        case PB_LEDGREEN:
+            green = 255;
+            break;
+        case PB_LEDBLUE:
+            blue = 255;
+            break;
+        case PB_LEDWHITE:
+            red = green = blue = 255;
+            break;
+        case PB_LEDPURPLE:  // Magenta
+            red = blue = 255;
+            break;
+        case PB_LEDYELLOW:
+            red = green = 255;
+            break;
+        case PB_LEDCYAN:
+            green = blue = 255;
+            break;
+    }
+    
+    StageNeoPixel(ledIndex, red, green, blue, brightness);
+}
+
+// Stage all LEDs in the chain - efficiently updates entire array
+void NeoPixelDriver::StageNeoPixelAll(uint8_t red, uint8_t green, uint8_t blue) {
+    // Directly update the staged array for efficiency
+    for (unsigned int i = 0; i < m_numLEDs; i++) {
+        // Check if value differs from current hardware
+        if (m_currentValues[i].red != red ||
+            m_currentValues[i].green != green ||
+            m_currentValues[i].blue != blue) {
+            m_stagedValues[i].red = red;
+            m_stagedValues[i].green = green;
+            m_stagedValues[i].blue = blue;
+            m_hasChanges = true;
+        }
+    }
+}
+
+void NeoPixelDriver::StageNeoPixelAll(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness) {
+    // Apply brightness scaling
+    uint8_t scaledRed = (red * brightness) / 255;
+    uint8_t scaledGreen = (green * brightness) / 255;
+    uint8_t scaledBlue = (blue * brightness) / 255;
+    
+    StageNeoPixelAll(scaledRed, scaledGreen, scaledBlue);
+}
+
+void NeoPixelDriver::StageNeoPixelAll(const stNeoPixelNode& node) {
+    StageNeoPixelAll(node.red, node.green, node.blue);
+}
+
+void NeoPixelDriver::StageNeoPixelAll(const stNeoPixelNode& node, uint8_t brightness) {
+    StageNeoPixelAll(node.red, node.green, node.blue, brightness);
+}
+
+void NeoPixelDriver::StageNeoPixelAll(PBLEDColor color) {
+    // Convert PBLEDColor to RGB values
+    uint8_t red = 0, green = 0, blue = 0;
+    
+    switch (color) {
+        case PB_LEDRED:
+            red = 255;
+            break;
+        case PB_LEDGREEN:
+            green = 255;
+            break;
+        case PB_LEDBLUE:
+            blue = 255;
+            break;
+        case PB_LEDWHITE:
+            red = green = blue = 255;
+            break;
+        case PB_LEDPURPLE:  // Magenta
+            red = blue = 255;
+            break;
+        case PB_LEDYELLOW:
+            red = green = 255;
+            break;
+        case PB_LEDCYAN:
+            green = blue = 255;
+            break;
+    }
+    
+    StageNeoPixelAll(red, green, blue);
+}
+
+void NeoPixelDriver::StageNeoPixelAll(PBLEDColor color, uint8_t brightness) {
+    // Convert PBLEDColor to RGB values, then apply brightness
+    uint8_t red = 0, green = 0, blue = 0;
+    
+    switch (color) {
+        case PB_LEDRED:
+            red = 255;
+            break;
+        case PB_LEDGREEN:
+            green = 255;
+            break;
+        case PB_LEDBLUE:
+            blue = 255;
+            break;
+        case PB_LEDWHITE:
+            red = green = blue = 255;
+            break;
+        case PB_LEDPURPLE:  // Magenta
+            red = blue = 255;
+            break;
+        case PB_LEDYELLOW:
+            red = green = 255;
+            break;
+        case PB_LEDCYAN:
+            green = blue = 255;
+            break;
+    }
+    
+    StageNeoPixelAll(red, green, blue, brightness);
+}
+
+void NeoPixelDriver::StageNeoPixelArray(const stNeoPixelNode* nodeArray, unsigned int count) {
+    unsigned int numToStage = (count < m_numLEDs) ? count : m_numLEDs;
+    for (unsigned int i = 0; i < numToStage; i++) {
+        StageNeoPixel(i, nodeArray[i]);
+    }
+}
+
+void NeoPixelDriver::SendStagedNeoPixels() {
+    // Only send if there are changes
+    if (!m_hasChanges) {
+        return;
+    }
+
+#ifdef EXE_MODE_RASPI
+    // Disable interrupts for timing-critical bit-banging
+    // 
+    // TIMING ANALYSIS:
+    // - Each LED: 3 bytes × 8 bits × 1.25µs = 30µs
+    // - 10 LEDs = 300µs interrupt disable (0.3ms) - safe
+    // - 60 LEDs = 1,800µs interrupt disable (1.8ms) - recommended max
+    // - 100 LEDs = 3,000µs interrupt disable (3ms) - absolute max
+    //
+    // SYSTEM IMPACT:
+    // - Below 2ms: Generally safe, minimal impact on USB/audio/network
+    // - 2-5ms: May cause occasional USB packet drops or audio glitches
+    // - Above 5ms: Risk of network packet loss and noticeable system lag
+    //
+    // Context switching is prevented by interrupt disable - this is the BEST
+    // approach for WS2812B timing requirements. Alternative approaches like
+    // RT_PREEMPT, DMA, or PWM are either overkill or hardware-dependent.
+    //
+    __asm__ volatile("cpsid i");  // Disable interrupts
+    
+    // Send data for each LED in the string
+    // WS2812B expects GRB format (not RGB)
+    for (unsigned int i = 0; i < m_numLEDs; i++) {
+        SendByte(m_stagedValues[i].green);  // Green first
+        SendByte(m_stagedValues[i].red);    // Red second
+        SendByte(m_stagedValues[i].blue);   // Blue third
+    }
+    
+    // Re-enable interrupts
+    __asm__ volatile("cpsie i");  // Enable interrupts
+    
+    // Send reset/latch signal (interrupts enabled for this)
+    SendReset();
+#endif
+
+    // Update current values to match staged values
+    for (unsigned int i = 0; i < m_numLEDs; i++) {
+        m_currentValues[i] = m_stagedValues[i];
+    }
+    
+    // Clear the changes flag
+    m_hasChanges = false;
+
+#ifdef EXE_MODE_WINDOWS
+    // Windows mode simulation - just update tracking
+    // Changes flag already cleared above
+#endif
+}
+
+bool NeoPixelDriver::HasStagedChanges() const {
+    return m_hasChanges;
+}
+
+void NeoPixelDriver::SendByte(uint8_t byte) {
+#ifdef EXE_MODE_RASPI
+    // WS2812B timing requirements (at 800kHz):
+    // Bit 1: 0.8us high, 0.45us low (1.25us total)
+    // Bit 0: 0.4us high, 0.85us low (1.25us total)
+    // 
+    // Using nanosecond-precision timing with clock_gettime instead of nop instructions
+    // to avoid CPU frequency scaling issues
+    
+    struct timespec ts_start, ts_now;
+    
+    for (int bit = 7; bit >= 0; bit--) {
+        if (byte & (1 << bit)) {
+            // Send a '1' bit: 0.8us high, 0.45us low
+            digitalWrite(m_outputPin, HIGH);
+            clock_gettime(CLOCK_MONOTONIC, &ts_start);
+            // Wait for 0.8us (800ns)
+            do {
+                clock_gettime(CLOCK_MONOTONIC, &ts_now);
+            } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                     (ts_now.tv_nsec - ts_start.tv_nsec) < 800);
+            
+            digitalWrite(m_outputPin, LOW);
+            clock_gettime(CLOCK_MONOTONIC, &ts_start);
+            // Wait for 0.45us (450ns)
+            do {
+                clock_gettime(CLOCK_MONOTONIC, &ts_now);
+            } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                     (ts_now.tv_nsec - ts_start.tv_nsec) < 450);
+        } else {
+            // Send a '0' bit: 0.4us high, 0.85us low
+            digitalWrite(m_outputPin, HIGH);
+            clock_gettime(CLOCK_MONOTONIC, &ts_start);
+            // Wait for 0.4us (400ns)
+            do {
+                clock_gettime(CLOCK_MONOTONIC, &ts_now);
+            } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                     (ts_now.tv_nsec - ts_start.tv_nsec) < 400);
+            
+            digitalWrite(m_outputPin, LOW);
+            clock_gettime(CLOCK_MONOTONIC, &ts_start);
+            // Wait for 0.85us (850ns)
+            do {
+                clock_gettime(CLOCK_MONOTONIC, &ts_now);
+            } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                     (ts_now.tv_nsec - ts_start.tv_nsec) < 850);
+        }
+    }
+#endif
+}
+
+void NeoPixelDriver::SendReset() {
+#ifdef EXE_MODE_RASPI
+    // WS2812B requires >50us low signal to latch the data
+    digitalWrite(m_outputPin, LOW);
+    delayMicroseconds(60);  // 60us reset time
+#endif
 }

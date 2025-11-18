@@ -549,6 +549,177 @@ for (int i = startLED; i <= endLED; i++) {
 
 ---
 
+## NeoPixel RGB LED Control
+
+The NeoPixel system provides control for WS2812B-style addressable RGB LED strips using direct Raspberry Pi GPIO pins.
+
+### Key Features
+
+- **Direct GPIO Control**: Uses bit-banging for precise timing
+- **RGB Color Control**: Full 24-bit color per LED (8 bits per channel)
+- **Single LED or Array Updates**: Update one LED or entire strip at once
+- **Sequence Support**: Pre-programmed color animation patterns
+- **Automatic Staging**: Only sends changes to minimize data transmission
+
+### Basic NeoPixel Control
+
+#### Set Single LED Color
+
+**Example:**
+```cpp
+// Set LED 0 to red (RGB: 255, 0, 0)
+stOutputOptions options;
+options.neoPixelRed = 255;
+options.neoPixelGreen = 0;
+options.neoPixelBlue = 0;
+
+g_PBEngine.SendOutputMsg(PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, PB_ON, false, &options);
+```
+
+#### Set Multiple LEDs (Array Update)
+
+**Example:**
+```cpp
+// Create array of LED colors
+stNeoPixelNode ledArray[10];
+for (int i = 0; i < 10; i++) {
+    ledArray[i].red = 255;
+    ledArray[i].green = i * 25;  // Gradient effect
+    ledArray[i].blue = 0;
+}
+
+// Send array to driver
+stOutputOptions options;
+options.neoPixelArray = ledArray;
+options.neoPixelArrayCount = 10;
+
+g_PBEngine.SendOutputMsg(PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, PB_ON, false, &options);
+```
+
+### NeoPixel Sequences
+
+Create animated patterns that run autonomously.
+
+#### Define a Sequence
+
+**Example:**
+```cpp
+// Define color patterns
+stNeoPixelNode redPattern[10];
+stNeoPixelNode bluePattern[10];
+stNeoPixelNode offPattern[10];
+
+// Initialize patterns
+for (int i = 0; i < 10; i++) {
+    redPattern[i] = {255, 0, 0};    // Red
+    bluePattern[i] = {0, 0, 255};   // Blue
+    offPattern[i] = {0, 0, 0};      // Off
+}
+
+// Define sequence steps
+stNeoPixelSequence colorSequence[] = {
+    {redPattern, 500},    // Red for 500ms
+    {bluePattern, 500},   // Blue for 500ms
+    {offPattern, 200}     // Off for 200ms
+};
+
+// Create sequence data structure
+stNeoPixelSequenceData mySequence = {
+    colorSequence,
+    3  // Number of steps
+};
+```
+
+#### Start a Sequence
+
+**Example:**
+```cpp
+stOutputOptions options;
+options.setNeoPixelSequence = &mySequence;
+options.loopMode = PB_LOOP;  // Continuous loop
+
+g_PBEngine.SendOutputMsg(PB_OMSG_NEOPIXEL_SEQUENCE, IDO_NEOPIXEL0, 
+                         PB_ON, false, &options);
+```
+
+#### Stop a Sequence
+
+**Example:**
+```cpp
+g_PBEngine.SendOutputMsg(PB_OMSG_NEOPIXEL_SEQUENCE, IDO_NEOPIXEL0, 
+                         PB_OFF, false);
+```
+
+### Configuration
+
+#### Hardware Setup
+
+Edit `PBEngine` constructor in `Pinball_Engine.cpp`:
+
+```cpp
+// Configure NeoPixel driver
+NeoPixelDriver m_NeoPixelDriver[NUM_NEOPIXEL_DRIVERS] = {
+    NeoPixelDriver(18, 30)  // GPIO 18, 30 LEDs
+};
+```
+
+#### Output Definition
+
+Add to `g_outputDef[]` in `Pinball_IO.cpp`:
+
+```cpp
+{"NeoPixel LED0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 0, PB_NEOPIXEL, 0, PB_OFF, 0, 0}
+```
+
+Where:
+- `IDO_NEOPIXEL0` - Unique output ID
+- `0` - LED index in the strip (pin field)
+- `PB_NEOPIXEL` - Board type
+- `0` - Driver index (first driver)
+
+### Important Notes
+
+1. **Timing Critical**: NeoPixel communication requires precise timing and disables interrupts briefly
+2. **GRB Order**: WS2812B uses GRB color order internally (handled automatically)
+3. **No Direct Control in Test Mode**: NeoPixel outputs show "N/A" in diagnostics/test modes
+4. **Sequence Exclusive**: During sequences, direct LED messages are ignored
+5. **GPIO Only**: NeoPixels use direct GPIO pins, not I2C like LED drivers
+6. **CPU Frequency Independent**: Uses `clock_gettime()` with nanosecond precision instead of CPU-dependent instruction counting
+7. **LED Count Limits**: 
+   - **Recommended maximum: 60 LEDs per driver** (1.8ms interrupt disable)
+   - **Absolute maximum: 100 LEDs per driver** (3ms interrupt disable)
+   - Exceeding limits may cause USB packet drops, audio glitches, or network issues
+   - Use multiple drivers for larger installations
+
+### Timing Parameters
+
+WS2812B timing (automatically handled using `clock_gettime()` with `CLOCK_MONOTONIC`):
+- Bit 1: 0.8µs high, 0.45µs low
+- Bit 0: 0.4µs high, 0.85µs low  
+- Reset: 60µs low signal
+- Timing is CPU frequency independent and robust to system load changes
+
+### Interrupt Disable Duration
+
+The implementation disables interrupts during LED data transmission for timing accuracy:
+
+| LED Count | Interrupt Disable Time | Impact Level |
+|-----------|------------------------|--------------|
+| 10 LEDs   | 0.3ms | Minimal - safe for all use cases |
+| 30 LEDs   | 0.9ms | Low - safe for most use cases |
+| 60 LEDs   | 1.8ms | **Recommended maximum** - generally safe |
+| 100 LEDs  | 3.0ms | **Absolute maximum** - may cause occasional issues |
+| 300 LEDs  | 9.0ms | Not recommended - will cause system problems |
+
+**Why interrupt disable is necessary**: The WS2812B protocol requires sub-microsecond timing precision. Context switching during transmission would corrupt the data stream. Disabling interrupts is the simplest and most reliable approach for userspace GPIO control.
+
+**Alternative approaches considered**:
+- RT_PREEMPT kernel: Overly complex for this use case
+- DMA/PWM hardware: Hardware-specific, less flexible
+- Higher-priority scheduling: Insufficient timing guarantee
+
+---
+
 ## See Also
 
 - **PBEngine_API.md** - Core engine and SendOutputMsg() details

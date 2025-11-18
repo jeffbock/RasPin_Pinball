@@ -37,6 +37,7 @@ class pbdEjector;
 // Hardware configuration defines
 #define NUM_IO_CHIPS    3
 #define NUM_LED_CHIPS   3
+#define NUM_NEOPIXEL_DRIVERS 1  // Number of NeoPixel driver instances
 
 // Sequence timing defines - this will need to be updated if more LED chips are added
 #define LED0_SEQ_MASK 0x1
@@ -83,6 +84,7 @@ enum class PBTBLScreenState;
 
 // Structure forward declarations and type definitions
 struct stLEDSequence;
+struct stNeoPixelSequence;
 
 // LED Sequence data structure - compile-time friendly
 struct stLEDSequenceData {
@@ -91,6 +93,14 @@ struct stLEDSequenceData {
 };
 
 typedef const stLEDSequenceData LEDSequence;
+
+// NeoPixel Sequence data structure - compile-time friendly
+struct stNeoPixelSequenceData {
+    const stNeoPixelSequence* steps;  // Pointer to static array of steps
+    int stepCount;                     // Number of steps in the array
+};
+
+typedef const stNeoPixelSequenceData NeoPixelSequence;
 
 // Input message structures
 struct stInputMessage {
@@ -108,6 +118,12 @@ struct stOutputOptions {
     PBSequenceLoopMode loopMode;
     uint16_t activeLEDMask[NUM_LED_CHIPS];
     const LEDSequence *setLEDSequence;
+    const NeoPixelSequence *setNeoPixelSequence;  // For NeoPixel sequences
+    const stNeoPixelNode *neoPixelArray;          // For direct NeoPixel array updates
+    unsigned int neoPixelArrayCount;              // Number of LEDs in array
+    uint8_t neoPixelRed;                          // Red channel for single NeoPixel LED (0-255)
+    uint8_t neoPixelGreen;                        // Green channel for single NeoPixel LED (0-255)
+    uint8_t neoPixelBlue;                         // Blue channel for single NeoPixel LED (0-255)
 };
 
 struct stOutputMessage {
@@ -146,6 +162,26 @@ struct stLEDSequence {
     uint16_t LEDOnBits [NUM_LED_CHIPS];
     unsigned int onDurationMS;
     unsigned int offDurationMS;
+};
+
+// NeoPixel sequence step structure
+struct stNeoPixelSequence {
+    const stNeoPixelNode* nodeArray;  // Pointer to array of RGB values for this step
+    unsigned int onDurationMS;         // Duration to display this step
+};
+
+// NeoPixel sequence info structure
+struct stNeoPixelSequenceInfo {
+    bool sequenceEnabled;
+    bool firstTime;
+    PBSequenceLoopMode loopMode;
+    unsigned long sequenceStartTick;
+    unsigned long stepStartTick;
+    int currentSeqIndex;
+    int previousSeqIndex;
+    int indexStep;
+    NeoPixelSequence *pNeoPixelSequence;
+    unsigned int driverIndex;  // Which NeoPixel driver this sequence is for
 };
 
 // Save file structures
@@ -238,6 +274,12 @@ public:
 
     AmpDriver m_ampDriver = AmpDriver(PB_I2C_AMPLIFIER);
 
+    // NeoPixel driver instances - initialized with default values (will be configured in Pinball_IO.cpp)
+    // Note: NeoPixel drivers use direct GPIO pins, not I2C
+    NeoPixelDriver m_NeoPixelDriver[NUM_NEOPIXEL_DRIVERS] = {
+        NeoPixelDriver(18, 10)  // Example: GPIO 18, 10 LEDs - customize as needed
+    };
+
     // Sound system for background music and effects
     PBSound m_soundSystem;
 
@@ -289,6 +331,10 @@ public:
     bool m_videoFadingOut;
     float m_videoFadeDurationSec;
     pbdEjector* m_sandboxEjector;
+    
+    // NeoPixel test sandbox variables
+    NeoPixelDriver* m_sandboxNeoPixel24;  // GPIO 24, 4 LEDs (single-wire protocol)
+    int m_sandboxNeoPixelRotation;        // Rotation counter for color cycling
 
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;
@@ -297,6 +343,7 @@ public:
     std::mutex m_outputQMutex;
     std::map<unsigned int, stOutputPulse> m_outputPulseMap;
     stLEDSequenceInfo m_LEDSequenceInfo;
+    stNeoPixelSequenceInfo m_NeoPixelSequenceInfo[NUM_NEOPIXEL_DRIVERS];
     std::queue<stOutputMessage> m_deferredQueue;
     std::mutex m_deferredQMutex;
 

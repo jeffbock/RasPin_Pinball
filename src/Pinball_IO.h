@@ -9,6 +9,7 @@
 #define Pinball_IO_h
 
 #include <string>
+#include <cstdint>
 
 #define PB_I2C_AMPLIFIER 0x4B
 
@@ -36,6 +37,7 @@ enum PBBoardType {
     PB_RASPI = 0,
     PB_IO = 1,
     PB_LED = 2,
+    PB_NEOPIXEL = 3,
     PB_NOBOARD
 };
 
@@ -72,7 +74,9 @@ enum PBOutputMsg {
     PB_OMSG_LEDCFG_GROUPBLINK = 3,
     PB_OMSG_LEDSET_BRIGHTNESS = 4,
     PB_OMSG_LED_SEQUENCE = 5,
-    PB_OMSG_GENERIC_IO = 6
+    PB_OMSG_GENERIC_IO = 6,
+    PB_OMSG_NEOPIXEL = 7,
+    PB_OMSG_NEOPIXEL_SEQUENCE = 8
 };
 
 // Placeholder - there are probably items to add here
@@ -108,7 +112,8 @@ struct stOutputDef{
 #define IDO_LED9 11
 #define IDO_LED10 12
 #define IDO_BALLEJECT2 13
-#define NUM_OUTPUTS 14
+#define IDO_NEOPIXEL0 14
+#define NUM_OUTPUTS 15
 
 #define IDI_LEFTFLIPPER 0
 #define IDI_RIGHTFLIPPER 1
@@ -284,6 +289,71 @@ private:
     
     // Helper function to convert percentage to MAX9744 register value
     uint8_t PercentToRegisterValue(uint8_t percent) const;
+};
+
+// NeoPixel LED node structure - defines RGB color for a single LED
+struct stNeoPixelNode {
+    uint8_t red;
+    uint8_t green;
+    uint8_t blue;
+};
+
+// NeoPixel timing and safety constants
+// Maximum recommended LEDs per driver to keep interrupt disable time < 2ms
+// Each LED takes ~30µs to transmit (24 bits × 1.25µs)
+// 60 LEDs = 1.8ms interrupt disable (safe for most systems)
+#define NEOPIXEL_MAX_LEDS_RECOMMENDED 60
+#define NEOPIXEL_MAX_LEDS_ABSOLUTE 100  // Absolute limit (3ms) - may cause issues
+
+// NeoPixel Driver class for controlling WS2812B-style RGB LED strips
+// Uses Raspberry Pi GPIO pins directly for bit-banged communication
+// IMPORTANT: Disables interrupts during transmission - limit LED count to avoid system issues
+class NeoPixelDriver {
+public:
+    NeoPixelDriver(unsigned int outputPin, unsigned int numLEDs);
+    ~NeoPixelDriver();
+
+    // Stage a single LED color value
+    void StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue);
+    void StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);
+    void StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node);
+    void StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node, uint8_t brightness);
+    void StageNeoPixel(unsigned int ledIndex, PBLEDColor color);
+    void StageNeoPixel(unsigned int ledIndex, PBLEDColor color, uint8_t brightness);
+    
+    // Stage all LEDs in the chain to the same color
+    void StageNeoPixelAll(uint8_t red, uint8_t green, uint8_t blue);
+    void StageNeoPixelAll(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);
+    void StageNeoPixelAll(const stNeoPixelNode& node);
+    void StageNeoPixelAll(const stNeoPixelNode& node, uint8_t brightness);
+    void StageNeoPixelAll(PBLEDColor color);
+    void StageNeoPixelAll(PBLEDColor color, uint8_t brightness);
+    
+    // Stage an array of LED values
+    void StageNeoPixelArray(const stNeoPixelNode* nodeArray, unsigned int count);
+    
+    // Send staged values to the LED string (only if different from current hardware)
+    void SendStagedNeoPixels();
+    
+    // Check if there are staged changes
+    bool HasStagedChanges() const;
+    
+    // Get pin and LED count
+    unsigned int GetOutputPin() const { return m_outputPin; }
+    unsigned int GetNumLEDs() const { return m_numLEDs; }
+
+private:
+    unsigned int m_outputPin;      // GPIO pin number
+    unsigned int m_numLEDs;        // Number of LEDs in the string
+    stNeoPixelNode* m_stagedValues;   // Staged LED values
+    stNeoPixelNode* m_currentValues;  // Current hardware LED values
+    bool m_hasChanges;             // Flag indicating staged changes exist
+    
+    // Helper function to send RGB data for a single LED using WS2812B timing
+    void SendByte(uint8_t byte);
+    
+    // Helper function to send reset/latch signal
+    void SendReset();
 };
 
 
