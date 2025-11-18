@@ -593,8 +593,8 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
         std::string stateText;
         // Check if this is a NeoPixel output
         if (g_outputDef[i].boardType == PB_NEOPIXEL) {
-            stateText = "N/A";
-            gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);  // Gray for N/A
+            stateText = "NeoPixel";
+            gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);  // Gray for NeoPixel
         } else {
             switch (g_outputDef[i].lastState) {
                 case PB_ON:
@@ -1257,8 +1257,29 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
 
                 if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
-                    // Skip NeoPixel outputs - they cannot be directly controlled in test mode
-                    if (g_outputDef[m_CurrentOutputItem].boardType != PB_NEOPIXEL) {
+                    // Handle NeoPixel outputs differently - initialize entire chain to black or white
+                    if (g_outputDef[m_CurrentOutputItem].boardType == PB_NEOPIXEL) {
+                        // Toggle state
+                        if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) {
+                            g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
+                        } else {
+                            g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
+                        }
+                        
+                        // Initialize NeoPixel chain to black (OFF) or white (ON)
+                        unsigned int boardIndex = g_outputDef[m_CurrentOutputItem].boardIndex;
+                        if (boardIndex < NUM_NEOPIXEL_DRIVERS) {
+                            if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) {
+                                // Set all LEDs to white
+                                m_NeoPixelDriver[boardIndex].StageNeoPixelAll(255, 255, 255);
+                            } else {
+                                // Set all LEDs to black (off)
+                                m_NeoPixelDriver[boardIndex].StageNeoPixelAll(0, 0, 0);
+                            }
+                            m_NeoPixelDriver[boardIndex].SendStagedNeoPixels();
+                        }
+                    } else {
+                        // Regular outputs - toggle state and send message
                         if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
                         else g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
 
