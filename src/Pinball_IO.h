@@ -315,8 +315,19 @@ public:
 
     // Stage a single LED color value
     void StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue);
+    void StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);
     void StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node);
+    void StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node, uint8_t brightness);
     void StageNeoPixel(unsigned int ledIndex, PBLEDColor color);
+    void StageNeoPixel(unsigned int ledIndex, PBLEDColor color, uint8_t brightness);
+    
+    // Stage all LEDs in the chain to the same color
+    void StageNeoPixelAll(uint8_t red, uint8_t green, uint8_t blue);
+    void StageNeoPixelAll(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);
+    void StageNeoPixelAll(const stNeoPixelNode& node);
+    void StageNeoPixelAll(const stNeoPixelNode& node, uint8_t brightness);
+    void StageNeoPixelAll(PBLEDColor color);
+    void StageNeoPixelAll(PBLEDColor color, uint8_t brightness);
     
     // Stage an array of LED values
     void StageNeoPixelArray(const stNeoPixelNode* nodeArray, unsigned int count);
