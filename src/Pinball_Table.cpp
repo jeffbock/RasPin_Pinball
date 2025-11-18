@@ -298,6 +298,10 @@ bool PBEngine::pbeTryAddPlayer(){
     return true;
 }
 
+pbGameState& PBEngine::getCurrentPlayerState(){
+    return m_playerStates[m_currentPlayer];
+}
+
 PBTableState& PBEngine::getPlayerGameState(){
     return m_playerStates[m_currentPlayer].mainGameState;
 }
@@ -324,7 +328,7 @@ std::string PBEngine::formatScoreWithCommas(unsigned long score){
 
 void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick){
     // Get the current player state
-    pbGameState& currentPlayerState = m_playerStates[m_currentPlayer];
+    pbGameState& currentPlayerState = getCurrentPlayerState();
     
     // Render the current player's score in the center (large white text)
     gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
@@ -343,31 +347,35 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     gfxSetColor(m_StartMenuFontId, 128, 128, 128, 255); // Grey color
     gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
     
-    // Collect other enabled players in order, excluding the current player
-    std::vector<int> otherPlayers;
+    // Count enabled non-current players for spacing calculation
+    int numOtherPlayers = 0;
     for (int i = 0; i < 4; i++) {
         if (i != m_currentPlayer && m_playerStates[i].enabled) {
-            otherPlayers.push_back(i);
+            numOtherPlayers++;
         }
     }
     
     // Render the other player scores across the bottom
-    int numOtherPlayers = otherPlayers.size();
     if (numOtherPlayers > 0) {
         int spacing = 300; // Horizontal spacing between player scores
         int startX = (PB_SCREENWIDTH/2) - ((numOtherPlayers - 1) * spacing / 2);
+        int renderIndex = 0;
         
-        for (int i = 0; i < numOtherPlayers; i++) {
-            int playerIndex = otherPlayers[i];
-            int xPos = startX + (i * spacing);
+        for (int i = 0; i < 4; i++) {
+            // Skip current player and disabled players
+            if (i == m_currentPlayer || !m_playerStates[i].enabled) continue;
+            
+            int xPos = startX + (renderIndex * spacing);
             
             // Render player label
-            std::string otherPlayerLabel = "Player " + std::to_string(playerIndex + 1);
+            std::string otherPlayerLabel = "Player " + std::to_string(i + 1);
             gfxRenderString(m_StartMenuFontId, otherPlayerLabel, xPos, ACTIVEDISPY + 500, 3, GFX_TEXTCENTER);
             
             // Render player score with commas
-            std::string otherScoreText = formatScoreWithCommas(m_playerStates[playerIndex].score);
+            std::string otherScoreText = formatScoreWithCommas(m_playerStates[i].score);
             gfxRenderString(m_StartMenuFontId, otherScoreText, xPos, ACTIVEDISPY + 540, 3, GFX_TEXTCENTER);
+            
+            renderIndex++;
         }
     }
 }
