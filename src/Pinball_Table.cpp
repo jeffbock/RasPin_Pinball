@@ -32,7 +32,10 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetXY(m_PBTBLeftDoorStartId, ACTIVEDISPX + 315, ACTIVEDISPY + 112, false); 
     m_PBTBLeftDoorEndId = gfxInstanceSprite(m_PBTBLLeftDoorId);
     gfxSetXY(m_PBTBLeftDoorEndId, ACTIVEDISPX + 90, ACTIVEDISPY + 112, false); 
-    gfxLoadAnimateDataShort(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, ANIMATE_X_MASK, 1.25f, false, GFX_NOLOOP, GFX_ANIM_NORMAL);
+    // Left door moves left with acceleration, starting slowly and slamming open
+    gfxLoadAnimateData(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, 
+                       ANIMATE_X_MASK, 1.25f, false, GFX_NOLOOP, GFX_ANIM_ACCL,
+                       0, -400.0f, 0.0f, 0.0f, 0.0f, true, -50.0f, 0.0f, 0.0f);
     gfxCreateAnimation(animateData, true);
 
     m_PBTBLRightDoorId = gfxLoadSprite("RightDoor", "src/resources/textures/DoorRight2.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
@@ -40,7 +43,10 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetXY(m_PBTBRightDoorStartId, ACTIVEDISPX + 460, ACTIVEDISPY + 112, false);
     m_PBTBRightDoorEndId = gfxInstanceSprite(m_PBTBLRightDoorId);
     gfxSetXY(m_PBTBRightDoorEndId, ACTIVEDISPX + 754, ACTIVEDISPY + 112, false);
-    gfxLoadAnimateDataShort(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, ANIMATE_X_MASK, 1.25f, false, GFX_NOLOOP, GFX_ANIM_NORMAL);
+    // Right door moves right with acceleration, starting slowly and slamming open
+    gfxLoadAnimateData(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, 
+                       ANIMATE_X_MASK, 1.25f, false, GFX_NOLOOP, GFX_ANIM_ACCL,
+                       0, 400.0f, 0.0f, 0.0f, 0.0f, true, 50.0f, 0.0f, 0.0f);
     gfxCreateAnimation(animateData, true);
     
     m_PBTBLDoorDragonId = gfxLoadSprite("DoorDragon", "src/resources/textures/Dragon.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
@@ -250,6 +256,10 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                         m_playerStates[i].reset(m_saveFileData.ballsPerGame);
                         m_playerStates[i].enabled = false;
                     }
+                    
+                    // Initialize main score fade-in animation
+                    m_mainScoreAnimStartTick = currentTick;
+                    m_mainScoreAnimActive = true;
                 }
             break;
 
@@ -314,6 +324,12 @@ bool PBEngine::pbeTryAddPlayer(){
     m_playerStates[nextPlayerIdx].reset(m_saveFileData.ballsPerGame);
     m_playerStates[nextPlayerIdx].enabled = true;
     
+    // Initialize scroll-up animation for this player
+    m_playerStates[nextPlayerIdx].animStartTick = GetTickCountGfx();
+    m_playerStates[nextPlayerIdx].animDurationSec = 1.5f;
+    m_playerStates[nextPlayerIdx].currentYOffset = 100.0f; // Start 100 pixels below (off-screen)
+    m_playerStates[nextPlayerIdx].animationActive = true;
+    
     // Play feedback sound
     m_soundSystem.pbsPlayEffect(EFFECTCLICK);
     
@@ -353,8 +369,24 @@ std::string PBEngine::formatScoreWithCommas(unsigned long score){
 }
 
 void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick){
+    // Calculate fade-in alpha for main score
+    unsigned int mainAlpha = 255;
+    if (m_mainScoreAnimActive) {
+        float elapsedSec = (currentTick - m_mainScoreAnimStartTick) / 1000.0f;
+        float animDuration = 1.5f;
+        
+        if (elapsedSec >= animDuration) {
+            m_mainScoreAnimActive = false;
+            mainAlpha = 255;
+        } else {
+            // Linear fade from 0 to 255
+            float progress = elapsedSec / animDuration;
+            mainAlpha = static_cast<unsigned int>(progress * 255.0f);
+        }
+    }
+    
     // Render the current player's score in the center (smaller white text)
-    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+    gfxSetColor(m_StartMenuFontId, 255, 255, 255, mainAlpha);
     gfxSetScaleFactor(m_StartMenuFontId, 0.8, false);
     
     // Render "Player X" label above the score
@@ -388,9 +420,26 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
         // Only render up to 3 secondary scores
         if (renderIndex >= 3) break;
         
+        // Calculate Y offset for scroll-up animation
+        float yOffset = 0.0f;
+        if (m_playerStates[i].animationActive) {
+            float elapsedSec = (currentTick - m_playerStates[i].animStartTick) / 1000.0f;
+            
+            if (elapsedSec >= m_playerStates[i].animDurationSec) {
+                m_playerStates[i].animationActive = false;
+                m_playerStates[i].currentYOffset = 0.0f;
+            } else {
+                // Linear interpolation from starting offset to 0
+                float progress = elapsedSec / m_playerStates[i].animDurationSec;
+                m_playerStates[i].currentYOffset = 100.0f * (1.0f - progress);
+            }
+            
+            yOffset = m_playerStates[i].currentYOffset;
+        }
+        
         // Render "PX: score" format, left-justified at the position
         std::string playerScoreText = "P" + std::to_string(i + 1) + ": " + formatScoreWithCommas(m_playerStates[i].score);
-        gfxRenderString(m_StartMenuFontId, playerScoreText, positions[renderIndex], ACTIVEDISPY + 735, 3, GFX_TEXTLEFT);
+        gfxRenderString(m_StartMenuFontId, playerScoreText, positions[renderIndex], ACTIVEDISPY + 735 + yOffset, 3, GFX_TEXTLEFT);
         
         renderIndex++;
     }

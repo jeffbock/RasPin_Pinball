@@ -92,6 +92,10 @@
         m_playerStates[i].reset(3); // Will be updated from save data when game starts
     }
     
+    // Main score animation initialization
+    m_mainScoreAnimStartTick = 0;
+    m_mainScoreAnimActive = false;
+    
     // Initialize NeoPixel sequence info
     for (int i = 0; i < NUM_NEOPIXEL_DRIVERS; i++) {
         m_NeoPixelSequenceInfo[i].sequenceEnabled = false;

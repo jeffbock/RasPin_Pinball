@@ -363,6 +363,10 @@ public:
     // Multi-player game state
     pbGameState m_playerStates[4];    // Array of 4 player states
     unsigned int m_currentPlayer;     // Current active player (0-3)
+    
+    // Main score animation tracking
+    unsigned long m_mainScoreAnimStartTick;
+    bool m_mainScoreAnimActive;
 private:
 
     PBMainState m_mainState;
