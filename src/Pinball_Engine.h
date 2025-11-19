@@ -423,7 +423,8 @@ private:
 
     // Player management functions
     bool pbeTryAddPlayer(); // Try to add a new player, returns true if successful
-    pbGameState& getCurrentPlayerState(); // Get reference to current player's full state
+    unsigned long getCurrentPlayerScore(); // Get current player's score
+    bool isCurrentPlayerEnabled(); // Get current player's enabled state
     PBTableState& getPlayerGameState(); // Get current player's game state
     PBTBLMainScreenState& getPlayerScreenState(); // Get current player's screen state
     void addPlayerScore(unsigned long points); // Add score to current player

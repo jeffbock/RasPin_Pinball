@@ -298,8 +298,12 @@ bool PBEngine::pbeTryAddPlayer(){
     return true;
 }
 
-pbGameState& PBEngine::getCurrentPlayerState(){
-    return m_playerStates[m_currentPlayer];
+unsigned long PBEngine::getCurrentPlayerScore(){
+    return m_playerStates[m_currentPlayer].score;
+}
+
+bool PBEngine::isCurrentPlayerEnabled(){
+    return m_playerStates[m_currentPlayer].enabled;
 }
 
 PBTableState& PBEngine::getPlayerGameState(){
@@ -327,9 +331,6 @@ std::string PBEngine::formatScoreWithCommas(unsigned long score){
 }
 
 void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick){
-    // Get the current player state
-    pbGameState& currentPlayerState = getCurrentPlayerState();
-    
     // Render the current player's score in the center (large white text)
     gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 2.0, false);
@@ -339,7 +340,7 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     gfxRenderString(m_StartMenuFontId, playerLabel, (PB_SCREENWIDTH/2), ACTIVEDISPY + 150, 5, GFX_TEXTCENTER);
     
     // Render the current player's score with commas
-    std::string scoreText = formatScoreWithCommas(currentPlayerState.score);
+    std::string scoreText = formatScoreWithCommas(getCurrentPlayerScore());
     gfxSetScaleFactor(m_StartMenuFontId, 3.0, false);
     gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2), ACTIVEDISPY + 250, 5, GFX_TEXTCENTER);
     
