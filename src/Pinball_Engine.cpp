@@ -96,6 +96,11 @@
     m_mainScoreAnimStartTick = 0;
     m_mainScoreAnimActive = false;
     
+    // Secondary score slot animation initialization
+    for (int i = 0; i < 3; i++) {
+        m_secondaryScoreAnims[i].reset();
+    }
+    
     // Initialize NeoPixel sequence info
     for (int i = 0; i < NUM_NEOPIXEL_DRIVERS; i++) {
         m_NeoPixelSequenceInfo[i].sequenceEnabled = false;

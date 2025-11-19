@@ -31,6 +31,30 @@ enum class PBTBLMainScreenState {
     MAIN_END
 };
 
+// Secondary score slot animation state
+struct SecondaryScoreAnimState {
+    unsigned long animStartTick;      // Tick when animation started
+    float animDurationSec;            // Duration of animation in seconds
+    float currentYOffset;             // Current Y offset for scroll animation
+    bool animationActive;             // Whether animation is currently active
+    int playerIndex;                  // Which player this slot is animating (-1 if none)
+    
+    SecondaryScoreAnimState() {
+        animStartTick = 0;
+        animDurationSec = 1.5f;
+        currentYOffset = 0.0f;
+        animationActive = false;
+        playerIndex = -1;
+    }
+    
+    void reset() {
+        animStartTick = 0;
+        currentYOffset = 0.0f;
+        animationActive = false;
+        playerIndex = -1;
+    }
+};
+
 // Per-player game state class
 class pbGameState {
 public:
@@ -41,12 +65,6 @@ public:
     unsigned int currentBall;         // Current ball number (1-based)
     bool ballSaveEnabled;             // Ball save active flag
     bool extraBallEnabled;            // Extra ball earned flag
-    
-    // Animation tracking for score display
-    unsigned long animStartTick;      // Tick when animation started
-    float animDurationSec;            // Duration of animation in seconds
-    float currentYOffset;             // Current Y offset for scroll animation
-    bool animationActive;             // Whether animation is currently active
 
     // Constructor
     pbGameState() {
@@ -62,12 +80,6 @@ public:
         currentBall = 1;
         ballSaveEnabled = false;
         extraBallEnabled = false;
-        
-        // Reset animation state
-        animStartTick = 0;
-        animDurationSec = 1.5f;
-        currentYOffset = 0.0f;
-        animationActive = false;
     }
 };
 

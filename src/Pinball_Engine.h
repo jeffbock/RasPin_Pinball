@@ -367,6 +367,9 @@ public:
     // Main score animation tracking
     unsigned long m_mainScoreAnimStartTick;
     bool m_mainScoreAnimActive;
+    
+    // Secondary score slot animations (up to 3 slots for non-current players)
+    SecondaryScoreAnimState m_secondaryScoreAnims[3];
 private:
 
     PBMainState m_mainState;

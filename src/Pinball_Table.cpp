@@ -260,6 +260,11 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                     // Initialize main score fade-in animation
                     m_mainScoreAnimStartTick = currentTick;
                     m_mainScoreAnimActive = true;
+                    
+                    // Reset all secondary score slot animations
+                    for (int i = 0; i < 3; i++) {
+                        m_secondaryScoreAnims[i].reset();
+                    }
                 }
             break;
 
@@ -324,11 +329,24 @@ bool PBEngine::pbeTryAddPlayer(){
     m_playerStates[nextPlayerIdx].reset(m_saveFileData.ballsPerGame);
     m_playerStates[nextPlayerIdx].enabled = true;
     
-    // Initialize scroll-up animation for this player
-    m_playerStates[nextPlayerIdx].animStartTick = GetTickCountGfx();
-    m_playerStates[nextPlayerIdx].animDurationSec = 1.5f;
-    m_playerStates[nextPlayerIdx].currentYOffset = 100.0f; // Start 100 pixels below (off-screen)
-    m_playerStates[nextPlayerIdx].animationActive = true;
+    // Count how many secondary players are now active (excluding current player)
+    int secondaryCount = 0;
+    for (int i = 0; i < 4; i++) {
+        if (i != m_currentPlayer && m_playerStates[i].enabled) {
+            secondaryCount++;
+        }
+    }
+    
+    // Initialize scroll-up animation for the new secondary score slot
+    // The slot index is (secondaryCount - 1) since we just added this player
+    if (secondaryCount > 0 && secondaryCount <= 3) {
+        int slotIndex = secondaryCount - 1;
+        m_secondaryScoreAnims[slotIndex].animStartTick = GetTickCountGfx();
+        m_secondaryScoreAnims[slotIndex].animDurationSec = 1.5f;
+        m_secondaryScoreAnims[slotIndex].currentYOffset = 100.0f; // Start 100 pixels below (off-screen)
+        m_secondaryScoreAnims[slotIndex].animationActive = true;
+        m_secondaryScoreAnims[slotIndex].playerIndex = nextPlayerIdx;
+    }
     
     // Play feedback sound
     m_soundSystem.pbsPlayEffect(EFFECTCLICK);
@@ -412,36 +430,36 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     int rightX = ACTIVEDISPX + (2 * thirdWidth) + 10; // Start of 3rd third + 10 pixels
     int positions[3] = {leftX, middleX, rightX};
     
-    int renderIndex = 0;
+    int slotIndex = 0;
     for (int i = 0; i < 4; i++) {
         // Skip current player and disabled players
         if (i == m_currentPlayer || !m_playerStates[i].enabled) continue;
         
         // Only render up to 3 secondary scores
-        if (renderIndex >= 3) break;
+        if (slotIndex >= 3) break;
         
         // Calculate Y offset for scroll-up animation
         float yOffset = 0.0f;
-        if (m_playerStates[i].animationActive) {
-            float elapsedSec = (currentTick - m_playerStates[i].animStartTick) / 1000.0f;
+        if (m_secondaryScoreAnims[slotIndex].animationActive) {
+            float elapsedSec = (currentTick - m_secondaryScoreAnims[slotIndex].animStartTick) / 1000.0f;
             
-            if (elapsedSec >= m_playerStates[i].animDurationSec) {
-                m_playerStates[i].animationActive = false;
-                m_playerStates[i].currentYOffset = 0.0f;
+            if (elapsedSec >= m_secondaryScoreAnims[slotIndex].animDurationSec) {
+                m_secondaryScoreAnims[slotIndex].animationActive = false;
+                m_secondaryScoreAnims[slotIndex].currentYOffset = 0.0f;
             } else {
                 // Linear interpolation from starting offset to 0
-                float progress = elapsedSec / m_playerStates[i].animDurationSec;
-                m_playerStates[i].currentYOffset = 100.0f * (1.0f - progress);
+                float progress = elapsedSec / m_secondaryScoreAnims[slotIndex].animDurationSec;
+                m_secondaryScoreAnims[slotIndex].currentYOffset = 100.0f * (1.0f - progress);
             }
             
-            yOffset = m_playerStates[i].currentYOffset;
+            yOffset = m_secondaryScoreAnims[slotIndex].currentYOffset;
         }
         
         // Render "PX: score" format, left-justified at the position
         std::string playerScoreText = "P" + std::to_string(i + 1) + ": " + formatScoreWithCommas(m_playerStates[i].score);
-        gfxRenderString(m_StartMenuFontId, playerScoreText, positions[renderIndex], ACTIVEDISPY + 735 + yOffset, 3, GFX_TEXTLEFT);
+        gfxRenderString(m_StartMenuFontId, playerScoreText, positions[slotIndex], ACTIVEDISPY + 735 + yOffset, 3, GFX_TEXTLEFT);
         
-        renderIndex++;
+        slotIndex++;
     }
 }
 
