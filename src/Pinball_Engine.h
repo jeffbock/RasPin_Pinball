@@ -359,6 +359,10 @@ public:
     bool m_PBTBLStartDoorsDone, m_PBTBLOpenDoors;
 
     bool m_RestartTable;
+
+    // Multi-player game state
+    pbGameState m_playerStates[4];    // Array of 4 player states
+    unsigned int m_currentPlayer;     // Current active player (0-3)
 private:
 
     PBMainState m_mainState;
@@ -411,9 +415,23 @@ private:
     
     // Render functions for the pinball game table
     bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick);
 
     // Load functions for the pinball game table
     bool pbeLoadGameStart(bool forceReload); // Load the start screen for the pinball game
+    bool pbeLoadMainScreen(bool forceReload); // Load the main screen for the pinball game
+
+    // Player management functions
+    bool pbeTryAddPlayer(); // Try to add a new player, returns true if successful
+    unsigned long getCurrentPlayerScore(); // Get current player's score
+    bool isCurrentPlayerEnabled(); // Get current player's enabled state
+    PBTableState& getPlayerGameState(); // Get current player's game state
+    PBTBLMainScreenState& getPlayerScreenState(); // Get current player's screen state
+    void addPlayerScore(unsigned long points); // Add score to current player
+    
+    // Helper functions
+    std::string formatScoreWithCommas(unsigned long score); // Format score with thousand separators
+    void pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick); // Render all player scores
 
     // Texture release functions
     void pbeReleaseMenuTextures();

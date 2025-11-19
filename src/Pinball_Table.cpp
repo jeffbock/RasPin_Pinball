@@ -4,6 +4,7 @@
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
 // Additional details can also be found in the license file in the root of the project.
 
+#include "Pinball_Engine.h"
 #include "Pinball_Table.h"
 #include "Pinball_TableStr.h"
 #include "PBSequences.h"
@@ -236,6 +237,20 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                     gfxAnimateRestart(m_PBTBLRightDoorId);
                     m_PBTBLOpenDoors = true;
                 }
+                
+                // Check if door animations are complete and transition to main screen
+                if ((!gfxAnimateActive(m_PBTBLLeftDoorId)) && (!gfxAnimateActive(m_PBTBLRightDoorId))) {
+                    // Transition to main screen and enable player 1 automatically
+                    m_tableState = PBTableState::PBTBL_MAINSCREEN;
+                    m_currentPlayer = 0;
+                    m_playerStates[0].reset(m_saveFileData.ballsPerGame);
+                    m_playerStates[0].enabled = true;
+                    // Make sure other players are disabled
+                    for (int i = 1; i < 4; i++) {
+                        m_playerStates[i].reset(m_saveFileData.ballsPerGame);
+                        m_playerStates[i].enabled = false;
+                    }
+                }
             break;
 
         default:
@@ -254,12 +269,153 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     return (true);
 }
 
+bool PBEngine::pbeLoadMainScreen(bool forceReload){
+    
+    static bool mainScreenLoaded = false;
+    if (forceReload) mainScreenLoaded = false;
+    if (mainScreenLoaded) return (true);
+
+    // Main screen uses the same font as the start menu
+    // The font should already be loaded from pbeLoadGameStart
+    
+    mainScreenLoaded = true;
+    return (mainScreenLoaded);
+}
+
+bool PBEngine::pbeTryAddPlayer(){
+    // Find the first disabled player slot
+    int nextPlayerIdx = -1;
+    for (int i = 0; i < 4; i++) {
+        if (!m_playerStates[i].enabled) {
+            nextPlayerIdx = i;
+            break;
+        }
+    }
+    
+    // If no disabled player found, cannot add
+    if (nextPlayerIdx == -1) {
+        return false;
+    }
+    
+    // Check if at least one enabled player is still on their first ball
+    bool canAddPlayer = false;
+    for (int i = 0; i < 4; i++) {
+        if (m_playerStates[i].enabled && m_playerStates[i].currentBall == 1) {
+            canAddPlayer = true;
+            break;
+        }
+    }
+    
+    if (!canAddPlayer) {
+        return false;
+    }
+    
+    // Enable and initialize the new player
+    m_playerStates[nextPlayerIdx].reset(m_saveFileData.ballsPerGame);
+    m_playerStates[nextPlayerIdx].enabled = true;
+    
+    // Play feedback sound
+    m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+    
+    return true;
+}
+
+unsigned long PBEngine::getCurrentPlayerScore(){
+    return m_playerStates[m_currentPlayer].score;
+}
+
+bool PBEngine::isCurrentPlayerEnabled(){
+    return m_playerStates[m_currentPlayer].enabled;
+}
+
+PBTableState& PBEngine::getPlayerGameState(){
+    return m_playerStates[m_currentPlayer].mainGameState;
+}
+
+PBTBLMainScreenState& PBEngine::getPlayerScreenState(){
+    return m_playerStates[m_currentPlayer].screenState;
+}
+
+void PBEngine::addPlayerScore(unsigned long points){
+    m_playerStates[m_currentPlayer].score += points;
+}
+
+std::string PBEngine::formatScoreWithCommas(unsigned long score){
+    std::string scoreStr = std::to_string(score);
+    int insertPosition = scoreStr.length() - 3;
+    
+    while (insertPosition > 0) {
+        scoreStr.insert(insertPosition, ",");
+        insertPosition -= 3;
+    }
+    
+    return scoreStr;
+}
+
+void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick){
+    // Render the current player's score in the center (smaller white text)
+    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 0.8, false);
+    
+    // Render "Player X" label above the score
+    std::string playerLabel = "Player " + std::to_string(m_currentPlayer + 1);
+    gfxRenderString(m_StartMenuFontId, playerLabel, (PB_SCREENWIDTH/2), ACTIVEDISPY + 280, 5, GFX_TEXTCENTER);
+    
+    // Render the current player's score with commas
+    std::string scoreText = formatScoreWithCommas(getCurrentPlayerScore());
+    gfxSetScaleFactor(m_StartMenuFontId, 1.2, false);
+    gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2), ACTIVEDISPY + 370, 5, GFX_TEXTCENTER);
+    
+    // Render other player scores at the bottom (small grey text)
+    gfxSetColor(m_StartMenuFontId, 180, 180, 180, 255); // Light grey color for visibility
+    gfxSetScaleFactor(m_StartMenuFontId, 0.375, false); // 25% smaller than 0.5
+    
+    // Render the other player scores at fixed positions based on thirds of active region
+    // Active region is approximately 1100 pixels wide
+    int activeWidth = 1100;
+    int thirdWidth = activeWidth / 3;
+    
+    int leftX = ACTIVEDISPX + 10;                    // 10 pixels from start (far left)
+    int middleX = ACTIVEDISPX + thirdWidth + 10;     // Start of 2nd third + 10 pixels
+    int rightX = ACTIVEDISPX + (2 * thirdWidth) + 10; // Start of 3rd third + 10 pixels
+    int positions[3] = {leftX, middleX, rightX};
+    
+    int renderIndex = 0;
+    for (int i = 0; i < 4; i++) {
+        // Skip current player and disabled players
+        if (i == m_currentPlayer || !m_playerStates[i].enabled) continue;
+        
+        // Only render up to 3 secondary scores
+        if (renderIndex >= 3) break;
+        
+        // Render "PX: score" format, left-justified at the position
+        std::string playerScoreText = "P" + std::to_string(i + 1) + ": " + formatScoreWithCommas(m_playerStates[i].score);
+        gfxRenderString(m_StartMenuFontId, playerScoreText, positions[renderIndex], ACTIVEDISPY + 735, 3, GFX_TEXTLEFT);
+        
+        renderIndex++;
+    }
+}
+
+bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
+    
+    if (!pbeLoadMainScreen(false)) return (false);
+    
+    // Clear to black background
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    
+    // Render all player scores
+    pbeRenderPlayerScores(currentTick, lastTick);
+    
+    return (true);
+}
+
 bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick){
     
     bool success = false;
 
     switch (m_tableState) {
         case PBTableState::PBTBL_START: success = pbeRenderGameStart(currentTick, lastTick); break;
+        case PBTableState::PBTBL_MAINSCREEN: success = pbeRenderMainScreen(currentTick, lastTick); break;
         default: success = false; break;
     }
 
@@ -277,23 +433,38 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
     switch (m_tableState) {
         case PBTableState::PBTBL_START: {
 
-            if (m_PBTBLOpenDoors) {
-                if ((!gfxAnimateActive(m_PBTBLLeftDoorId)) && (!gfxAnimateActive(m_PBTBLRightDoorId))) m_tableState = PBTableState::PBTBL_STDPLAY; 
-            } 
-            else {
-                if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                    if (inputMessage.inputId != IDI_START) {
+            // Handle button presses during start screen
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputId == IDI_START) {
+                    // Start button opens the doors
+                    m_tableScreenState = PBTBLScreenState::START_OPENDOOR;
+                }
+                else {
+                    // Other buttons cycle through info screens (only when doors aren't opening)
+                    if (!m_PBTBLOpenDoors) {
                         switch (m_tableScreenState) {
                             case PBTBLScreenState::START_START: m_tableScreenState = PBTBLScreenState::START_INST; break;
                             case PBTBLScreenState::START_INST: m_tableScreenState = PBTBLScreenState::START_SCORES; break;
                             case PBTBLScreenState::START_SCORES: m_tableScreenState = PBTBLScreenState::START_START; break;
-                            case PBTBLScreenState::START_OPENDOOR: m_tableScreenState = PBTBLScreenState::START_OPENDOOR; break;
                             default: break;
                         }
                     }
-                    else {
-                        m_tableScreenState = PBTBLScreenState::START_OPENDOOR;
-                    }             
+                }             
+            }
+            break;
+        }
+        case PBTableState::PBTBL_MAINSCREEN: {
+            // Handle start button press to add players
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputId == IDI_START) {
+                    pbeTryAddPlayer();
+                }
+                // Handle activate buttons to add score
+                else if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                    addPlayerScore(100);
+                }
+                else if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                    addPlayerScore(10000);
                 }
             }
             break;
