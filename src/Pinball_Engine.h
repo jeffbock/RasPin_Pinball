@@ -349,6 +349,9 @@ public:
 
     // Main Backglass Variables
     unsigned int m_PBTBLBackglassId;
+    
+    // Main screen variables
+    unsigned int m_PBTBLMainScreenBGId;
 
     // Start state
     unsigned int m_PBTBLStartDoorId, m_PBTBLLeftDoorId, m_PBTBLRightDoorId, m_PBTBLFlame1Id, m_PBTBLFlame2Id, m_PBTBLFlame3Id; 

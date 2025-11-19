@@ -293,6 +293,10 @@ bool PBEngine::pbeLoadMainScreen(bool forceReload){
     // Main screen uses the same font as the start menu
     // The font should already be loaded from pbeLoadGameStart
     
+    // Load the main screen background
+    m_PBTBLMainScreenBGId = gfxLoadSprite("MainScreenBG", "src/resources/textures/MainScreenBG.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLMainScreenBGId, 255, 255, 255, 255);
+    
     mainScreenLoaded = true;
     return (mainScreenLoaded);
 }
@@ -470,8 +474,33 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     // Clear to black background
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
     
+    // Render the main screen background
+    gfxRenderSprite(m_PBTBLMainScreenBGId, ACTIVEDISPX, ACTIVEDISPY);
+    
     // Render all player scores
     pbeRenderPlayerScores(currentTick, lastTick);
+    
+    // Render resource numbers on the right side
+    // Position calculations based on the background image layout
+    int resourcePanelX = ACTIVEDISPX + 682 + 171;  // Right panel center (682 is 2/3 of 1024, 171 is half of remaining)
+    int resourceStartY = ACTIVEDISPY + 390;  // Start of resource icons section
+    int resourceSpacing = 105;  // Spacing between resources
+    
+    // Gold resource (treasure chest) - using golden color
+    gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
+    gfxRenderString(m_StartMenuFontId, "999", resourcePanelX, resourceStartY + resourceSpacing * 0 + 50, 3, GFX_TEXTCENTER);
+    
+    // Sword resource - using red/orange color
+    gfxSetColor(m_StartMenuFontId, 255, 100, 50, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
+    gfxRenderString(m_StartMenuFontId, "15", resourcePanelX, resourceStartY + resourceSpacing * 1 + 50, 3, GFX_TEXTCENTER);
+    
+    // Shield resource - using bright blue color
+    gfxSetColor(m_StartMenuFontId, 150, 200, 255, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
+    gfxRenderString(m_StartMenuFontId, "8", resourcePanelX, resourceStartY + resourceSpacing * 2 + 50, 3, GFX_TEXTCENTER);
+    
     
     return (true);
 }
