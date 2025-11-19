@@ -481,25 +481,28 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     pbeRenderPlayerScores(currentTick, lastTick);
     
     // Render resource numbers on the right side
-    // Position calculations based on the background image layout
-    int resourcePanelX = ACTIVEDISPX + 682 + 171;  // Right panel center (682 is 2/3 of 1024, 171 is half of remaining)
-    int resourceStartY = ACTIVEDISPY + 390;  // Start of resource icons section
-    int resourceSpacing = 105;  // Spacing between resources
+    // Position calculations based on the new horizontal layout
+    // Icons are at x positions: 724, 809, 894 (from script output)
+    // Resource icons are in bottom row at y=400 (center), so text goes below at around y=490
+    int resourceIconX1 = ACTIVEDISPX + 724;  // Treasure chest
+    int resourceIconX2 = ACTIVEDISPX + 809;  // Flaming sword  
+    int resourceIconX3 = ACTIVEDISPX + 894;  // Shield
+    int resourceTextY = ACTIVEDISPY + 490;   // Below the icons
     
     // Gold resource (treasure chest) - using golden color
     gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
-    gfxRenderString(m_StartMenuFontId, "999", resourcePanelX, resourceStartY + resourceSpacing * 0 + 50, 3, GFX_TEXTCENTER);
+    gfxRenderString(m_StartMenuFontId, "999", resourceIconX1, resourceTextY, 3, GFX_TEXTCENTER);
     
     // Sword resource - using red/orange color
     gfxSetColor(m_StartMenuFontId, 255, 100, 50, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
-    gfxRenderString(m_StartMenuFontId, "15", resourcePanelX, resourceStartY + resourceSpacing * 1 + 50, 3, GFX_TEXTCENTER);
+    gfxRenderString(m_StartMenuFontId, "15", resourceIconX2, resourceTextY, 3, GFX_TEXTCENTER);
     
     // Shield resource - using bright blue color
     gfxSetColor(m_StartMenuFontId, 150, 200, 255, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
-    gfxRenderString(m_StartMenuFontId, "8", resourcePanelX, resourceStartY + resourceSpacing * 2 + 50, 3, GFX_TEXTCENTER);
+    gfxRenderString(m_StartMenuFontId, "8", resourceIconX3, resourceTextY, 3, GFX_TEXTCENTER);
     
     
     return (true);
