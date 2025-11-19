@@ -52,7 +52,7 @@ public:
         mainGameState = PBTableState::PBTBL_MAINSCREEN;
         screenState = PBTBLMainScreenState::MAIN_SHOWSCORE;
         score = 0;
-        enabled = false;
+        // Note: enabled flag is NOT reset here - must be set explicitly
         currentBall = 1;
         ballSaveEnabled = false;
         extraBallEnabled = false;
