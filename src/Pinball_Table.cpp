@@ -303,19 +303,19 @@ bool PBEngine::pbeLoadMainScreen(bool forceReload){
 
 bool PBEngine::pbeLoadReset(bool forceReload){
     
-    static bool resetLoaded = false;
-    if (forceReload) resetLoaded = false;
-    if (resetLoaded) return (true);
-
+    // Don't use static - recreate sprite each time
+    
     // Reset screen uses the same font as the start menu
     // The font should already be loaded from pbeLoadGameStart
     
-    // Load the black background sprite
-    m_PBTBLResetSpriteId = gfxLoadSprite("ResetBG", "src/resources/textures/ResetBG.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
-    gfxSetColor(m_PBTBLResetSpriteId, 255, 255, 255, 255);
+    // Create a solid color sprite (like the title bar in console state)
+    m_PBTBLResetSpriteId = gfxLoadSprite("ResetBG", "", GFX_NONE, GFX_NOMAP, GFX_UPPERLEFT, false, false);
+    gfxSetColor(m_PBTBLResetSpriteId, 0, 0, 0, 255); // Solid black
+    gfxSetWH(m_PBTBLResetSpriteId, 800, 200); // Set width and height
     
-    resetLoaded = true;
-    return (resetLoaded);
+    if (m_PBTBLResetSpriteId == NOSPRITE) return (false);
+    
+    return (true);
 }
 
 bool PBEngine::pbeTryAddPlayer(){
@@ -529,9 +529,6 @@ bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick)
     
     if (!pbeLoadReset(false)) return (false);
     
-    // Clear to black background
-    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-    
     // Center position in active area
     int centerX = (PB_SCREENWIDTH / 2);
     int centerY = ACTIVEDISPY + 384; // Center of active area (768 / 2)
@@ -543,10 +540,10 @@ bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick)
     gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
     
-    // Main text: "Press Reset to Exit"
-    gfxRenderString(m_StartMenuFontId, "Press Reset to Exit", centerX, centerY - 30, 5, GFX_TEXTCENTER);
+    // Main text: "Press reset for menu"
+    gfxRenderString(m_StartMenuFontId, "Press reset for menu", centerX, centerY - 30, 5, GFX_TEXTCENTER);
     
-    // Smaller secondary text: "Any button to exit"
+    // Smaller secondary text: "Any button to cancel"
     gfxSetScaleFactor(m_StartMenuFontId, 0.7, false);
     gfxRenderString(m_StartMenuFontId, "Any button to cancel", centerX, centerY + 30, 3, GFX_TEXTCENTER);
     
