@@ -301,6 +301,23 @@ bool PBEngine::pbeLoadMainScreen(bool forceReload){
     return (mainScreenLoaded);
 }
 
+bool PBEngine::pbeLoadReset(bool forceReload){
+    
+    static bool resetLoaded = false;
+    if (forceReload) resetLoaded = false;
+    if (resetLoaded) return (true);
+
+    // Reset screen uses the same font as the start menu
+    // The font should already be loaded from pbeLoadGameStart
+    
+    // Load the black background sprite
+    m_PBTBLResetSpriteId = gfxLoadSprite("ResetBG", "src/resources/textures/ResetBG.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLResetSpriteId, 255, 255, 255, 255);
+    
+    resetLoaded = true;
+    return (resetLoaded);
+}
+
 bool PBEngine::pbeTryAddPlayer(){
     // Find the first disabled player slot
     int nextPlayerIdx = -1;
@@ -508,6 +525,34 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     return (true);
 }
 
+bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick){
+    
+    if (!pbeLoadReset(false)) return (false);
+    
+    // Clear to black background
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    
+    // Center position in active area
+    int centerX = (PB_SCREENWIDTH / 2);
+    int centerY = ACTIVEDISPY + 384; // Center of active area (768 / 2)
+    
+    // Render the black background sprite centered
+    gfxRenderSprite(m_PBTBLResetSpriteId, centerX - 400, centerY - 100);
+    
+    // Render white text over the black sprite
+    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    
+    // Main text: "Press Reset to Exit"
+    gfxRenderString(m_StartMenuFontId, "Press Reset to Exit", centerX, centerY - 30, 5, GFX_TEXTCENTER);
+    
+    // Smaller secondary text: "Any button to exit"
+    gfxSetScaleFactor(m_StartMenuFontId, 0.7, false);
+    gfxRenderString(m_StartMenuFontId, "Any button to cancel", centerX, centerY + 30, 3, GFX_TEXTCENTER);
+    
+    return (true);
+}
+
 bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick){
     
     bool success = false;
@@ -515,6 +560,7 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
     switch (m_tableState) {
         case PBTableState::PBTBL_START: success = pbeRenderGameStart(currentTick, lastTick); break;
         case PBTableState::PBTBL_MAINSCREEN: success = pbeRenderMainScreen(currentTick, lastTick); break;
+        case PBTableState::PBTBL_RESET: success = pbeRenderReset(currentTick, lastTick); break;
         default: success = false; break;
     }
 
@@ -528,6 +574,19 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
 // Main State Loop for Pinball Table
 
 void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
+    
+    // Check for reset button press first, regardless of current state (unless already in reset)
+    if (m_tableState != PBTableState::PBTBL_RESET) {
+        if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON && inputMessage.inputId == IDI_RESET) {
+            if (!m_ResetButtonPressed) {
+                // First time reset is pressed - save current state and enter reset mode
+                m_StateBeforeReset = m_tableState;
+                m_ResetButtonPressed = true;
+                m_tableState = PBTableState::PBTBL_RESET;
+                return; // Exit early, we're now in reset state
+            }
+        }
+    }
     
     switch (m_tableState) {
         case PBTableState::PBTBL_START: {
@@ -572,6 +631,27 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
             // Check for input messages and update the game state
             int temp = 0;
 
+            break;
+        }
+        case PBTableState::PBTBL_RESET: {
+            // Handle reset state inputs
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputId == IDI_RESET) {
+                    // Reset pressed again - clean up and return to main menu
+                    m_ResetButtonPressed = false;
+                    m_mainState = PB_STARTMENU; // Return to main menu in Pinball_Engine
+                    m_tableState = PBTableState::PBTBL_START; // Reset table state
+                }
+                else if (inputMessage.inputId == IDI_START || 
+                         inputMessage.inputId == IDI_LEFTACTIVATE || 
+                         inputMessage.inputId == IDI_RIGHTACTIVATE ||
+                         inputMessage.inputId == IDI_LEFTFLIPPER ||
+                         inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                    // Any other button pressed - cancel reset and return to previous state
+                    m_ResetButtonPressed = false;
+                    m_tableState = m_StateBeforeReset;
+                }
+            }
             break;
         }
         

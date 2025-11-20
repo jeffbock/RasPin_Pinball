@@ -362,6 +362,11 @@ public:
     bool m_PBTBLStartDoorsDone, m_PBTBLOpenDoors;
 
     bool m_RestartTable;
+    
+    // Reset state tracking
+    bool m_ResetButtonPressed;         // Track if reset was pressed once
+    PBTableState m_StateBeforeReset;   // State to return to if reset is cancelled
+    unsigned int m_PBTBLResetSpriteId; // Sprite ID for reset screen background
 
     // Multi-player game state
     pbGameState m_playerStates[4];    // Array of 4 player states
@@ -426,10 +431,12 @@ private:
     // Render functions for the pinball game table
     bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
 
     // Load functions for the pinball game table
     bool pbeLoadGameStart(bool forceReload); // Load the start screen for the pinball game
     bool pbeLoadMainScreen(bool forceReload); // Load the main screen for the pinball game
+    bool pbeLoadReset(bool forceReload); // Load the reset screen
 
     // Player management functions
     bool pbeTryAddPlayer(); // Try to add a new player, returns true if successful

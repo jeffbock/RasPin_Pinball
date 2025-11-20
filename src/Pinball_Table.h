@@ -15,6 +15,7 @@ enum class PBTableState {
     PBTBL_START = 0,
     PBTBL_MAINSCREEN = 1,
     PBTBL_STDPLAY = 2,
+    PBTBL_RESET = 3,
     PBTBL_END
 };
 

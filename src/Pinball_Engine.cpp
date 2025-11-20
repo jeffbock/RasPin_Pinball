@@ -85,7 +85,12 @@
     // Tables start screen variables
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
     m_PBTBLMainScreenBGId=0;
+    m_PBTBLResetSpriteId=0;
     m_RestartTable = true;
+    
+    // Reset state initialization
+    m_ResetButtonPressed = false;
+    m_StateBeforeReset = PBTableState::PBTBL_START;
     
     // Multi-player game state initialization
     m_currentPlayer = 0;
