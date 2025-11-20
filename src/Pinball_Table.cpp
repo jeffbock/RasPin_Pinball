@@ -346,8 +346,8 @@ bool PBEngine::pbeTryAddPlayer(){
     if (secondaryCount > 0 && secondaryCount <= 3) {
         int slotIndex = secondaryCount - 1;
         m_secondaryScoreAnims[slotIndex].animStartTick = GetTickCountGfx();
-        m_secondaryScoreAnims[slotIndex].animDurationSec = 1.5f;
-        m_secondaryScoreAnims[slotIndex].currentYOffset = 100.0f; // Start 100 pixels below (off-screen)
+        m_secondaryScoreAnims[slotIndex].animDurationSec = 1.0f;
+        m_secondaryScoreAnims[slotIndex].currentYOffset = 50; // Start 200 pixels below (off-screen)
         m_secondaryScoreAnims[slotIndex].animationActive = true;
         m_secondaryScoreAnims[slotIndex].playerIndex = nextPlayerIdx;
     }
@@ -421,12 +421,12 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2), ACTIVEDISPY + 370, 5, GFX_TEXTCENTER);
     
     // Render other player scores at the bottom (small grey text)
-    gfxSetColor(m_StartMenuFontId, 180, 180, 180, 255); // Light grey color for visibility
+    gfxSetColor(m_StartMenuFontId, 128, 128, 128, 255); // Light grey color for visibility
     gfxSetScaleFactor(m_StartMenuFontId, 0.375, false); // 25% smaller than 0.5
     
     // Render the other player scores at fixed positions based on thirds of active region
     // Active region is approximately 1100 pixels wide
-    int activeWidth = 1100;
+    int activeWidth = 1024;
     int thirdWidth = activeWidth / 3;
     
     int leftX = ACTIVEDISPX + 10;                    // 10 pixels from start (far left)
@@ -443,17 +443,17 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
         if (slotIndex >= 3) break;
         
         // Calculate Y offset for scroll-up animation
-        float yOffset = 0.0f;
+        int yOffset = 0;
         if (m_secondaryScoreAnims[slotIndex].animationActive) {
             float elapsedSec = (currentTick - m_secondaryScoreAnims[slotIndex].animStartTick) / 1000.0f;
             
             if (elapsedSec >= m_secondaryScoreAnims[slotIndex].animDurationSec) {
                 m_secondaryScoreAnims[slotIndex].animationActive = false;
-                m_secondaryScoreAnims[slotIndex].currentYOffset = 0.0f;
+                m_secondaryScoreAnims[slotIndex].currentYOffset = 0;
             } else {
                 // Linear interpolation from starting offset to 0
                 float progress = elapsedSec / m_secondaryScoreAnims[slotIndex].animDurationSec;
-                m_secondaryScoreAnims[slotIndex].currentYOffset = 100.0f * (1.0f - progress);
+                m_secondaryScoreAnims[slotIndex].currentYOffset = (int)(50 * (1.0f - progress));
             }
             
             yOffset = m_secondaryScoreAnims[slotIndex].currentYOffset;

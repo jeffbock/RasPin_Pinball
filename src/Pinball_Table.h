@@ -35,21 +35,21 @@ enum class PBTBLMainScreenState {
 struct SecondaryScoreAnimState {
     unsigned long animStartTick;      // Tick when animation started
     float animDurationSec;            // Duration of animation in seconds
-    float currentYOffset;             // Current Y offset for scroll animation
+    int currentYOffset;               // Current Y offset for scroll animation
     bool animationActive;             // Whether animation is currently active
     int playerIndex;                  // Which player this slot is animating (-1 if none)
     
     SecondaryScoreAnimState() {
         animStartTick = 0;
-        animDurationSec = 1.5f;
-        currentYOffset = 0.0f;
+        animDurationSec = 1.0f;
+        currentYOffset = 0;
         animationActive = false;
         playerIndex = -1;
     }
     
     void reset() {
         animStartTick = 0;
-        currentYOffset = 0.0f;
+        currentYOffset = 0;
         animationActive = false;
         playerIndex = -1;
     }
