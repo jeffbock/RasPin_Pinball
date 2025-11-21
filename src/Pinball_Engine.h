@@ -394,7 +394,16 @@ private:
     bool m_PBTBLStartLoaded; 
     
     // Auto output control
-    bool m_autoOutputEnable; 
+    bool m_autoOutputEnable;
+    
+    // Load state tracking for Engine screens
+    bool m_defaultBackgroundLoaded;
+    bool m_bootUpLoaded;
+    bool m_startMenuLoaded;
+    
+    // Load state tracking for Table screens
+    bool m_gameStartLoaded;
+    bool m_mainScreenLoaded; 
 
     // Private functions for rendering main state screens
     bool pbeRenderDefaultBackground (unsigned long currentTick, unsigned long lastTick);
@@ -414,15 +423,19 @@ private:
                               unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset);
 
     // Private functions for loading main state screens
-    bool pbeLoadDefaultBackground(bool forceReload);
-    bool pbeLoadBootUp(bool forceReload);
-    bool pbeLoadStartMenu(bool forceReload);
-    bool pbeLoadTestMode(bool forceReload);
-    bool pbeLoadBenchmark(bool forceReload);
-    bool pbeLoadCredits(bool forceReload);
-    bool pbeLoadSettings(bool forceReload);
-    bool pbeLoadDiagnostics(bool forceReload);
-    bool pbeLoadTestSandbox(bool forceReload);
+    bool pbeLoadDefaultBackground();
+    bool pbeLoadBootUp();
+    bool pbeLoadStartMenu();
+    bool pbeLoadTestMode();
+    bool pbeLoadBenchmark();
+    bool pbeLoadCredits();
+    bool pbeLoadSettings();
+    bool pbeLoadDiagnostics();
+    bool pbeLoadTestSandbox();
+    
+    // Reload functions to reset load state
+    void pbeEngineReload();  // Reset all engine screen load states
+    void pbeTableReload();   // Reset all table screen load states
 
     ///////////////////////////////
     // Specfic Game Table Functions
@@ -434,9 +447,9 @@ private:
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
 
     // Load functions for the pinball game table
-    bool pbeLoadGameStart(bool forceReload); // Load the start screen for the pinball game
-    bool pbeLoadMainScreen(bool forceReload); // Load the main screen for the pinball game
-    bool pbeLoadReset(bool forceReload); // Load the reset screen
+    bool pbeLoadGameStart(); // Load the start screen for the pinball game
+    bool pbeLoadMainScreen(); // Load the main screen for the pinball game
+    bool pbeLoadReset(); // Load the reset screen
 
     // Player management functions
     bool pbeTryAddPlayer(); // Try to add a new player, returns true if successful

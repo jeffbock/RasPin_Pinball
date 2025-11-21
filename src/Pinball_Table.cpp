@@ -12,11 +12,9 @@
 
 // PBEgine Class Fucntions for the main pinball game
 
-bool PBEngine::pbeLoadGameStart(bool forceReload){
+bool PBEngine::pbeLoadGameStart(){
     
-    static bool gameStartLoaded = false;
-    if (forceReload) gameStartLoaded = false;
-    if (gameStartLoaded) return (true);
+    if (m_gameStartLoaded) return (true);
 
     stAnimateData animateData;
 
@@ -109,9 +107,8 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     pbdEjector* ballEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
     pbeAddDevice(ballEjector);
 
-    gameStartLoaded = true;
-
-    return (gameStartLoaded);
+    m_gameStartLoaded = true;
+    return (true);
 }
 
 bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick){
@@ -130,7 +127,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
         lastScreenState = m_tableScreenState;
     }
 
-    if (!pbeLoadGameStart (false)) return (false); 
+    if (!pbeLoadGameStart()) return (false); 
     
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 
@@ -284,11 +281,9 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     return (true);
 }
 
-bool PBEngine::pbeLoadMainScreen(bool forceReload){
+bool PBEngine::pbeLoadMainScreen(){
     
-    static bool mainScreenLoaded = false;
-    if (forceReload) mainScreenLoaded = false;
-    if (mainScreenLoaded) return (true);
+    if (m_mainScreenLoaded) return (true);
 
     // Main screen uses the same font as the start menu
     // The font should already be loaded from pbeLoadGameStart
@@ -297,11 +292,11 @@ bool PBEngine::pbeLoadMainScreen(bool forceReload){
     m_PBTBLMainScreenBGId = gfxLoadSprite("MainScreenBG", "src/resources/textures/MainScreenBG.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLMainScreenBGId, 255, 255, 255, 255);
     
-    mainScreenLoaded = true;
-    return (mainScreenLoaded);
+    m_mainScreenLoaded = true;
+    return (true);
 }
 
-bool PBEngine::pbeLoadReset(bool forceReload){
+bool PBEngine::pbeLoadReset(){
     
     // Don't use static - recreate sprite each time
     
@@ -311,7 +306,7 @@ bool PBEngine::pbeLoadReset(bool forceReload){
     // Create a solid color sprite (like the title bar in console state)
     m_PBTBLResetSpriteId = gfxLoadSprite("ResetBG", "", GFX_NONE, GFX_NOMAP, GFX_UPPERLEFT, false, false);
     gfxSetColor(m_PBTBLResetSpriteId, 0, 0, 0, 255); // Solid black
-    gfxSetWH(m_PBTBLResetSpriteId, 800, 200); // Set width and height
+    gfxSetWH(m_PBTBLResetSpriteId, 700, 200); // Set width and height
     
     if (m_PBTBLResetSpriteId == NOSPRITE) return (false);
     
@@ -486,7 +481,7 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
 
 bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
     
-    if (!pbeLoadMainScreen(false)) return (false);
+    if (!pbeLoadMainScreen()) return (false);
     
     // Clear to black background
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
@@ -527,21 +522,22 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
 
 bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick){
     
-    if (!pbeLoadReset(false)) return (false);
+    if (!pbeLoadReset()) return (false);
     
     // Center position in active area
+    // fix cernter x to use full screen width
     int centerX = (PB_SCREENWIDTH / 2);
     int centerY = ACTIVEDISPY + 384; // Center of active area (768 / 2)
     
     // Render the black background sprite centered
-    gfxRenderSprite(m_PBTBLResetSpriteId, centerX - 400, centerY - 100);
+    gfxRenderSprite(m_PBTBLResetSpriteId, centerX - 350, centerY - 80); // 770x200 sprite, so offset by half width/height
     
     // Render white text over the black sprite
     gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
     
     // Main text: "Press reset for menu"
-    gfxRenderString(m_StartMenuFontId, "Press reset for menu", centerX, centerY - 30, 5, GFX_TEXTCENTER);
+    gfxRenderString(m_StartMenuFontId, "Press reset for menu", centerX, centerY - 65, 5, GFX_TEXTCENTER);
     
     // Smaller secondary text: "Any button to cancel"
     gfxSetScaleFactor(m_StartMenuFontId, 0.7, false);
@@ -636,6 +632,12 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                 if (inputMessage.inputId == IDI_RESET) {
                     // Reset pressed again - clean up and return to main menu
                     m_ResetButtonPressed = false;
+                    m_GameStarted = false; // Reset game started flag
+                    
+                    // Reload all resources by resetting load states
+                    pbeEngineReload();
+                    pbeTableReload();
+                    
                     m_mainState = PB_STARTMENU; // Return to main menu in Pinball_Engine
                     m_tableState = PBTableState::PBTBL_START; // Reset table state
                 }
@@ -654,5 +656,11 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
         
         default: break;
     }
+}
+
+// Reload function to reset all table screen load states
+void PBEngine::pbeTableReload() {
+    m_gameStartLoaded = false;
+    m_mainScreenLoaded = false;
 }
 
