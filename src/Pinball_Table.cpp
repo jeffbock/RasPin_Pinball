@@ -124,6 +124,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
         blinkOn = true;
         m_PBTBLOpenDoors = false;
         m_PBTBLStartDoorsDone = false;
+        m_tableScreenState = PBTBLScreenState::START_START;
         lastScreenState = m_tableScreenState;
     }
 
@@ -298,7 +299,7 @@ bool PBEngine::pbeLoadMainScreen(){
 
 bool PBEngine::pbeLoadReset(){
     
-    // Don't use static - recreate sprite each time
+    if (m_resetLoaded) return (true);
     
     // Reset screen uses the same font as the start menu
     // The font should already be loaded from pbeLoadGameStart
@@ -310,6 +311,7 @@ bool PBEngine::pbeLoadReset(){
     
     if (m_PBTBLResetSpriteId == NOSPRITE) return (false);
     
+    m_resetLoaded = true;
     return (true);
 }
 
@@ -662,5 +664,7 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
 void PBEngine::pbeTableReload() {
     m_gameStartLoaded = false;
     m_mainScreenLoaded = false;
+    m_resetLoaded = false;
+    m_RestartTable = true;    
 }
 

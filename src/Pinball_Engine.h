@@ -403,7 +403,8 @@ private:
     
     // Load state tracking for Table screens
     bool m_gameStartLoaded;
-    bool m_mainScreenLoaded; 
+    bool m_mainScreenLoaded;
+    bool m_resetLoaded; 
 
     // Private functions for rendering main state screens
     bool pbeRenderDefaultBackground (unsigned long currentTick, unsigned long lastTick);

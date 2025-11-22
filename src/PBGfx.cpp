@@ -41,11 +41,15 @@ bool PBGfx::gfxUnloadTexture(unsigned int spriteId) {
     if (it != m_instanceList.end()) {
         if (m_spriteList[it->second.parentSpriteId].keepResident) return (false);
         else {
-            oglUnloadTexture(it->second.glTextureId);
+            oglUnloadTexture (m_spriteList[it->second.parentSpriteId].glTextureId);
+            m_spriteList[it->second.parentSpriteId].glTextureId = 0;
             m_spriteList[it->second.parentSpriteId].isLoaded = false;
             return (true);
         }
     }
+
+
+
     else return (false);
 }
 
@@ -55,6 +59,7 @@ bool PBGfx::gfxUnloadAllTextures() {
     for (auto it = m_spriteList.begin(); it != m_spriteList.end(); ++it) {
         if (!it->second.keepResident) {
             oglUnloadTexture(it->second.glTextureId);
+            it->second.glTextureId = 0;
             it->second.isLoaded = false;
         }
     }
@@ -102,6 +107,16 @@ bool PBGfx::gfxReloadTexture(unsigned int spriteId) {
 
 // Private function to create a sprite
 unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
+    
+    // Check if a sprite with this name already exists
+    for (auto it = m_spriteList.begin(); it != m_spriteList.end(); ++it) {
+        if (it->second.spriteName == spriteInfo.spriteName) {
+            // Sprite already exists - reload its texture and return the existing ID
+            gfxReloadTexture(it->first);
+            return it->first;
+        }
+    }
+    
     
     GLuint texture=0;
     oglTexType textureType;
@@ -240,7 +255,6 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
     instance.vertRed = 1.0f; instance.vertGreen = 1.0f; instance.vertBlue = 1.0f; instance.vertAlpha = 1.0f;
     instance.scaleFactor = 1.0f;
     instance.rotateDegrees = 0.0f;
-    instance.glTextureId = texture;
     instance.updateBoundingBox = false;
     instance.boundingBox = {0, 0, 0, 0};
 
@@ -293,7 +307,6 @@ unsigned int PBGfx::gfxInstanceSprite (unsigned int parentSpriteId,  stSpriteIns
         // This will always point to a sprite ID that has a backing stSpriteInfo struct, never an instance only sprite.
         // First creation of a sprite will have the same ID for both the sprite and the instance
         instance.parentSpriteId = it->second.parentSpriteId;
-        instance.glTextureId = it->second.glTextureId;
         instance.updateBoundingBox = it->second.updateBoundingBox;
         instance.width = it->second.width;
         instance.height = it->second.height;
@@ -417,8 +430,8 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId){
                            m_spriteList[it->second.parentSpriteId].textureType == GFX_VIDEO) ? true : false;
 
         // Change the textureID to no texture if the sprite is not using a texture
-        unsigned int tempTextureId = it->second.glTextureId;
-        if (!m_spriteList[it->second.parentSpriteId].useTexture) tempTextureId = 0;
+        unsigned int tempTextureId = (m_spriteList[it->second.parentSpriteId].glTextureId);
+        // if (!m_spriteList[it->second.parentSpriteId].useTexture) tempTextureId = 0;
 
         // Check if a texture is being used, if it is, make sure the texture is loaded
         // If the load fails, simply don't use a texture, which at least allows the render to continue, but the sprite will not be textured

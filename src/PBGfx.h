@@ -106,7 +106,7 @@ struct stSpriteInstance {
     bool updateBoundingBox;
 
     // These two will never be set by calling app
-    unsigned int glTextureId;
+    // unsigned int glTextureId;
     stBoundingBox boundingBox;
 };
 

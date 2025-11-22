@@ -127,6 +127,7 @@
     m_startMenuLoaded = false;
     m_gameStartLoaded = false;
     m_mainScreenLoaded = false;
+    m_resetLoaded = false;
     
     // Auto output control - default to disable since the menus launch first
     m_autoOutputEnable = false;
@@ -1890,5 +1891,6 @@ void PBEngine::pbeEngineReload() {
     m_defaultBackgroundLoaded = false;
     m_bootUpLoaded = false;
     m_startMenuLoaded = false;
+    m_RestartMenu = true;
 }
 
