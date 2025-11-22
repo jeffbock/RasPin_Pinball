@@ -349,6 +349,9 @@ public:
 
     // Main Backglass Variables
     unsigned int m_PBTBLBackglassId;
+    
+    // Main screen variables
+    unsigned int m_PBTBLMainScreenBGId;
 
     // Start state
     unsigned int m_PBTBLStartDoorId, m_PBTBLLeftDoorId, m_PBTBLRightDoorId, m_PBTBLFlame1Id, m_PBTBLFlame2Id, m_PBTBLFlame3Id; 
@@ -359,10 +362,22 @@ public:
     bool m_PBTBLStartDoorsDone, m_PBTBLOpenDoors;
 
     bool m_RestartTable;
+    
+    // Reset state tracking
+    bool m_ResetButtonPressed;         // Track if reset was pressed once
+    PBTableState m_StateBeforeReset;   // State to return to if reset is cancelled
+    unsigned int m_PBTBLResetSpriteId; // Sprite ID for reset screen background
 
     // Multi-player game state
     pbGameState m_playerStates[4];    // Array of 4 player states
     unsigned int m_currentPlayer;     // Current active player (0-3)
+    
+    // Main score animation tracking
+    unsigned long m_mainScoreAnimStartTick;
+    bool m_mainScoreAnimActive;
+    
+    // Secondary score slot animations (up to 3 slots for non-current players)
+    SecondaryScoreAnimState m_secondaryScoreAnims[3];
 private:
 
     PBMainState m_mainState;
@@ -379,7 +394,17 @@ private:
     bool m_PBTBLStartLoaded; 
     
     // Auto output control
-    bool m_autoOutputEnable; 
+    bool m_autoOutputEnable;
+    
+    // Load state tracking for Engine screens
+    bool m_defaultBackgroundLoaded;
+    bool m_bootUpLoaded;
+    bool m_startMenuLoaded;
+    
+    // Load state tracking for Table screens
+    bool m_gameStartLoaded;
+    bool m_mainScreenLoaded;
+    bool m_resetLoaded; 
 
     // Private functions for rendering main state screens
     bool pbeRenderDefaultBackground (unsigned long currentTick, unsigned long lastTick);
@@ -399,15 +424,19 @@ private:
                               unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset);
 
     // Private functions for loading main state screens
-    bool pbeLoadDefaultBackground(bool forceReload);
-    bool pbeLoadBootUp(bool forceReload);
-    bool pbeLoadStartMenu(bool forceReload);
-    bool pbeLoadTestMode(bool forceReload);
-    bool pbeLoadBenchmark(bool forceReload);
-    bool pbeLoadCredits(bool forceReload);
-    bool pbeLoadSettings(bool forceReload);
-    bool pbeLoadDiagnostics(bool forceReload);
-    bool pbeLoadTestSandbox(bool forceReload);
+    bool pbeLoadDefaultBackground();
+    bool pbeLoadBootUp();
+    bool pbeLoadStartMenu();
+    bool pbeLoadTestMode();
+    bool pbeLoadBenchmark();
+    bool pbeLoadCredits();
+    bool pbeLoadSettings();
+    bool pbeLoadDiagnostics();
+    bool pbeLoadTestSandbox();
+    
+    // Reload functions to reset load state
+    void pbeEngineReload();  // Reset all engine screen load states
+    void pbeTableReload();   // Reset all table screen load states
 
     ///////////////////////////////
     // Specfic Game Table Functions
@@ -416,10 +445,12 @@ private:
     // Render functions for the pinball game table
     bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
 
     // Load functions for the pinball game table
-    bool pbeLoadGameStart(bool forceReload); // Load the start screen for the pinball game
-    bool pbeLoadMainScreen(bool forceReload); // Load the main screen for the pinball game
+    bool pbeLoadGameStart(); // Load the start screen for the pinball game
+    bool pbeLoadMainScreen(); // Load the main screen for the pinball game
+    bool pbeLoadReset(); // Load the reset screen
 
     // Player management functions
     bool pbeTryAddPlayer(); // Try to add a new player, returns true if successful

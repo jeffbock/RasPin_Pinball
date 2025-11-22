@@ -15,6 +15,7 @@ enum class PBTableState {
     PBTBL_START = 0,
     PBTBL_MAINSCREEN = 1,
     PBTBL_STDPLAY = 2,
+    PBTBL_RESET = 3,
     PBTBL_END
 };
 
@@ -29,6 +30,30 @@ enum class PBTBLScreenState {
 enum class PBTBLMainScreenState {
     MAIN_SHOWSCORE = 0,
     MAIN_END
+};
+
+// Secondary score slot animation state
+struct SecondaryScoreAnimState {
+    unsigned long animStartTick;      // Tick when animation started
+    float animDurationSec;            // Duration of animation in seconds
+    int currentYOffset;               // Current Y offset for scroll animation
+    bool animationActive;             // Whether animation is currently active
+    int playerIndex;                  // Which player this slot is animating (-1 if none)
+    
+    SecondaryScoreAnimState() {
+        animStartTick = 0;
+        animDurationSec = 1.0f;
+        currentYOffset = 0;
+        animationActive = false;
+        playerIndex = -1;
+    }
+    
+    void reset() {
+        animStartTick = 0;
+        currentYOffset = 0;
+        animationActive = false;
+        playerIndex = -1;
+    }
 };
 
 // Per-player game state class

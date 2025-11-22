@@ -12,11 +12,9 @@
 
 // PBEgine Class Fucntions for the main pinball game
 
-bool PBEngine::pbeLoadGameStart(bool forceReload){
+bool PBEngine::pbeLoadGameStart(){
     
-    static bool gameStartLoaded = false;
-    if (forceReload) gameStartLoaded = false;
-    if (gameStartLoaded) return (true);
+    if (m_gameStartLoaded) return (true);
 
     stAnimateData animateData;
 
@@ -32,7 +30,10 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetXY(m_PBTBLeftDoorStartId, ACTIVEDISPX + 315, ACTIVEDISPY + 112, false); 
     m_PBTBLeftDoorEndId = gfxInstanceSprite(m_PBTBLLeftDoorId);
     gfxSetXY(m_PBTBLeftDoorEndId, ACTIVEDISPX + 90, ACTIVEDISPY + 112, false); 
-    gfxLoadAnimateDataShort(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, ANIMATE_X_MASK, 1.25f, false, GFX_NOLOOP, GFX_ANIM_NORMAL);
+    // Left door moves left with acceleration, starting slowly and slamming open
+    gfxLoadAnimateData(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, 
+                       ANIMATE_X_MASK, 1.25f, false, GFX_NOLOOP, GFX_ANIM_ACCL,
+                       0, -400.0f, 0.0f, 0.0f, 0.0f, true, -50.0f, 0.0f, 0.0f);
     gfxCreateAnimation(animateData, true);
 
     m_PBTBLRightDoorId = gfxLoadSprite("RightDoor", "src/resources/textures/DoorRight2.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
@@ -40,7 +41,10 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     gfxSetXY(m_PBTBRightDoorStartId, ACTIVEDISPX + 460, ACTIVEDISPY + 112, false);
     m_PBTBRightDoorEndId = gfxInstanceSprite(m_PBTBLRightDoorId);
     gfxSetXY(m_PBTBRightDoorEndId, ACTIVEDISPX + 754, ACTIVEDISPY + 112, false);
-    gfxLoadAnimateDataShort(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, ANIMATE_X_MASK, 1.25f, false, GFX_NOLOOP, GFX_ANIM_NORMAL);
+    // Right door moves right with acceleration, starting slowly and slamming open
+    gfxLoadAnimateData(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, 
+                       ANIMATE_X_MASK, 1.25f, false, GFX_NOLOOP, GFX_ANIM_ACCL,
+                       0, 400.0f, 0.0f, 0.0f, 0.0f, true, 50.0f, 0.0f, 0.0f);
     gfxCreateAnimation(animateData, true);
     
     m_PBTBLDoorDragonId = gfxLoadSprite("DoorDragon", "src/resources/textures/Dragon.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
@@ -103,9 +107,8 @@ bool PBEngine::pbeLoadGameStart(bool forceReload){
     pbdEjector* ballEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
     pbeAddDevice(ballEjector);
 
-    gameStartLoaded = true;
-
-    return (gameStartLoaded);
+    m_gameStartLoaded = true;
+    return (true);
 }
 
 bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick){
@@ -121,10 +124,11 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
         blinkOn = true;
         m_PBTBLOpenDoors = false;
         m_PBTBLStartDoorsDone = false;
+        m_tableScreenState = PBTBLScreenState::START_START;
         lastScreenState = m_tableScreenState;
     }
 
-    if (!pbeLoadGameStart (false)) return (false); 
+    if (!pbeLoadGameStart()) return (false); 
     
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 
@@ -250,6 +254,15 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                         m_playerStates[i].reset(m_saveFileData.ballsPerGame);
                         m_playerStates[i].enabled = false;
                     }
+                    
+                    // Initialize main score fade-in animation
+                    m_mainScoreAnimStartTick = currentTick;
+                    m_mainScoreAnimActive = true;
+                    
+                    // Reset all secondary score slot animations
+                    for (int i = 0; i < 3; i++) {
+                        m_secondaryScoreAnims[i].reset();
+                    }
                 }
             break;
 
@@ -269,17 +282,37 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     return (true);
 }
 
-bool PBEngine::pbeLoadMainScreen(bool forceReload){
+bool PBEngine::pbeLoadMainScreen(){
     
-    static bool mainScreenLoaded = false;
-    if (forceReload) mainScreenLoaded = false;
-    if (mainScreenLoaded) return (true);
+    if (m_mainScreenLoaded) return (true);
 
     // Main screen uses the same font as the start menu
     // The font should already be loaded from pbeLoadGameStart
     
-    mainScreenLoaded = true;
-    return (mainScreenLoaded);
+    // Load the main screen background
+    m_PBTBLMainScreenBGId = gfxLoadSprite("MainScreenBG", "src/resources/textures/MainScreenBG.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLMainScreenBGId, 255, 255, 255, 255);
+    
+    m_mainScreenLoaded = true;
+    return (true);
+}
+
+bool PBEngine::pbeLoadReset(){
+    
+    if (m_resetLoaded) return (true);
+    
+    // Reset screen uses the same font as the start menu
+    // The font should already be loaded from pbeLoadGameStart
+    
+    // Create a solid color sprite (like the title bar in console state)
+    m_PBTBLResetSpriteId = gfxLoadSprite("ResetBG", "", GFX_NONE, GFX_NOMAP, GFX_UPPERLEFT, false, false);
+    gfxSetColor(m_PBTBLResetSpriteId, 0, 0, 0, 255); // Solid black
+    gfxSetWH(m_PBTBLResetSpriteId, 700, 200); // Set width and height
+    
+    if (m_PBTBLResetSpriteId == NOSPRITE) return (false);
+    
+    m_resetLoaded = true;
+    return (true);
 }
 
 bool PBEngine::pbeTryAddPlayer(){
@@ -313,6 +346,25 @@ bool PBEngine::pbeTryAddPlayer(){
     // Enable and initialize the new player
     m_playerStates[nextPlayerIdx].reset(m_saveFileData.ballsPerGame);
     m_playerStates[nextPlayerIdx].enabled = true;
+    
+    // Count how many secondary players are now active (excluding current player)
+    int secondaryCount = 0;
+    for (int i = 0; i < 4; i++) {
+        if (i != m_currentPlayer && m_playerStates[i].enabled) {
+            secondaryCount++;
+        }
+    }
+    
+    // Initialize scroll-up animation for the new secondary score slot
+    // The slot index is (secondaryCount - 1) since we just added this player
+    if (secondaryCount > 0 && secondaryCount <= 3) {
+        int slotIndex = secondaryCount - 1;
+        m_secondaryScoreAnims[slotIndex].animStartTick = GetTickCountGfx();
+        m_secondaryScoreAnims[slotIndex].animDurationSec = 1.0f;
+        m_secondaryScoreAnims[slotIndex].currentYOffset = 50; // Start 200 pixels below (off-screen)
+        m_secondaryScoreAnims[slotIndex].animationActive = true;
+        m_secondaryScoreAnims[slotIndex].playerIndex = nextPlayerIdx;
+    }
     
     // Play feedback sound
     m_soundSystem.pbsPlayEffect(EFFECTCLICK);
@@ -353,8 +405,24 @@ std::string PBEngine::formatScoreWithCommas(unsigned long score){
 }
 
 void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick){
+    // Calculate fade-in alpha for main score
+    unsigned int mainAlpha = 255;
+    if (m_mainScoreAnimActive) {
+        float elapsedSec = (currentTick - m_mainScoreAnimStartTick) / 1000.0f;
+        float animDuration = 1.5f;
+        
+        if (elapsedSec >= animDuration) {
+            m_mainScoreAnimActive = false;
+            mainAlpha = 255;
+        } else {
+            // Linear fade from 0 to 255
+            float progress = elapsedSec / animDuration;
+            mainAlpha = static_cast<unsigned int>(progress * 255.0f);
+        }
+    }
+    
     // Render the current player's score in the center (smaller white text)
-    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+    gfxSetColor(m_StartMenuFontId, 255, 255, 255, mainAlpha);
     gfxSetScaleFactor(m_StartMenuFontId, 0.8, false);
     
     // Render "Player X" label above the score
@@ -367,12 +435,12 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2), ACTIVEDISPY + 370, 5, GFX_TEXTCENTER);
     
     // Render other player scores at the bottom (small grey text)
-    gfxSetColor(m_StartMenuFontId, 180, 180, 180, 255); // Light grey color for visibility
+    gfxSetColor(m_StartMenuFontId, 128, 128, 128, 255); // Light grey color for visibility
     gfxSetScaleFactor(m_StartMenuFontId, 0.375, false); // 25% smaller than 0.5
     
     // Render the other player scores at fixed positions based on thirds of active region
     // Active region is approximately 1100 pixels wide
-    int activeWidth = 1100;
+    int activeWidth = 1024;
     int thirdWidth = activeWidth / 3;
     
     int leftX = ACTIVEDISPX + 10;                    // 10 pixels from start (far left)
@@ -380,31 +448,102 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     int rightX = ACTIVEDISPX + (2 * thirdWidth) + 10; // Start of 3rd third + 10 pixels
     int positions[3] = {leftX, middleX, rightX};
     
-    int renderIndex = 0;
+    int slotIndex = 0;
     for (int i = 0; i < 4; i++) {
         // Skip current player and disabled players
         if (i == m_currentPlayer || !m_playerStates[i].enabled) continue;
         
         // Only render up to 3 secondary scores
-        if (renderIndex >= 3) break;
+        if (slotIndex >= 3) break;
+        
+        // Calculate Y offset for scroll-up animation
+        int yOffset = 0;
+        if (m_secondaryScoreAnims[slotIndex].animationActive) {
+            float elapsedSec = (currentTick - m_secondaryScoreAnims[slotIndex].animStartTick) / 1000.0f;
+            
+            if (elapsedSec >= m_secondaryScoreAnims[slotIndex].animDurationSec) {
+                m_secondaryScoreAnims[slotIndex].animationActive = false;
+                m_secondaryScoreAnims[slotIndex].currentYOffset = 0;
+            } else {
+                // Linear interpolation from starting offset to 0
+                float progress = elapsedSec / m_secondaryScoreAnims[slotIndex].animDurationSec;
+                m_secondaryScoreAnims[slotIndex].currentYOffset = (int)(50 * (1.0f - progress));
+            }
+            
+            yOffset = m_secondaryScoreAnims[slotIndex].currentYOffset;
+        }
         
         // Render "PX: score" format, left-justified at the position
         std::string playerScoreText = "P" + std::to_string(i + 1) + ": " + formatScoreWithCommas(m_playerStates[i].score);
-        gfxRenderString(m_StartMenuFontId, playerScoreText, positions[renderIndex], ACTIVEDISPY + 735, 3, GFX_TEXTLEFT);
+        gfxRenderString(m_StartMenuFontId, playerScoreText, positions[slotIndex], ACTIVEDISPY + 735 + yOffset, 3, GFX_TEXTLEFT);
         
-        renderIndex++;
+        slotIndex++;
     }
 }
 
 bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
     
-    if (!pbeLoadMainScreen(false)) return (false);
+    if (!pbeLoadMainScreen()) return (false);
     
     // Clear to black background
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
     
+    // Render the main screen background
+    gfxRenderSprite(m_PBTBLMainScreenBGId, ACTIVEDISPX, ACTIVEDISPY);
+    
     // Render all player scores
     pbeRenderPlayerScores(currentTick, lastTick);
+    
+    // Render resource numbers on the right side
+    // Position calculations based on the new horizontal layout
+    // Icons are at x positions: 724, 809, 894 (from script output)
+    // Resource icons are in bottom row at y=400 (center), so text goes below at around y=490
+    int resourceIconX1 = ACTIVEDISPX + 724;  // Treasure chest
+    int resourceIconX2 = ACTIVEDISPX + 809;  // Flaming sword  
+    int resourceIconX3 = ACTIVEDISPX + 894;  // Shield
+    int resourceTextY = ACTIVEDISPY + 490;   // Below the icons
+    
+    // Gold resource (treasure chest) - using golden color
+    gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
+    gfxRenderString(m_StartMenuFontId, "999", resourceIconX1, resourceTextY, 3, GFX_TEXTCENTER);
+    
+    // Sword resource - using red/orange color
+    gfxSetColor(m_StartMenuFontId, 255, 100, 50, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
+    gfxRenderString(m_StartMenuFontId, "15", resourceIconX2, resourceTextY, 3, GFX_TEXTCENTER);
+    
+    // Shield resource - using bright blue color
+    gfxSetColor(m_StartMenuFontId, 150, 200, 255, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
+    gfxRenderString(m_StartMenuFontId, "8", resourceIconX3, resourceTextY, 3, GFX_TEXTCENTER);
+    
+    
+    return (true);
+}
+
+bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick){
+    
+    if (!pbeLoadReset()) return (false);
+    
+    // Center position in active area
+    // fix cernter x to use full screen width
+    int centerX = (PB_SCREENWIDTH / 2);
+    int centerY = ACTIVEDISPY + 384; // Center of active area (768 / 2)
+    
+    // Render the black background sprite centered
+    gfxRenderSprite(m_PBTBLResetSpriteId, centerX - 350, centerY - 80); // 770x200 sprite, so offset by half width/height
+    
+    // Render white text over the black sprite
+    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    
+    // Main text: "Press reset for menu"
+    gfxRenderString(m_StartMenuFontId, "Press reset for menu", centerX, centerY - 65, 5, GFX_TEXTCENTER);
+    
+    // Smaller secondary text: "Any button to cancel"
+    gfxSetScaleFactor(m_StartMenuFontId, 0.7, false);
+    gfxRenderString(m_StartMenuFontId, "Any button to cancel", centerX, centerY + 30, 3, GFX_TEXTCENTER);
     
     return (true);
 }
@@ -416,6 +555,7 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
     switch (m_tableState) {
         case PBTableState::PBTBL_START: success = pbeRenderGameStart(currentTick, lastTick); break;
         case PBTableState::PBTBL_MAINSCREEN: success = pbeRenderMainScreen(currentTick, lastTick); break;
+        case PBTableState::PBTBL_RESET: success = pbeRenderReset(currentTick, lastTick); break;
         default: success = false; break;
     }
 
@@ -429,6 +569,19 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
 // Main State Loop for Pinball Table
 
 void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
+    
+    // Check for reset button press first, regardless of current state (unless already in reset)
+    if (m_tableState != PBTableState::PBTBL_RESET) {
+        if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON && inputMessage.inputId == IDI_RESET) {
+            if (!m_ResetButtonPressed) {
+                // First time reset is pressed - save current state and enter reset mode
+                m_StateBeforeReset = m_tableState;
+                m_ResetButtonPressed = true;
+                m_tableState = PBTableState::PBTBL_RESET;
+                return; // Exit early, we're now in reset state
+            }
+        }
+    }
     
     switch (m_tableState) {
         case PBTableState::PBTBL_START: {
@@ -475,8 +628,43 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
 
             break;
         }
+        case PBTableState::PBTBL_RESET: {
+            // Handle reset state inputs
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputId == IDI_RESET) {
+                    // Reset pressed again - clean up and return to main menu
+                    m_ResetButtonPressed = false;
+                    m_GameStarted = false; // Reset game started flag
+                    
+                    // Reload all resources by resetting load states
+                    pbeEngineReload();
+                    pbeTableReload();
+                    
+                    m_mainState = PB_STARTMENU; // Return to main menu in Pinball_Engine
+                    m_tableState = PBTableState::PBTBL_START; // Reset table state
+                }
+                else if (inputMessage.inputId == IDI_START || 
+                         inputMessage.inputId == IDI_LEFTACTIVATE || 
+                         inputMessage.inputId == IDI_RIGHTACTIVATE ||
+                         inputMessage.inputId == IDI_LEFTFLIPPER ||
+                         inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                    // Any other button pressed - cancel reset and return to previous state
+                    m_ResetButtonPressed = false;
+                    m_tableState = m_StateBeforeReset;
+                }
+            }
+            break;
+        }
         
         default: break;
     }
+}
+
+// Reload function to reset all table screen load states
+void PBEngine::pbeTableReload() {
+    m_gameStartLoaded = false;
+    m_mainScreenLoaded = false;
+    m_resetLoaded = false;
+    m_RestartTable = true;    
 }
 

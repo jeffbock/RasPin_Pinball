@@ -120,10 +120,11 @@ struct stOutputDef{
 #define IDI_LEFTACTIVATE 2
 #define IDI_RIGHTACTIVATE 3
 #define IDI_START 4
-#define IDI_SENSOR1 5
-#define IDI_SENSOR2 6
-#define IDI_SENSOR3 7
-#define NUM_INPUTS 8
+#define IDI_RESET 5
+#define IDI_SENSOR1 6
+#define IDI_SENSOR2 7
+#define IDI_SENSOR3 8
+#define NUM_INPUTS 9
 
 // Declare the shared variables for input / output structures.
 extern stInputDef g_inputDef[];
