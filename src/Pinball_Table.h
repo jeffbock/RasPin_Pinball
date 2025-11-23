@@ -66,6 +66,21 @@ public:
     unsigned int currentBall;         // Current ball number (1-based)
     bool ballSaveEnabled;             // Ball save active flag
     bool extraBallEnabled;            // Extra ball earned flag
+    
+    // Character states
+    bool knightJoined;                // Knight character joined
+    bool priestJoined;                // Priest character joined
+    bool rangerJoined;                // Ranger character joined
+    
+    // Character and resource values
+    int knightLevel;                  // Knight character level
+    int priestLevel;                  // Priest character level
+    int rangerLevel;                  // Ranger character level
+    int goldValue;                    // Gold/treasure amount
+    int attackValue;                  // Attack/sword value
+    int defenseValue;                 // Defense/shield value
+    int dungeonFloor;                 // Current dungeon floor
+    int dungeonLevel;                 // Dungeon difficulty level
 
     // Constructor
     pbGameState() {
@@ -81,6 +96,21 @@ public:
         currentBall = 1;
         ballSaveEnabled = false;
         extraBallEnabled = false;
+        
+        // Reset character states
+        knightJoined = false;
+        priestJoined = false;
+        rangerJoined = false;
+        
+        // Reset character and resource values
+        knightLevel = 0;
+        priestLevel = 0;
+        rangerLevel = 0;
+        goldValue = 0;
+        attackValue = 0;
+        defenseValue = 0;
+        dungeonFloor = 0;
+        dungeonLevel = 0;
     }
 };
 

@@ -296,23 +296,23 @@ bool PBEngine::pbeLoadMainScreen(){
     // Load the 256 sprites
     m_PBTBLCharacterCircle256Id = gfxLoadSprite("CharacterCircle256", "src/resources/textures/CharacterCircle256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLCharacterCircle256Id, 255, 255, 255, 255);
-    gfxSetScaleFactor(m_PBTBLCharacterCircle256Id, 0.5, false);
+    gfxSetScaleFactor(m_PBTBLCharacterCircle256Id, 0.6, false);
     
     m_PBTBLDungeon256Id = gfxLoadSprite("Dungeon256", "src/resources/textures/Dungeon256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLDungeon256Id, 255, 255, 255, 255);
-    gfxSetScaleFactor(m_PBTBLDungeon256Id, 0.5, false);
+    gfxSetScaleFactor(m_PBTBLDungeon256Id, 0.42, false);
     
     m_PBTBLShield256Id = gfxLoadSprite("Shield256", "src/resources/textures/Shield256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLShield256Id, 255, 255, 255, 255);
-    gfxSetScaleFactor(m_PBTBLShield256Id, 0.5, false);
+    gfxSetScaleFactor(m_PBTBLShield256Id, 0.42, false);
     
     m_PBTBLSword256Id = gfxLoadSprite("Sword256", "src/resources/textures/Sword256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLSword256Id, 255, 255, 255, 255);
-    gfxSetScaleFactor(m_PBTBLSword256Id, 0.5, false);
+    gfxSetScaleFactor(m_PBTBLSword256Id, 0.42, false);
     
     m_PBTBLTreasure256Id = gfxLoadSprite("Treasure256", "src/resources/textures/Treasure256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLTreasure256Id, 255, 255, 255, 255);
-    gfxSetScaleFactor(m_PBTBLTreasure256Id, 0.5, false);
+    gfxSetScaleFactor(m_PBTBLTreasure256Id, 0.42, false);
     
     // Load the headshot sprites
     m_PBTBLArcherHeadshot256Id = gfxLoadSprite("ArcherHeadshot256", "src/resources/textures/ArcherHeadshot256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
@@ -528,49 +528,78 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     // Render all player scores
     pbeRenderPlayerScores(currentTick, lastTick);
     
-    // Render the 256 sprites on the right 1/3 of the screen, stacked vertically
-    // Right 1/3 starts at roughly ACTIVEDISPX + 682 (2/3 of 1024 width active area)
-    // Sprites are scaled to 0.5, so they're 128px instead of 256px
-    int spriteX = ACTIVEDISPX + 750;  // Position for right side
-    int spriteStartY = ACTIVEDISPY + 20;  // Starting Y position
-    int spriteSpacing = 138;  // 128 (scaled sprite height) + 10 (spacing)
+    // Static position variables for character circles
+    static const int circle1X = ACTIVEDISPX + 700;
+    static const int circle1Y = ACTIVEDISPY + 20;
+    static const int circle2X = ACTIVEDISPX + 860;
+    static const int circle2Y = ACTIVEDISPY + 20;
+    static const int circle3X = ACTIVEDISPX + 780;
+    static const int circle3Y = ACTIVEDISPY + 140;
     
-    gfxRenderSprite(m_PBTBLCharacterCircle256Id, spriteX, spriteStartY);
-    gfxRenderSprite(m_PBTBLDungeon256Id, spriteX, spriteStartY + spriteSpacing);
-    gfxRenderSprite(m_PBTBLShield256Id, spriteX, spriteStartY + (spriteSpacing * 2));
-    gfxRenderSprite(m_PBTBLSword256Id, spriteX, spriteStartY + (spriteSpacing * 3));
-    gfxRenderSprite(m_PBTBLTreasure256Id, spriteX, spriteStartY + (spriteSpacing * 4));
+    // Static position variables for resource icons
+    static const int treasureX = ACTIVEDISPX + 720;
+    static const int treasureY = ACTIVEDISPY + 330;
+    static const int swordX = ACTIVEDISPX + 685;
+    static const int swordY = ACTIVEDISPY + 455;
+    static const int shieldX = ACTIVEDISPX + 845;
+    static const int shieldY = ACTIVEDISPY + 455;
+    static const int dungeonX = ACTIVEDISPX + 720;
+    static const int dungeonY = ACTIVEDISPY + 575;
     
-    // Render the headshot sprites to the right of the first column
-    int headshotX = spriteX + 138;  // 128 (scaled sprite width) + 10 (spacing)
-    gfxRenderSprite(m_PBTBLArcherHeadshot256Id, headshotX, spriteStartY);
-    gfxRenderSprite(m_PBTBLKnightHeadshot256Id, headshotX, spriteStartY + spriteSpacing);
-    gfxRenderSprite(m_PBTBLWolfHeadshot256Id, headshotX, spriteStartY + (spriteSpacing * 2));
+    // Render character circles
+    gfxRenderSprite(m_PBTBLCharacterCircle256Id, circle1X, circle1Y);
+    gfxRenderSprite(m_PBTBLCharacterCircle256Id, circle2X, circle2Y);
+    gfxRenderSprite(m_PBTBLCharacterCircle256Id, circle3X, circle3Y);
     
-    // Render resource numbers on the right side
-    // Position calculations based on the new horizontal layout
-    // Icons are at x positions: 724, 809, 894 (from script output)
-    // Resource icons are in bottom row at y=400 (center), so text goes below at around y=490
-    int resourceIconX1 = ACTIVEDISPX + 724;  // Treasure chest
-    int resourceIconX2 = ACTIVEDISPX + 809;  // Flaming sword  
-    int resourceIconX3 = ACTIVEDISPX + 894;  // Shield
-    int resourceTextY = ACTIVEDISPY + 490;   // Below the icons
+    // Render resource icons
+    gfxRenderSprite(m_PBTBLTreasure256Id, treasureX, treasureY);
+    gfxRenderSprite(m_PBTBLSword256Id, swordX, swordY);
+    gfxRenderSprite(m_PBTBLShield256Id, shieldX, shieldY);
+    gfxRenderSprite(m_PBTBLDungeon256Id, dungeonX, dungeonY);
     
-    // Gold resource (treasure chest) - using golden color
+    // Render character names with gold color and shadow
+    gfxSetColor(m_StartMenuFontId, 235, 176, 20, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 0.3, false);
+    
+    // "Shidea" above top left circle (center of circle is at circle1X + 64)
+    gfxRenderShadowString(m_StartMenuFontId, "Shidea", circle1X + 77, circle1Y - 15, 4, GFX_TEXTCENTER, 150, 100, 0, 255, 2);
+    
+    // "Kahriel" above top right circle (center of circle is at circle2X + 64)
+    gfxRenderShadowString(m_StartMenuFontId, "Kahriel", circle2X + 78, circle2Y - 15, 4, GFX_TEXTCENTER, 150, 100, 0, 255, 2);
+    
+    // "Caiphos" below middle circle (bottom is at circle3Y + 128)
+    gfxRenderShadowString(m_StartMenuFontId, "Caiphos", circle3X + 76, circle3Y + 142, 4, GFX_TEXTCENTER, 150, 100, 0, 255, 2);
+    
+    // Get current player's game state
+    pbGameState& playerState = m_playerStates[m_currentPlayer];
+    
+    // Render resource values to the right of icons
+    // Icon text scaled to 0.7 (2x bigger than 0.35)
+    gfxSetScaleFactor(m_StartMenuFontId, 0.7, false);
+    
+    // Gold value (bright gold color)
     gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
-    gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
-    //gfxRenderString(m_StartMenuFontId, "999", resourceIconX1, resourceTextY, 3, GFX_TEXTCENTER);
+    std::string goldText = std::to_string(playerState.goldValue);
+    gfxRenderShadowString(m_StartMenuFontId, goldText, treasureX + 115, treasureY + 30, 3, GFX_TEXTLEFT, 180, 140, 0, 255, 2);
     
-    // Sword resource - using red/orange color
-    gfxSetColor(m_StartMenuFontId, 255, 100, 50, 255);
-    gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
-    //gfxRenderString(m_StartMenuFontId, "15", resourceIconX2, resourceTextY, 3, GFX_TEXTCENTER);
+    // Attack value (fire red/orange color)
+    gfxSetColor(m_StartMenuFontId, 255, 80, 20, 255);
+    std::string attackText = std::to_string(playerState.attackValue);
+    gfxRenderShadowString(m_StartMenuFontId, attackText, swordX + 93, swordY + 44, 3, GFX_TEXTLEFT, 180, 40, 10, 255, 2);
     
-    // Shield resource - using bright blue color
-    gfxSetColor(m_StartMenuFontId, 150, 200, 255, 255);
-    gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
-    //gfxRenderString(m_StartMenuFontId, "8", resourceIconX3, resourceTextY, 3, GFX_TEXTCENTER);
+    // Defense value (steel blue-grey color)
+    gfxSetColor(m_StartMenuFontId, 43, 66, 69, 255);
+    std::string defenseText = std::to_string(playerState.defenseValue);
+    gfxRenderShadowString(m_StartMenuFontId, defenseText, shieldX + 93, shieldY + 44, 3, GFX_TEXTLEFT, 20, 30, 32, 255, 2);
     
+    // Dungeon floor and level (darker stone grey color)
+    // Dungeon text scaled to 0.525 (1.5x bigger than 0.35)
+    gfxSetScaleFactor(m_StartMenuFontId, 0.525, false);
+    gfxSetColor(m_StartMenuFontId, 120, 120, 120, 255);
+    std::string floorText = "Floor: " + std::to_string(playerState.dungeonFloor);
+    std::string levelText = "Level: " + std::to_string(playerState.dungeonLevel);
+    gfxRenderShadowString(m_StartMenuFontId, floorText, dungeonX + 123, dungeonY + 30, 3, GFX_TEXTLEFT, 50, 50, 50, 255, 2);
+    gfxRenderShadowString(m_StartMenuFontId, levelText, dungeonX + 123, dungeonY + 60, 3, GFX_TEXTLEFT, 50, 50, 50, 255, 2);
     
     return (true);
 }
