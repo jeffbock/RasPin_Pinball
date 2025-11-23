@@ -352,6 +352,8 @@ public:
     
     // Main screen variables
     unsigned int m_PBTBLMainScreenBGId;
+    unsigned int m_PBTBLCharacterCircle256Id, m_PBTBLDungeon256Id, m_PBTBLShield256Id, m_PBTBLSword256Id, m_PBTBLTreasure256Id;
+    unsigned int m_PBTBLArcherHeadshot256Id, m_PBTBLKnightHeadshot256Id, m_PBTBLWolfHeadshot256Id;
 
     // Start state
     unsigned int m_PBTBLStartDoorId, m_PBTBLLeftDoorId, m_PBTBLRightDoorId, m_PBTBLFlame1Id, m_PBTBLFlame2Id, m_PBTBLFlame3Id; 

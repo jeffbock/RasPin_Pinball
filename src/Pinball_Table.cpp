@@ -293,6 +293,40 @@ bool PBEngine::pbeLoadMainScreen(){
     m_PBTBLMainScreenBGId = gfxLoadSprite("MainScreenBG", "src/resources/textures/MainScreenBG.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLMainScreenBGId, 255, 255, 255, 255);
     
+    // Load the 256 sprites
+    m_PBTBLCharacterCircle256Id = gfxLoadSprite("CharacterCircle256", "src/resources/textures/CharacterCircle256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLCharacterCircle256Id, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_PBTBLCharacterCircle256Id, 0.5, false);
+    
+    m_PBTBLDungeon256Id = gfxLoadSprite("Dungeon256", "src/resources/textures/Dungeon256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLDungeon256Id, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_PBTBLDungeon256Id, 0.5, false);
+    
+    m_PBTBLShield256Id = gfxLoadSprite("Shield256", "src/resources/textures/Shield256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLShield256Id, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_PBTBLShield256Id, 0.5, false);
+    
+    m_PBTBLSword256Id = gfxLoadSprite("Sword256", "src/resources/textures/Sword256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLSword256Id, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_PBTBLSword256Id, 0.5, false);
+    
+    m_PBTBLTreasure256Id = gfxLoadSprite("Treasure256", "src/resources/textures/Treasure256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLTreasure256Id, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_PBTBLTreasure256Id, 0.5, false);
+    
+    // Load the headshot sprites
+    m_PBTBLArcherHeadshot256Id = gfxLoadSprite("ArcherHeadshot256", "src/resources/textures/ArcherHeadshot256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLArcherHeadshot256Id, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_PBTBLArcherHeadshot256Id, 0.5, false);
+    
+    m_PBTBLKnightHeadshot256Id = gfxLoadSprite("KnightHeadshot256", "src/resources/textures/KnightHeadshot256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLKnightHeadshot256Id, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_PBTBLKnightHeadshot256Id, 0.5, false);
+    
+    m_PBTBLWolfHeadshot256Id = gfxLoadSprite("WolfHeadshot256", "src/resources/textures/WolfHeadshot256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLWolfHeadshot256Id, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_PBTBLWolfHeadshot256Id, 0.5, false);
+    
     m_mainScreenLoaded = true;
     return (true);
 }
@@ -475,7 +509,7 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
         
         // Render "PX: score" format, left-justified at the position
         std::string playerScoreText = "P" + std::to_string(i + 1) + ": " + formatScoreWithCommas(m_playerStates[i].score);
-        gfxRenderString(m_StartMenuFontId, playerScoreText, positions[slotIndex], ACTIVEDISPY + 735 + yOffset, 3, GFX_TEXTLEFT);
+        gfxRenderString(m_StartMenuFontId, playerScoreText, positions[slotIndex], ACTIVEDISPY + 725 + yOffset, 3, GFX_TEXTLEFT);
         
         slotIndex++;
     }
@@ -494,6 +528,25 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     // Render all player scores
     pbeRenderPlayerScores(currentTick, lastTick);
     
+    // Render the 256 sprites on the right 1/3 of the screen, stacked vertically
+    // Right 1/3 starts at roughly ACTIVEDISPX + 682 (2/3 of 1024 width active area)
+    // Sprites are scaled to 0.5, so they're 128px instead of 256px
+    int spriteX = ACTIVEDISPX + 750;  // Position for right side
+    int spriteStartY = ACTIVEDISPY + 20;  // Starting Y position
+    int spriteSpacing = 138;  // 128 (scaled sprite height) + 10 (spacing)
+    
+    gfxRenderSprite(m_PBTBLCharacterCircle256Id, spriteX, spriteStartY);
+    gfxRenderSprite(m_PBTBLDungeon256Id, spriteX, spriteStartY + spriteSpacing);
+    gfxRenderSprite(m_PBTBLShield256Id, spriteX, spriteStartY + (spriteSpacing * 2));
+    gfxRenderSprite(m_PBTBLSword256Id, spriteX, spriteStartY + (spriteSpacing * 3));
+    gfxRenderSprite(m_PBTBLTreasure256Id, spriteX, spriteStartY + (spriteSpacing * 4));
+    
+    // Render the headshot sprites to the right of the first column
+    int headshotX = spriteX + 138;  // 128 (scaled sprite width) + 10 (spacing)
+    gfxRenderSprite(m_PBTBLArcherHeadshot256Id, headshotX, spriteStartY);
+    gfxRenderSprite(m_PBTBLKnightHeadshot256Id, headshotX, spriteStartY + spriteSpacing);
+    gfxRenderSprite(m_PBTBLWolfHeadshot256Id, headshotX, spriteStartY + (spriteSpacing * 2));
+    
     // Render resource numbers on the right side
     // Position calculations based on the new horizontal layout
     // Icons are at x positions: 724, 809, 894 (from script output)
@@ -506,17 +559,17 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     // Gold resource (treasure chest) - using golden color
     gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
-    gfxRenderString(m_StartMenuFontId, "999", resourceIconX1, resourceTextY, 3, GFX_TEXTCENTER);
+    //gfxRenderString(m_StartMenuFontId, "999", resourceIconX1, resourceTextY, 3, GFX_TEXTCENTER);
     
     // Sword resource - using red/orange color
     gfxSetColor(m_StartMenuFontId, 255, 100, 50, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
-    gfxRenderString(m_StartMenuFontId, "15", resourceIconX2, resourceTextY, 3, GFX_TEXTCENTER);
+    //gfxRenderString(m_StartMenuFontId, "15", resourceIconX2, resourceTextY, 3, GFX_TEXTCENTER);
     
     // Shield resource - using bright blue color
     gfxSetColor(m_StartMenuFontId, 150, 200, 255, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
-    gfxRenderString(m_StartMenuFontId, "8", resourceIconX3, resourceTextY, 3, GFX_TEXTCENTER);
+    //gfxRenderString(m_StartMenuFontId, "8", resourceIconX3, resourceTextY, 3, GFX_TEXTCENTER);
     
     
     return (true);
