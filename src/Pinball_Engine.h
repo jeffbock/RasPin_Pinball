@@ -404,6 +404,7 @@ private:
     bool m_startMenuLoaded;
     
     // Load state tracking for Table screens
+    bool m_initScreenLoaded;
     bool m_gameStartLoaded;
     bool m_mainScreenLoaded;
     bool m_resetLoaded; 
@@ -445,12 +446,14 @@ private:
     ///////////////////////////////
     
     // Render functions for the pinball game table
+    bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderStatus(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
 
     // Load functions for the pinball game table
+    bool pbeLoadInitScreen(); // Load the init screen for the pinball game
     bool pbeLoadGameStart(); // Load the start screen for the pinball game
     bool pbeLoadMainScreen(); // Load the main screen for the pinball game
     bool pbeLoadReset(); // Load the reset screen

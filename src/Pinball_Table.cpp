@@ -12,7 +12,6 @@
 
 // PBEgine Class Fucntions for the main pinball game
 
-
 // Main load function for the pinball game start screen
 bool PBEngine::pbeLoadGameStart(){
     
@@ -683,12 +682,36 @@ std::string PBEngine::formatScoreWithCommas(unsigned long score){
     return scoreStr;
 }
 
+// Load function for the init screen
+bool PBEngine::pbeLoadInitScreen(){
+    
+    if (m_initScreenLoaded) return (true);
+    
+    // Initialize table devices and state
+    pbeTableInit();
+    
+    m_initScreenLoaded = true;
+    return true;
+}
+
+
+// Render function for the init screen
+bool PBEngine::pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick){
+    
+    if (!pbeLoadInitScreen()) return (false);
+    
+    // Transition to start screen
+    m_tableState = PBTableState::PBTBL_START;
+    return true;
+}
+
 // Main render selection function for the pinball table
 bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick){
     
     bool success = false;
 
     switch (m_tableState) {
+        case PBTableState::PBTBL_INIT: success = pbeRenderInitScreen(currentTick, lastTick); break;
         case PBTableState::PBTBL_START: success = pbeRenderGameStart(currentTick, lastTick); break;
         case PBTableState::PBTBL_MAINSCREEN: success = pbeRenderMainScreen(currentTick, lastTick); break;
         case PBTableState::PBTBL_RESET: success = pbeRenderReset(currentTick, lastTick); break;
@@ -722,10 +745,8 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
     
     switch (m_tableState) {
         case PBTableState::PBTBL_INIT: {
-            // Initialize table devices and state, then transition to start screen
-            pbeTableInit();
-            m_tableState = PBTableState::PBTBL_START;
-            break;
+            // Nothing right now, it's all taken care in the init render function
+        break;
         }
         case PBTableState::PBTBL_START: {
 
@@ -805,6 +826,7 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
 
 // Reload function to reset all table screen load states
 void PBEngine::pbeTableReload() {
+    m_initScreenLoaded = false;
     m_gameStartLoaded = false;
     m_mainScreenLoaded = false;
     m_resetLoaded = false;
