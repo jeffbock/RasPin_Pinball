@@ -1,15 +1,15 @@
 This file tracks the various items to do in the pinball project in rough priority
 
 ** Raspberry Pi Specific Work
-Currently no planned work - that's pretty cool.
+Enable and debug Neopixel code on a real Raspberry Pi (currently untested)
 
 ** Generic arch improvements
-Add structure for pinball game state
-    Super complicated state machine for normal gameplay (eg: the game) - probably need a class to / sub classes to manage the various pinball items
+* Continue to improve managing pinball states, modes, and lighting.. still pretty basic in current implementation
 
-** Gameplay tasks
-Create simple score / gameplay screen
-Generate characters, dungeon screens
+** Gameplay tasks - will evolve as HW becomes more capable
+Implement first flipping / scoring capability on main screen
+Define modes and rules for each
+Add dungeon exploring and combat screens 
 
 ** Hardware enabling
 Design prototype HW, use test mode to enable
@@ -17,26 +17,18 @@ Design prototype HW, use test mode to enable
     * Build proto cabinet w/ foam board
 Build relay output boards that connect to output IO chips.  Likely FET controlled, opto-isolated and support multiple voltage output ranges
     * Put the scematics for all boards into DigiKey for documenting.  See how much cost to build for real?
-Build foam board and whitewood prototype to judge sizes
-Create cabinet, flexible to support multiple playfields
 Add fuses to protect HW / boards
-Add capapacitors to I/O boards for noise reduction
-
-** Documentation
-Nothing plan for now, but user guide should be updated as needed.  It's AI managed so may not be quite right
+Add capapacitors to I/O boards for noise reduction, solenoid surge protection
 
 ** Lower Priority
 Refactor redudant input messages (output messages now not type (eg: flipper) specific) - do same for inputs?
 Bug: Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
-Update all render screens to be independent from screen size, use more #defines to adjust screens more quickly when needed
 Align sounds to less popping - align sample modes, use WAV?
-Protect input / output queues with mutex and make them multi-thread?  May not be needed with current design
+Protect input / output queues with mutex and make them multi-thread?  Doesn't seem to be needed with current design
 Expand sprites to have animated sprites - eg: UV maps within a sprite with different images - base is there but need example to integrate.
     -  Is there some standard sprite format / program that can be used?
     -  Or add basic capability to animate more automatically between different sprites / loop / etc..
 Actually checkout the CMAKE flow - I don't use it a lot right now
-Duplicate all the Windows simulation capability in PiOS
 
 ** Maybe future stuff
-Look a neo-pixel support - can we have multi-color strips on individual addressed LEDs?
 Add a 3D model sprite - allow for 3D objects on the screens, basic animations, etc.. Tons of work here depending on how complicated
