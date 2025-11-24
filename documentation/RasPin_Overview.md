@@ -14,6 +14,12 @@ The RasPin Pinball Framework is a complete software and hardware solution for bu
 
 ---
 
+### AI Usage Notes
+
+Development of this framework and game would have take signficantly possible longer without the use of Microsoft Copliot AI tools (Claude Sonnet 4.5 in VSCode was particularly useful).  It was also incredibly useful enhancing art and creating the various sprites used thorughout the game since the author has limited art skills to begin with...
+
+Agentic Code AI is highly recommended as tool to utilize the RaspPin framework.  While you *could* write all the code manually, it excels at setting up rendering screens, following instructions to get base screen rendering, sprites, text and animation functions all set up - so you don't have to worry about the specifics of using the framework immediately.  After initial setup, the code can be tweaked to get exactly what you want.
+
 ## System Architecture
 
 ### High-Level Component Diagram

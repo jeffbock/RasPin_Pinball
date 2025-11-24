@@ -447,12 +447,16 @@ private:
     // Render functions for the pinball game table
     bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderStatus(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
 
     // Load functions for the pinball game table
     bool pbeLoadGameStart(); // Load the start screen for the pinball game
     bool pbeLoadMainScreen(); // Load the main screen for the pinball game
     bool pbeLoadReset(); // Load the reset screen
+    
+    // Table initialization
+    bool pbeTableInit(); // Initialize table devices and state
 
     // Player management functions
     bool pbeTryAddPlayer(); // Try to add a new player, returns true if successful

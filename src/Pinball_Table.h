@@ -12,10 +12,11 @@
 #include "Pinball.h"
 
 enum class PBTableState {
-    PBTBL_START = 0,
-    PBTBL_MAINSCREEN = 1,
-    PBTBL_STDPLAY = 2,
-    PBTBL_RESET = 3,
+    PBTBL_INIT = 0,
+    PBTBL_START = 1,
+    PBTBL_MAINSCREEN = 2,
+    PBTBL_STDPLAY = 3,
+    PBTBL_RESET = 4,
     PBTBL_END
 };
 

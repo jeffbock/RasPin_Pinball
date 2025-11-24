@@ -12,6 +12,8 @@
 
 // PBEgine Class Fucntions for the main pinball game
 
+
+// Main load function for the pinball game start screen
 bool PBEngine::pbeLoadGameStart(){
     
     if (m_gameStartLoaded) return (true);
@@ -47,9 +49,9 @@ bool PBEngine::pbeLoadGameStart(){
                        0, 400.0f, 0.0f, 0.0f, 0.0f, true, 50.0f, 0.0f, 0.0f);
     gfxCreateAnimation(animateData, true);
     
-    m_PBTBLDoorDragonId = gfxLoadSprite("DoorDragon", "src/resources/textures/Dragon.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
-    gfxSetScaleFactor(m_PBTBLDoorDragonId, 0.8, false);
-    m_PBTBLDragonEyesId = gfxLoadSprite("DragonEyes", "src/resources/textures/DragonEyes.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    //m_PBTBLDoorDragonId = gfxLoadSprite("DoorDragon", "src/resources/textures/Dragon.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    //gfxSetScaleFactor(m_PBTBLDoorDragonId, 0.8, false);
+    //m_PBTBLDragonEyesId = gfxLoadSprite("DragonEyes", "src/resources/textures/DragonEyes.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
 
     m_PBTBLDoorDungeonId = gfxLoadSprite("DoorDungeon", "src/resources/textures/Dungeon2.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetScaleFactor(m_PBTBLDoorDungeonId, 0.94, false);
@@ -101,16 +103,11 @@ bool PBEngine::pbeLoadGameStart(){
     gfxLoadAnimateDataShort(&animateData, m_StartMenuFontId, m_PBTBLTextStartId, m_PBTBLTextEndId, ANIMATE_COLOR_MASK, 2.0f, true, GFX_NOLOOP, GFX_ANIM_NORMAL);
     gfxCreateAnimation(animateData, true);
 
-    // Note:  So many things to check for loading, it's not worth doing.  Assume the sprites will be loaded.  If texture fails, it will just render incorrectly.
-
-    // Initialize and register the ball ejector device (using example IDs - can be configured per table)
-    pbdEjector* ballEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
-    pbeAddDevice(ballEjector);
-
     m_gameStartLoaded = true;
     return (true);
 }
 
+// Renders the start screen w/ instructions, high scores and start prompt
 bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick){
 
     static int timeoutTicks, blinkCountTicks;
@@ -282,13 +279,11 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     return (true);
 }
 
+// Load resources used by the main screen of the pinball game
 bool PBEngine::pbeLoadMainScreen(){
     
     if (m_mainScreenLoaded) return (true);
 
-    // Main screen uses the same font as the start menu
-    // The font should already be loaded from pbeLoadGameStart
-    
     // Load the main screen background
     m_PBTBLMainScreenBGId = gfxLoadSprite("MainScreenBG", "src/resources/textures/MainScreenBG.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLMainScreenBGId, 255, 255, 255, 255);
@@ -331,113 +326,27 @@ bool PBEngine::pbeLoadMainScreen(){
     return (true);
 }
 
-bool PBEngine::pbeLoadReset(){
+// Organizes and calls all the sub-render routines for the main screen
+bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
     
-    if (m_resetLoaded) return (true);
+    if (!pbeLoadMainScreen()) return (false);
     
-    // Reset screen uses the same font as the start menu
-    // The font should already be loaded from pbeLoadGameStart
+    // Clear to black background
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
     
-    // Create a solid color sprite (like the title bar in console state)
-    m_PBTBLResetSpriteId = gfxLoadSprite("ResetBG", "", GFX_NONE, GFX_NOMAP, GFX_UPPERLEFT, false, false);
-    gfxSetColor(m_PBTBLResetSpriteId, 0, 0, 0, 255); // Solid black
-    gfxSetWH(m_PBTBLResetSpriteId, 700, 200); // Set width and height
+    // Render the main screen background
+    gfxRenderSprite(m_PBTBLMainScreenBGId, ACTIVEDISPX, ACTIVEDISPY);
     
-    if (m_PBTBLResetSpriteId == NOSPRITE) return (false);
+    // Render all player scores
+    pbeRenderPlayerScores(currentTick, lastTick);
     
-    m_resetLoaded = true;
+    // Render status icons and values
+    pbeRenderStatus(currentTick, lastTick);
+    
     return (true);
 }
 
-bool PBEngine::pbeTryAddPlayer(){
-    // Find the first disabled player slot
-    int nextPlayerIdx = -1;
-    for (int i = 0; i < 4; i++) {
-        if (!m_playerStates[i].enabled) {
-            nextPlayerIdx = i;
-            break;
-        }
-    }
-    
-    // If no disabled player found, cannot add
-    if (nextPlayerIdx == -1) {
-        return false;
-    }
-    
-    // Check if at least one enabled player is still on their first ball
-    bool canAddPlayer = false;
-    for (int i = 0; i < 4; i++) {
-        if (m_playerStates[i].enabled && m_playerStates[i].currentBall == 1) {
-            canAddPlayer = true;
-            break;
-        }
-    }
-    
-    if (!canAddPlayer) {
-        return false;
-    }
-    
-    // Enable and initialize the new player
-    m_playerStates[nextPlayerIdx].reset(m_saveFileData.ballsPerGame);
-    m_playerStates[nextPlayerIdx].enabled = true;
-    
-    // Count how many secondary players are now active (excluding current player)
-    int secondaryCount = 0;
-    for (int i = 0; i < 4; i++) {
-        if (i != m_currentPlayer && m_playerStates[i].enabled) {
-            secondaryCount++;
-        }
-    }
-    
-    // Initialize scroll-up animation for the new secondary score slot
-    // The slot index is (secondaryCount - 1) since we just added this player
-    if (secondaryCount > 0 && secondaryCount <= 3) {
-        int slotIndex = secondaryCount - 1;
-        m_secondaryScoreAnims[slotIndex].animStartTick = GetTickCountGfx();
-        m_secondaryScoreAnims[slotIndex].animDurationSec = 1.0f;
-        m_secondaryScoreAnims[slotIndex].currentYOffset = 50; // Start 200 pixels below (off-screen)
-        m_secondaryScoreAnims[slotIndex].animationActive = true;
-        m_secondaryScoreAnims[slotIndex].playerIndex = nextPlayerIdx;
-    }
-    
-    // Play feedback sound
-    m_soundSystem.pbsPlayEffect(EFFECTCLICK);
-    
-    return true;
-}
-
-unsigned long PBEngine::getCurrentPlayerScore(){
-    return m_playerStates[m_currentPlayer].score;
-}
-
-bool PBEngine::isCurrentPlayerEnabled(){
-    return m_playerStates[m_currentPlayer].enabled;
-}
-
-PBTableState& PBEngine::getPlayerGameState(){
-    return m_playerStates[m_currentPlayer].mainGameState;
-}
-
-PBTBLMainScreenState& PBEngine::getPlayerScreenState(){
-    return m_playerStates[m_currentPlayer].screenState;
-}
-
-void PBEngine::addPlayerScore(unsigned long points){
-    m_playerStates[m_currentPlayer].score += points;
-}
-
-std::string PBEngine::formatScoreWithCommas(unsigned long score){
-    std::string scoreStr = std::to_string(score);
-    int insertPosition = scoreStr.length() - 3;
-    
-    while (insertPosition > 0) {
-        scoreStr.insert(insertPosition, ",");
-        insertPosition -= 3;
-    }
-    
-    return scoreStr;
-}
-
+// Supprot render routines for the main screen
 void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick){
     // Calculate fade-in alpha for main score
     unsigned int mainAlpha = 255;
@@ -515,18 +424,7 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     }
 }
 
-bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
-    
-    if (!pbeLoadMainScreen()) return (false);
-    
-    // Clear to black background
-    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-    
-    // Render the main screen background
-    gfxRenderSprite(m_PBTBLMainScreenBGId, ACTIVEDISPX, ACTIVEDISPY);
-    
-    // Render all player scores
-    pbeRenderPlayerScores(currentTick, lastTick);
+bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick){
     
     // Static position variables for character circles
     static const int circle1X = ACTIVEDISPX + 700;
@@ -640,6 +538,25 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     return (true);
 }
 
+// Load and render fucntions for the reset screen
+bool PBEngine::pbeLoadReset(){
+    
+    if (m_resetLoaded) return (true);
+    
+    // Reset screen uses the same font as the start menu
+    // The font should already be loaded from pbeLoadGameStart
+    
+    // Create a solid color sprite (like the title bar in console state)
+    m_PBTBLResetSpriteId = gfxLoadSprite("ResetBG", "", GFX_NONE, GFX_NOMAP, GFX_UPPERLEFT, false, false);
+    gfxSetColor(m_PBTBLResetSpriteId, 0, 0, 0, 255); // Solid black
+    gfxSetWH(m_PBTBLResetSpriteId, 700, 200); // Set width and height
+    
+    if (m_PBTBLResetSpriteId == NOSPRITE) return (false);
+    
+    m_resetLoaded = true;
+    return (true);
+}
+
 bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick){
     
     if (!pbeLoadReset()) return (false);
@@ -666,6 +583,107 @@ bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick)
     return (true);
 }
 
+// Various Helper and intialization functions used throught the game
+
+bool PBEngine::pbeTableInit(){
+    
+    // Initialize and register the ball ejector device (using example IDs - can be configured per table)
+    pbdEjector* ballEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
+    pbeAddDevice(ballEjector);
+    
+    return (true);
+}
+
+bool PBEngine::pbeTryAddPlayer(){
+    // Find the first disabled player slot
+    int nextPlayerIdx = -1;
+    for (int i = 0; i < 4; i++) {
+        if (!m_playerStates[i].enabled) {
+            nextPlayerIdx = i;
+            break;
+        }
+    }
+    
+    // If no disabled player found, cannot add
+    if (nextPlayerIdx == -1) {
+        return false;
+    }
+    
+    // Check if at least one enabled player is still on their first ball
+    bool canAddPlayer = false;
+    for (int i = 0; i < 4; i++) {
+        if (m_playerStates[i].enabled && m_playerStates[i].currentBall == 1) {
+            canAddPlayer = true;
+            break;
+        }
+    }
+    
+    if (!canAddPlayer) {
+        return false;
+    }
+    
+    // Enable and initialize the new player
+    m_playerStates[nextPlayerIdx].reset(m_saveFileData.ballsPerGame);
+    m_playerStates[nextPlayerIdx].enabled = true;
+    
+    // Count how many secondary players are now active (excluding current player)
+    int secondaryCount = 0;
+    for (int i = 0; i < 4; i++) {
+        if (i != m_currentPlayer && m_playerStates[i].enabled) {
+            secondaryCount++;
+        }
+    }
+    
+    // Initialize scroll-up animation for the new secondary score slot
+    // The slot index is (secondaryCount - 1) since we just added this player
+    if (secondaryCount > 0 && secondaryCount <= 3) {
+        int slotIndex = secondaryCount - 1;
+        m_secondaryScoreAnims[slotIndex].animStartTick = GetTickCountGfx();
+        m_secondaryScoreAnims[slotIndex].animDurationSec = 1.0f;
+        m_secondaryScoreAnims[slotIndex].currentYOffset = 50; // Start 200 pixels below (off-screen)
+        m_secondaryScoreAnims[slotIndex].animationActive = true;
+        m_secondaryScoreAnims[slotIndex].playerIndex = nextPlayerIdx;
+    }
+    
+    // Play feedback sound
+    m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+    
+    return true;
+}
+
+unsigned long PBEngine::getCurrentPlayerScore(){
+    return m_playerStates[m_currentPlayer].score;
+}
+
+bool PBEngine::isCurrentPlayerEnabled(){
+    return m_playerStates[m_currentPlayer].enabled;
+}
+
+PBTableState& PBEngine::getPlayerGameState(){
+    return m_playerStates[m_currentPlayer].mainGameState;
+}
+
+PBTBLMainScreenState& PBEngine::getPlayerScreenState(){
+    return m_playerStates[m_currentPlayer].screenState;
+}
+
+void PBEngine::addPlayerScore(unsigned long points){
+    m_playerStates[m_currentPlayer].score += points;
+}
+
+std::string PBEngine::formatScoreWithCommas(unsigned long score){
+    std::string scoreStr = std::to_string(score);
+    int insertPosition = scoreStr.length() - 3;
+    
+    while (insertPosition > 0) {
+        scoreStr.insert(insertPosition, ",");
+        insertPosition -= 3;
+    }
+    
+    return scoreStr;
+}
+
+// Main render selection function for the pinball table
 bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick){
     
     bool success = false;
@@ -684,8 +702,9 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
     return (success);
 }
 
+//
 // Main State Loop for Pinball Table
-
+//
 void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
     
     // Check for reset button press first, regardless of current state (unless already in reset)
@@ -702,6 +721,12 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
     }
     
     switch (m_tableState) {
+        case PBTableState::PBTBL_INIT: {
+            // Initialize table devices and state, then transition to start screen
+            pbeTableInit();
+            m_tableState = PBTableState::PBTBL_START;
+            break;
+        }
         case PBTableState::PBTBL_START: {
 
             // Handle button presses during start screen

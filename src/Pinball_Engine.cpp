@@ -61,7 +61,7 @@
     m_videoFadeStartTick = 0;
     m_videoFadingIn = false;
     m_videoFadingOut = false;
-    m_videoFadeDurationSec = 2.0f;  // 2 second fade in/out
+    m_videoFadeDurationSec = 2.0f;  
     m_sandboxEjector = nullptr;
     
     // NeoPixel test sandbox variables
@@ -79,7 +79,7 @@
     /////////////////////
     // Table variables
     /////////////////////
-    m_tableState = PBTableState::PBTBL_START; 
+    m_tableState = PBTableState::PBTBL_INIT; 
     m_tableScreenState = PBTBLScreenState::START_START;
 
     // Tables start screen variables
@@ -977,7 +977,7 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
         gfxSetScaleFactor(m_defaultFontSpriteId, 1.5, false);
         gfxRenderShadowString(m_defaultFontSpriteId, "Credits", tempX, m_CreditsScrollY, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Dragons of Destiny Pinball", tempX, m_CreditsScrollY + (1*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Designed and Programmed by: Jeffrey Bock", tempX, m_CreditsScrollY + (2*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Designed, Art and Programmed by: Jeffrey Bock", tempX, m_CreditsScrollY + (2*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Additional design and 3D printing: Tremayne Bock", tempX, m_CreditsScrollY + (3*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Using RasPin Pinball Engine", tempX, m_CreditsScrollY + (4*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Full code and 3D models available at:", tempX, m_CreditsScrollY + (5*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
@@ -989,7 +989,8 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
         gfxRenderShadowString(m_defaultFontSpriteId, "JSON.hpp https://github.com/nlohmann/json", tempX, m_CreditsScrollY + (11*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "WiringPi https://github.com/WiringPi/WiringPi", tempX, m_CreditsScrollY + (12*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "FFmpeg https://github.com/BtbN/FFmpeg-Builds", tempX, m_CreditsScrollY + (13*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Developed using AI and Microsoft Copilot tools", tempX, m_CreditsScrollY + (14*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Characters developed at https://www.heroforge.com/", tempX, m_CreditsScrollY + (14*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Microsoft Copilot AI tools utilized with art and code ", tempX, m_CreditsScrollY + (15*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
     }
 
