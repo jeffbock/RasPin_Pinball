@@ -457,16 +457,16 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     
     // Render the current player's score in the center (smaller white text)
     gfxSetColor(m_StartMenuFontId, 255, 255, 255, mainAlpha);
-    gfxSetScaleFactor(m_StartMenuFontId, 0.8, false);
+    gfxSetScaleFactor(m_StartMenuFontId, 0.6, false);
     
     // Render "Player X" label above the score
     std::string playerLabel = "Player " + std::to_string(m_currentPlayer + 1);
-    gfxRenderString(m_StartMenuFontId, playerLabel, (PB_SCREENWIDTH/2), ACTIVEDISPY + 280, 5, GFX_TEXTCENTER);
+    gfxRenderString(m_StartMenuFontId, playerLabel, (ACTIVEDISPX+(1024/3)), ACTIVEDISPY + 280, 5, GFX_TEXTCENTER);
     
     // Render the current player's score with commas
     std::string scoreText = formatScoreWithCommas(getCurrentPlayerScore());
     gfxSetScaleFactor(m_StartMenuFontId, 1.2, false);
-    gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2), ACTIVEDISPY + 370, 5, GFX_TEXTCENTER);
+    gfxRenderString(m_StartMenuFontId, scoreText, (ACTIVEDISPX+(1024/3)), ACTIVEDISPY + 350, 5, GFX_TEXTCENTER);
     
     // Render other player scores at the bottom (small grey text)
     gfxSetColor(m_StartMenuFontId, 128, 128, 128, 255); // Light grey color for visibility
@@ -546,6 +546,45 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     static const int dungeonX = ACTIVEDISPX + 720;
     static const int dungeonY = ACTIVEDISPY + 575;
     
+    // Get current player's game state
+    pbGameState& playerState = m_playerStates[m_currentPlayer];
+    
+    // Render character headshots in the center of each circle
+    // Headshots are 256x256, scaled down by another 10% from 0.45 to 0.405 (~104px)
+    
+    // Ranger (Archer) - upper left circle (Shidea) - right 30px, down 15px
+    gfxSetScaleFactor(m_PBTBLArcherHeadshot256Id, 0.405, false);
+    if (playerState.rangerJoined) {
+        // Full color
+        gfxSetColor(m_PBTBLArcherHeadshot256Id, 255, 255, 255, 255);
+    } else {
+        // 1/3 grayscale (85, 85, 85) at 50% transparency
+        gfxSetColor(m_PBTBLArcherHeadshot256Id, 85, 85, 85, 128);
+    }
+    gfxRenderSprite(m_PBTBLArcherHeadshot256Id, circle1X + 37, circle1Y + 22);
+    
+    // Priest (Wolf) - upper right circle (Kahriel) - right 20px, down 10px
+    gfxSetScaleFactor(m_PBTBLWolfHeadshot256Id, 0.405, false);
+    if (playerState.priestJoined) {
+        // Full color
+        gfxSetColor(m_PBTBLWolfHeadshot256Id, 255, 255, 255, 255);
+    } else {
+        // 1/3 grayscale (85, 85, 85) at 50% transparency
+        gfxSetColor(m_PBTBLWolfHeadshot256Id, 85, 85, 85, 128);
+    }
+    gfxRenderSprite(m_PBTBLWolfHeadshot256Id, circle2X + 27, circle2Y + 27);
+    
+    // Knight - lower middle circle (Caiphos) - right 25px, down 20px
+    gfxSetScaleFactor(m_PBTBLKnightHeadshot256Id, 0.405, false);
+    if (playerState.knightJoined) {
+        // Full color
+        gfxSetColor(m_PBTBLKnightHeadshot256Id, 255, 255, 255, 255);
+    } else {
+        // 1/3 grayscale (85, 85, 85) at 50% transparency
+        gfxSetColor(m_PBTBLKnightHeadshot256Id, 85, 85, 85, 128);
+    }
+    gfxRenderSprite(m_PBTBLKnightHeadshot256Id, circle3X + 22, circle3Y + 33);
+    
     // Render character circles
     gfxRenderSprite(m_PBTBLCharacterCircle256Id, circle1X, circle1Y);
     gfxRenderSprite(m_PBTBLCharacterCircle256Id, circle2X, circle2Y);
@@ -570,9 +609,6 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     // "Caiphos" below middle circle (bottom is at circle3Y + 128)
     gfxRenderShadowString(m_StartMenuFontId, "Caiphos", circle3X + 76, circle3Y + 142, 4, GFX_TEXTCENTER, 150, 100, 0, 255, 2);
     
-    // Get current player's game state
-    pbGameState& playerState = m_playerStates[m_currentPlayer];
-    
     // Render resource values to the right of icons
     // Icon text scaled to 0.7 (2x bigger than 0.35)
     gfxSetScaleFactor(m_StartMenuFontId, 0.7, false);
@@ -585,21 +621,21 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     // Attack value (fire red/orange color)
     gfxSetColor(m_StartMenuFontId, 255, 80, 20, 255);
     std::string attackText = std::to_string(playerState.attackValue);
-    gfxRenderShadowString(m_StartMenuFontId, attackText, swordX + 93, swordY + 44, 3, GFX_TEXTLEFT, 180, 40, 10, 255, 2);
+    gfxRenderShadowString(m_StartMenuFontId, attackText, swordX + 105, swordY + 30, 3, GFX_TEXTLEFT, 180, 40, 10, 255, 2);
     
     // Defense value (steel blue-grey color)
     gfxSetColor(m_StartMenuFontId, 43, 66, 69, 255);
     std::string defenseText = std::to_string(playerState.defenseValue);
-    gfxRenderShadowString(m_StartMenuFontId, defenseText, shieldX + 93, shieldY + 44, 3, GFX_TEXTLEFT, 20, 30, 32, 255, 2);
+    gfxRenderShadowString(m_StartMenuFontId, defenseText, shieldX + 105, shieldY + 30, 3, GFX_TEXTLEFT, 20, 30, 32, 255, 2);
     
     // Dungeon floor and level (darker stone grey color)
     // Dungeon text scaled to 0.525 (1.5x bigger than 0.35)
     gfxSetScaleFactor(m_StartMenuFontId, 0.525, false);
-    gfxSetColor(m_StartMenuFontId, 120, 120, 120, 255);
+    gfxSetColor(m_StartMenuFontId, 81, 79, 122, 255);
     std::string floorText = "Floor: " + std::to_string(playerState.dungeonFloor);
     std::string levelText = "Level: " + std::to_string(playerState.dungeonLevel);
-    gfxRenderShadowString(m_StartMenuFontId, floorText, dungeonX + 123, dungeonY + 30, 3, GFX_TEXTLEFT, 50, 50, 50, 255, 2);
-    gfxRenderShadowString(m_StartMenuFontId, levelText, dungeonX + 123, dungeonY + 60, 3, GFX_TEXTLEFT, 50, 50, 50, 255, 2);
+    gfxRenderShadowString(m_StartMenuFontId, floorText, dungeonX + 123, dungeonY + 15, 3, GFX_TEXTLEFT, 27, 24, 48, 255, 2);
+    gfxRenderShadowString(m_StartMenuFontId, levelText, dungeonX + 123, dungeonY + 60, 3, GFX_TEXTLEFT, 27, 24, 48, 255, 2);
     
     return (true);
 }
