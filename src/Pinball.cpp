@@ -1224,6 +1224,9 @@ int main(int argc, char const *argv[])
             // Execute all registered devices
             g_PBEngine.pbeExecuteDevices();
 
+            // Process timers and generate timer expiration input messages
+            g_PBEngine.pbeProcessTimers();
+
             PBProcessIO();
             // Process all the input message queue and update the game state
             if (!g_PBEngine.m_inputQueue.empty()){

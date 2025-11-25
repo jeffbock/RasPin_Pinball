@@ -144,6 +144,14 @@ struct stOutputPulse {
     unsigned long startTickMS;
 };
 
+// Timer structure for pbeSetTimer functionality
+struct stTimerEntry {
+    unsigned int timerId;          // User-supplied timer ID
+    unsigned int durationMS;       // Timer duration in milliseconds
+    unsigned long startTickMS;     // Time when timer was started
+    unsigned long expireTickMS;    // Time when timer should expire
+};
+
 struct stLEDSequenceInfo {
     bool sequenceEnabled;
     bool firstTime;
@@ -252,6 +260,10 @@ public:
     void pbeClearDevices();
     void pbeExecuteDevices();
     
+    // Timer functions
+    void pbeSetTimer(unsigned int timerId, unsigned int timerValueMS);
+    void pbeProcessTimers();
+    
     #ifdef EXE_MODE_RASPI
         // This map is used for whatever arbitrary Raspberry Pi inputs are used (from the main board)
         // Note: IO expansion chips are not included in the structure
@@ -347,6 +359,8 @@ public:
     stNeoPixelSequenceInfo m_NeoPixelSequenceInfo[NUM_NEOPIXEL_DRIVERS];
     std::queue<stOutputMessage> m_deferredQueue;
     std::mutex m_deferredQMutex;
+    std::queue<stTimerEntry> m_timerQueue;
+    std::mutex m_timerQMutex;
 
     // Main Backglass Variables
     unsigned int m_PBTBLBackglassId;

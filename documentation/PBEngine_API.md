@@ -200,6 +200,80 @@ g_PBEngine.SendSeqMsg(nullptr, nullptr, PB_NOLOOP, PB_OFF);
 
 ---
 
+## Timer System
+
+The timer system allows you to set delayed events that will trigger input messages after a specified time. This is useful for implementing timed game mechanics, ball save countdowns, multiball delays, and other time-based events.
+
+### pbeSetTimer()
+
+Sets a timer that will expire after the specified duration and generate an input message.
+
+**Signature:**
+```cpp
+void pbeSetTimer(unsigned int timerId, unsigned int timerValueMS);
+```
+
+**Parameters:**
+- `timerId` - User-supplied timer identifier (will be placed in inputId of the generated message)
+- `timerValueMS` - Timer duration in milliseconds
+
+**Behavior:**
+- When called, the timer is queued with the current time and calculated expiration time
+- When the timer expires, a `PB_IMSG_TIMER` input message is generated with `inputId` set to the supplied `timerId`
+- Multiple timers can be active simultaneously
+- Timers are processed in the main pinball loop near device processing
+
+**Example:**
+```cpp
+// Define timer IDs for your game
+#define TIMER_BALL_SAVE 100
+#define TIMER_MULTIBALL_DELAY 101
+#define TIMER_SKILL_SHOT 102
+
+// Start a 5-second ball save timer
+g_PBEngine.pbeSetTimer(TIMER_BALL_SAVE, 5000);
+
+// Start a 2-second multiball delay
+g_PBEngine.pbeSetTimer(TIMER_MULTIBALL_DELAY, 2000);
+```
+
+### Handling Timer Expiration
+
+Timer expiration messages are delivered through the standard input message queue with `inputMsg` set to `PB_IMSG_TIMER`:
+
+**Example - Processing Timer Messages:**
+```cpp
+void PBEngine::pbeUpdateGameState(stInputMessage inputMessage) {
+    // Handle timer expiration
+    if (inputMessage.inputMsg == PB_IMSG_TIMER) {
+        switch (inputMessage.inputId) {
+            case TIMER_BALL_SAVE:
+                // Ball save period ended
+                m_ballSaveActive = false;
+                SendOutputMsg(PB_OMSG_LED, LED_BALL_SAVE, PB_OFF, false);
+                break;
+            case TIMER_MULTIBALL_DELAY:
+                // Start multiball
+                StartMultiball();
+                break;
+            case TIMER_SKILL_SHOT:
+                // Skill shot window closed
+                m_skillShotActive = false;
+                break;
+        }
+    }
+    // ... handle other input messages
+}
+```
+
+### pbeProcessTimers() (Internal)
+
+This function is called automatically in the main pinball loop to check for expired timers. It is called after device execution and before I/O processing.
+
+**Note:** You do not need to call this function directly - it is handled by the main loop.
+
+---
+
 ## Auto Output Control
 
 Auto output allows inputs to automatically trigger outputs without manual processing in your game code. This is useful for flippers and instant feedback mechanisms.

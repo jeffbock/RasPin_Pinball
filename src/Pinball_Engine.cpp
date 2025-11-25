@@ -1897,6 +1897,64 @@ void PBEngine::pbeExecuteDevices() {
     }
 }
 
+//==============================================================================
+// Timer Functions
+//==============================================================================
+
+// Set a timer with a user-supplied timer ID and duration in milliseconds
+// When the timer expires, an input message with PB_IMSG_TIMER will be sent
+// with the inputId set to the user-supplied timerId
+void PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS) {
+    unsigned long currentTick = GetTickCountGfx();
+    
+    stTimerEntry timerEntry;
+    timerEntry.timerId = timerId;
+    timerEntry.durationMS = timerValueMS;
+    timerEntry.startTickMS = currentTick;
+    timerEntry.expireTickMS = currentTick + timerValueMS;
+    
+    // Note: Currently single-threaded, mutex locking not needed
+    // std::lock_guard<std::mutex> lock(m_timerQMutex);
+    m_timerQueue.push(timerEntry);
+}
+
+// Process all timers in the queue, check for expired timers,
+// and send input messages for any that have expired
+void PBEngine::pbeProcessTimers() {
+    unsigned long currentTick = GetTickCountGfx();
+    
+    // Create a temporary queue to hold non-expired timers
+    std::queue<stTimerEntry> remainingTimers;
+    
+    // Note: Currently single-threaded, mutex locking not needed
+    // std::lock_guard<std::mutex> lock(m_timerQMutex);
+    
+    // Process all timers in the queue
+    while (!m_timerQueue.empty()) {
+        stTimerEntry timerEntry = m_timerQueue.front();
+        m_timerQueue.pop();
+        
+        // Check if this timer has expired
+        if (currentTick >= timerEntry.expireTickMS) {
+            // Timer has expired - send an input message with the timer ID
+            stInputMessage inputMessage;
+            inputMessage.inputMsg = PB_IMSG_TIMER;
+            inputMessage.inputId = timerEntry.timerId;
+            inputMessage.inputState = PB_ON;
+            inputMessage.sentTick = currentTick;
+            
+            // Add the timer expiration message to the input queue
+            m_inputQueue.push(inputMessage);
+        } else {
+            // Timer has not expired - keep it in the queue
+            remainingTimers.push(timerEntry);
+        }
+    }
+    
+    // Swap the remaining timers back into the main timer queue
+    m_timerQueue = std::move(remainingTimers);
+}
+
 // Reload function to reset all engine screen load states
 void PBEngine::pbeEngineReload() {
     m_defaultBackgroundLoaded = false;
