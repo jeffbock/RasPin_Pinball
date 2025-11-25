@@ -1920,6 +1920,10 @@ void PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS) {
 
 // Process all timers in the queue, check for expired timers,
 // and send input messages for any that have expired
+// Note: Uses a simple queue and temporary copy pattern for simplicity.
+// For typical pinball games, the number of active timers is small (< 10),
+// so the O(n) processing is negligible. If many simultaneous timers are
+// needed, consider using std::priority_queue ordered by expireTickMS.
 void PBEngine::pbeProcessTimers() {
     unsigned long currentTick = GetTickCountGfx();
     
@@ -1940,6 +1944,7 @@ void PBEngine::pbeProcessTimers() {
             stInputMessage inputMessage;
             inputMessage.inputMsg = PB_IMSG_TIMER;
             inputMessage.inputId = timerEntry.timerId;
+            // Use PB_ON to indicate the timer has fired (consistent with other input messages)
             inputMessage.inputState = PB_ON;
             inputMessage.sentTick = currentTick;
             
