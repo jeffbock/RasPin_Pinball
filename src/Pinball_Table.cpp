@@ -431,17 +431,17 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
     static const int circle2X = ACTIVEDISPX + 860;
     static const int circle2Y = ACTIVEDISPY + 20;
     static const int circle3X = ACTIVEDISPX + 780;
-    static const int circle3Y = ACTIVEDISPY + 140;
+    static const int circle3Y = ACTIVEDISPY + 170;
     
     // Static position variables for resource icons
     static const int treasureX = ACTIVEDISPX + 720;
-    static const int treasureY = ACTIVEDISPY + 330;
+    static const int treasureY = ACTIVEDISPY + 350;
     static const int swordX = ACTIVEDISPX + 685;
-    static const int swordY = ACTIVEDISPY + 455;
+    static const int swordY = ACTIVEDISPY + 467;
     static const int shieldX = ACTIVEDISPX + 845;
-    static const int shieldY = ACTIVEDISPY + 455;
+    static const int shieldY = ACTIVEDISPY + 467;
     static const int dungeonX = ACTIVEDISPX + 720;
-    static const int dungeonY = ACTIVEDISPY + 575;
+    static const int dungeonY = ACTIVEDISPY + 580;
     
     // Get current player's game state
     pbGameState& playerState = m_playerStates[m_currentPlayer];
@@ -487,6 +487,30 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
     gfxRenderSprite(m_PBTBLCharacterCircle256Id, circle2X, circle2Y);
     gfxRenderSprite(m_PBTBLCharacterCircle256Id, circle3X, circle3Y);
     
+    // Render level text at bottom of each circle
+    gfxSetScaleFactor(m_StartMenuFontId, 0.3, false);
+    
+    // Ranger level - below and to the left of circle1
+    std::string rangerLevelText = "Level: " + std::to_string(playerState.rangerLevel);
+    if (playerState.rangerJoined) {
+        // White color with black shadow
+        gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+        gfxRenderShadowString(m_StartMenuFontId, rangerLevelText, circle1X + 14, circle1Y + 145, 3, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+    }
+    // Priest level - below and to the right of circle2
+    std::string priestLevelText = "Level: " + std::to_string(playerState.priestLevel);
+    if (playerState.priestJoined) {
+        // White color with black shadow
+        gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+        gfxRenderShadowString(m_StartMenuFontId, priestLevelText, circle2X + 128 + 10, circle2Y + 145, 3, GFX_TEXTRIGHT, 0, 0, 0, 255, 1);
+    }
+    // Knight level - bottom of circle3
+    std::string knightLevelText = "Level: " + std::to_string(playerState.knightLevel);
+    if (playerState.knightJoined) {
+        // White color with black shadow
+        gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+        gfxRenderShadowString(m_StartMenuFontId, knightLevelText, circle3X + 78, circle3Y - 15, 3, GFX_TEXTCENTER, 0, 0, 0, 255, 1);
+    }
     // Render resource icons
     gfxRenderSprite(m_PBTBLTreasure256Id, treasureX, treasureY);
     gfxRenderSprite(m_PBTBLSword256Id, swordX, swordY);
@@ -782,6 +806,19 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                 }
                 else if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
                     addPlayerScore(10000);
+                }
+                // Handle flipper buttons to enable/disable all characters
+                else if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                    // Enable all characters
+                    m_playerStates[m_currentPlayer].knightJoined = true;
+                    m_playerStates[m_currentPlayer].priestJoined = true;
+                    m_playerStates[m_currentPlayer].rangerJoined = true;
+                }
+                else if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                    // Disable all characters
+                    m_playerStates[m_currentPlayer].knightJoined = false;
+                    m_playerStates[m_currentPlayer].priestJoined = false;
+                    m_playerStates[m_currentPlayer].rangerJoined = false;
                 }
             }
             break;

@@ -104,14 +104,14 @@ public:
         rangerJoined = false;
         
         // Reset character and resource values
-        knightLevel = 0;
-        priestLevel = 0;
-        rangerLevel = 0;
+        knightLevel = 1;
+        priestLevel = 1;
+        rangerLevel = 1;
         goldValue = 0;
         attackValue = 0;
         defenseValue = 0;
-        dungeonFloor = 0;
-        dungeonLevel = 0;
+        dungeonFloor = 1;
+        dungeonLevel = 1;
     }
 };
 

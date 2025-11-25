@@ -224,6 +224,7 @@ public:
     // Functions to manage the game states (main and pinball game)
     void pbeUpdateState(stInputMessage inputMessage);
     void pbeUpdateGameState(stInputMessage inputMessage);
+    void pbeForceUpdateState();
     PBMainState pbeGetMainState() { return m_mainState; }
 
     // Save File Functions

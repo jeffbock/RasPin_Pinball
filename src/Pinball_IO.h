@@ -43,11 +43,12 @@ enum PBBoardType {
 
 // Input message structs and types
 enum PBInputMsg {
-    PB_IMSG_BUTTON = 0,
+    PB_IMSG_EMPTY = 0,
     PB_IMSG_SENSOR = 1,
     PB_IMSG_TARGET = 2,
     PB_IMSG_JETBUMPER = 3,
     PB_IMSG_POPBUMPER = 4,
+    PB_IMSG_BUTTON = 5,
 };
 
 struct stInputDef{

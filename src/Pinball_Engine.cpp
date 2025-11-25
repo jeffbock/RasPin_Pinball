@@ -1141,6 +1141,16 @@ void PBEngine::pbeReleaseMenuTextures(){
     gfxUnloadTexture(m_StartMenuSwordId);
 }
 
+// Helper function to force a state update by adding an empty message to the input queue
+// This is useful when a forced state update is needed in the state update code that's not tied to rendering (which happens every frame)
+void PBEngine::pbeForceUpdateState() {
+    stInputMessage emptyMessage;
+    emptyMessage.inputMsg = PB_IMSG_EMPTY;
+    emptyMessage.inputId = 0;
+    emptyMessage.inputState = PB_ON;
+    m_inputQueue.push(emptyMessage);
+}
+
 void PBEngine::pbeUpdateState(stInputMessage inputMessage){
     
     switch (m_mainState) {
