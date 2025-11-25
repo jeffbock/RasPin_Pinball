@@ -1,10 +1,14 @@
 # RasPin Pinball Framework
-A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is to fully develop a low cost system of SW and HW using Raspberry Pi and various easy to source HW pieces with typical modern pinball machnine capabilities.  Developed from scratch to learn and develop the entire architecture.  Compared to other pinball frameworks, RasPin is intended to be unique to Raspberry Pi, low cost, easy to implement, small and efficient and really intended for the hobbyist who wants a hand in every piece of the machine they want to build.
+A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is to fully develop a low cost system of SW and HW using Raspberry Pi and various easy to source HW pieces with typical modern pinball machnine capabilities.  Developed from scratch to learn and develop and entire architecture from top to bottom.  Compared to other pinball frameworks, RasPin is intended to be unique to Raspberry Pi, low cost, easy to implement, small and efficient and really intended for the hobbyist who wants a hand in every piece of the machine they want to build.
 
 <img width="400" alt="RasPinMenu" src="https://github.com/user-attachments/assets/80699574-9bf8-4ebb-9889-d9ec4445964f" />
 <img width="400" alt="RasPinDiag" src="https://github.com/user-attachments/assets/78baad46-6c7f-4157-8284-754867c45b45" />
-<img width="400" alt="RasPinStart" src="https://github.com/user-attachments/assets/6ad23313-8f80-4c98-af07-982c786c6f57" />
-<img width="363" alt="RasPin" src="https://github.com/user-attachments/assets/a15879aa-0a3b-4ca7-8cfd-c8a9cbe4cf9a" />
+<img width="400" alt="StartScreen" src="https://github.com/user-attachments/assets/b516174f-b142-4b0e-9c75-2702062400b2" />
+<img width="400" alt="GameScreen" src="https://github.com/user-attachments/assets/31004bd0-dc78-486f-8f01-0cf3a2f9fed7" />
+<img width="400" alt="RasPin" src="https://github.com/user-attachments/assets/a15879aa-0a3b-4ca7-8cfd-c8a9cbe4cf9a" />
+<img width="400" height="1512" alt="BaseHW" src="https://github.com/user-attachments/assets/989e1e88-8786-43c8-bf0c-c8ffe9036ce2" />
+
+Prototype hardware shown, full machine in development.
 
 # Current Features - This is changing constantly as work continues...
 - Intended to be a hobby level, low cost system for creating full feature, half scale pinball machines with Raspberry Pi hardware
