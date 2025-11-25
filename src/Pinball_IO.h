@@ -43,11 +43,12 @@ enum PBBoardType {
 
 // Input message structs and types
 enum PBInputMsg {
-    PB_IMSG_BUTTON = 0,
+    PB_IMSG_EMPTY = 0,
     PB_IMSG_SENSOR = 1,
     PB_IMSG_TARGET = 2,
     PB_IMSG_JETBUMPER = 3,
     PB_IMSG_POPBUMPER = 4,
+    PB_IMSG_BUTTON = 5,
 };
 
 struct stInputDef{
@@ -120,10 +121,11 @@ struct stOutputDef{
 #define IDI_LEFTACTIVATE 2
 #define IDI_RIGHTACTIVATE 3
 #define IDI_START 4
-#define IDI_SENSOR1 5
-#define IDI_SENSOR2 6
-#define IDI_SENSOR3 7
-#define NUM_INPUTS 8
+#define IDI_RESET 5
+#define IDI_SENSOR1 6
+#define IDI_SENSOR2 7
+#define IDI_SENSOR3 8
+#define NUM_INPUTS 9
 
 // Declare the shared variables for input / output structures.
 extern stInputDef g_inputDef[];

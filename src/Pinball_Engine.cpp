@@ -61,7 +61,7 @@
     m_videoFadeStartTick = 0;
     m_videoFadingIn = false;
     m_videoFadingOut = false;
-    m_videoFadeDurationSec = 2.0f;  // 2 second fade in/out
+    m_videoFadeDurationSec = 2.0f;  
     m_sandboxEjector = nullptr;
     
     // NeoPixel test sandbox variables
@@ -79,17 +79,32 @@
     /////////////////////
     // Table variables
     /////////////////////
-    m_tableState = PBTableState::PBTBL_START; 
+    m_tableState = PBTableState::PBTBL_INIT; 
     m_tableScreenState = PBTBLScreenState::START_START;
 
     // Tables start screen variables
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
+    m_PBTBLMainScreenBGId=0;
+    m_PBTBLResetSpriteId=0;
     m_RestartTable = true;
+    
+    // Reset state initialization
+    m_ResetButtonPressed = false;
+    m_StateBeforeReset = PBTableState::PBTBL_START;
     
     // Multi-player game state initialization
     m_currentPlayer = 0;
     for (int i = 0; i < 4; i++) {
         m_playerStates[i].reset(3); // Will be updated from save data when game starts
+    }
+    
+    // Main score animation initialization
+    m_mainScoreAnimStartTick = 0;
+    m_mainScoreAnimActive = false;
+    
+    // Secondary score slot animation initialization
+    for (int i = 0; i < 3; i++) {
+        m_secondaryScoreAnims[i].reset();
     }
     
     // Initialize NeoPixel sequence info
@@ -105,6 +120,14 @@
         m_NeoPixelSequenceInfo[i].pNeoPixelSequence = nullptr;
         m_NeoPixelSequenceInfo[i].driverIndex = i;
     }
+    
+    // Initialize load state tracking
+    m_defaultBackgroundLoaded = false;
+    m_bootUpLoaded = false;
+    m_startMenuLoaded = false;
+    m_gameStartLoaded = false;
+    m_mainScreenLoaded = false;
+    m_resetLoaded = false;
     
     // Auto output control - default to disable since the menus launch first
     m_autoOutputEnable = false;
@@ -223,11 +246,9 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
 }
 
 // Load reasources for the boot up screen
-bool PBEngine::pbeLoadDefaultBackground(bool forceReload){
+bool PBEngine::pbeLoadDefaultBackground(){
     
-    static bool defaultBackgroundLoaded = false;
-    if (forceReload) defaultBackgroundLoaded = false;
-    if (defaultBackgroundLoaded) return (true);
+    if (m_defaultBackgroundLoaded) return (true);
 
     pbeSendConsole("RasPin: Loading default background resources");
 
@@ -254,19 +275,17 @@ bool PBEngine::pbeLoadDefaultBackground(bool forceReload){
     if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  
         m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE ) return (false);
 
-    defaultBackgroundLoaded = true;
+    m_defaultBackgroundLoaded = true;
 
-    return (defaultBackgroundLoaded);
+    return (true);
 }
 
 // Load reasources for the boot up screen
-bool PBEngine::pbeLoadBootUp(bool forceReload){
+bool PBEngine::pbeLoadBootUp(){
     
-    static bool bootUpLoaded = false;
-    if (forceReload) bootUpLoaded = false;
-    if (bootUpLoaded) return (true);
+    if (m_bootUpLoaded) return (true);
 
-    if (!pbeLoadDefaultBackground(forceReload)) return (false);
+    if (!pbeLoadDefaultBackground()) return (false);
 
     pbeSendConsole("RasPin: Loading boot screen resources");
     
@@ -280,8 +299,8 @@ bool PBEngine::pbeLoadBootUp(bool forceReload){
 
     pbeSendConsole("RasPin: Ready - Press any button to continue");
 
-    bootUpLoaded = true;
-    return (bootUpLoaded);
+    m_bootUpLoaded = true;
+    return (true);
 }
 
 // Render the bootup screen
@@ -317,7 +336,7 @@ bool PBEngine::pbeRenderDefaultBackground (unsigned long currentTick, unsigned l
 // Render the bootup screen
 bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick){
         
-    if (!pbeLoadBootUp(false)) return (false);
+    if (!pbeLoadBootUp()) return (false);
 
     if (m_RestartBootUp) {
         m_RestartBootUp = false;
@@ -402,11 +421,9 @@ bool PBEngine::pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int font
 
 // Main Menu Screen Setup
 
-bool PBEngine::pbeLoadStartMenu(bool forceReload){
+bool PBEngine::pbeLoadStartMenu(){
 
-    static bool startMenuLoaded = false;
-    if (forceReload) startMenuLoaded = false;
-    if (startMenuLoaded) return (true);
+    if (m_startMenuLoaded) return (true);
 
     // Load the font for the start menu
     m_StartMenuFontId = gfxLoadSprite("Start Menu Font", MENUFONT, GFX_PNG, GFX_TEXTMAP, GFX_UPPERLEFT, true, true);
@@ -420,15 +437,14 @@ bool PBEngine::pbeLoadStartMenu(bool forceReload){
     gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
     gfxSetColor(m_StartMenuSwordId, 200, 200, 200, 200);
 
-    startMenuLoaded = true;
-
-    return (startMenuLoaded);
+    m_startMenuLoaded = true;
+    return (true);
 }
 
 // Renders the main menu
 bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastTick){
 
-   if (!pbeLoadStartMenu (false)) return (false); 
+   if (!pbeLoadStartMenu()) return (false); 
 
    if (m_RestartMenu) {
         m_CurrentSettingsItem = 0; 
@@ -463,16 +479,16 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
 }
 
 // Test Mode Screen
-bool PBEngine::pbeLoadTestMode(bool forceReload){
+bool PBEngine::pbeLoadTestMode(){
     // Test mode currently only requires the default background and font
-    if (!pbeLoadDefaultBackground(false)) return (false);
+    if (!pbeLoadDefaultBackground()) return (false);
 
     return (true);
 }
 
 bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadTestMode (false)) return (false); 
+    if (!pbeLoadTestMode()) return (false); 
 
     if (m_RestartTestMode) {
         m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false;
@@ -540,7 +556,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
 bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTick){
     
     // Uses the same resources as test mode
-    if (!pbeLoadTestMode (false)) return (false); 
+    if (!pbeLoadTestMode()) return (false); 
 
     // Set up transparent background for overlay
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
@@ -633,16 +649,16 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
 
 // Settings Menu Screen
 
-bool PBEngine::pbeLoadSettings(bool forceReload){
+bool PBEngine::pbeLoadSettings(){
 
-    if (!pbeLoadStartMenu (false)) return (false); 
+    if (!pbeLoadStartMenu()) return (false); 
 
     return (true);
 }
 
 bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadSettings(false)) return (false); 
+    if (!pbeLoadSettings()) return (false); 
 
     std::map<unsigned int, std::string> tempMenu = g_settingsMenu;
 
@@ -681,15 +697,15 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
      return (true);
 }
 
-bool PBEngine::pbeLoadDiagnostics(bool forceReload){
-    if (!pbeLoadStartMenu(false)) return (false); 
+bool PBEngine::pbeLoadDiagnostics(){
+    if (!pbeLoadStartMenu()) return (false); 
 
     return (true);
 }
 
 bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadDiagnostics(false)) return (false); 
+    if (!pbeLoadDiagnostics()) return (false); 
 
     std::map<unsigned int, std::string> tempMenu = g_diagnosticsMenu;
 
@@ -725,17 +741,17 @@ bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long las
 
 // Test Sandbox Screen
 
-bool PBEngine::pbeLoadTestSandbox(bool forceReload){
-    if (!pbeLoadStartMenu(false)) return (false);
+bool PBEngine::pbeLoadTestSandbox(){
+    if (!pbeLoadStartMenu()) return (false);
     
     // Create and register sandbox ejector device if not already created
-    if (!m_sandboxEjector && !forceReload) {
+    if (!m_sandboxEjector) {
         m_sandboxEjector = new pbdEjector(this, IDI_SENSOR1, IDO_SLINGSHOT, IDO_BALLEJECT2);
         pbeAddDevice(m_sandboxEjector);
     }
     
     // Initialize video player if not already created
-    if (!m_sandboxVideoPlayer && !forceReload) {
+    if (!m_sandboxVideoPlayer) {
         m_sandboxVideoPlayer = new PBVideoPlayer(this, &m_soundSystem);
         
         // Load the video with 720p dimensions (1280x720)
@@ -771,7 +787,7 @@ bool PBEngine::pbeLoadTestSandbox(bool forceReload){
     // Initialize NeoPixel test driver if not already created
     // Using BCM GPIO numbering: 24
     // Note: WS2812B is a single-wire protocol (data only, no separate clock)
-    if (!m_sandboxNeoPixel24 && !forceReload) {
+    if (!m_sandboxNeoPixel24) {
         m_sandboxNeoPixel24 = new NeoPixelDriver(24, 4);  // GPIO 24, 4 LEDs
         
         // Initialize with white, red, blue, green
@@ -790,7 +806,7 @@ bool PBEngine::pbeLoadTestSandbox(bool forceReload){
 
 bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long lastTick){
     
-    if (!pbeLoadTestSandbox(false)) return (false);
+    if (!pbeLoadTestSandbox()) return (false);
     
     if (m_RestartTestSandbox) {
         m_RestartTestSandbox = false;
@@ -928,15 +944,15 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
 
 // Credits Screen processing
 
-bool PBEngine::pbeLoadCredits(bool forceReload){
+bool PBEngine::pbeLoadCredits(){
 
-    if (!pbeLoadDefaultBackground(false)) return (false);
+    if (!pbeLoadDefaultBackground()) return (false);
     return (true);
 }
 
 bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadCredits (false)) return (false);
+    if (!pbeLoadCredits()) return (false);
 
     if (m_RestartCredits) {
         m_RestartCredits = false;
@@ -961,7 +977,7 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
         gfxSetScaleFactor(m_defaultFontSpriteId, 1.5, false);
         gfxRenderShadowString(m_defaultFontSpriteId, "Credits", tempX, m_CreditsScrollY, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Dragons of Destiny Pinball", tempX, m_CreditsScrollY + (1*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Designed and Programmed by: Jeffrey Bock", tempX, m_CreditsScrollY + (2*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Designed, Art and Programmed by: Jeffrey Bock", tempX, m_CreditsScrollY + (2*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Additional design and 3D printing: Tremayne Bock", tempX, m_CreditsScrollY + (3*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Using RasPin Pinball Engine", tempX, m_CreditsScrollY + (4*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Full code and 3D models available at:", tempX, m_CreditsScrollY + (5*spacing), 1, GFX_TEXTCENTER, 0,0,0,255,2);
@@ -973,7 +989,8 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
         gfxRenderShadowString(m_defaultFontSpriteId, "JSON.hpp https://github.com/nlohmann/json", tempX, m_CreditsScrollY + (11*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "WiringPi https://github.com/WiringPi/WiringPi", tempX, m_CreditsScrollY + (12*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "FFmpeg https://github.com/BtbN/FFmpeg-Builds", tempX, m_CreditsScrollY + (13*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Developed using AI and Microsoft Copilot tools", tempX, m_CreditsScrollY + (14*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Characters developed at https://www.heroforge.com/", tempX, m_CreditsScrollY + (14*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Microsoft Copilot AI tools utilized with art and code ", tempX, m_CreditsScrollY + (15*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
     }
 
@@ -981,10 +998,10 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
 }
  
 // Benchmark Screen
-bool PBEngine::pbeLoadBenchmark(bool forceReload){
+bool PBEngine::pbeLoadBenchmark(){
 
     // Benchmark will just use default font and the start menu items
-    if (!pbeLoadStartMenu (false)) return (false); 
+    if (!pbeLoadStartMenu()) return (false); 
     return (true);
 }
 
@@ -994,7 +1011,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     static unsigned int msForSwapTest, msForSmallSprite, msForTransformSprite, msForBigSprite;
     unsigned int msRender = 25;
     
-    if (!pbeLoadBenchmark (false)) return (false); 
+    if (!pbeLoadBenchmark()) return (false); 
 
     if (m_RestartBenchmark) {
         m_BenchmarkStartTick =  GetTickCountGfx(); 
@@ -1122,6 +1139,16 @@ void PBEngine::pbeReleaseMenuTextures(){
     gfxUnloadTexture(m_BootUpConsoleId);
     gfxUnloadTexture(m_BootUpStarsId);
     gfxUnloadTexture(m_StartMenuSwordId);
+}
+
+// Helper function to force a state update by adding an empty message to the input queue
+// This is useful when a forced state update is needed in the state update code that's not tied to rendering (which happens every frame)
+void PBEngine::pbeForceUpdateState() {
+    stInputMessage emptyMessage;
+    emptyMessage.inputMsg = PB_IMSG_EMPTY;
+    emptyMessage.inputId = 0;
+    emptyMessage.inputState = PB_ON;
+    m_inputQueue.push(emptyMessage);
 }
 
 void PBEngine::pbeUpdateState(stInputMessage inputMessage){
@@ -1869,3 +1896,12 @@ void PBEngine::pbeExecuteDevices() {
         }
     }
 }
+
+// Reload function to reset all engine screen load states
+void PBEngine::pbeEngineReload() {
+    m_defaultBackgroundLoaded = false;
+    m_bootUpLoaded = false;
+    m_startMenuLoaded = false;
+    m_RestartMenu = true;
+}
+

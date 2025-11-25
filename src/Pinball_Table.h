@@ -12,9 +12,11 @@
 #include "Pinball.h"
 
 enum class PBTableState {
-    PBTBL_START = 0,
-    PBTBL_MAINSCREEN = 1,
-    PBTBL_STDPLAY = 2,
+    PBTBL_INIT = 0,
+    PBTBL_START = 1,
+    PBTBL_MAINSCREEN = 2,
+    PBTBL_STDPLAY = 3,
+    PBTBL_RESET = 4,
     PBTBL_END
 };
 
@@ -31,6 +33,30 @@ enum class PBTBLMainScreenState {
     MAIN_END
 };
 
+// Secondary score slot animation state
+struct SecondaryScoreAnimState {
+    unsigned long animStartTick;      // Tick when animation started
+    float animDurationSec;            // Duration of animation in seconds
+    int currentYOffset;               // Current Y offset for scroll animation
+    bool animationActive;             // Whether animation is currently active
+    int playerIndex;                  // Which player this slot is animating (-1 if none)
+    
+    SecondaryScoreAnimState() {
+        animStartTick = 0;
+        animDurationSec = 1.0f;
+        currentYOffset = 0;
+        animationActive = false;
+        playerIndex = -1;
+    }
+    
+    void reset() {
+        animStartTick = 0;
+        currentYOffset = 0;
+        animationActive = false;
+        playerIndex = -1;
+    }
+};
+
 // Per-player game state class
 class pbGameState {
 public:
@@ -41,6 +67,21 @@ public:
     unsigned int currentBall;         // Current ball number (1-based)
     bool ballSaveEnabled;             // Ball save active flag
     bool extraBallEnabled;            // Extra ball earned flag
+    
+    // Character states
+    bool knightJoined;                // Knight character joined
+    bool priestJoined;                // Priest character joined
+    bool rangerJoined;                // Ranger character joined
+    
+    // Character and resource values
+    int knightLevel;                  // Knight character level
+    int priestLevel;                  // Priest character level
+    int rangerLevel;                  // Ranger character level
+    int goldValue;                    // Gold/treasure amount
+    int attackValue;                  // Attack/sword value
+    int defenseValue;                 // Defense/shield value
+    int dungeonFloor;                 // Current dungeon floor
+    int dungeonLevel;                 // Dungeon difficulty level
 
     // Constructor
     pbGameState() {
@@ -56,6 +97,21 @@ public:
         currentBall = 1;
         ballSaveEnabled = false;
         extraBallEnabled = false;
+        
+        // Reset character states
+        knightJoined = false;
+        priestJoined = false;
+        rangerJoined = false;
+        
+        // Reset character and resource values
+        knightLevel = 1;
+        priestLevel = 1;
+        rangerLevel = 1;
+        goldValue = 0;
+        attackValue = 0;
+        defenseValue = 0;
+        dungeonFloor = 1;
+        dungeonLevel = 1;
     }
 };
 
