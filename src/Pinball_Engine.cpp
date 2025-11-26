@@ -121,6 +121,12 @@
         m_NeoPixelSequenceInfo[i].driverIndex = i;
     }
     
+    // Initialize watchdog timer (timerId = 0)
+    m_watchdogTimer.timerId = WATCHDOGTIMER_ID;
+    m_watchdogTimer.durationMS = 0;
+    m_watchdogTimer.startTickMS = 0;
+    m_watchdogTimer.expireTickMS = 0;
+    
     // Initialize load state tracking
     m_defaultBackgroundLoaded = false;
     m_bootUpLoaded = false;
@@ -856,7 +862,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 255, 64, 64, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Right Flipper" + rfState + ":", centerX - 200, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "NeoPixel Rotation Test (GPIO 24)", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "NeoPixel Rotation + Timer Test ", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Left Activate - Bright Cyan-Blue (like blue LED light)
     std::string laState = m_LAON ? " (ON)" : " (OFF)";
@@ -1152,6 +1158,15 @@ void PBEngine::pbeForceUpdateState() {
 }
 
 void PBEngine::pbeUpdateState(stInputMessage inputMessage){
+    
+    // Handle timer messages
+    if (inputMessage.inputMsg == PB_IMSG_TIMER) {
+        if (inputMessage.inputId == WATCHDOGTIMER_ID) {
+            pbeSendConsole("Watchdog timer (ID=0) fired!");
+        } else if (inputMessage.inputId == 200) {
+            pbeSendConsole("Normal timer (ID=200) fired!");
+        }
+    }
     
     switch (m_mainState) {
         case PB_BOOTUP: {
@@ -1570,6 +1585,10 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         m_sandboxNeoPixel24->SendStagedNeoPixels();
                     }
                     
+                    // Set timers for testing
+                    pbeSetWatchdogTimer(10000);  // 10 second watchdog timer
+                    pbeSetTimer(200, 15000);     // 15 second normal timer (ID = 200)
+                    
                     // Increment rotation counter (wraps at 4 back to 0)
                     m_sandboxNeoPixelRotation = (m_sandboxNeoPixelRotation + 1) % 4;
                 }
@@ -1901,11 +1920,31 @@ void PBEngine::pbeExecuteDevices() {
 // Timer Functions
 //==============================================================================
 
+// Set the watchdog timer with a duration in milliseconds
+// When the timer expires, an input message with PB_IMSG_TIMER will be sent
+// with the inputId set to WATCHDOGTIMER_ID (0)
+// This is a dedicated timer that doesn't use the timer queue
+bool PBEngine::pbeSetWatchdogTimer(unsigned int timerValueMS) {
+    unsigned long currentTick = GetTickCountGfx();
+    
+    m_watchdogTimer.timerId = WATCHDOGTIMER_ID;
+    m_watchdogTimer.durationMS = timerValueMS;
+    m_watchdogTimer.startTickMS = currentTick;
+    m_watchdogTimer.expireTickMS = currentTick + timerValueMS;
+    
+    return true;
+}
+
 // Set a timer with a user-supplied timer ID and duration in milliseconds
 // When the timer expires, an input message with PB_IMSG_TIMER will be sent
 // with the inputId set to the user-supplied timerId
-// Returns true if timer was added successfully, false if limit reached
+// Returns true if timer was added successfully, false if limit reached or timerId is 0
 bool PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS) {
+    // Timer ID 0 is reserved for the watchdog timer
+    if (timerId == WATCHDOGTIMER_ID) {
+        return false;
+    }
+    
     // Check if we've reached the maximum number of active timers
     if (m_timerQueue.size() >= MAX_TIMERS) {
         return false;
@@ -1933,6 +1972,27 @@ bool PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS) {
 // needed, consider using std::priority_queue ordered by expireTickMS.
 void PBEngine::pbeProcessTimers() {
     unsigned long currentTick = GetTickCountGfx();
+    
+    // Check watchdog timer first (timerId = 0)
+    if (m_watchdogTimer.durationMS > 0 && currentTick >= m_watchdogTimer.expireTickMS) {
+        // Watchdog timer has expired - send an input message
+        stInputMessage inputMessage;
+        inputMessage.inputMsg = PB_IMSG_TIMER;
+        inputMessage.inputId = WATCHDOGTIMER_ID;
+        inputMessage.inputState = PB_ON;
+        inputMessage.sentTick = currentTick;
+        
+        m_inputQueue.push(inputMessage);
+        
+        // Clear the watchdog timer after it fires
+        m_watchdogTimer.durationMS = 0;
+        m_watchdogTimer.expireTickMS = 0;
+    }
+    
+    // Early exit if queue is empty
+    if (m_timerQueue.empty()) {
+        return;
+    }
     
     // Create a temporary queue to hold non-expired timers
     std::queue<stTimerEntry> remainingTimers;
@@ -1972,6 +2032,16 @@ void PBEngine::pbeProcessTimers() {
 bool PBEngine::pbeTimerActive(unsigned int timerId) {
     unsigned long currentTick = GetTickCountGfx();
     
+    // Check watchdog timer first (timerId = 0)
+    if (timerId == WATCHDOGTIMER_ID) {
+        return (m_watchdogTimer.durationMS > 0 && currentTick < m_watchdogTimer.expireTickMS);
+    }
+    
+    // Early exit if queue is empty
+    if (m_timerQueue.empty()) {
+        return false;
+    }
+    
     // Create a temporary queue to iterate through all timers
     std::queue<stTimerEntry> tempQueue;
     bool found = false;
@@ -1999,6 +2069,18 @@ bool PBEngine::pbeTimerActive(unsigned int timerId) {
 
 // Remove a timer with the given ID from the queue if it exists
 void PBEngine::pbeTimerStop(unsigned int timerId) {
+    // Handle watchdog timer first (timerId = 0)
+    if (timerId == WATCHDOGTIMER_ID) {
+        m_watchdogTimer.durationMS = 0;
+        m_watchdogTimer.expireTickMS = 0;
+        return;
+    }
+    
+    // Early exit if queue is empty
+    if (m_timerQueue.empty()) {
+        return;
+    }
+    
     // Create a temporary queue to hold timers that should remain
     std::queue<stTimerEntry> remainingTimers;
     

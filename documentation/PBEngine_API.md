@@ -204,7 +204,39 @@ g_PBEngine.SendSeqMsg(nullptr, nullptr, PB_NOLOOP, PB_OFF);
 
 The timer system allows you to set delayed events that will trigger input messages after a specified time. This is useful for implementing timed game mechanics, ball save countdowns, multiball delays, and other time-based events.
 
-**Note:** A maximum of 10 timers (`MAX_TIMERS`) can be active simultaneously.
+**Note:** A maximum of 10 timers (`MAX_TIMERS`) can be active simultaneously in the queue.
+
+### Reserved Timer ID
+
+Timer ID `0` (defined as `WATCHDOGTIMER`) is reserved for the dedicated watchdog timer. This timer has its own storage and does not count against the 10-timer queue limit. Attempting to use `pbeSetTimer()` with `timerId = 0` will fail and return `false`.
+
+### pbeSetWatchdogTimer()
+
+Sets the dedicated watchdog timer that will expire after the specified duration and generate an input message with `timerId = 0`.
+
+**Signature:**
+```cpp
+bool pbeSetWatchdogTimer(unsigned int timerValueMS);
+```
+
+**Parameters:**
+- `timerValueMS` - Timer duration in milliseconds
+
+**Returns:** `true` (always succeeds since it uses dedicated storage)
+
+**Behavior:**
+- The watchdog timer uses dedicated storage and does not consume a slot in the timer queue
+- When the timer expires, a `PB_IMSG_TIMER` input message is generated with `inputId` set to `WATCHDOGTIMER` (0)
+- Only one watchdog timer can be active at a time - calling this function again will overwrite the previous watchdog timer
+- The watchdog timer is checked first in all timer operations for efficiency
+
+**Example:**
+```cpp
+// Set a 10-second watchdog timer
+g_PBEngine.pbeSetWatchdogTimer(10000);
+
+// The timer will expire and send a message with inputId = WATCHDOGTIMER (0)
+```
 
 ### pbeSetTimer()
 
@@ -216,27 +248,28 @@ bool pbeSetTimer(unsigned int timerId, unsigned int timerValueMS);
 ```
 
 **Parameters:**
-- `timerId` - User-supplied timer identifier (will be placed in inputId of the generated message)
+- `timerId` - User-supplied timer identifier (will be placed in inputId of the generated message). **Must not be 0** (reserved for watchdog timer)
 - `timerValueMS` - Timer duration in milliseconds
 
-**Returns:** `true` if the timer was added successfully, `false` if the maximum number of timers (10) has been reached
+**Returns:** `true` if the timer was added successfully, `false` if the maximum number of timers (10) has been reached or if `timerId` is 0
 
 **Behavior:**
 - When called, the timer is queued with the current time and calculated expiration time
 - When the timer expires, a `PB_IMSG_TIMER` input message is generated with `inputId` set to the supplied `timerId`
 - Multiple timers can be active simultaneously (up to MAX_TIMERS = 10)
 - Timers are processed in the main pinball loop near device processing
+- Timer ID `0` is rejected as it is reserved for the watchdog timer
 
 **Example:**
 ```cpp
-// Define timer IDs for your game
+// Define timer IDs for your game (must be non-zero)
 #define TIMER_BALL_SAVE 100
 #define TIMER_MULTIBALL_DELAY 101
 #define TIMER_SKILL_SHOT 102
 
 // Start a 5-second ball save timer
 if (!g_PBEngine.pbeSetTimer(TIMER_BALL_SAVE, 5000)) {
-    // Failed to add timer - max limit reached
+    // Failed to add timer - max limit reached or invalid timer ID
 }
 
 // Start a 2-second multiball delay
@@ -253,6 +286,11 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage) {
     // Handle timer expiration
     if (inputMessage.inputMsg == PB_IMSG_TIMER) {
         switch (inputMessage.inputId) {
+            case WATCHDOGTIMER:
+                // Watchdog timer expired (timerId = 0)
+                // Handle timeout condition
+                ResetGameState();
+                break;
             case TIMER_BALL_SAVE:
                 // Ball save period ended
                 m_ballSaveActive = false;
@@ -282,9 +320,14 @@ bool pbeTimerActive(unsigned int timerId);
 ```
 
 **Parameters:**
-- `timerId` - The timer ID to check
+- `timerId` - The timer ID to check (can be `WATCHDOGTIMER` (0) or any user-defined timer ID)
 
 **Returns:** `true` if the timer exists and has not expired, `false` otherwise
+
+**Behavior:**
+- For `timerId = 0` (WATCHDOGTIMER), checks the dedicated watchdog timer
+- For other timer IDs, searches the timer queue
+- Returns `false` immediately if the timer queue is empty (after checking watchdog)
 
 **Example:**
 ```cpp
@@ -292,6 +335,11 @@ bool pbeTimerActive(unsigned int timerId);
 if (g_PBEngine.pbeTimerActive(TIMER_BALL_SAVE)) {
     // Ball save is still running - restore the ball
     RestoreBall();
+}
+
+// Check if watchdog timer is active
+if (g_PBEngine.pbeTimerActive(WATCHDOGTIMER)) {
+    // Watchdog is still counting down
 }
 ```
 
@@ -305,7 +353,12 @@ void pbeTimerStop(unsigned int timerId);
 ```
 
 **Parameters:**
-- `timerId` - The timer ID to stop and remove
+- `timerId` - The timer ID to stop and remove (can be `WATCHDOGTIMER` (0) or any user-defined timer ID)
+
+**Behavior:**
+- For `timerId = 0` (WATCHDOGTIMER), clears the dedicated watchdog timer
+- For other timer IDs, searches and removes the timer from the queue
+- Returns immediately if the timer queue is empty (after checking watchdog)
 
 **Example:**
 ```cpp
@@ -314,11 +367,20 @@ g_PBEngine.pbeTimerStop(TIMER_SKILL_SHOT);
 
 // Start a new longer timer
 g_PBEngine.pbeSetTimer(TIMER_SKILL_SHOT, 10000);
+
+// Stop the watchdog timer
+g_PBEngine.pbeTimerStop(WATCHDOGTIMER);
 ```
 
 ### pbeProcessTimers() (Internal)
 
 This function is called automatically in the main pinball loop to check for expired timers. It is called after device execution and before I/O processing.
+
+**Behavior:**
+- Checks the watchdog timer first (if active) for expiration
+- Then processes all timers in the queue
+- Early exits if the timer queue is empty (after checking watchdog)
+- Generates `PB_IMSG_TIMER` input messages for expired timers
 
 **Note:** You do not need to call this function directly - it is handled by the main loop.
 

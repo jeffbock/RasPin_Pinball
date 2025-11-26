@@ -152,6 +152,9 @@ struct stTimerEntry {
     unsigned long expireTickMS;    // Time when timer should expire
 };
 
+// Reserved timer ID for the watchdog timer
+#define WATCHDOGTIMER_ID 0
+
 // Maximum number of active timers allowed
 #define MAX_TIMERS 10
 
@@ -265,6 +268,7 @@ public:
     
     // Timer functions
     bool pbeSetTimer(unsigned int timerId, unsigned int timerValueMS);
+    bool pbeSetWatchdogTimer(unsigned int timerValueMS);
     void pbeProcessTimers();
     bool pbeTimerActive(unsigned int timerId);
     void pbeTimerStop(unsigned int timerId);
@@ -366,6 +370,7 @@ public:
     std::mutex m_deferredQMutex;
     std::queue<stTimerEntry> m_timerQueue;
     std::mutex m_timerQMutex;
+    stTimerEntry m_watchdogTimer;  // Dedicated watchdog timer (timerId = 0)
 
     // Main Backglass Variables
     unsigned int m_PBTBLBackglassId;
