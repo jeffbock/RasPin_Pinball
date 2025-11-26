@@ -49,6 +49,7 @@ enum PBInputMsg {
     PB_IMSG_JETBUMPER = 3,
     PB_IMSG_POPBUMPER = 4,
     PB_IMSG_BUTTON = 5,
+    PB_IMSG_TIMER = 6,
 };
 
 struct stInputDef{
