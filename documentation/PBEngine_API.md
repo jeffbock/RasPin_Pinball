@@ -204,23 +204,27 @@ g_PBEngine.SendSeqMsg(nullptr, nullptr, PB_NOLOOP, PB_OFF);
 
 The timer system allows you to set delayed events that will trigger input messages after a specified time. This is useful for implementing timed game mechanics, ball save countdowns, multiball delays, and other time-based events.
 
+**Note:** A maximum of 10 timers (`MAX_TIMERS`) can be active simultaneously.
+
 ### pbeSetTimer()
 
 Sets a timer that will expire after the specified duration and generate an input message.
 
 **Signature:**
 ```cpp
-void pbeSetTimer(unsigned int timerId, unsigned int timerValueMS);
+bool pbeSetTimer(unsigned int timerId, unsigned int timerValueMS);
 ```
 
 **Parameters:**
 - `timerId` - User-supplied timer identifier (will be placed in inputId of the generated message)
 - `timerValueMS` - Timer duration in milliseconds
 
+**Returns:** `true` if the timer was added successfully, `false` if the maximum number of timers (10) has been reached
+
 **Behavior:**
 - When called, the timer is queued with the current time and calculated expiration time
 - When the timer expires, a `PB_IMSG_TIMER` input message is generated with `inputId` set to the supplied `timerId`
-- Multiple timers can be active simultaneously
+- Multiple timers can be active simultaneously (up to MAX_TIMERS = 10)
 - Timers are processed in the main pinball loop near device processing
 
 **Example:**
@@ -231,7 +235,9 @@ void pbeSetTimer(unsigned int timerId, unsigned int timerValueMS);
 #define TIMER_SKILL_SHOT 102
 
 // Start a 5-second ball save timer
-g_PBEngine.pbeSetTimer(TIMER_BALL_SAVE, 5000);
+if (!g_PBEngine.pbeSetTimer(TIMER_BALL_SAVE, 5000)) {
+    // Failed to add timer - max limit reached
+}
 
 // Start a 2-second multiball delay
 g_PBEngine.pbeSetTimer(TIMER_MULTIBALL_DELAY, 2000);

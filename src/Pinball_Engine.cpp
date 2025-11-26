@@ -1904,7 +1904,13 @@ void PBEngine::pbeExecuteDevices() {
 // Set a timer with a user-supplied timer ID and duration in milliseconds
 // When the timer expires, an input message with PB_IMSG_TIMER will be sent
 // with the inputId set to the user-supplied timerId
-void PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS) {
+// Returns true if timer was added successfully, false if limit reached
+bool PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS) {
+    // Check if we've reached the maximum number of active timers
+    if (m_timerQueue.size() >= MAX_TIMERS) {
+        return false;
+    }
+    
     unsigned long currentTick = GetTickCountGfx();
     
     stTimerEntry timerEntry;
@@ -1916,6 +1922,7 @@ void PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS) {
     // Note: Currently single-threaded, mutex locking not needed
     // std::lock_guard<std::mutex> lock(m_timerQMutex);
     m_timerQueue.push(timerEntry);
+    return true;
 }
 
 // Process all timers in the queue, check for expired timers,

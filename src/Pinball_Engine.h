@@ -152,6 +152,9 @@ struct stTimerEntry {
     unsigned long expireTickMS;    // Time when timer should expire
 };
 
+// Maximum number of active timers allowed
+#define MAX_TIMERS 10
+
 struct stLEDSequenceInfo {
     bool sequenceEnabled;
     bool firstTime;
@@ -261,7 +264,7 @@ public:
     void pbeExecuteDevices();
     
     // Timer functions
-    void pbeSetTimer(unsigned int timerId, unsigned int timerValueMS);
+    bool pbeSetTimer(unsigned int timerId, unsigned int timerValueMS);
     void pbeProcessTimers();
     bool pbeTimerActive(unsigned int timerId);
     void pbeTimerStop(unsigned int timerId);
