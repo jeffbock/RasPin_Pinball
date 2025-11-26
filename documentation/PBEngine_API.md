@@ -266,6 +266,50 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage) {
 }
 ```
 
+### pbeTimerActive()
+
+Checks if a timer with the given ID is currently active (exists and has not expired).
+
+**Signature:**
+```cpp
+bool pbeTimerActive(unsigned int timerId);
+```
+
+**Parameters:**
+- `timerId` - The timer ID to check
+
+**Returns:** `true` if the timer exists and has not expired, `false` otherwise
+
+**Example:**
+```cpp
+// Check if ball save timer is still active
+if (g_PBEngine.pbeTimerActive(TIMER_BALL_SAVE)) {
+    // Ball save is still running - restore the ball
+    RestoreBall();
+}
+```
+
+### pbeTimerStop()
+
+Stops and removes a timer with the given ID from the queue if it exists.
+
+**Signature:**
+```cpp
+void pbeTimerStop(unsigned int timerId);
+```
+
+**Parameters:**
+- `timerId` - The timer ID to stop and remove
+
+**Example:**
+```cpp
+// Cancel the skill shot timer when the skill shot target is hit
+g_PBEngine.pbeTimerStop(TIMER_SKILL_SHOT);
+
+// Start a new longer timer
+g_PBEngine.pbeSetTimer(TIMER_SKILL_SHOT, 10000);
+```
+
 ### pbeProcessTimers() (Internal)
 
 This function is called automatically in the main pinball loop to check for expired timers. It is called after device execution and before I/O processing.

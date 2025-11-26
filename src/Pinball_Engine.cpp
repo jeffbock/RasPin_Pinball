@@ -1960,6 +1960,59 @@ void PBEngine::pbeProcessTimers() {
     m_timerQueue = std::move(remainingTimers);
 }
 
+// Check if a timer with the given ID exists and is not expired
+// Returns true if the timer is active (exists and not expired), false otherwise
+bool PBEngine::pbeTimerActive(unsigned int timerId) {
+    unsigned long currentTick = GetTickCountGfx();
+    
+    // Create a temporary queue to iterate through all timers
+    std::queue<stTimerEntry> tempQueue;
+    bool found = false;
+    
+    // Note: Currently single-threaded, mutex locking not needed
+    // std::lock_guard<std::mutex> lock(m_timerQMutex);
+    
+    // Search through all timers in the queue
+    while (!m_timerQueue.empty()) {
+        stTimerEntry timerEntry = m_timerQueue.front();
+        m_timerQueue.pop();
+        tempQueue.push(timerEntry);
+        
+        // Check if this is the timer we're looking for and it hasn't expired
+        if (timerEntry.timerId == timerId && currentTick < timerEntry.expireTickMS) {
+            found = true;
+        }
+    }
+    
+    // Restore the timer queue
+    m_timerQueue = std::move(tempQueue);
+    
+    return found;
+}
+
+// Remove a timer with the given ID from the queue if it exists
+void PBEngine::pbeTimerStop(unsigned int timerId) {
+    // Create a temporary queue to hold timers that should remain
+    std::queue<stTimerEntry> remainingTimers;
+    
+    // Note: Currently single-threaded, mutex locking not needed
+    // std::lock_guard<std::mutex> lock(m_timerQMutex);
+    
+    // Process all timers in the queue
+    while (!m_timerQueue.empty()) {
+        stTimerEntry timerEntry = m_timerQueue.front();
+        m_timerQueue.pop();
+        
+        // Keep the timer if it's not the one we're looking for
+        if (timerEntry.timerId != timerId) {
+            remainingTimers.push(timerEntry);
+        }
+    }
+    
+    // Swap the remaining timers back into the main timer queue
+    m_timerQueue = std::move(remainingTimers);
+}
+
 // Reload function to reset all engine screen load states
 void PBEngine::pbeEngineReload() {
     m_defaultBackgroundLoaded = false;

@@ -263,6 +263,8 @@ public:
     // Timer functions
     void pbeSetTimer(unsigned int timerId, unsigned int timerValueMS);
     void pbeProcessTimers();
+    bool pbeTimerActive(unsigned int timerId);
+    void pbeTimerStop(unsigned int timerId);
     
     #ifdef EXE_MODE_RASPI
         // This map is used for whatever arbitrary Raspberry Pi inputs are used (from the main board)
