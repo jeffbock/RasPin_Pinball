@@ -34,7 +34,7 @@ stOutputDef g_outputDef[] = {
     {"LED2P08 LED", PB_OMSG_LED, IDO_LED8, 8, PB_LED, 2, PB_OFF, 500, 0},
     {"LED2P09 LED", PB_OMSG_LED, IDO_LED9, 9, PB_LED, 2, PB_OFF, 300, 0},
     {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 100, 0},
-    {"NeoPixel LED0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 0, PB_NEOPIXEL, 0, PB_OFF, 0, 0}  // Example NeoPixel - LED 0 on driver 0
+    {"NeoPixel LED0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 18, PB_NEOPIXEL, 0, PB_OFF, 0, 0}  // GPIO 18, driver index 0
 };
 
 // Input definitions
@@ -753,15 +753,27 @@ NeoPixelDriver::NeoPixelDriver(unsigned int outputPin, unsigned int numLEDs)
         m_currentValues[i].blue = 0;
     }
 
+    // Note: GPIO initialization is deferred to InitializeGPIO() method
+    // This allows the constructor to be called during static initialization
+    // before wiringPiSetup() has been called
+}
+
 #ifdef EXE_MODE_RASPI
+// Initialize GPIO pins - must be called after wiringPiSetup()
+void NeoPixelDriver::InitializeGPIO() {
     // Configure the output pin
     pinMode(m_outputPin, OUTPUT);
     digitalWrite(m_outputPin, LOW);
     
     // Send initial reset to ensure LEDs are in known state
     SendReset();
-#endif
 }
+#else
+// Windows/non-RasPi version - no GPIO initialization needed
+void NeoPixelDriver::InitializeGPIO() {
+    // No-op on non-Raspberry Pi platforms
+}
+#endif
 
 NeoPixelDriver::~NeoPixelDriver() {
 #ifdef EXE_MODE_RASPI
@@ -1001,7 +1013,9 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     // approach for WS2812B timing requirements. Alternative approaches like
     // RT_PREEMPT, DMA, or PWM are either overkill or hardware-dependent.
     //
-    __asm__ volatile("cpsid i");  // Disable interrupts
+    // Note: Interrupt disable requires kernel/privileged mode. On modern Linux,
+    // we rely on tight timing loops instead. Consider using real-time scheduling
+    // (SCHED_FIFO) for better timing guarantees.
     
     // Send data for each LED in the string
     // WS2812B expects GRB format (not RGB)
@@ -1010,9 +1024,6 @@ void NeoPixelDriver::SendStagedNeoPixels() {
         SendByte(m_stagedValues[i].red);    // Red second
         SendByte(m_stagedValues[i].blue);   // Blue third
     }
-    
-    // Re-enable interrupts
-    __asm__ volatile("cpsie i");  // Enable interrupts
     
     // Send reset/latch signal (interrupts enabled for this)
     SendReset();

@@ -427,9 +427,9 @@ bool PBProcessOutput() {
     SendAllStagedLED();
     
     // Handle NeoPixel sequence processing for each driver
-    for (int i = 0; i < NUM_NEOPIXEL_DRIVERS; i++) {
-        if (g_PBEngine.m_NeoPixelSequenceInfo[i].sequenceEnabled) {
-            ProcessActiveNeoPixelSequence(i);
+    for (auto& pair : g_PBEngine.m_NeoPixelSequenceMap) {
+        if (pair.second.sequenceEnabled) {
+            ProcessActiveNeoPixelSequence(pair.first);
         }
     }
     
@@ -932,45 +932,52 @@ void ProcessDeferredLEDQueue() {
 
 // Helper function to send all staged NeoPixel outputs to hardware
 void SendAllStagedNeoPixels() {
-    for (int i = 0; i < NUM_NEOPIXEL_DRIVERS; i++) {
-        g_PBEngine.m_NeoPixelDriver[i].SendStagedNeoPixels();
+    for (auto& pair : g_PBEngine.m_NeoPixelDriverMap) {
+        pair.second.SendStagedNeoPixels();
     }
 }
 
 // Process NeoPixel output messages (single LED or array)
 void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& outputDef) {
+    int boardIndex = outputDef.boardIndex;
+    
+    // Check if driver exists
+    if (g_PBEngine.m_NeoPixelDriverMap.find(boardIndex) == g_PBEngine.m_NeoPixelDriverMap.end()) {
+        return;  // Driver not initialized
+    }
+    
     // Check if NeoPixel sequence is active for this driver
-    if (outputDef.boardIndex < NUM_NEOPIXEL_DRIVERS) {
-        if (g_PBEngine.m_NeoPixelSequenceInfo[outputDef.boardIndex].sequenceEnabled) {
+    if (g_PBEngine.m_NeoPixelSequenceMap.find(boardIndex) != g_PBEngine.m_NeoPixelSequenceMap.end()) {
+        if (g_PBEngine.m_NeoPixelSequenceMap[boardIndex].sequenceEnabled) {
             // Sequence is active - ignore direct NeoPixel messages during sequence
             return;
         }
-        
-        // Get RGB values from message options
-        if (message.options != nullptr) {
-            // Check if this is an array update
-            if (message.options->neoPixelArray != nullptr && message.options->neoPixelArrayCount > 0) {
-                // Stage the entire array
-                g_PBEngine.m_NeoPixelDriver[outputDef.boardIndex].StageNeoPixelArray(
-                    message.options->neoPixelArray, 
-                    message.options->neoPixelArrayCount
-                );
-            } else {
-                // Single LED update - use dedicated RGB fields
-                uint8_t red = message.options->neoPixelRed;
-                uint8_t green = message.options->neoPixelGreen;
-                uint8_t blue = message.options->neoPixelBlue;
-                
-                // The pin field represents the LED index within the driver
-                g_PBEngine.m_NeoPixelDriver[outputDef.boardIndex].StageNeoPixel(
-                    outputDef.pin, red, green, blue
-                );
-            }
-        }
-        
-        // Update last state
-        outputDef.lastState = message.outputState;
     }
+    
+    // Get RGB values from message options
+    if (message.options != nullptr) {
+        // Check if this is an array update
+        if (message.options->neoPixelArray != nullptr && message.options->neoPixelArrayCount > 0) {
+            // Stage the entire array
+            g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixelArray(
+                message.options->neoPixelArray, 
+                message.options->neoPixelArrayCount
+            );
+        } else {
+            // Single LED update - use dedicated RGB fields
+            uint8_t red = message.options->neoPixelRed;
+            uint8_t green = message.options->neoPixelGreen;
+            uint8_t blue = message.options->neoPixelBlue;
+            
+            // The pin field represents the LED index within the driver
+            g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixel(
+                outputDef.pin, red, green, blue
+            );
+        }
+    }
+    
+    // Update last state
+    outputDef.lastState = message.outputState;
 }
 
 // Process NeoPixel sequence start/stop messages
@@ -986,8 +993,9 @@ void ProcessNeoPixelSequenceMessage(const stOutputMessage& message) {
         }
     }
     
-    if (driverIndex >= NUM_NEOPIXEL_DRIVERS) {
-        return;  // Invalid driver index
+    // Check if driver exists
+    if (g_PBEngine.m_NeoPixelDriverMap.find(driverIndex) == g_PBEngine.m_NeoPixelDriverMap.end()) {
+        return;  // Driver not initialized
     }
     
     if (message.outputState == PB_ON && message.options != nullptr && 
@@ -995,17 +1003,22 @@ void ProcessNeoPixelSequenceMessage(const stOutputMessage& message) {
         // Start NeoPixel sequence mode
         unsigned long currentTick = g_PBEngine.GetTickCountGfx();
         
-        g_PBEngine.m_NeoPixelSequenceInfo[driverIndex].sequenceEnabled = true;
-        g_PBEngine.m_NeoPixelSequenceInfo[driverIndex].firstTime = true;
-        g_PBEngine.m_NeoPixelSequenceInfo[driverIndex].sequenceStartTick = currentTick;
-        g_PBEngine.m_NeoPixelSequenceInfo[driverIndex].stepStartTick = currentTick;
-        g_PBEngine.m_NeoPixelSequenceInfo[driverIndex].currentSeqIndex = 0;
-        g_PBEngine.m_NeoPixelSequenceInfo[driverIndex].previousSeqIndex = -1;
-        g_PBEngine.m_NeoPixelSequenceInfo[driverIndex].indexStep = 1;
-        g_PBEngine.m_NeoPixelSequenceInfo[driverIndex].loopMode = message.options->loopMode;
-        g_PBEngine.m_NeoPixelSequenceInfo[driverIndex].pNeoPixelSequence = 
+        // Initialize sequence info if not exists
+        if (g_PBEngine.m_NeoPixelSequenceMap.find(driverIndex) == g_PBEngine.m_NeoPixelSequenceMap.end()) {
+            g_PBEngine.m_NeoPixelSequenceMap[driverIndex] = stNeoPixelSequenceInfo();
+        }
+        
+        g_PBEngine.m_NeoPixelSequenceMap[driverIndex].sequenceEnabled = true;
+        g_PBEngine.m_NeoPixelSequenceMap[driverIndex].firstTime = true;
+        g_PBEngine.m_NeoPixelSequenceMap[driverIndex].sequenceStartTick = currentTick;
+        g_PBEngine.m_NeoPixelSequenceMap[driverIndex].stepStartTick = currentTick;
+        g_PBEngine.m_NeoPixelSequenceMap[driverIndex].currentSeqIndex = 0;
+        g_PBEngine.m_NeoPixelSequenceMap[driverIndex].previousSeqIndex = -1;
+        g_PBEngine.m_NeoPixelSequenceMap[driverIndex].indexStep = 1;
+        g_PBEngine.m_NeoPixelSequenceMap[driverIndex].loopMode = message.options->loopMode;
+        g_PBEngine.m_NeoPixelSequenceMap[driverIndex].pNeoPixelSequence = 
             const_cast<NeoPixelSequence*>(message.options->setNeoPixelSequence);
-        g_PBEngine.m_NeoPixelSequenceInfo[driverIndex].driverIndex = driverIndex;
+        g_PBEngine.m_NeoPixelSequenceMap[driverIndex].driverIndex = driverIndex;
     } else {
         // Stop NeoPixel sequence mode
         EndNeoPixelSequence(driverIndex);
@@ -1014,9 +1027,13 @@ void ProcessNeoPixelSequenceMessage(const stOutputMessage& message) {
 
 // Process active NeoPixel sequence progression and loop handling
 void ProcessActiveNeoPixelSequence(int driverIndex) {
-    if (driverIndex >= NUM_NEOPIXEL_DRIVERS) return;
+    // Check if driver and sequence exist
+    if (g_PBEngine.m_NeoPixelDriverMap.find(driverIndex) == g_PBEngine.m_NeoPixelDriverMap.end() ||
+        g_PBEngine.m_NeoPixelSequenceMap.find(driverIndex) == g_PBEngine.m_NeoPixelSequenceMap.end()) {
+        return;
+    }
     
-    stNeoPixelSequenceInfo& seqInfo = g_PBEngine.m_NeoPixelSequenceInfo[driverIndex];
+    stNeoPixelSequenceInfo& seqInfo = g_PBEngine.m_NeoPixelSequenceMap[driverIndex];
     
     if (!seqInfo.sequenceEnabled || seqInfo.pNeoPixelSequence == nullptr || 
         seqInfo.pNeoPixelSequence->stepCount <= 0) {
@@ -1060,9 +1077,9 @@ void ProcessActiveNeoPixelSequence(int driverIndex) {
             
             // Stage the entire array for this step
             if (currentStep.nodeArray != nullptr) {
-                g_PBEngine.m_NeoPixelDriver[driverIndex].StageNeoPixelArray(
+                g_PBEngine.m_NeoPixelDriverMap.at(driverIndex).StageNeoPixelArray(
                     currentStep.nodeArray,
-                    g_PBEngine.m_NeoPixelDriver[driverIndex].GetNumLEDs()
+                    g_PBEngine.m_NeoPixelDriverMap.at(driverIndex).GetNumLEDs()
                 );
             }
         }
@@ -1082,9 +1099,11 @@ void ProcessActiveNeoPixelSequence(int driverIndex) {
 
 // Handle NeoPixel sequence boundary conditions and loop modes
 void HandleNeoPixelSequenceBoundaries(int driverIndex) {
-    if (driverIndex >= NUM_NEOPIXEL_DRIVERS) return;
+    if (g_PBEngine.m_NeoPixelSequenceMap.find(driverIndex) == g_PBEngine.m_NeoPixelSequenceMap.end()) {
+        return;
+    }
     
-    stNeoPixelSequenceInfo& seqInfo = g_PBEngine.m_NeoPixelSequenceInfo[driverIndex];
+    stNeoPixelSequenceInfo& seqInfo = g_PBEngine.m_NeoPixelSequenceMap[driverIndex];
     unsigned long currentTick = g_PBEngine.GetTickCountGfx();
     
     if (seqInfo.currentSeqIndex >= seqInfo.pNeoPixelSequence->stepCount) {
@@ -1128,8 +1147,9 @@ void HandleNeoPixelSequenceBoundaries(int driverIndex) {
 
 // End NeoPixel sequence for a specific driver
 void EndNeoPixelSequence(int driverIndex) {
-    if (driverIndex >= NUM_NEOPIXEL_DRIVERS) return;
-    g_PBEngine.m_NeoPixelSequenceInfo[driverIndex].sequenceEnabled = false;
+    if (g_PBEngine.m_NeoPixelSequenceMap.find(driverIndex) != g_PBEngine.m_NeoPixelSequenceMap.end()) {
+        g_PBEngine.m_NeoPixelSequenceMap[driverIndex].sequenceEnabled = false;
+    }
 }
 
 // Overall IO processing - putting this in one function allows for easier timing control and to process all at once

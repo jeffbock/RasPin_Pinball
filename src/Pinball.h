@@ -60,7 +60,7 @@
 // Version Information
 #define PB_VERSION_MAJOR 0
 #define PB_VERSION_MINOR 5  
-#define PB_VERSION_BUILD 491
+#define PB_VERSION_BUILD 498
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 1920
@@ -108,14 +108,20 @@ bool PBProcessIO();
 int FindOutputDefIndex(unsigned int outputId);
 void SendAllStagedIO();
 void SendAllStagedLED();
+void SendAllStagedNeoPixels();
 void ProcessLEDSequenceMessage(const stOutputMessage& message);
+void ProcessNeoPixelSequenceMessage(const stOutputMessage& message);
 void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputDef);
 void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& outputDef, bool skipSequenceCheck = false);
+void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& outputDef);
 void ProcessLEDConfigMessage(const stOutputMessage& message, stOutputDef& outputDef);
 void ProcessActivePulseOutputs();
 void ProcessActiveLEDSequence();
+void ProcessActiveNeoPixelSequence(int driverIndex);
 void HandleLEDSequenceBoundaries();
+void HandleNeoPixelSequenceBoundaries(int driverIndex);
 void EndLEDSequence();
+void EndNeoPixelSequence(int driverIndex);
 void ProcessDeferredLEDQueue();
 #endif
 

@@ -37,7 +37,10 @@ class pbdEjector;
 // Hardware configuration defines
 #define NUM_IO_CHIPS    3
 #define NUM_LED_CHIPS   3
-#define NUM_NEOPIXEL_DRIVERS 1  // Number of NeoPixel driver instances
+
+// NeoPixel configuration - LED count for each driver index
+// Index corresponds to boardIndex in g_outputDef. Set to 0 for unused indices.
+constexpr unsigned int g_NeoPixelSize[] = {10, 10};  // Driver 0: 10 LEDs, Driver 1: 10 LEDs
 
 // Sequence timing defines - this will need to be updated if more LED chips are added
 #define LED0_SEQ_MASK 0x1
@@ -296,11 +299,9 @@ public:
 
     AmpDriver m_ampDriver = AmpDriver(PB_I2C_AMPLIFIER);
 
-    // NeoPixel driver instances - initialized with default values (will be configured in Pinball_IO.cpp)
-    // Note: NeoPixel drivers use direct GPIO pins, not I2C
-    NeoPixelDriver m_NeoPixelDriver[NUM_NEOPIXEL_DRIVERS] = {
-        NeoPixelDriver(18, 10)  // Example: GPIO 18, 10 LEDs - customize as needed
-    };
+    // NeoPixel driver map - drivers are created dynamically during initialization
+    // Key: boardIndex from g_outputDef
+    std::map<int, NeoPixelDriver> m_NeoPixelDriverMap;
 
     // Sound system for background music and effects
     PBSound m_soundSystem;
@@ -365,7 +366,7 @@ public:
     std::mutex m_outputQMutex;
     std::map<unsigned int, stOutputPulse> m_outputPulseMap;
     stLEDSequenceInfo m_LEDSequenceInfo;
-    stNeoPixelSequenceInfo m_NeoPixelSequenceInfo[NUM_NEOPIXEL_DRIVERS];
+    std::map<int, stNeoPixelSequenceInfo> m_NeoPixelSequenceMap;  // Key: boardIndex
     std::queue<stOutputMessage> m_deferredQueue;
     std::mutex m_deferredQMutex;
     std::queue<stTimerEntry> m_timerQueue;

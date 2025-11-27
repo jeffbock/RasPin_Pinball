@@ -316,6 +316,9 @@ public:
     NeoPixelDriver(unsigned int outputPin, unsigned int numLEDs);
     ~NeoPixelDriver();
 
+    // Initialize GPIO pins (must be called after wiringPiSetup())
+    void InitializeGPIO();
+
     // Stage a single LED color value
     void StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue);
     void StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);

@@ -107,19 +107,7 @@
         m_secondaryScoreAnims[i].reset();
     }
     
-    // Initialize NeoPixel sequence info
-    for (int i = 0; i < NUM_NEOPIXEL_DRIVERS; i++) {
-        m_NeoPixelSequenceInfo[i].sequenceEnabled = false;
-        m_NeoPixelSequenceInfo[i].firstTime = false;
-        m_NeoPixelSequenceInfo[i].loopMode = PB_NOLOOP;
-        m_NeoPixelSequenceInfo[i].sequenceStartTick = 0;
-        m_NeoPixelSequenceInfo[i].stepStartTick = 0;
-        m_NeoPixelSequenceInfo[i].currentSeqIndex = 0;
-        m_NeoPixelSequenceInfo[i].previousSeqIndex = -1;
-        m_NeoPixelSequenceInfo[i].indexStep = 1;
-        m_NeoPixelSequenceInfo[i].pNeoPixelSequence = nullptr;
-        m_NeoPixelSequenceInfo[i].driverIndex = i;
-    }
+    // NeoPixel sequence map is initialized on-demand when NeoPixel drivers are created
     
     // Initialize watchdog timer (timerId = 0)
     m_watchdogTimer.timerId = WATCHDOGTIMER_ID;
@@ -1313,19 +1301,6 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         } else {
                             g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
                         }
-                        
-                        // Initialize NeoPixel chain to black (OFF) or white (ON)
-                        unsigned int boardIndex = g_outputDef[m_CurrentOutputItem].boardIndex;
-                        if (boardIndex < NUM_NEOPIXEL_DRIVERS) {
-                            if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) {
-                                // Set all LEDs to white
-                                m_NeoPixelDriver[boardIndex].StageNeoPixelAll(255, 255, 255);
-                            } else {
-                                // Set all LEDs to black (off)
-                                m_NeoPixelDriver[boardIndex].StageNeoPixelAll(0, 0, 0);
-                            }
-                            m_NeoPixelDriver[boardIndex].SendStagedNeoPixels();
-                        }
                     } else {
                         // Regular outputs - toggle state and send message
                         if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
@@ -1742,6 +1717,27 @@ bool PBEngine::pbeSetupIO()
                     g_PBEngine.m_LEDChip[g_outputDef[i].boardIndex].StageLEDControl(true, g_outputDef[i].pin, LEDOn);  // Initialize to ON
                 else
                 g_PBEngine.m_LEDChip[g_outputDef[i].boardIndex].StageLEDControl(false, g_outputDef[i].pin, LEDOff);  // Initialize to OFF
+            }
+        }
+        else if (g_outputDef[i].boardType == PB_NEOPIXEL) {
+            // Initialize NeoPixel driver if not already created for this boardIndex
+            int boardIndex = g_outputDef[i].boardIndex;
+            if (g_PBEngine.m_NeoPixelDriverMap.find(boardIndex) == g_PBEngine.m_NeoPixelDriverMap.end()) {
+                // Determine LED count from g_NeoPixelSize array, default to 1 if not found
+                unsigned int numLEDs = 1;  // Default
+                if (boardIndex >= 0 && boardIndex < static_cast<int>(sizeof(g_NeoPixelSize) / sizeof(g_NeoPixelSize[0]))) {
+                    if (g_NeoPixelSize[boardIndex] > 0) {
+                        numLEDs = g_NeoPixelSize[boardIndex];
+                    }
+                }
+                
+                // Create NeoPixel driver and add to map
+                g_PBEngine.m_NeoPixelDriverMap.emplace(boardIndex, NeoPixelDriver(g_outputDef[i].pin, numLEDs));
+                
+                #ifdef EXE_MODE_RASPI
+                // Initialize GPIO for this NeoPixel driver
+                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).InitializeGPIO();
+                #endif
             }
         }
     }
