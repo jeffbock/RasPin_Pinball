@@ -472,7 +472,7 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
     gfxRenderSprite(m_PBTBLWolfHeadshot256Id, circle2X + 27, circle2Y + 27);
     
     // Knight - lower middle circle (Caiphos) - right 25px, down 20px
-    gfxSetScaleFactor(m_PBTBLKnightHeadshot256Id, 0.405, false);
+    gfxSetScaleFactor(m_PBTBLKnightHeadshot256Id, 0.38, false);
     if (playerState.knightJoined) {
         // Full color
         gfxSetColor(m_PBTBLKnightHeadshot256Id, 255, 255, 255, 255);
@@ -480,7 +480,7 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
         // 1/3 grayscale (85, 85, 85) at 50% transparency
         gfxSetColor(m_PBTBLKnightHeadshot256Id, 85, 85, 85, 128);
     }
-    gfxRenderSprite(m_PBTBLKnightHeadshot256Id, circle3X + 22, circle3Y + 33);
+    gfxRenderSprite(m_PBTBLKnightHeadshot256Id, circle3X + 25, circle3Y + 31);
     
     // Render character circles
     gfxRenderSprite(m_PBTBLCharacterCircle256Id, circle1X, circle1Y);
