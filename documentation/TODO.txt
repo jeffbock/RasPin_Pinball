@@ -4,7 +4,6 @@ This file tracks the various items to do in the pinball project in rough priorit
 Enable and debug Neopixel code on a real Raspberry Pi (currently untested)
 
 ** Generic arch improvements
-* Add ability for main state loops to change state, and send an input message to process + at least 1 timer message
 * Continue to improve managing pinball states, modes, and lighting.. still pretty basic in current implementation
 
 ** Gameplay tasks - will evolve as HW becomes more capable
