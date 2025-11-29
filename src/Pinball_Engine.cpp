@@ -800,8 +800,6 @@ bool PBEngine::pbeLoadTestSandbox(){
 
 bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long lastTick){
     
-    if (!pbeLoadTestSandbox()) return (false);
-    
     if (m_RestartTestSandbox) {
         m_RestartTestSandbox = false;
         
@@ -818,6 +816,8 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
         // Reset NeoPixel rotation counter when restarting
         m_sandboxNeoPixelRotation = 0;
     }
+    
+    if (!pbeLoadTestSandbox()) return (false);
 
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
     
@@ -1456,22 +1456,24 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         }
 
         case PB_TESTSANDBOX: {
-            // Track button states for display
-            if (inputMessage.inputId == IDI_LEFTFLIPPER) {
-                if (inputMessage.inputState == PB_ON) m_LFON = true;
-                else m_LFON = false;
-            }
-            if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                if (inputMessage.inputState == PB_ON) m_RFON = true;
-                else m_RFON = false;
-            }
-            if (inputMessage.inputId == IDI_LEFTACTIVATE) {
-                if (inputMessage.inputState == PB_ON) m_LAON = true;
-                else m_LAON = false;
-            }
-            if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
-                if (inputMessage.inputState == PB_ON) m_RAON = true;
-                else m_RAON = false;
+            // Track button states for display (only for button messages)
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON) {
+                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                    if (inputMessage.inputState == PB_ON) m_LFON = true;
+                    else m_LFON = false;
+                }
+                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                    if (inputMessage.inputState == PB_ON) m_RFON = true;
+                    else m_RFON = false;
+                }
+                if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                    if (inputMessage.inputState == PB_ON) m_LAON = true;
+                    else m_LAON = false;
+                }
+                if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                    if (inputMessage.inputState == PB_ON) m_RAON = true;
+                    else m_RAON = false;
+                }
             }
             
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
