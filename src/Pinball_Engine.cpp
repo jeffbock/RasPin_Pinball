@@ -246,24 +246,24 @@ bool PBEngine::pbeLoadDefaultBackground(){
 
     pbeSendConsole("RasPin: Loading default background resources");
 
-    m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/ConsoleLarge.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, false, true);
+    m_BootUpConsoleId = gfxLoadSprite("Console", "src/resources/textures/Console.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, false, true);
     gfxSetColor(m_BootUpConsoleId, 255, 255, 255, 196);
-    gfxSetScaleFactor(m_BootUpConsoleId, 2.0, false);
+    gfxSetScaleFactor(m_BootUpConsoleId, 1.05, false);
 
     m_BootUpStarsId = gfxLoadSprite("Stars", "src/resources/textures/stars.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, false, true);
-    gfxSetColor(m_BootUpStarsId, 24, 0, 210, 96);
+    gfxSetColor(m_BootUpStarsId,  9, 28, 42, 128);
     gfxSetScaleFactor(m_BootUpStarsId, 4.0, false);
 
     m_BootUpStarsId2 = gfxInstanceSprite(m_BootUpStarsId);
-    gfxSetColor(m_BootUpStarsId2, 24, 0, 210, 96);
+    gfxSetColor(m_BootUpStarsId2, 9, 28, 42, 128);
     gfxSetScaleFactor(m_BootUpStarsId2, 1.5, false);
 
     m_BootUpStarsId3 = gfxInstanceSprite(m_BootUpStarsId);
-    gfxSetColor(m_BootUpStarsId3, 24, 0, 210, 96);
+    gfxSetColor(m_BootUpStarsId3,  9, 28, 42, 128);
     gfxSetScaleFactor(m_BootUpStarsId3, 0.4, false);
     
     m_BootUpStarsId4 = gfxInstanceSprite(m_BootUpStarsId);
-    gfxSetColor(m_BootUpStarsId4, 24, 0, 210, 96);
+    gfxSetColor(m_BootUpStarsId4,  9, 28, 42, 128);
     gfxSetScaleFactor(m_BootUpStarsId4, 0.1, false); 
 
     if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  
@@ -312,17 +312,17 @@ bool PBEngine::pbeRenderDefaultBackground (unsigned long currentTick, unsigned l
 
    // Show the rotating stars - tunnel-like effect
    gfxSetRotateDegrees(m_BootUpStarsId, (degreesPerTick * (float) tickDiff), true);
-   gfxRenderSprite(m_BootUpStarsId, PB_SCREENWIDTH/2 - 15, (PB_SCREENHEIGHT / 2) + 190
+   gfxRenderSprite(m_BootUpStarsId, PB_SCREENWIDTH/2 - 80, (PB_SCREENHEIGHT / 2) + 240
 );
 
    gfxSetRotateDegrees(m_BootUpStarsId2, (degreesPerTick2 * (float) tickDiff), true);
-   gfxRenderSprite(m_BootUpStarsId2, PB_SCREENWIDTH/2 - 15, (PB_SCREENHEIGHT / 2) + 175);
+   gfxRenderSprite(m_BootUpStarsId2, PB_SCREENWIDTH/2 - 80, (PB_SCREENHEIGHT / 2) + 225);
 
    gfxSetRotateDegrees(m_BootUpStarsId3, (degreesPerTick3 * (float) tickDiff), true);
-   gfxRenderSprite(m_BootUpStarsId3, PB_SCREENWIDTH/2 - 15, (PB_SCREENHEIGHT / 2) + 140);
+   gfxRenderSprite(m_BootUpStarsId3, PB_SCREENWIDTH/2 - 80, (PB_SCREENHEIGHT / 2) + 190);
 
    gfxSetRotateDegrees(m_BootUpStarsId4, (degreesPerTick4 * (float) tickDiff), true);
-   gfxRenderSprite(m_BootUpStarsId4, PB_SCREENWIDTH/2 - 15, (PB_SCREENHEIGHT / 2) + 115);
+   gfxRenderSprite(m_BootUpStarsId4, PB_SCREENWIDTH/2 - 80, (PB_SCREENHEIGHT / 2) + 165);
 
    return (true);
 }
@@ -1172,7 +1172,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     // Get the current menu item count from g_mainMenu
                     if (m_CurrentMenuItem > 0) {
                         m_CurrentMenuItem--;
-                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTSWORDHIT);
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
                     }
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
@@ -1180,7 +1180,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     int temp = g_mainMenu.size();
                     if (m_CurrentMenuItem < (temp -1)) {
                         m_CurrentMenuItem++;
-                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTSWORDHIT);
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
                     }
                 }
 
@@ -1212,7 +1212,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     // Get the current menu item count from g_mainMenu
                     if (m_CurrentDiagnosticsItem > 0) {
                         m_CurrentDiagnosticsItem--;
-                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTSWORDHIT);
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
                     }
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
@@ -1220,7 +1220,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     int temp = g_diagnosticsMenu.size();
                     if (m_CurrentDiagnosticsItem < (temp -1)) {
                         m_CurrentDiagnosticsItem++;
-                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTSWORDHIT);
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
                     }
                 }
             }
@@ -1232,18 +1232,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     case (2): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                         if (m_EnableOverlay) m_EnableOverlay = false;
                         else m_EnableOverlay = true;
-                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                     }
                     break;
                     case (3): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                         if (m_ShowFPS) m_ShowFPS = false;
                         else m_ShowFPS = true;
-                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                     }
                     break;
                     case (4): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                         m_mainState = PB_BOOTUP;
-                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                     }
                     break;
                     default: break;
@@ -1336,7 +1336,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 if (inputMessage.inputId == IDI_LEFTFLIPPER) {
                     if (m_CurrentSettingsItem > 0) {
                         m_CurrentSettingsItem--;
-                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTSWORDHIT);
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
                     }
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
@@ -1344,7 +1344,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     int temp = g_settingsMenu.size();
                     if (m_CurrentSettingsItem < (temp -1)) {
                         m_CurrentSettingsItem++;
-                        g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTSWORDHIT);
+                        g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
                     }
                 }
                 if (inputMessage.inputId == IDI_START) {
@@ -1362,14 +1362,14 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             if (m_saveFileData.mainVolume < 10) {
                                 m_saveFileData.mainVolume++;
                                 m_ampDriver.SetVolume(m_saveFileData.mainVolume * 10);  // Convert 0-10 to 0-100%
-                                g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                                g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                             }
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
                             if (m_saveFileData.mainVolume > 0) {
                                 m_saveFileData.mainVolume--;
                                 m_ampDriver.SetVolume(m_saveFileData.mainVolume * 10);  // Convert 0-10 to 0-100%
-                                g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                                g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                             }
                         }
                         break;
@@ -1378,12 +1378,12 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
                             if (m_saveFileData.musicVolume < 10) m_saveFileData.musicVolume++;
                             g_PBEngine.m_soundSystem.pbsSetMusicVolume(m_saveFileData.musicVolume * 10);
-                            g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                            g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
                             if (m_saveFileData.musicVolume > 0) m_saveFileData.musicVolume--;
                             g_PBEngine.m_soundSystem.pbsSetMusicVolume(m_saveFileData.musicVolume * 10);
-                            g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                            g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                         }
                         break;
                     }
@@ -1391,13 +1391,13 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
                             if (m_saveFileData.ballsPerGame < 9) {
                                 m_saveFileData.ballsPerGame++;
-                                g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                                g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                             }
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
                             if (m_saveFileData.ballsPerGame > 1) {
                                 m_saveFileData.ballsPerGame--;
-                                g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                                g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                             }
                         }
                         break;
@@ -1405,18 +1405,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     case (3): {
                         if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
                             switch (m_saveFileData.difficulty) {
-                                case PB_EASY: m_saveFileData.difficulty = PB_NORMAL; g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);break;
-                                case PB_NORMAL: m_saveFileData.difficulty = PB_HARD; g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);break;
-                                case PB_HARD: m_saveFileData.difficulty = PB_EPIC; g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);break;
+                                case PB_EASY: m_saveFileData.difficulty = PB_NORMAL; g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);break;
+                                case PB_NORMAL: m_saveFileData.difficulty = PB_HARD; g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);break;
+                                case PB_HARD: m_saveFileData.difficulty = PB_EPIC; g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);break;
                                 case PB_EPIC: m_saveFileData.difficulty = PB_EPIC; break;
                             }
                         }
                         if (inputMessage.inputId == IDI_LEFTACTIVATE) {
                             switch (m_saveFileData.difficulty) {
                                 case PB_EASY: m_saveFileData.difficulty = PB_EASY; break;
-                                case PB_NORMAL: m_saveFileData.difficulty = PB_EASY; g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);break;
-                                case PB_HARD: m_saveFileData.difficulty = PB_NORMAL; g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);break;
-                                case PB_EPIC: m_saveFileData.difficulty = PB_HARD; g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);break;
+                                case PB_NORMAL: m_saveFileData.difficulty = PB_EASY; g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);break;
+                                case PB_HARD: m_saveFileData.difficulty = PB_NORMAL; g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);break;
+                                case PB_EPIC: m_saveFileData.difficulty = PB_HARD; g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);break;
                             }
                         }
                         break;
@@ -1424,7 +1424,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     case (4): {
                         if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                             resetHighScores();
-                            g_PBEngine.m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+                            g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                         }
                     }
                     default: break;
@@ -2107,4 +2107,5 @@ void PBEngine::pbeEngineReload() {
     m_startMenuLoaded = false;
     m_RestartMenu = true;
 }
+
 

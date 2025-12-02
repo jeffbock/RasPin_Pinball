@@ -16,6 +16,8 @@ PBSound::PBSound() : initialized(false), masterVolume(100), musicVolume(100) {
         effectSlots[i] = nullptr;
         effectChannels[i] = -1;
         effectActive[i] = false;
+        effectLoop[i] = false;
+        effectFilePath[i] = "";
     }
     // Initialize video audio streaming system
     videoAudioChunk = nullptr;
@@ -155,7 +157,7 @@ void PBSound::pbsResumeMusic() {
 #endif
 }
 
-int PBSound::pbsPlayEffect(const std::string& mp3FilePath) {
+int PBSound::pbsPlayEffect(const std::string& mp3FilePath, bool loop) {
 #ifdef EXE_MODE_RASPI
     if (!initialized) {
         return 0;
@@ -186,6 +188,8 @@ int PBSound::pbsPlayEffect(const std::string& mp3FilePath) {
     effectSlots[slotIndex] = effect;
     effectChannels[slotIndex] = channel;
     effectActive[slotIndex] = true;
+    effectLoop[slotIndex] = loop;
+    effectFilePath[slotIndex] = mp3FilePath;
     
     return slotIndex + 1; // Return 1-based effect ID
 #else
@@ -225,6 +229,8 @@ void PBSound::pbsStopEffect(int effectId) {
         effectActive[slotIndex] = false;
         effectChannels[slotIndex] = -1;
         effectSlots[slotIndex] = nullptr;
+        effectLoop[slotIndex] = false;
+        effectFilePath[slotIndex] = "";
     }
 #endif
 }
@@ -243,6 +249,8 @@ void PBSound::pbsStopAllEffects() {
         effectSlots[i] = nullptr;
         effectChannels[i] = -1;
         effectActive[i] = false;
+        effectLoop[i] = false;
+        effectFilePath[i] = "";
     }
 #endif
 }
@@ -290,9 +298,27 @@ void PBSound::updateEffectStatus() {
         if (effectActive[i] && effectChannels[i] != -1) {
             // Check if channel is still playing
             if (!Mix_Playing(effectChannels[i])) {
+                // Check if this effect should loop
+                if (effectLoop[i] && !effectFilePath[i].empty()) {
+                    // Restart the looping effect
+                    Mix_Chunk* effect = loadEffect(effectFilePath[i]);
+                    if (effect) {
+                        int channel = Mix_PlayChannel(-1, effect, 0);
+                        if (channel != -1) {
+                            // Update channel info but keep loop settings
+                            effectSlots[i] = effect;
+                            effectChannels[i] = channel;
+                            // effectActive, effectLoop, and effectFilePath remain unchanged
+                            continue; // Skip the cleanup below
+                        }
+                    }
+                }
+                // Effect finished and not looping (or loop restart failed)
                 effectActive[i] = false;
                 effectChannels[i] = -1;
                 effectSlots[i] = nullptr;
+                effectLoop[i] = false;
+                effectFilePath[i] = "";
             }
         }
     }

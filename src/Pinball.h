@@ -60,7 +60,7 @@
 // Version Information
 #define PB_VERSION_MAJOR 0
 #define PB_VERSION_MINOR 5  
-#define PB_VERSION_BUILD 502
+#define PB_VERSION_BUILD 526
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 1920
@@ -76,10 +76,15 @@
 #define MENUSWORD "src/resources/textures/MenuSword.png"
 #define SAVEFILENAME "src/resources/savefile.bin"
 
-// Sound files
-#define MUSICFANTASY "src/resources/sound/fantasymusic.mp3"
-#define EFFECTSWORDHIT "src/resources/sound/swordcut.mp3"
-#define EFFECTCLICK "src/resources/sound/click.mp3"
+// Sound file
+#define SOUNDCLICK "src/resources/sound/click.mp3"
+#define SOUNDDOORCLOSE "src/resources/sound/doorclose.mp3"
+#define SOUNDDOORTHEME "src/resources/sound/doortheme.mp3"
+#define SOUNDFANTASYMUSIC "src/resources/sound/fantasymusic.mp3"
+#define SOUNDMAINTHEME "src/resources/sound/maintheme.mp3"
+#define SOUNDMENUTHEME "src/resources/sound/menutheme.mp3"
+#define SOUNDSWORDCUT "src/resources/sound/swordcut.mp3"
+#define SOUNDTORCHES "src/resources/sound/torches.mp3"
 
 bool PBInitRender (long width, long height);
 

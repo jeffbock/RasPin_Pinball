@@ -48,7 +48,7 @@ public:
     void pbsResumeMusic();
     
     // Play sound effect (returns effect ID 1-4, or 0 on failure)
-    int pbsPlayEffect(const std::string& mp3FilePath);
+    int pbsPlayEffect(const std::string& mp3FilePath, bool loop = false);
     
     // Check if effect is still playing (true = still playing, false = completed/not found)
     bool pbsIsEffectPlaying(int effectId);
@@ -86,6 +86,8 @@ private:
     Mix_Chunk* effectSlots[4];  // Up to 4 simultaneous effects
     int effectChannels[4];      // Channel assignments for effects
     bool effectActive[4];       // Track which effects are active
+    bool effectLoop[4];         // Track which effects should loop
+    std::string effectFilePath[4];  // Track file path for each effect (for restarting loops)
     std::map<std::string, Mix_Chunk*> loadedEffects;  // Cache for loaded effects
     
     // Video audio streaming system (dedicated channel 4)

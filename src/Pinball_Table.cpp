@@ -109,7 +109,7 @@ bool PBEngine::pbeLoadGameStart(){
 // Renders the start screen w/ instructions, high scores and start prompt
 bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick){
 
-    static int timeoutTicks, blinkCountTicks;
+    static int timeoutTicks, blinkCountTicks, torchId;
     static PBTBLScreenState lastScreenState;
     static bool blinkOn;
 
@@ -122,6 +122,10 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
         m_PBTBLStartDoorsDone = false;
         m_tableScreenState = PBTBLScreenState::START_START;
         lastScreenState = m_tableScreenState;
+
+        // Play torch sound loop and door theme music
+        torchId = m_soundSystem.pbsPlayEffect(SOUNDTORCHES, true);
+        m_soundSystem.pbsPlayMusic(SOUNDDOORTHEME);
     }
 
     if (!pbeLoadGameStart()) return (false); 
@@ -236,6 +240,9 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                     gfxAnimateRestart(m_PBTBLLeftDoorId);
                     gfxAnimateRestart(m_PBTBLRightDoorId);
                     m_PBTBLOpenDoors = true;
+
+                    // Play the door sound effect
+                    m_soundSystem.pbsPlayEffect(SOUNDDOORCLOSE, false);
                 }
                 
                 // Check if door animations are complete and transition to main screen
@@ -259,6 +266,9 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                     for (int i = 0; i < 3; i++) {
                         m_secondaryScoreAnims[i].reset();
                     }
+
+                    // Stop the torch sound effect
+                    m_soundSystem.pbsStopEffect(torchId);
                 }
             break;
 
@@ -321,6 +331,9 @@ bool PBEngine::pbeLoadMainScreen(){
     gfxSetColor(m_PBTBLWolfHeadshot256Id, 255, 255, 255, 255);
     gfxSetScaleFactor(m_PBTBLWolfHeadshot256Id, 0.5, false);
     
+    // Start the main screen music
+    m_soundSystem.pbsPlayMusic(SOUNDMAINTHEME);
+
     m_mainScreenLoaded = true;
     return (true);
 }
@@ -669,7 +682,7 @@ bool PBEngine::pbeTryAddPlayer(){
     }
     
     // Play feedback sound
-    m_soundSystem.pbsPlayEffect(EFFECTCLICK);
+    m_soundSystem.pbsPlayEffect(SOUNDCLICK);
     
     return true;
 }
@@ -798,7 +811,10 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
             // Handle start button press to add players
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_START) {
-                    pbeTryAddPlayer();
+                    if (pbeTryAddPlayer()){
+                        // Play the sword cut sound
+                        m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
+                    }
                 }
                 // Handle activate buttons to add score
                 else if (inputMessage.inputId == IDI_LEFTACTIVATE) {
@@ -869,4 +885,5 @@ void PBEngine::pbeTableReload() {
     m_resetLoaded = false;
     m_RestartTable = true;    
 }
+
 
