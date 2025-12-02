@@ -1216,7 +1216,6 @@ int main(int argc, char const *argv[])
     g_PBEngine.pbeSendConsole("RasPin: Starting main menu music");    
     g_PBEngine.m_soundSystem.pbsSetMasterVolume(100);
     g_PBEngine.m_soundSystem.pbsSetMusicVolume(g_PBEngine.m_saveFileData.musicVolume * 10);
-    g_PBEngine.m_soundSystem.pbsPlayMusic(SOUNDMENUTHEME);
 
     g_PBEngine.pbeSendConsole("RasPin: Starting main processing loop");    
    

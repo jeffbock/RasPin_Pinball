@@ -34,7 +34,7 @@ bool PBEngine::pbeLoadGameStart(){
     // Left door moves left with acceleration, starting slowly and slamming open
     gfxLoadAnimateData(&animateData, m_PBTBLLeftDoorId, m_PBTBLeftDoorStartId, m_PBTBLeftDoorEndId, 
                        ANIMATE_X_MASK, 1.25f, false, GFX_NOLOOP, GFX_ANIM_ACCL,
-                       0, -400.0f, 0.0f, 0.0f, 0.0f, true, -50.0f, 0.0f, 0.0f);
+                       0, -150.0f, 0.0f, 0.0f, 0.0f, true, -25.0f, 0.0f, 0.0f);
     gfxCreateAnimation(animateData, true);
 
     m_PBTBLRightDoorId = gfxLoadSprite("RightDoor", "src/resources/textures/DoorRight2.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
@@ -45,12 +45,8 @@ bool PBEngine::pbeLoadGameStart(){
     // Right door moves right with acceleration, starting slowly and slamming open
     gfxLoadAnimateData(&animateData, m_PBTBLRightDoorId, m_PBTBRightDoorStartId, m_PBTBRightDoorEndId, 
                        ANIMATE_X_MASK, 1.25f, false, GFX_NOLOOP, GFX_ANIM_ACCL,
-                       0, 400.0f, 0.0f, 0.0f, 0.0f, true, 50.0f, 0.0f, 0.0f);
+                       0, 150.0f, 0.0f, 0.0f, 0.0f, true, 25.0f, 0.0f, 0.0f);
     gfxCreateAnimation(animateData, true);
-    
-    //m_PBTBLDoorDragonId = gfxLoadSprite("DoorDragon", "src/resources/textures/Dragon.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
-    //gfxSetScaleFactor(m_PBTBLDoorDragonId, 0.8, false);
-    //m_PBTBLDragonEyesId = gfxLoadSprite("DragonEyes", "src/resources/textures/DragonEyes.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
 
     m_PBTBLDoorDungeonId = gfxLoadSprite("DoorDungeon", "src/resources/textures/Dungeon2.bmp", GFX_BMP, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetScaleFactor(m_PBTBLDoorDungeonId, 0.94, false);
@@ -859,6 +855,10 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                     
                     m_mainState = PB_STARTMENU; // Return to main menu in Pinball_Engine
                     m_tableState = PBTableState::PBTBL_START; // Reset table state
+
+                    // Stop any playing music/effects
+                    m_soundSystem.pbsStopAllEffects();
+                    m_soundSystem.pbsStopMusic();
                 }
                 else if (inputMessage.inputId == IDI_START || 
                          inputMessage.inputId == IDI_LEFTACTIVATE || 

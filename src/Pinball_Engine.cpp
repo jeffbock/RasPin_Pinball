@@ -291,6 +291,9 @@ bool PBEngine::pbeLoadBootUp(){
 
     if (m_BootUpTitleBarId == NOSPRITE) return (false);
 
+    // Start the menu music
+    g_PBEngine.m_soundSystem.pbsPlayMusic(SOUNDMENUTHEME);
+
     pbeSendConsole("RasPin: Ready - Press any button to continue");
 
     m_bootUpLoaded = true;

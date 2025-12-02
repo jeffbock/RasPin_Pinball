@@ -178,8 +178,9 @@ int PBSound::pbsPlayEffect(const std::string& mp3FilePath, bool loop) {
         return 0;
     }
     
-    // Play the effect
-    int channel = Mix_PlayChannel(-1, effect, 0);
+    // Play the effect - use SDL_mixer's loop parameter
+    // 0 = play once, -1 = loop infinitely
+    int channel = Mix_PlayChannel(-1, effect, loop ? -1 : 0);
     if (channel == -1) {
         return 0;
     }
