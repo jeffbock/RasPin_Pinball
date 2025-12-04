@@ -348,8 +348,6 @@ bool PBEngine::pbeLoadBootUp(){
     // Start the menu music
     g_PBEngine.m_soundSystem.pbsPlayMusic(SOUNDMENUTHEME);
 
-    pbeSendConsole("RasPin: Ready - Press any button to continue");
-
     m_bootUpLoaded = true;
     return (true);
 }
@@ -394,6 +392,12 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
 
     if (m_RestartBootUp) {
         m_RestartBootUp = false;
+        
+        // Add test lines to the console for testing scrolling
+        for (int i = 1; i <= 50; i++) {
+            pbeSendConsole(std::to_string(i) + ": test line");
+        }
+        
         // Initialize console start line following render rules
         unsigned int maxLinesOnScreen = pbeGetMaxConsoleLines(CONSOLE_START_Y);
         unsigned int totalLines = (unsigned int)m_consoleQueue.size();
@@ -411,7 +415,7 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
     pbeRenderDefaultBackground (currentTick, lastTick);
          
     gfxRenderSprite(m_BootUpTitleBarId, 0, 0);
-    gfxRenderShadowString(m_defaultFontSpriteId, "RasPin - Copyright 2025 Jeff Bock (Right/Left to scroll)", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "RasPin - Copyright 2025 Jeff Bock (Right/Left to scroll, Start = Exit)", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
 
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);   
     pbeRenderConsole(1, CONSOLE_START_Y, m_consoleStartLine);
