@@ -187,7 +187,10 @@ bool PBEngine::pbeSaveFile(){
     
     // Save the current settings and high scores to the save file, overwriting any previous data
     std::ofstream saveFile(SAVEFILENAME, std::ios::binary);
-    if (!saveFile) return (false); // Failed to open the file for writing
+    if (!saveFile) {
+        pbeSendConsole("ERROR: Failed to open save file for writing");
+        return (false); // Failed to open the file for writing
+    }
 
     saveFile.write(reinterpret_cast<const char*>(&m_saveFileData), sizeof(stSaveFileData));
     saveFile.close();
@@ -273,7 +276,10 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
         case PB_SETTINGS: return pbeRenderSettings(currentTick, lastTick); break;
         case PB_DIAGNOSTICS: return pbeRenderDiagnostics(currentTick, lastTick); break;
         case PB_TESTSANDBOX: return pbeRenderTestSandbox(currentTick, lastTick); break;
-        default: return (false); break;
+        default:
+            pbeSendConsole("ERROR: Unknown main state in pbeRenderScreen");
+            return (false);
+            break;
     }
 
     return (false);
@@ -307,7 +313,10 @@ bool PBEngine::pbeLoadDefaultBackground(){
     gfxSetScaleFactor(m_BootUpStarsId4, 0.1, false); 
 
     if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  
-        m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE ) return (false);
+        m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE ) {
+        pbeSendConsole("ERROR: Failed to load default background sprites");
+        return (false);
+    }
 
     m_defaultBackgroundLoaded = true;
 
@@ -319,7 +328,10 @@ bool PBEngine::pbeLoadBootUp(){
     
     if (m_bootUpLoaded) return (true);
 
-    if (!pbeLoadDefaultBackground()) return (false);
+    if (!pbeLoadDefaultBackground()) {
+        pbeSendConsole("ERROR: Failed to load default background in pbeLoadBootUp");
+        return (false);
+    }
 
     pbeSendConsole("RasPin: Loading boot screen resources");
     
@@ -329,7 +341,10 @@ bool PBEngine::pbeLoadBootUp(){
     gfxSetColor(m_BootUpTitleBarId, 0, 0, 255, 255);
     gfxSetWH(m_BootUpTitleBarId, PB_SCREENWIDTH, 40);
 
-    if (m_BootUpTitleBarId == NOSPRITE) return (false);
+    if (m_BootUpTitleBarId == NOSPRITE) {
+        pbeSendConsole("ERROR: Failed to load boot title bar sprite");
+        return (false);
+    }
 
     // Start the menu music
     g_PBEngine.m_soundSystem.pbsPlayMusic(SOUNDMENUTHEME);
@@ -373,7 +388,10 @@ bool PBEngine::pbeRenderDefaultBackground (unsigned long currentTick, unsigned l
 // Render the bootup screen
 bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick){
         
-    if (!pbeLoadBootUp()) return (false);
+    if (!pbeLoadBootUp()) {
+        pbeSendConsole("ERROR: Failed to load boot screen resources");
+        return (false);
+    }
 
     if (m_RestartBootUp) {
         m_RestartBootUp = false;
@@ -410,8 +428,14 @@ bool PBEngine::pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int font
                                     unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset){
 
     // Check that the cursor sprite and font sprite are valid, and fontSprite is actually a font
-    if ((gfxIsSprite(cursorSprite) == false) && (useCursor ==  true)) return (false);
-    if (gfxIsFontSprite(fontSprite) == false) return (false);
+    if ((gfxIsSprite(cursorSprite) == false) && (useCursor ==  true)) {
+        pbeSendConsole("ERROR: Invalid cursor sprite in pbeRenderGenericMenu");
+        return (false);
+    }
+    if (gfxIsFontSprite(fontSprite) == false) {
+        pbeSendConsole("ERROR: Invalid font sprite in pbeRenderGenericMenu");
+        return (false);
+    }
 
     unsigned int cursorX = x, cursorY = y;
     unsigned int menuX = x, menuY = y;
@@ -473,12 +497,18 @@ bool PBEngine::pbeLoadStartMenu(){
 
     // Load the font for the start menu
     m_StartMenuFontId = gfxLoadSprite("Start Menu Font", MENUFONT, GFX_PNG, GFX_TEXTMAP, GFX_UPPERLEFT, true, true);
-    if (m_StartMenuFontId == NOSPRITE) return (false);
+    if (m_StartMenuFontId == NOSPRITE) {
+        pbeSendConsole("ERROR: Failed to load start menu font");
+        return (false);
+    }
 
     gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
 
     m_StartMenuSwordId = gfxLoadSprite("Start Menu Sword", MENUSWORD, GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, false, true);
-    if (m_StartMenuSwordId == NOSPRITE) return (false);
+    if (m_StartMenuSwordId == NOSPRITE) {
+        pbeSendConsole("ERROR: Failed to load start menu sword sprite");
+        return (false);
+    }
 
     gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
     gfxSetColor(m_StartMenuSwordId, 200, 200, 200, 200);
@@ -490,7 +520,10 @@ bool PBEngine::pbeLoadStartMenu(){
 // Renders the main menu
 bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastTick){
 
-   if (!pbeLoadStartMenu()) return (false); 
+   if (!pbeLoadStartMenu()) {
+       pbeSendConsole("ERROR: Failed to load start menu resources");
+       return (false); 
+   } 
 
    if (m_RestartMenu) {
         m_CurrentSettingsItem = 0; 
@@ -527,14 +560,20 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
 // Test Mode Screen
 bool PBEngine::pbeLoadTestMode(){
     // Test mode currently only requires the default background and font
-    if (!pbeLoadDefaultBackground()) return (false);
+    if (!pbeLoadDefaultBackground()) {
+        pbeSendConsole("ERROR: Failed to load default background in pbeLoadTestMode");
+        return (false);
+    }
 
     return (true);
 }
 
 bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadTestMode()) return (false); 
+    if (!pbeLoadTestMode()) {
+        pbeSendConsole("ERROR: Failed to load test mode resources");
+        return (false); 
+    } 
 
     if (m_RestartTestMode) {
         m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false;
@@ -602,7 +641,10 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
 bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTick){
     
     // Uses the same resources as test mode
-    if (!pbeLoadTestMode()) return (false); 
+    if (!pbeLoadTestMode()) {
+        pbeSendConsole("ERROR: Failed to load test mode resources for overlay");
+        return (false); 
+    } 
 
     // Set up transparent background for overlay
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
@@ -697,14 +739,20 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
 
 bool PBEngine::pbeLoadSettings(){
 
-    if (!pbeLoadStartMenu()) return (false); 
+    if (!pbeLoadStartMenu()) {
+        pbeSendConsole("ERROR: Failed to load start menu resources in pbeLoadSettings");
+        return (false); 
+    }
 
     return (true);
 }
 
 bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadSettings()) return (false); 
+    if (!pbeLoadSettings()) {
+        pbeSendConsole("ERROR: Failed to load settings screen resources");
+        return (false); 
+    } 
 
     std::map<unsigned int, std::string> tempMenu = g_settingsMenu;
 
@@ -744,14 +792,20 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
 }
 
 bool PBEngine::pbeLoadDiagnostics(){
-    if (!pbeLoadStartMenu()) return (false); 
+    if (!pbeLoadStartMenu()) {
+        pbeSendConsole("ERROR: Failed to load start menu resources in pbeLoadDiagnostics");
+        return (false); 
+    }
 
     return (true);
 }
 
 bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadDiagnostics()) return (false); 
+    if (!pbeLoadDiagnostics()) {
+        pbeSendConsole("ERROR: Failed to load diagnostics screen resources");
+        return (false); 
+    } 
 
     std::map<unsigned int, std::string> tempMenu = g_diagnosticsMenu;
 
@@ -788,7 +842,10 @@ bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long las
 // Test Sandbox Screen
 
 bool PBEngine::pbeLoadTestSandbox(){
-    if (!pbeLoadStartMenu()) return (false);
+    if (!pbeLoadStartMenu()) {
+        pbeSendConsole("ERROR: Failed to load start menu resources in pbeLoadTestSandbox");
+        return (false);
+    }
     
     // Create and register sandbox ejector device if not already created
     if (!m_sandboxEjector) {
@@ -869,7 +926,10 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
         m_sandboxNeoPixelRotation = 0;
     }
     
-    if (!pbeLoadTestSandbox()) return (false);
+    if (!pbeLoadTestSandbox()) {
+        pbeSendConsole("ERROR: Failed to load test sandbox resources");
+        return (false);
+    }
 
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
     
@@ -992,13 +1052,19 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
 
 bool PBEngine::pbeLoadCredits(){
 
-    if (!pbeLoadDefaultBackground()) return (false);
+    if (!pbeLoadDefaultBackground()) {
+        pbeSendConsole("ERROR: Failed to load default background in pbeLoadCredits");
+        return (false);
+    }
     return (true);
 }
 
 bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadCredits()) return (false);
+    if (!pbeLoadCredits()) {
+        pbeSendConsole("ERROR: Failed to load credits screen resources");
+        return (false);
+    }
 
     if (m_RestartCredits) {
         m_RestartCredits = false;
@@ -1047,7 +1113,10 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
 bool PBEngine::pbeLoadBenchmark(){
 
     // Benchmark will just use default font and the start menu items
-    if (!pbeLoadStartMenu()) return (false); 
+    if (!pbeLoadStartMenu()) {
+        pbeSendConsole("ERROR: Failed to load start menu resources in pbeLoadBenchmark");
+        return (false); 
+    }
     return (true);
 }
 
@@ -1057,7 +1126,10 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     static unsigned int msForSwapTest, msForSmallSprite, msForTransformSprite, msForBigSprite;
     unsigned int msRender = 25;
     
-    if (!pbeLoadBenchmark()) return (false); 
+    if (!pbeLoadBenchmark()) {
+        pbeSendConsole("ERROR: Failed to load benchmark resources");
+        return (false); 
+    } 
 
     if (m_RestartBenchmark) {
         m_BenchmarkStartTick =  GetTickCountGfx(); 

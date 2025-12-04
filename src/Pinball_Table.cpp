@@ -124,7 +124,10 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
         m_soundSystem.pbsPlayMusic(SOUNDDOORTHEME);
     }
 
-    if (!pbeLoadGameStart()) return (false); 
+    if (!pbeLoadGameStart()) {
+        pbeSendConsole("ERROR: Failed to load game start screen resources");
+        return (false); 
+    } 
     
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 
@@ -355,7 +358,10 @@ bool PBEngine::pbeLoadMainScreen(){
 // Organizes and calls all the sub-render routines for the main screen
 bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
     
-    if (!pbeLoadMainScreen()) return (false);
+    if (!pbeLoadMainScreen()) {
+        pbeSendConsole("ERROR: Failed to load main screen resources");
+        return (false);
+    }
     
     // Clear to black background
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
@@ -601,7 +607,10 @@ bool PBEngine::pbeLoadReset(){
     gfxSetColor(m_PBTBLResetSpriteId, 0, 0, 0, 255); // Solid black
     gfxSetWH(m_PBTBLResetSpriteId, 700, 200); // Set width and height
     
-    if (m_PBTBLResetSpriteId == NOSPRITE) return (false);
+    if (m_PBTBLResetSpriteId == NOSPRITE) {
+        pbeSendConsole("ERROR: Failed to load reset background sprite");
+        return (false);
+    }
     
     m_resetLoaded = true;
     return (true);
@@ -609,7 +618,10 @@ bool PBEngine::pbeLoadReset(){
 
 bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick){
     
-    if (!pbeLoadReset()) return (false);
+    if (!pbeLoadReset()) {
+        pbeSendConsole("ERROR: Failed to load reset screen resources");
+        return (false);
+    }
     
     // Center position in active area
     // fix cernter x to use full screen width
@@ -749,7 +761,10 @@ bool PBEngine::pbeLoadInitScreen(){
 // Render function for the init screen
 bool PBEngine::pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick){
     
-    if (!pbeLoadInitScreen()) return (false);
+    if (!pbeLoadInitScreen()) {
+        pbeSendConsole("ERROR: Failed to load init screen resources");
+        return (false);
+    }
     
     // Transition to start screen
     m_tableState = PBTableState::PBTBL_START;
