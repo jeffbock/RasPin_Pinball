@@ -161,6 +161,9 @@ struct stTimerEntry {
 // Maximum number of active timers allowed
 #define MAX_TIMERS 10
 
+// Console rendering start Y position (below title bar)
+#define CONSOLE_START_Y 42
+
 struct stLEDSequenceInfo {
     bool sequenceEnabled;
     bool firstTime;
@@ -418,6 +421,9 @@ private:
     std::vector<std::string> m_consoleQueue;
     unsigned int m_maxConsoleLines;
     unsigned int m_consoleStartLine;  // Current start line for console rendering in BOOTUP state
+    
+    // Helper function to calculate console rendering parameters
+    unsigned int pbeGetMaxConsoleLines(unsigned int startingY);
 
     // Main table Variables, etc..
     bool m_PBTBLStartLoaded; 

@@ -208,6 +208,18 @@ void PBEngine::pbeClearConsole(){
     while (!m_consoleQueue.empty()) m_consoleQueue.pop_back();
 }
 
+// Helper function to calculate max console lines that fit on screen from a starting Y position
+unsigned int PBEngine::pbeGetMaxConsoleLines(unsigned int startingY) {
+    // Guard against uninitialized text height - if 0, font isn't loaded yet
+    if (m_consoleTextHeight == 0) return 0;
+    
+    // Line height is text height plus 1 pixel spacing
+    unsigned int lineHeight = m_consoleTextHeight + 1;
+    
+    unsigned int availableHeight = PB_SCREENHEIGHT - startingY;
+    return availableHeight / lineHeight;
+}
+
 void PBEngine::pbeRenderConsole(unsigned int startingX, unsigned int startingY, unsigned int startLine){
     
      // Starting position for rendering
@@ -216,8 +228,7 @@ void PBEngine::pbeRenderConsole(unsigned int startingX, unsigned int startingY, 
  
      // Calculate how many lines can fit on the screen
      unsigned int lineHeight = m_consoleTextHeight + 1;
-     unsigned int availableHeight = PB_SCREENHEIGHT - startingY;
-     unsigned int maxLinesOnScreen = (lineHeight > 0) ? (availableHeight / lineHeight) : 0;
+     unsigned int maxLinesOnScreen = pbeGetMaxConsoleLines(startingY);
      
      // Get the total number of console lines
      unsigned int totalLines = (unsigned int)m_consoleQueue.size();
@@ -367,9 +378,7 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
     if (m_RestartBootUp) {
         m_RestartBootUp = false;
         // Initialize console start line following render rules
-        unsigned int lineHeight = m_consoleTextHeight + 1;
-        unsigned int availableHeight = PB_SCREENHEIGHT - 42; // startingY is 42
-        unsigned int maxLinesOnScreen = (lineHeight > 0) ? (availableHeight / lineHeight) : 0;
+        unsigned int maxLinesOnScreen = pbeGetMaxConsoleLines(CONSOLE_START_Y);
         unsigned int totalLines = (unsigned int)m_consoleQueue.size();
         
         if (totalLines <= maxLinesOnScreen) {
@@ -388,7 +397,7 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
     gfxRenderShadowString(m_defaultFontSpriteId, "RasPin - Copyright 2025 Jeff Bock (Right/Left to scroll)", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
 
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);   
-    pbeRenderConsole(1, 42, m_consoleStartLine);
+    pbeRenderConsole(1, CONSOLE_START_Y, m_consoleStartLine);
 
     return (true);
 }
@@ -1216,10 +1225,8 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
                 // Right flipper or right activate: scroll console one line later (down)
                 else if (inputMessage.inputId == IDI_RIGHTFLIPPER || inputMessage.inputId == IDI_RIGHTACTIVATE) {
-                    // Calculate the maximum start line
-                    unsigned int lineHeight = m_consoleTextHeight + 1;
-                    unsigned int availableHeight = PB_SCREENHEIGHT - 42; // startingY is 42
-                    unsigned int maxLinesOnScreen = (lineHeight > 0) ? (availableHeight / lineHeight) : 0;
+                    // Calculate the maximum start line using helper function
+                    unsigned int maxLinesOnScreen = pbeGetMaxConsoleLines(CONSOLE_START_Y);
                     unsigned int totalLines = (unsigned int)m_consoleQueue.size();
                     
                     if (totalLines > maxLinesOnScreen) {
