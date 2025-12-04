@@ -236,7 +236,7 @@ public:
     // Console functions
     void pbeSendConsole(std::string output);
     void pbeClearConsole();
-    void pbeRenderConsole(unsigned int startingX, unsigned int startingY);
+    void pbeRenderConsole(unsigned int startingX, unsigned int startingY, unsigned int startLine);
 
     // Functions to manage the game states (main and pinball game)
     void pbeUpdateState(stInputMessage inputMessage);
@@ -417,6 +417,7 @@ private:
     // Console variables
     std::vector<std::string> m_consoleQueue;
     unsigned int m_maxConsoleLines;
+    unsigned int m_consoleStartLine;  // Current start line for console rendering in BOOTUP state
 
     // Main table Variables, etc..
     bool m_PBTBLStartLoaded; 

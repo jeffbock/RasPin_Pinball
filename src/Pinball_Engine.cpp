@@ -25,8 +25,9 @@
     m_StartMenuSwordId = NOSPRITE;
 
     // This size is dependent on the font size and the size of the screen
-    m_maxConsoleLines = 40;
+    m_maxConsoleLines = 256;
     m_consoleTextHeight = 0;
+    m_consoleStartLine = 0;
 
     // Start Menu variables
     m_CurrentMenuItem = 0;
@@ -75,6 +76,7 @@
     m_RestartTestMode = true;
 
     m_PassSelfTest = true;
+    m_RestartBootUp = true;
 
     /////////////////////
     // Table variables
@@ -206,16 +208,43 @@ void PBEngine::pbeClearConsole(){
     while (!m_consoleQueue.empty()) m_consoleQueue.pop_back();
 }
 
-void PBEngine::pbeRenderConsole(unsigned int startingX, unsigned int startingY){
+void PBEngine::pbeRenderConsole(unsigned int startingX, unsigned int startingY, unsigned int startLine){
     
      // Starting position for rendering
      unsigned int x = startingX;
      unsigned int y = startingY;
  
-     // Iterate through the vector and render each string
-     for (const auto& line : m_consoleQueue) {
-         gfxRenderString(m_defaultFontSpriteId, line, x, y, 1, GFX_TEXTLEFT);
-         y += m_consoleTextHeight + 1; // Move to the next row
+     // Calculate how many lines can fit on the screen
+     unsigned int lineHeight = m_consoleTextHeight + 1;
+     unsigned int availableHeight = PB_SCREENHEIGHT - startingY;
+     unsigned int maxLinesOnScreen = (lineHeight > 0) ? (availableHeight / lineHeight) : 0;
+     
+     // Get the total number of console lines
+     unsigned int totalLines = (unsigned int)m_consoleQueue.size();
+     
+     // Determine the actual start line to render from
+     unsigned int actualStartLine = 0;
+     
+     if (totalLines <= maxLinesOnScreen) {
+         // If text lines <= lines that fit on screen, render from line 0 regardless of requested start
+         actualStartLine = 0;
+     } else {
+         // Calculate the last possible start line that keeps last line at bottom
+         unsigned int maxStartLine = totalLines - maxLinesOnScreen;
+         
+         // If requested start line would leave empty space at bottom, adjust to maxStartLine
+         if (startLine > maxStartLine) {
+             actualStartLine = maxStartLine;
+         } else {
+             actualStartLine = startLine;
+         }
+     }
+ 
+     // Iterate through the vector starting from actualStartLine and render each string
+     unsigned int lineIndex = 0;
+     for (unsigned int i = actualStartLine; i < totalLines && lineIndex < maxLinesOnScreen; i++, lineIndex++) {
+         gfxRenderString(m_defaultFontSpriteId, m_consoleQueue[i], x, y, 1, GFX_TEXTLEFT);
+         y += lineHeight; // Move to the next row
      }
 }
 
@@ -337,6 +366,17 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
 
     if (m_RestartBootUp) {
         m_RestartBootUp = false;
+        // Initialize console start line following render rules
+        unsigned int lineHeight = m_consoleTextHeight + 1;
+        unsigned int availableHeight = PB_SCREENHEIGHT - 42; // startingY is 42
+        unsigned int maxLinesOnScreen = (lineHeight > 0) ? (availableHeight / lineHeight) : 0;
+        unsigned int totalLines = (unsigned int)m_consoleQueue.size();
+        
+        if (totalLines <= maxLinesOnScreen) {
+            m_consoleStartLine = 0;
+        } else {
+            m_consoleStartLine = totalLines - maxLinesOnScreen;
+        }
     }
 
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
@@ -345,10 +385,10 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
     pbeRenderDefaultBackground (currentTick, lastTick);
          
     gfxRenderSprite(m_BootUpTitleBarId, 0, 0);
-    gfxRenderShadowString(m_defaultFontSpriteId, "RasPin - Copyright 2025 Jeff Bock", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "RasPin - Copyright 2025 Jeff Bock (Right/Left to scroll)", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
 
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);   
-    pbeRenderConsole(1, 42);
+    pbeRenderConsole(1, 42, m_consoleStartLine);
 
     return (true);
 }
@@ -1161,10 +1201,34 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
     
     switch (m_mainState) {
         case PB_BOOTUP: {
-            // If any button is pressed, move to the start menu
+            // Handle button presses in BOOTUP state
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                m_mainState = PB_STARTMENU;
-                m_RestartMenu = true;
+                // Only start button exits to start menu
+                if (inputMessage.inputId == IDI_START) {
+                    m_mainState = PB_STARTMENU;
+                    m_RestartMenu = true;
+                }
+                // Left flipper or left activate: scroll console one line earlier (up)
+                else if (inputMessage.inputId == IDI_LEFTFLIPPER || inputMessage.inputId == IDI_LEFTACTIVATE) {
+                    if (m_consoleStartLine > 0) {
+                        m_consoleStartLine--;
+                    }
+                }
+                // Right flipper or right activate: scroll console one line later (down)
+                else if (inputMessage.inputId == IDI_RIGHTFLIPPER || inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                    // Calculate the maximum start line
+                    unsigned int lineHeight = m_consoleTextHeight + 1;
+                    unsigned int availableHeight = PB_SCREENHEIGHT - 42; // startingY is 42
+                    unsigned int maxLinesOnScreen = (lineHeight > 0) ? (availableHeight / lineHeight) : 0;
+                    unsigned int totalLines = (unsigned int)m_consoleQueue.size();
+                    
+                    if (totalLines > maxLinesOnScreen) {
+                        unsigned int maxStartLine = totalLines - maxLinesOnScreen;
+                        if (m_consoleStartLine < maxStartLine) {
+                            m_consoleStartLine++;
+                        }
+                    }
+                }
             }
             break;
         }
@@ -1246,6 +1310,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     break;
                     case (4): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                         m_mainState = PB_BOOTUP;
+                        m_RestartBootUp = true;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                     }
                     break;
