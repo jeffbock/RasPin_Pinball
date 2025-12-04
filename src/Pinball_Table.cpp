@@ -207,25 +207,43 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             break;
             
         case PBTBLScreenState::START_SCORES:
-            gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
             gfxAnimateSprite(m_StartMenuFontId, currentTick);
             gfxSetScaleFactor(m_StartMenuFontId, 0.8, false);
 
-            for (int i = 0; i < NUM_HIGHSCORES + 1; i++) {
-                std::string scoreText = std::to_string(m_saveFileData.highScores[i-1].highScore);
+            // Render Grand Champion section (first high score)
+            {
+                // "Grand Champion" title in gold
+                gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
+                if (gfxAnimateActive(m_StartMenuFontId)) {
+                    gfxRenderString(m_StartMenuFontId, "Grand Champion", (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 105, 10, GFX_TEXTCENTER);
+                } else {
+                    gfxRenderShadowString(m_StartMenuFontId, "Grand Champion", (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 105, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+                }
 
-                if (i == 0){
-                    if (gfxAnimateActive(m_StartMenuFontId)) gfxRenderString(m_StartMenuFontId, "High Scores", (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 120, 10, GFX_TEXTCENTER);
-                    else gfxRenderShadowString(m_StartMenuFontId, "High Scores", (PB_SCREENWIDTH/2) +  20, ACTIVEDISPY + 120, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+                // Grand Champion name and score underneath
+                std::string gcScoreText = std::to_string(m_saveFileData.highScores[0].highScore);
+                if (gfxAnimateActive(m_StartMenuFontId)) {
+                    gfxRenderString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, (PB_SCREENWIDTH/2) - 220, ACTIVEDISPY + 165, 10, GFX_TEXTLEFT);
+                    gfxRenderString(m_StartMenuFontId, gcScoreText, (PB_SCREENWIDTH/2) + 220, ACTIVEDISPY + 165, 3, GFX_TEXTRIGHT);
+                } else {
+                    gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, (PB_SCREENWIDTH/2) - 220, ACTIVEDISPY + 165, 10, GFX_TEXTLEFT, 0, 0, 0, 255, 3);
+                    gfxRenderShadowString(m_StartMenuFontId, gcScoreText, (PB_SCREENWIDTH/2) + 220, ACTIVEDISPY + 165, 3, GFX_TEXTRIGHT, 0, 0, 0, 255, 3);
                 }
-                else if (gfxAnimateActive(m_StartMenuFontId)) 
-                {
-                    gfxRenderString(m_StartMenuFontId, m_saveFileData.highScores[i-1].playerInitials, (PB_SCREENWIDTH/2) - 220, ACTIVEDISPY + 140 + (i * 75), 10, GFX_TEXTLEFT);
-                    gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2) + 220, ACTIVEDISPY + 140 + (i * 75), 3, GFX_TEXTRIGHT);
-                }
-                else {
-                    gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[i-1].playerInitials, (PB_SCREENWIDTH/2) - 220, ACTIVEDISPY + 140 + (i * 75), 10, GFX_TEXTLEFT, 0, 0, 0, 255, 3);
-                    gfxRenderShadowString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2) + 220, ACTIVEDISPY + 140 + (i * 75), 3, GFX_TEXTRIGHT, 0, 0, 0, 255, 3);
+            }
+
+            // Render remaining high scores (2-5) with numbered format
+            gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+            for (int i = 1; i < NUM_HIGHSCORES; i++) {
+                std::string scoreText = std::to_string(m_saveFileData.highScores[i].highScore);
+                std::string numberedInitials = std::to_string(i + 1) + ") " + m_saveFileData.highScores[i].playerInitials;
+                int yPos = ACTIVEDISPY + 245 + ((i - 1) * 70);
+
+                if (gfxAnimateActive(m_StartMenuFontId)) {
+                    gfxRenderString(m_StartMenuFontId, numberedInitials, (PB_SCREENWIDTH/2) - 220, yPos, 10, GFX_TEXTLEFT);
+                    gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2) + 220, yPos, 3, GFX_TEXTRIGHT);
+                } else {
+                    gfxRenderShadowString(m_StartMenuFontId, numberedInitials, (PB_SCREENWIDTH/2) - 220, yPos, 10, GFX_TEXTLEFT, 0, 0, 0, 255, 3);
+                    gfxRenderShadowString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2) + 220, yPos, 3, GFX_TEXTRIGHT, 0, 0, 0, 255, 3);
                 }
             }
             break;
