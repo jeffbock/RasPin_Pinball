@@ -279,7 +279,6 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
         default:
             pbeSendConsole("ERROR: Unknown main state in pbeRenderScreen");
             return (false);
-            break;
     }
 
     return (false);

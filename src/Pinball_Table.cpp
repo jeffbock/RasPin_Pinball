@@ -604,13 +604,14 @@ bool PBEngine::pbeLoadReset(){
     
     // Create a solid color sprite (like the title bar in console state)
     m_PBTBLResetSpriteId = gfxLoadSprite("ResetBG", "", GFX_NONE, GFX_NOMAP, GFX_UPPERLEFT, false, false);
-    gfxSetColor(m_PBTBLResetSpriteId, 0, 0, 0, 255); // Solid black
-    gfxSetWH(m_PBTBLResetSpriteId, 700, 200); // Set width and height
     
     if (m_PBTBLResetSpriteId == NOSPRITE) {
         pbeSendConsole("ERROR: Failed to load reset background sprite");
         return (false);
     }
+    
+    gfxSetColor(m_PBTBLResetSpriteId, 0, 0, 0, 255); // Solid black
+    gfxSetWH(m_PBTBLResetSpriteId, 700, 200); // Set width and height
     
     m_resetLoaded = true;
     return (true);
