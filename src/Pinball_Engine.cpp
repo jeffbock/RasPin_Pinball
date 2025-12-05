@@ -25,8 +25,9 @@
     m_StartMenuSwordId = NOSPRITE;
 
     // This size is dependent on the font size and the size of the screen
-    m_maxConsoleLines = 40;
+    m_maxConsoleLines = 256;
     m_consoleTextHeight = 0;
+    m_consoleStartLine = 0;
 
     // Start Menu variables
     m_CurrentMenuItem = 0;
@@ -75,6 +76,7 @@
     m_RestartTestMode = true;
 
     m_PassSelfTest = true;
+    m_RestartBootUp = true;
 
     /////////////////////
     // Table variables
@@ -185,7 +187,10 @@ bool PBEngine::pbeSaveFile(){
     
     // Save the current settings and high scores to the save file, overwriting any previous data
     std::ofstream saveFile(SAVEFILENAME, std::ios::binary);
-    if (!saveFile) return (false); // Failed to open the file for writing
+    if (!saveFile) {
+        pbeSendConsole("ERROR: Failed to open save file for writing");
+        return (false); // Failed to open the file for writing
+    }
 
     saveFile.write(reinterpret_cast<const char*>(&m_saveFileData), sizeof(stSaveFileData));
     saveFile.close();
@@ -206,16 +211,54 @@ void PBEngine::pbeClearConsole(){
     while (!m_consoleQueue.empty()) m_consoleQueue.pop_back();
 }
 
-void PBEngine::pbeRenderConsole(unsigned int startingX, unsigned int startingY){
+// Helper function to calculate max console lines that fit on screen from a starting Y position
+unsigned int PBEngine::pbeGetMaxConsoleLines(unsigned int startingY) {
+    // Guard against uninitialized text height - if 0, font isn't loaded yet
+    if (m_consoleTextHeight == 0) return 0;
+    
+    // Line height is text height plus 1 pixel spacing
+    unsigned int lineHeight = m_consoleTextHeight + 1;
+    
+    unsigned int availableHeight = PB_SCREENHEIGHT - startingY;
+    return availableHeight / lineHeight;
+}
+
+void PBEngine::pbeRenderConsole(unsigned int startingX, unsigned int startingY, unsigned int startLine){
     
      // Starting position for rendering
      unsigned int x = startingX;
      unsigned int y = startingY;
  
-     // Iterate through the vector and render each string
-     for (const auto& line : m_consoleQueue) {
-         gfxRenderString(m_defaultFontSpriteId, line, x, y, 1, GFX_TEXTLEFT);
-         y += m_consoleTextHeight + 1; // Move to the next row
+     // Calculate how many lines can fit on the screen
+     unsigned int lineHeight = m_consoleTextHeight + 1;
+     unsigned int maxLinesOnScreen = pbeGetMaxConsoleLines(startingY);
+     
+     // Get the total number of console lines
+     unsigned int totalLines = (unsigned int)m_consoleQueue.size();
+     
+     // Determine the actual start line to render from
+     unsigned int actualStartLine = 0;
+     
+     if (totalLines <= maxLinesOnScreen) {
+         // If text lines <= lines that fit on screen, render from line 0 regardless of requested start
+         actualStartLine = 0;
+     } else {
+         // Calculate the last possible start line that keeps last line at bottom
+         unsigned int maxStartLine = totalLines - maxLinesOnScreen;
+         
+         // If requested start line would leave empty space at bottom, adjust to maxStartLine
+         if (startLine > maxStartLine) {
+             actualStartLine = maxStartLine;
+         } else {
+             actualStartLine = startLine;
+         }
+     }
+ 
+     // Iterate through the vector starting from actualStartLine and render each string
+     unsigned int lineIndex = 0;
+     for (unsigned int i = actualStartLine; i < totalLines && lineIndex < maxLinesOnScreen; i++, lineIndex++) {
+         gfxRenderString(m_defaultFontSpriteId, m_consoleQueue[i], x, y, 1, GFX_TEXTLEFT);
+         y += lineHeight; // Move to the next row
      }
 }
 
@@ -233,7 +276,9 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
         case PB_SETTINGS: return pbeRenderSettings(currentTick, lastTick); break;
         case PB_DIAGNOSTICS: return pbeRenderDiagnostics(currentTick, lastTick); break;
         case PB_TESTSANDBOX: return pbeRenderTestSandbox(currentTick, lastTick); break;
-        default: return (false); break;
+        default:
+            pbeSendConsole("ERROR: Unknown main state in pbeRenderScreen");
+            return (false);
     }
 
     return (false);
@@ -267,7 +312,9 @@ bool PBEngine::pbeLoadDefaultBackground(){
     gfxSetScaleFactor(m_BootUpStarsId4, 0.1, false); 
 
     if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  
-        m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE ) return (false);
+        m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE ) {
+        return (false);
+    }
 
     m_defaultBackgroundLoaded = true;
 
@@ -293,8 +340,6 @@ bool PBEngine::pbeLoadBootUp(){
 
     // Start the menu music
     g_PBEngine.m_soundSystem.pbsPlayMusic(SOUNDMENUTHEME);
-
-    pbeSendConsole("RasPin: Ready - Press any button to continue");
 
     m_bootUpLoaded = true;
     return (true);
@@ -333,10 +378,23 @@ bool PBEngine::pbeRenderDefaultBackground (unsigned long currentTick, unsigned l
 // Render the bootup screen
 bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long lastTick){
         
-    if (!pbeLoadBootUp()) return (false);
+    if (!pbeLoadBootUp()) {
+        pbeSendConsole("ERROR: Failed to load boot screen resources");
+        return (false);
+    }
 
     if (m_RestartBootUp) {
         m_RestartBootUp = false;
+                
+        // Initialize console start line following render rules
+        unsigned int maxLinesOnScreen = pbeGetMaxConsoleLines(CONSOLE_START_Y);
+        unsigned int totalLines = (unsigned int)m_consoleQueue.size();
+        
+        if (totalLines <= maxLinesOnScreen) {
+            m_consoleStartLine = 0;
+        } else {
+            m_consoleStartLine = totalLines - maxLinesOnScreen;
+        }
     }
 
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
@@ -345,10 +403,10 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
     pbeRenderDefaultBackground (currentTick, lastTick);
          
     gfxRenderSprite(m_BootUpTitleBarId, 0, 0);
-    gfxRenderShadowString(m_defaultFontSpriteId, "RasPin - Copyright 2025 Jeff Bock", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "RasPin - Copyright 2025 Jeff Bock (Right/Left to scroll, Start = Exit)", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
 
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);   
-    pbeRenderConsole(1, 42);
+    pbeRenderConsole(1, CONSOLE_START_Y, m_consoleStartLine);
 
     return (true);
 }
@@ -361,8 +419,14 @@ bool PBEngine::pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int font
                                     unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset){
 
     // Check that the cursor sprite and font sprite are valid, and fontSprite is actually a font
-    if ((gfxIsSprite(cursorSprite) == false) && (useCursor ==  true)) return (false);
-    if (gfxIsFontSprite(fontSprite) == false) return (false);
+    if ((gfxIsSprite(cursorSprite) == false) && (useCursor ==  true)) {
+        pbeSendConsole("ERROR: Invalid cursor sprite in pbeRenderGenericMenu");
+        return (false);
+    }
+    if (gfxIsFontSprite(fontSprite) == false) {
+        pbeSendConsole("ERROR: Invalid font sprite in pbeRenderGenericMenu");
+        return (false);
+    }
 
     unsigned int cursorX = x, cursorY = y;
     unsigned int menuX = x, menuY = y;
@@ -426,6 +490,7 @@ bool PBEngine::pbeLoadStartMenu(){
     m_StartMenuFontId = gfxLoadSprite("Start Menu Font", MENUFONT, GFX_PNG, GFX_TEXTMAP, GFX_UPPERLEFT, true, true);
     if (m_StartMenuFontId == NOSPRITE) return (false);
 
+
     gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
 
     m_StartMenuSwordId = gfxLoadSprite("Start Menu Sword", MENUSWORD, GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, false, true);
@@ -441,7 +506,10 @@ bool PBEngine::pbeLoadStartMenu(){
 // Renders the main menu
 bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastTick){
 
-   if (!pbeLoadStartMenu()) return (false); 
+   if (!pbeLoadStartMenu()) {
+       pbeSendConsole("ERROR: Failed to load start menu resources");
+       return (false); 
+   } 
 
    if (m_RestartMenu) {
         m_CurrentSettingsItem = 0; 
@@ -478,14 +546,20 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
 // Test Mode Screen
 bool PBEngine::pbeLoadTestMode(){
     // Test mode currently only requires the default background and font
-    if (!pbeLoadDefaultBackground()) return (false);
+    if (!pbeLoadDefaultBackground()) {
+        pbeSendConsole("ERROR: Failed to load default background in pbeLoadTestMode");
+        return (false);
+    }
 
     return (true);
 }
 
 bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadTestMode()) return (false); 
+    if (!pbeLoadTestMode()) {
+        pbeSendConsole("ERROR: Failed to load test mode resources");
+        return (false); 
+    } 
 
     if (m_RestartTestMode) {
         m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false;
@@ -553,7 +627,10 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
 bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTick){
     
     // Uses the same resources as test mode
-    if (!pbeLoadTestMode()) return (false); 
+    if (!pbeLoadTestMode()) {
+        pbeSendConsole("ERROR: Failed to load test mode resources for overlay selection");
+        return (false); 
+    } 
 
     // Set up transparent background for overlay
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
@@ -648,14 +725,20 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
 
 bool PBEngine::pbeLoadSettings(){
 
-    if (!pbeLoadStartMenu()) return (false); 
+    if (!pbeLoadStartMenu()) {
+        pbeSendConsole("ERROR: Failed to load start menu resources in pbeLoadSettings");
+        return (false); 
+    }
 
     return (true);
 }
 
 bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadSettings()) return (false); 
+    if (!pbeLoadSettings()) {
+        pbeSendConsole("ERROR: Failed to load settings screen resources");
+        return (false); 
+    } 
 
     std::map<unsigned int, std::string> tempMenu = g_settingsMenu;
 
@@ -695,14 +778,20 @@ bool PBEngine::pbeRenderSettings(unsigned long currentTick, unsigned long lastTi
 }
 
 bool PBEngine::pbeLoadDiagnostics(){
-    if (!pbeLoadStartMenu()) return (false); 
+    if (!pbeLoadStartMenu()) {
+        pbeSendConsole("ERROR: Failed to load start menu resources in pbeLoadDiagnostics");
+        return (false); 
+    }
 
     return (true);
 }
 
 bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadDiagnostics()) return (false); 
+    if (!pbeLoadDiagnostics()) {
+        pbeSendConsole("ERROR: Failed to load diagnostics screen resources");
+        return (false); 
+    } 
 
     std::map<unsigned int, std::string> tempMenu = g_diagnosticsMenu;
 
@@ -739,7 +828,10 @@ bool PBEngine::pbeRenderDiagnostics(unsigned long currentTick, unsigned long las
 // Test Sandbox Screen
 
 bool PBEngine::pbeLoadTestSandbox(){
-    if (!pbeLoadStartMenu()) return (false);
+    if (!pbeLoadStartMenu()) {
+        pbeSendConsole("ERROR: Failed to load start menu resources in pbeLoadTestSandbox");
+        return (false);
+    }
     
     // Create and register sandbox ejector device if not already created
     if (!m_sandboxEjector) {
@@ -820,7 +912,10 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
         m_sandboxNeoPixelRotation = 0;
     }
     
-    if (!pbeLoadTestSandbox()) return (false);
+    if (!pbeLoadTestSandbox()) {
+        pbeSendConsole("ERROR: Failed to load test sandbox resources");
+        return (false);
+    }
 
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
     
@@ -943,13 +1038,19 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
 
 bool PBEngine::pbeLoadCredits(){
 
-    if (!pbeLoadDefaultBackground()) return (false);
+    if (!pbeLoadDefaultBackground()) {
+        pbeSendConsole("ERROR: Failed to load default background in pbeLoadCredits");
+        return (false);
+    }
     return (true);
 }
 
 bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTick){
 
-    if (!pbeLoadCredits()) return (false);
+    if (!pbeLoadCredits()) {
+        pbeSendConsole("ERROR: Failed to load credits screen resources");
+        return (false);
+    }
 
     if (m_RestartCredits) {
         m_RestartCredits = false;
@@ -998,7 +1099,10 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
 bool PBEngine::pbeLoadBenchmark(){
 
     // Benchmark will just use default font and the start menu items
-    if (!pbeLoadStartMenu()) return (false); 
+    if (!pbeLoadStartMenu()) {
+        pbeSendConsole("ERROR: Failed to load start menu resources in pbeLoadBenchmark");
+        return (false); 
+    }
     return (true);
 }
 
@@ -1008,7 +1112,10 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     static unsigned int msForSwapTest, msForSmallSprite, msForTransformSprite, msForBigSprite;
     unsigned int msRender = 25;
     
-    if (!pbeLoadBenchmark()) return (false); 
+    if (!pbeLoadBenchmark()) {
+        pbeSendConsole("ERROR: Failed to load benchmark resources");
+        return (false); 
+    } 
 
     if (m_RestartBenchmark) {
         m_BenchmarkStartTick =  GetTickCountGfx(); 
@@ -1161,10 +1268,32 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
     
     switch (m_mainState) {
         case PB_BOOTUP: {
-            // If any button is pressed, move to the start menu
+            // Handle button presses in BOOTUP state
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                m_mainState = PB_STARTMENU;
-                m_RestartMenu = true;
+                // Only start button exits to start menu
+                if (inputMessage.inputId == IDI_START) {
+                    m_mainState = PB_STARTMENU;
+                    m_RestartMenu = true;
+                }
+                // Left flipper or left activate: scroll console one line earlier (up)
+                else if (inputMessage.inputId == IDI_LEFTFLIPPER || inputMessage.inputId == IDI_LEFTACTIVATE) {
+                    if (m_consoleStartLine > 0) {
+                        m_consoleStartLine--;
+                    }
+                }
+                // Right flipper or right activate: scroll console one line later (down)
+                else if (inputMessage.inputId == IDI_RIGHTFLIPPER || inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                    // Calculate the maximum start line using helper function
+                    unsigned int maxLinesOnScreen = pbeGetMaxConsoleLines(CONSOLE_START_Y);
+                    unsigned int totalLines = (unsigned int)m_consoleQueue.size();
+                    
+                    if (totalLines > maxLinesOnScreen) {
+                        unsigned int maxStartLine = totalLines - maxLinesOnScreen;
+                        if (m_consoleStartLine < maxStartLine) {
+                            m_consoleStartLine++;
+                        }
+                    }
+                }
             }
             break;
         }
@@ -1246,6 +1375,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     break;
                     case (4): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
                         m_mainState = PB_BOOTUP;
+                        m_RestartBootUp = true;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                     }
                     break;

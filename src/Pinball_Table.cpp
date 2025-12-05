@@ -124,7 +124,10 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
         m_soundSystem.pbsPlayMusic(SOUNDDOORTHEME);
     }
 
-    if (!pbeLoadGameStart()) return (false); 
+    if (!pbeLoadGameStart()) {
+        pbeSendConsole("ERROR: Failed to load game start screen resources");
+        return (false); 
+    } 
     
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 
@@ -213,35 +216,42 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             // Render Grand Champion section (first high score)
             {
                 // "Grand Champion" title in gold
-                gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
                 if (gfxAnimateActive(m_StartMenuFontId)) {
                     gfxRenderString(m_StartMenuFontId, "Grand Champion", (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 105, 10, GFX_TEXTCENTER);
                 } else {
+                    gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
                     gfxRenderShadowString(m_StartMenuFontId, "Grand Champion", (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 105, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
                 }
 
-                // Grand Champion name and score underneath
+                // Grand Champion initials in gold
+                if (gfxAnimateActive(m_StartMenuFontId)) {
+                    gfxRenderString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 175, 10, GFX_TEXTCENTER);
+                } else {
+                    gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
+                    gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 175, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+                }
+                
+                // Grand Champion score on next line in gold
                 std::string gcScoreText = std::to_string(m_saveFileData.highScores[0].highScore);
                 if (gfxAnimateActive(m_StartMenuFontId)) {
-                    gfxRenderString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, (PB_SCREENWIDTH/2) - 220, ACTIVEDISPY + 165, 10, GFX_TEXTLEFT);
-                    gfxRenderString(m_StartMenuFontId, gcScoreText, (PB_SCREENWIDTH/2) + 220, ACTIVEDISPY + 165, 3, GFX_TEXTRIGHT);
+                    gfxRenderString(m_StartMenuFontId, gcScoreText, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 240, 10, GFX_TEXTCENTER);
                 } else {
-                    gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, (PB_SCREENWIDTH/2) - 220, ACTIVEDISPY + 165, 10, GFX_TEXTLEFT, 0, 0, 0, 255, 3);
-                    gfxRenderShadowString(m_StartMenuFontId, gcScoreText, (PB_SCREENWIDTH/2) + 220, ACTIVEDISPY + 165, 3, GFX_TEXTRIGHT, 0, 0, 0, 255, 3);
+                    gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
+                    gfxRenderShadowString(m_StartMenuFontId, gcScoreText, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 240, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
                 }
             }
 
-            // Render remaining high scores (2-5) with numbered format
-            gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+            // Render remaining high scores (2-5) with numbered format - more space after Grand Champion
             for (int i = 1; i < NUM_HIGHSCORES; i++) {
                 std::string scoreText = std::to_string(m_saveFileData.highScores[i].highScore);
-                std::string numberedInitials = std::to_string(i + 1) + ") " + m_saveFileData.highScores[i].playerInitials;
-                int yPos = ACTIVEDISPY + 245 + ((i - 1) * 70);
+                std::string numberedInitials = std::to_string(i + 1) + ": " + m_saveFileData.highScores[i].playerInitials;
+                int yPos = ACTIVEDISPY + 325 + ((i - 1) * 70);
 
                 if (gfxAnimateActive(m_StartMenuFontId)) {
                     gfxRenderString(m_StartMenuFontId, numberedInitials, (PB_SCREENWIDTH/2) - 220, yPos, 10, GFX_TEXTLEFT);
                     gfxRenderString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2) + 220, yPos, 3, GFX_TEXTRIGHT);
                 } else {
+                    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
                     gfxRenderShadowString(m_StartMenuFontId, numberedInitials, (PB_SCREENWIDTH/2) - 220, yPos, 10, GFX_TEXTLEFT, 0, 0, 0, 255, 3);
                     gfxRenderShadowString(m_StartMenuFontId, scoreText, (PB_SCREENWIDTH/2) + 220, yPos, 3, GFX_TEXTRIGHT, 0, 0, 0, 255, 3);
                 }
@@ -355,7 +365,10 @@ bool PBEngine::pbeLoadMainScreen(){
 // Organizes and calls all the sub-render routines for the main screen
 bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
     
-    if (!pbeLoadMainScreen()) return (false);
+    if (!pbeLoadMainScreen()) {
+        pbeSendConsole("ERROR: Failed to load main screen resources");
+        return (false);
+    }
     
     // Clear to black background
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
@@ -598,10 +611,11 @@ bool PBEngine::pbeLoadReset(){
     
     // Create a solid color sprite (like the title bar in console state)
     m_PBTBLResetSpriteId = gfxLoadSprite("ResetBG", "", GFX_NONE, GFX_NOMAP, GFX_UPPERLEFT, false, false);
-    gfxSetColor(m_PBTBLResetSpriteId, 0, 0, 0, 255); // Solid black
-    gfxSetWH(m_PBTBLResetSpriteId, 700, 200); // Set width and height
     
     if (m_PBTBLResetSpriteId == NOSPRITE) return (false);
+    
+    gfxSetColor(m_PBTBLResetSpriteId, 0, 0, 0, 255); // Solid black
+    gfxSetWH(m_PBTBLResetSpriteId, 700, 200); // Set width and height
     
     m_resetLoaded = true;
     return (true);
@@ -609,7 +623,10 @@ bool PBEngine::pbeLoadReset(){
 
 bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick){
     
-    if (!pbeLoadReset()) return (false);
+    if (!pbeLoadReset()) {
+        pbeSendConsole("ERROR: Failed to load reset screen resources");
+        return (false);
+    }
     
     // Center position in active area
     // fix cernter x to use full screen width
@@ -749,7 +766,10 @@ bool PBEngine::pbeLoadInitScreen(){
 // Render function for the init screen
 bool PBEngine::pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick){
     
-    if (!pbeLoadInitScreen()) return (false);
+    if (!pbeLoadInitScreen()) {
+        pbeSendConsole("ERROR: Failed to load init screen resources");
+        return (false);
+    }
     
     // Transition to start screen
     m_tableState = PBTableState::PBTBL_START;
