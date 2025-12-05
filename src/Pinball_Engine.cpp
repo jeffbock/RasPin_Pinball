@@ -313,7 +313,6 @@ bool PBEngine::pbeLoadDefaultBackground(){
 
     if (m_BootUpConsoleId == NOSPRITE || m_BootUpStarsId == NOSPRITE || m_BootUpStarsId2 == NOSPRITE ||  
         m_BootUpStarsId3 == NOSPRITE ||  m_BootUpStarsId4 == NOSPRITE ) {
-        pbeSendConsole("ERROR: Failed to load default background sprites");
         return (false);
     }
 
@@ -327,10 +326,7 @@ bool PBEngine::pbeLoadBootUp(){
     
     if (m_bootUpLoaded) return (true);
 
-    if (!pbeLoadDefaultBackground()) {
-        pbeSendConsole("ERROR: Failed to load default background in pbeLoadBootUp");
-        return (false);
-    }
+    if (!pbeLoadDefaultBackground()) return (false);
 
     pbeSendConsole("RasPin: Loading boot screen resources");
     
@@ -340,10 +336,7 @@ bool PBEngine::pbeLoadBootUp(){
     gfxSetColor(m_BootUpTitleBarId, 0, 0, 255, 255);
     gfxSetWH(m_BootUpTitleBarId, PB_SCREENWIDTH, 40);
 
-    if (m_BootUpTitleBarId == NOSPRITE) {
-        pbeSendConsole("ERROR: Failed to load boot title bar sprite");
-        return (false);
-    }
+    if (m_BootUpTitleBarId == NOSPRITE) return (false);
 
     // Start the menu music
     g_PBEngine.m_soundSystem.pbsPlayMusic(SOUNDMENUTHEME);
@@ -392,12 +385,7 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
 
     if (m_RestartBootUp) {
         m_RestartBootUp = false;
-        
-        // Add test lines to the console for testing scrolling
-        for (int i = 1; i <= 50; i++) {
-            pbeSendConsole(std::to_string(i) + ": test line");
-        }
-        
+                
         // Initialize console start line following render rules
         unsigned int maxLinesOnScreen = pbeGetMaxConsoleLines(CONSOLE_START_Y);
         unsigned int totalLines = (unsigned int)m_consoleQueue.size();
@@ -500,18 +488,13 @@ bool PBEngine::pbeLoadStartMenu(){
 
     // Load the font for the start menu
     m_StartMenuFontId = gfxLoadSprite("Start Menu Font", MENUFONT, GFX_PNG, GFX_TEXTMAP, GFX_UPPERLEFT, true, true);
-    if (m_StartMenuFontId == NOSPRITE) {
-        pbeSendConsole("ERROR: Failed to load start menu font");
-        return (false);
-    }
+    if (m_StartMenuFontId == NOSPRITE) return (false);
+
 
     gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
 
     m_StartMenuSwordId = gfxLoadSprite("Start Menu Sword", MENUSWORD, GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, false, true);
-    if (m_StartMenuSwordId == NOSPRITE) {
-        pbeSendConsole("ERROR: Failed to load start menu sword sprite");
-        return (false);
-    }
+    if (m_StartMenuSwordId == NOSPRITE) return (false);
 
     gfxSetScaleFactor(m_StartMenuSwordId, 0.35, false);
     gfxSetColor(m_StartMenuSwordId, 200, 200, 200, 200);
@@ -645,7 +628,7 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
     
     // Uses the same resources as test mode
     if (!pbeLoadTestMode()) {
-        pbeSendConsole("ERROR: Failed to load test mode resources for overlay");
+        pbeSendConsole("ERROR: Failed to load test mode resources for overlay selection");
         return (false); 
     } 
 

@@ -139,20 +139,12 @@ HWND g_WHND = NULL;
 bool PBInitRender (long width, long height) {
 
 g_WHND = PBInitWinRender (width, height);
-if (g_WHND == NULL) {
-    g_PBEngine.pbeSendConsole("ERROR: Failed to initialize Windows render window");
-    return (false);
-}
+if (g_WHND == NULL) return (false);
 
 // For windows, OGLNativeWindows type is HWND
-if (!g_PBEngine.oglInit (width, height, g_WHND)) {
-    g_PBEngine.pbeSendConsole("ERROR: Failed to initialize OpenGL ES");
-    return (false);
-}
-if (!g_PBEngine.gfxInit()) {
-    g_PBEngine.pbeSendConsole("ERROR: Failed to initialize graphics system");
-    return (false);
-}
+if (!g_PBEngine.oglInit (width, height, g_WHND)) return (false);
+
+if (!g_PBEngine.gfxInit()) return (false);
 
 // Initialize sound system
 g_PBEngine.m_soundSystem.pbsInitialize();
@@ -243,20 +235,12 @@ EGLNativeWindowType g_PiWindow;
 bool PBInitRender (long width, long height) {
 
 g_PiWindow = PBInitPiRender (width, height);
-if (g_PiWindow == 0) {
-    g_PBEngine.pbeSendConsole("ERROR: Failed to initialize Raspberry Pi render window");
-    return (false);
-}
+if (g_PiWindow == 0) return (false);
 
 // For Rasberry Pi, OGLNativeWindows type is TBD
-if (!g_PBEngine.oglInit (width, height, g_PiWindow)) {
-    g_PBEngine.pbeSendConsole("ERROR: Failed to initialize OpenGL ES");
-    return (false);
-}
-if (!g_PBEngine.gfxInit()) {
-    g_PBEngine.pbeSendConsole("ERROR: Failed to initialize graphics system");
-    return (false);
-}
+if (!g_PBEngine.oglInit (width, height, g_PiWindow)) return (false);
+
+if (!g_PBEngine.gfxInit()) return (false);
 
 // Initialize sound system
 g_PBEngine.m_soundSystem.pbsInitialize();
@@ -1198,10 +1182,7 @@ int main(int argc, char const *argv[])
     static bool didLimitRender = false;
     
     g_PBEngine.pbeSendConsole("OpenGL ES: Initialize");
-    if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) {
-        g_PBEngine.pbeSendConsole("ERROR: Failed to initialize render system");
-        return (false);
-    }
+    if (!PBInitRender (PB_SCREENWIDTH, PB_SCREENHEIGHT)) return (false);
 
     g_PBEngine.pbeSendConsole("OpenGL ES: Successful");
 
