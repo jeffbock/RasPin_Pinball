@@ -360,17 +360,16 @@ bool PBEngine::pbeRenderDefaultBackground (unsigned long currentTick, unsigned l
 
    // Show the rotating stars - tunnel-like effect
    gfxSetRotateDegrees(m_BootUpStarsId, (degreesPerTick * (float) tickDiff), true);
-   gfxRenderSprite(m_BootUpStarsId, PB_SCREENWIDTH/2 - 80, (PB_SCREENHEIGHT / 2) + 240
-);
+   gfxRenderSprite(m_BootUpStarsId, PB_SCREENWIDTH/2 + 42, (PB_SCREENHEIGHT / 2) + 220);
 
    gfxSetRotateDegrees(m_BootUpStarsId2, (degreesPerTick2 * (float) tickDiff), true);
-   gfxRenderSprite(m_BootUpStarsId2, PB_SCREENWIDTH/2 - 80, (PB_SCREENHEIGHT / 2) + 225);
+   gfxRenderSprite(m_BootUpStarsId2, PB_SCREENWIDTH/2 + 42, (PB_SCREENHEIGHT / 2) + 205);
 
    gfxSetRotateDegrees(m_BootUpStarsId3, (degreesPerTick3 * (float) tickDiff), true);
-   gfxRenderSprite(m_BootUpStarsId3, PB_SCREENWIDTH/2 - 80, (PB_SCREENHEIGHT / 2) + 190);
+   gfxRenderSprite(m_BootUpStarsId3, PB_SCREENWIDTH/2 + 42, (PB_SCREENHEIGHT / 2) + 170);
 
    gfxSetRotateDegrees(m_BootUpStarsId4, (degreesPerTick4 * (float) tickDiff), true);
-   gfxRenderSprite(m_BootUpStarsId4, PB_SCREENWIDTH/2 - 80, (PB_SCREENHEIGHT / 2) + 165);
+   gfxRenderSprite(m_BootUpStarsId4, PB_SCREENWIDTH/2 + 42, (PB_SCREENHEIGHT / 2) + 145);
 
    return (true);
 }
@@ -1087,8 +1086,10 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
         gfxRenderShadowString(m_defaultFontSpriteId, "JSON.hpp https://github.com/nlohmann/json", tempX, m_CreditsScrollY + (11*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "WiringPi https://github.com/WiringPi/WiringPi", tempX, m_CreditsScrollY + (12*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "FFmpeg https://github.com/BtbN/FFmpeg-Builds", tempX, m_CreditsScrollY + (13*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Characters developed at https://www.heroforge.com/", tempX, m_CreditsScrollY + (14*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Microsoft Copilot AI tools utilized with art and code ", tempX, m_CreditsScrollY + (15*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "SDL https://github.com/libsdl-org/SDL", tempX, m_CreditsScrollY + (14*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "SDL Mixer https://github.com/libsdl-org/SDL_mixer", tempX, m_CreditsScrollY + (15*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Characters developed at https://www.heroforge.com/", tempX, m_CreditsScrollY + (16*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Microsoft Copilot AI tools utilized with art and code ", tempX, m_CreditsScrollY + (17*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
     }
 
