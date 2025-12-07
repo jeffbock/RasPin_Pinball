@@ -935,7 +935,7 @@ void ProcessDeferredLEDQueue() {
 // Helper function to send all staged NeoPixel outputs to hardware
 void SendAllStagedNeoPixels() {
     for (auto& pair : g_PBEngine.m_NeoPixelDriverMap) {
-        pair.second.SendStagedNeoPixels();
+        pair.second->SendStagedNeoPixels();
     }
 }
 
@@ -961,7 +961,7 @@ void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& o
         // Check if this is an array update
         if (message.options->neoPixelArray != nullptr && message.options->neoPixelArrayCount > 0) {
             // Stage the entire array
-            g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixelArray(
+            g_PBEngine.m_NeoPixelDriverMap.at(boardIndex)->StageNeoPixelArray(
                 message.options->neoPixelArray, 
                 message.options->neoPixelArrayCount
             );
@@ -972,7 +972,7 @@ void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& o
             uint8_t blue = message.options->neoPixelBlue;
             
             // The pin field represents the LED index within the driver
-            g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixel(
+            g_PBEngine.m_NeoPixelDriverMap.at(boardIndex)->StageNeoPixel(
                 outputDef.pin, red, green, blue
             );
         }
@@ -1079,9 +1079,9 @@ void ProcessActiveNeoPixelSequence(int driverIndex) {
             
             // Stage the entire array for this step
             if (currentStep.nodeArray != nullptr) {
-                g_PBEngine.m_NeoPixelDriverMap.at(driverIndex).StageNeoPixelArray(
+                g_PBEngine.m_NeoPixelDriverMap.at(driverIndex)->StageNeoPixelArray(
                     currentStep.nodeArray,
-                    g_PBEngine.m_NeoPixelDriverMap.at(driverIndex).GetNumLEDs()
+                    g_PBEngine.m_NeoPixelDriverMap.at(driverIndex)->GetNumLEDs()
                 );
             }
         }

@@ -27,6 +27,7 @@ class pbdEjector;
 #include <vector>
 #include <queue>
 #include <map>
+#include <memory>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -304,7 +305,8 @@ public:
 
     // NeoPixel driver map - drivers are created dynamically during initialization
     // Key: boardIndex from g_outputDef
-    std::map<int, NeoPixelDriver> m_NeoPixelDriverMap;
+    // Using unique_ptr to avoid copy/move issues with raw pointer members
+    std::map<int, std::unique_ptr<NeoPixelDriver>> m_NeoPixelDriverMap;
 
     // Sound system for background music and effects
     PBSound m_soundSystem;

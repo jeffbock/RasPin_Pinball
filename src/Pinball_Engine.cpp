@@ -1867,14 +1867,14 @@ bool PBEngine::pbeSetupIO()
                     }
                 }
                 
-                // Create NeoPixel driver and add to map
-                g_PBEngine.m_NeoPixelDriverMap.emplace(boardIndex, NeoPixelDriver(g_outputDef[i].pin, numLEDs));
+                // Create NeoPixel driver and add to map using unique_ptr
+                g_PBEngine.m_NeoPixelDriverMap.emplace(boardIndex, std::make_unique<NeoPixelDriver>(g_outputDef[i].pin, numLEDs));
                 
                 #ifdef EXE_MODE_RASPI
                 // Initialize GPIO for this NeoPixel driver
-                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).InitializeGPIO();
+                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex)->InitializeGPIO();
                 // Stage initial black (off) state for all LEDs
-                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixelAll(0, 0, 0);  
+                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex)->StageNeoPixelAll(0, 0, 0);  
                 #endif
             }
         }
