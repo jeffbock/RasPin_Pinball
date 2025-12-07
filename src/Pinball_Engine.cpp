@@ -1873,6 +1873,8 @@ bool PBEngine::pbeSetupIO()
                 #ifdef EXE_MODE_RASPI
                 // Initialize GPIO for this NeoPixel driver
                 g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).InitializeGPIO();
+                // Stage initial black (off) state for all LEDs
+                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixelAll(0, 0, 0);  
                 #endif
             }
         }
@@ -1881,10 +1883,11 @@ bool PBEngine::pbeSetupIO()
     // Send all staged changes to IO and LED chips
     g_PBEngine.pbeSendConsole("RasPin: Sending programmed outputs to pins (LED and IO)");
 
-#ifdef EXE_MODE_RASPI
-    SendAllStagedIO();
-    SendAllStagedLED();
-#endif
+    #ifdef EXE_MODE_RASPI
+        SendAllStagedIO();
+        SendAllStagedLED();
+        SendAllStagedNeoPixels();
+    #endif
 
     // Hardware validation checks (only do this for actual Raspberry Pi HW)
 

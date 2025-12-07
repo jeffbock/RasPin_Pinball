@@ -40,7 +40,7 @@ class pbdEjector;
 
 // NeoPixel configuration - LED count for each driver index
 // Index corresponds to boardIndex in g_outputDef. Set to 0 for unused indices.
-constexpr unsigned int g_NeoPixelSize[] = {10, 10};  // Driver 0: 10 LEDs, Driver 1: 10 LEDs
+constexpr unsigned int g_NeoPixelSize[] = {5, 0};  // Driver 0: 10 LEDs, Driver 1: 10 LEDs
 
 // Sequence timing defines - this will need to be updated if more LED chips are added
 #define LED0_SEQ_MASK 0x1
