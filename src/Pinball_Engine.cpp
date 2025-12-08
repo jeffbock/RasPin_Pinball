@@ -1653,7 +1653,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     PBLEDColor currentColor = static_cast<PBLEDColor>(m_sandboxNeoPixelColorIndex);
                     
                     // Send message to set all NeoPixels on driver 0 to current color
-                    SendNeoPixelAllMsg(IDO_NEOPIXEL0, currentColor, PB_ON);
+                    SendNeoPixelAllMsg(IDO_NEOPIXEL0, currentColor, 32);
                     
                     // Advance to next color (cycle through 0-6)
                     m_sandboxNeoPixelColorIndex = (m_sandboxNeoPixelColorIndex + 1) % 7;
@@ -1815,13 +1815,13 @@ bool PBEngine::pbeSetupIO()
             int boardIndex = g_outputDef[i].boardIndex;
             if (g_PBEngine.m_NeoPixelDriverMap.find(boardIndex) == g_PBEngine.m_NeoPixelDriverMap.end()) {
                 // Create NeoPixel driver with index - it will look up pin and LED count automatically
-                g_PBEngine.m_NeoPixelDriverMap.emplace(boardIndex, std::make_unique<NeoPixelDriver>(boardIndex));
+                g_PBEngine.m_NeoPixelDriverMap.emplace(boardIndex, boardIndex);
                 
                 #ifdef EXE_MODE_RASPI
                 // Initialize GPIO for this NeoPixel driver
-                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex)->InitializeGPIO();
+                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).InitializeGPIO();
                 // Stage initial black (off) state for all LEDs
-                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex)->StageNeoPixelAll(255, 255, 255);  
+                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixelAll(255, 255, 255);  
                 #endif
             }
         }
@@ -1957,6 +1957,44 @@ void PBEngine::SendSeqMsg(const LEDSequence* sequence, const uint16_t* mask, PBS
         // Send the sequence stop message
         SendOutputMsg(PB_OMSG_LED_SEQUENCE, 0, PB_OFF, false);
     }
+}
+
+// Send NeoPixel message to set all LEDs in a chain to specific RGB values
+void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness)
+{
+    // Set up NeoPixel options with RGB values and brightness
+    stOutputOptions neoOptions;
+    neoOptions.neoPixelRed = red;
+    neoOptions.neoPixelGreen = green;
+    neoOptions.neoPixelBlue = blue;
+    neoOptions.brightness = brightness;
+    
+    // Send the message - the processing will set all LEDs to these RGB values scaled by brightness
+    // NeoPixels are always "on" when a message is sent - use black (0,0,0) to turn off
+    SendOutputMsg(PB_OMSG_NEOPIXEL, neoPixelId, PB_ON, false, &neoOptions);
+}
+
+// Send NeoPixel message to set all LEDs in a chain to a specific color (enum)
+void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, PBLEDColor color, uint8_t brightness)
+{
+    // Convert color enum to RGB values
+    uint8_t red = 0, green = 0, blue = 0;
+    
+    // Map color enum to full brightness RGB (0 or 255)
+    // Note: Use a color enum with all zeros (or call the RGB version with 0,0,0) to turn off
+    switch (color) {
+        case PB_LEDRED:     red = 255; break;
+        case PB_LEDGREEN:   green = 255; break;
+        case PB_LEDBLUE:    blue = 255; break;
+        case PB_LEDWHITE:   red = green = blue = 255; break;
+        case PB_LEDPURPLE:  red = blue = 255; break;
+        case PB_LEDYELLOW:  red = green = 255; break;
+        case PB_LEDCYAN:    green = blue = 255; break;
+        default:            break; // Unknown color, all stay at 0 (off/black)
+    }
+    
+    // Call the RGB version with brightness
+    SendNeoPixelAllMsg(neoPixelId, red, green, blue, brightness);
 }
 
 // Function to set or unset autoOutput for an input by array index

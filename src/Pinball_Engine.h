@@ -271,6 +271,8 @@ public:
     void SendOutputMsg(PBOutputMsg outputMsg, unsigned int outputId, PBPinState outputState, bool usePulse, stOutputOptions* options = nullptr);
     void SendRGBMsg(unsigned int redId, unsigned int greenId, unsigned int blueId, PBLEDColor color, PBPinState outputState, bool usePulse, stOutputOptions* options = nullptr);
     void SendSeqMsg(const LEDSequence* sequence, const uint16_t* mask, PBSequenceLoopMode loopMode, PBPinState outputState);
+    void SendNeoPixelAllMsg(unsigned int neoPixelId, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness = 255);
+    void SendNeoPixelAllMsg(unsigned int neoPixelId, PBLEDColor color, uint8_t brightness = 255);
     
     // Input configuration functions
     bool SetAutoOutput(unsigned int index, bool autoOutputEnabled);
@@ -316,8 +318,7 @@ public:
 
     // NeoPixel driver map - drivers are created dynamically during initialization
     // Key: boardIndex from g_outputDef
-    // Using unique_ptr to avoid copy/move issues with raw pointer members
-    std::map<int, std::unique_ptr<NeoPixelDriver>> m_NeoPixelDriverMap;
+    std::map<int, NeoPixelDriver> m_NeoPixelDriverMap;
 
     // Sound system for background music and effects
     PBSound m_soundSystem;

@@ -24,13 +24,14 @@ enum PBPinState {
 
 // RGB LED Color definitions
 enum PBLEDColor {
-    PB_LEDRED = 0,      // Red only
-    PB_LEDGREEN = 1,    // Green only  
-    PB_LEDBLUE = 2,     // Blue only
-    PB_LEDWHITE = 3,    // Red + Green + Blue
-    PB_LEDPURPLE = 4,   // Red + Blue (Magenta)
-    PB_LEDYELLOW = 5,   // Red + Green
-    PB_LEDCYAN = 6      // Green + Blue
+    PB_LEDBLACK = 0,      // Red only
+    PB_LEDRED = 1,      // Red only
+    PB_LEDGREEN = 2,    // Green only  
+    PB_LEDBLUE = 3,     // Blue only
+    PB_LEDWHITE = 4,    // Red + Green + Blue
+    PB_LEDPURPLE = 5,   // Red + Blue (Magenta)
+    PB_LEDYELLOW = 6,   // Red + Green
+    PB_LEDCYAN = 7      // Green + Blue
 };
 
 enum PBBoardType {

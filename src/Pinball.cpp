@@ -935,11 +935,11 @@ void ProcessDeferredLEDQueue() {
 // Helper function to send all staged NeoPixel outputs to hardware
 void SendAllStagedNeoPixels() {
     for (auto& pair : g_PBEngine.m_NeoPixelDriverMap) {
-        pair.second->SendStagedNeoPixels();
+        pair.second.SendStagedNeoPixels();
     }
 }
 
-// Process NeoPixel output messages (single LED or array)
+// Process NeoPixel output messages
 void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& outputDef) {
     int boardIndex = outputDef.boardIndex;
     
@@ -957,25 +957,21 @@ void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& o
     }
     
     // Get RGB values from message options
-    if (message.options != nullptr) {
-        // Check if this is an array update
-        if (message.options->neoPixelArray != nullptr && message.options->neoPixelArrayCount > 0) {
-            // Stage the entire array
-            g_PBEngine.m_NeoPixelDriverMap.at(boardIndex)->StageNeoPixelArray(
-                message.options->neoPixelArray, 
-                message.options->neoPixelArrayCount
-            );
-        } else {
-            // Single LED update - use dedicated RGB fields
-            uint8_t red = message.options->neoPixelRed;
-            uint8_t green = message.options->neoPixelGreen;
-            uint8_t blue = message.options->neoPixelBlue;
-            
-            // The pin field represents the LED index within the driver
-            g_PBEngine.m_NeoPixelDriverMap.at(boardIndex)->StageNeoPixel(
-                outputDef.pin, red, green, blue
-            );
-        }
+    if (message.hasOptions) {
+        uint8_t red = message.optionsCopy.neoPixelRed;
+        uint8_t green = message.optionsCopy.neoPixelGreen;
+        uint8_t blue = message.optionsCopy.neoPixelBlue;
+        uint8_t brightness = message.optionsCopy.brightness;
+        
+        // Scale RGB values by brightness (brightness is 0-255)
+        // Formula: scaledValue = (originalValue * brightness) / 255
+        red = (red * brightness) / 255;
+        green = (green * brightness) / 255;
+        blue = (blue * brightness) / 255;
+        
+        // Set all LEDs in the chain to the scaled RGB color
+        // (For individual LED control, a different message type or structure would be needed)
+        g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixelAll(red, green, blue);
     }
     
     // Update last state
@@ -1079,9 +1075,9 @@ void ProcessActiveNeoPixelSequence(int driverIndex) {
             
             // Stage the entire array for this step
             if (currentStep.nodeArray != nullptr) {
-                g_PBEngine.m_NeoPixelDriverMap.at(driverIndex)->StageNeoPixelArray(
+                g_PBEngine.m_NeoPixelDriverMap.at(driverIndex).StageNeoPixelArray(
                     currentStep.nodeArray,
-                    g_PBEngine.m_NeoPixelDriverMap.at(driverIndex)->GetNumLEDs()
+                    g_PBEngine.m_NeoPixelDriverMap.at(driverIndex).GetNumLEDs()
                 );
             }
         }
