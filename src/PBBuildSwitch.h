@@ -7,8 +7,8 @@
 
 // This header file only serves as the build switch between Windows and PiOS.  Uncomment the appropriate linefor the desired platform.
 
-//#define EXE_MODE_WINDOWS
-#define EXE_MODE_RASPI
+#define EXE_MODE_WINDOWS
+// #define EXE_MODE_RASPI
 
 // Enable/Disable Test Sandbox menu item - set to 1 to enable, 0 to disable
 #define ENABLE_TEST_SANDBOX 1

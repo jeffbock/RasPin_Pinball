@@ -1199,6 +1199,8 @@ int main(int argc, char const *argv[])
 
     // Setup the inputs and outputs
     g_PBEngine.pbeSendConsole("RasPin: Setting up I/O");
+     // Initialize NeoPixel array pointers
+    initNeoPixelArrays();
     g_PBEngine.pbeSetupIO();
     
     // Load the saved values for settings and high scores

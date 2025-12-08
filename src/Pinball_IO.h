@@ -295,10 +295,15 @@ private:
 };
 
 // NeoPixel LED node structure - defines RGB color for a single LED
+// This are used by the NeoPixelDriver and are pre-allocated during boot time
 struct stNeoPixelNode {
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
+    uint8_t currentRed;
+    uint8_t currentGreen;
+    uint8_t currentBlue;
+
+    uint8_t stagedRed;
+    uint8_t stagedGreen;
+    uint8_t stagedBlue;
 };
 
 // NeoPixel timing and safety constants
@@ -313,7 +318,7 @@ struct stNeoPixelNode {
 // IMPORTANT: Disables interrupts during transmission - limit LED count to avoid system issues
 class NeoPixelDriver {
 public:
-    NeoPixelDriver(unsigned int outputPin, unsigned int numLEDs);
+    NeoPixelDriver(unsigned int driverIndex);
     ~NeoPixelDriver();
 
     // Initialize GPIO pins (must be called after wiringPiSetup())
@@ -349,10 +354,10 @@ public:
     unsigned int GetNumLEDs() const { return m_numLEDs; }
 
 private:
+    unsigned int m_driverIndex;    // Driver index (corresponds to boardIndex)
     unsigned int m_outputPin;      // GPIO pin number
     unsigned int m_numLEDs;        // Number of LEDs in the string
-    stNeoPixelNode* m_stagedValues;   // Staged LED values
-    stNeoPixelNode* m_currentValues;  // Current hardware LED values
+    stNeoPixelNode* m_nodes;       // Pointer to node array (from g_NeoPixelNodeArray)
     bool m_hasChanges;             // Flag indicating staged changes exist
     
     // Helper function to send RGB data for a single LED using WS2812B timing

@@ -7,6 +7,11 @@
 #include "PBSequences.h"
 #include "PBDevice.h"
 
+// Define NeoPixel global arrays (declared as extern in Pinball_Engine.h)
+stNeoPixelNode* g_NeoPixelNodeArray[2];
+stNeoPixelNode g_NeoPixelNodes0[g_NeoPixelSize[0]];
+stNeoPixelNode g_NeoPixelNodes1[g_NeoPixelSize[1]];
+
 // Class functions for PBEngine
  PBEngine::PBEngine() {
 
@@ -64,10 +69,6 @@
     m_videoFadingOut = false;
     m_videoFadeDurationSec = 2.0f;  
     m_sandboxEjector = nullptr;
-    
-    // NeoPixel test sandbox variables
-    m_sandboxNeoPixel24 = nullptr;
-    m_sandboxNeoPixelRotation = 0;
 
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
@@ -135,12 +136,6 @@
     if (m_sandboxVideoPlayer) {
         delete m_sandboxVideoPlayer;
         m_sandboxVideoPlayer = nullptr;
-    }
-    
-    // Clean up NeoPixel test driver
-    if (m_sandboxNeoPixel24) {
-        delete m_sandboxNeoPixel24;
-        m_sandboxNeoPixel24 = nullptr;
     }
     
     // Clean up all registered devices
@@ -872,22 +867,9 @@ bool PBEngine::pbeLoadTestSandbox(){
         }
     }
     
-    // Initialize NeoPixel test driver if not already created
-    // Using BCM GPIO numbering: 24
-    // Note: WS2812B is a single-wire protocol (data only, no separate clock)
-    if (!m_sandboxNeoPixel24) {
-        m_sandboxNeoPixel24 = new NeoPixelDriver(24, 4);  // GPIO 24, 4 LEDs
-        
-        // Initialize with white, red, blue, green
-        stNeoPixelNode initialColors[4];
-        initialColors[0] = {255, 255, 255};  // White
-        initialColors[1] = {255, 0, 0};      // Red
-        initialColors[2] = {0, 0, 255};      // Blue
-        initialColors[3] = {0, 255, 0};      // Green
-        
-        m_sandboxNeoPixel24->StageNeoPixelArray(initialColors, 4);
-        m_sandboxNeoPixel24->SendStagedNeoPixels();
-    }
+    // Note: Sandbox NeoPixel test code removed - use NeoPixel drivers from g_outputDef instead
+    // The NeoPixel drivers are now created automatically during pbeSetupIO() based on g_outputDef
+    // and use pre-allocated arrays from g_NeoPixelNodeArray to avoid dynamic memory allocation
     
     return (true);
 }
@@ -906,9 +888,6 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
             m_sandboxVideoSpriteId = NOSPRITE;
             m_sandboxVideoLoaded = false;
         }
-        
-        // Reset NeoPixel rotation counter when restarting
-        m_sandboxNeoPixelRotation = 0;
     }
     
     if (!pbeLoadTestSandbox()) {
@@ -1624,13 +1603,6 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         m_sandboxVideoLoaded = false;
                     }
                     
-                    // Clean up NeoPixel test driver before exiting
-                    if (m_sandboxNeoPixel24) {
-                        delete m_sandboxNeoPixel24;
-                        m_sandboxNeoPixel24 = nullptr;
-                    }
-                    m_sandboxNeoPixelRotation = 0;
-                    
                     // Clean up sandbox ejector device before exiting
                     if (m_sandboxEjector) {
                         m_sandboxEjector->pbdEnable(false);
@@ -1674,34 +1646,11 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     testCount++;
                 }
                 
-                // Right Flipper - NeoPixel Rotation Test
+                // Right Flipper - NeoPixel Test (removed - use configured NeoPixel drivers from g_outputDef)
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                    // Define the 4 colors: white, red, blue, green
-                    stNeoPixelNode colors[4];
-                    colors[0] = {255, 255, 255};  // White
-                    colors[1] = {255, 0, 0};      // Red
-                    colors[2] = {0, 0, 255};      // Blue
-                    colors[3] = {0, 255, 0};      // Green
-                    
-                    // Rotate the colors based on rotation counter
-                    stNeoPixelNode rotatedColors[4];
-                    for (int i = 0; i < 4; i++) {
-                        int sourceIndex = (i + m_sandboxNeoPixelRotation) % 4;
-                        rotatedColors[i] = colors[sourceIndex];
-                    }
-                    
-                    // Send rotated colors to NeoPixel driver
-                    if (m_sandboxNeoPixel24) {
-                        m_sandboxNeoPixel24->StageNeoPixelArray(rotatedColors, 4);
-                        m_sandboxNeoPixel24->SendStagedNeoPixels();
-                    }
-                    
                     // Set timers for testing
                     pbeSetWatchdogTimer(10000);  // 10 second watchdog timer
                     pbeSetTimer(200, 15000);     // 15 second normal timer (ID = 200)
-                    
-                    // Increment rotation counter (wraps at 4 back to 0)
-                    m_sandboxNeoPixelRotation = (m_sandboxNeoPixelRotation + 1) % 4;
                 }
                 
                 // Left Activate - Test 3 - Video Playback Test (Toggle fade in/out)
@@ -1859,16 +1808,8 @@ bool PBEngine::pbeSetupIO()
             // Initialize NeoPixel driver if not already created for this boardIndex
             int boardIndex = g_outputDef[i].boardIndex;
             if (g_PBEngine.m_NeoPixelDriverMap.find(boardIndex) == g_PBEngine.m_NeoPixelDriverMap.end()) {
-                // Determine LED count from g_NeoPixelSize array, default to 1 if not found
-                unsigned int numLEDs = 1;  // Default
-                if (boardIndex >= 0 && boardIndex < static_cast<int>(sizeof(g_NeoPixelSize) / sizeof(g_NeoPixelSize[0]))) {
-                    if (g_NeoPixelSize[boardIndex] > 0) {
-                        numLEDs = g_NeoPixelSize[boardIndex];
-                    }
-                }
-                
-                // Create NeoPixel driver and add to map using unique_ptr
-                g_PBEngine.m_NeoPixelDriverMap.emplace(boardIndex, std::make_unique<NeoPixelDriver>(g_outputDef[i].pin, numLEDs));
+                // Create NeoPixel driver with index - it will look up pin and LED count automatically
+                g_PBEngine.m_NeoPixelDriverMap.emplace(boardIndex, std::make_unique<NeoPixelDriver>(boardIndex));
                 
                 #ifdef EXE_MODE_RASPI
                 // Initialize GPIO for this NeoPixel driver

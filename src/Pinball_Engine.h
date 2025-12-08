@@ -41,7 +41,20 @@ class pbdEjector;
 
 // NeoPixel configuration - LED count for each driver index
 // Index corresponds to boardIndex in g_outputDef. Set to 0 for unused indices.
-constexpr unsigned int g_NeoPixelSize[] = {5, 0};  // Driver 0: 10 LEDs, Driver 1: 10 LEDs
+constexpr unsigned int g_NeoPixelSize[] = {5,5};  // Driver 0: 5 LEDs, Driver 1: 5 LEDs
+
+// Create a an array of NeoPixelNode arrays for each NeoPixel driver
+// These all are pre-allocated during boot time to avoid dynamic memory allocation during runtime
+// If you add more drivers, you will need to update this section - the BoardID of the NeoPixel in g_outputDef defines the index
+extern stNeoPixelNode* g_NeoPixelNodeArray[2];
+extern stNeoPixelNode g_NeoPixelNodes0[g_NeoPixelSize[0]];  // Driver 0 nodes
+extern stNeoPixelNode g_NeoPixelNodes1[g_NeoPixelSize[1]];  // Driver 1 nodes
+
+// Initialize NeoPixel array pointers - call during early initialization
+inline void initNeoPixelArrays() {
+    g_NeoPixelNodeArray[0] = g_NeoPixelNodes0;
+    g_NeoPixelNodeArray[1] = g_NeoPixelNodes1;
+}
 
 // Sequence timing defines - this will need to be updated if more LED chips are added
 #define LED0_SEQ_MASK 0x1
@@ -359,10 +372,6 @@ public:
     bool m_videoFadingOut;
     float m_videoFadeDurationSec;
     pbdEjector* m_sandboxEjector;
-    
-    // NeoPixel test sandbox variables
-    NeoPixelDriver* m_sandboxNeoPixel24;  // GPIO 24, 4 LEDs (single-wire protocol)
-    int m_sandboxNeoPixelRotation;        // Rotation counter for color cycling
 
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;

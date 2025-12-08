@@ -9,6 +9,7 @@
 // All active connections use the GPIO pins on the Raspberry Pi directily, rather than I2C and expansion ICs
 
 #include "Pinball_IO.h"
+#include "Pinball_Engine.h"
 #include "PBBuildSwitch.h"
 
 #ifdef EXE_MODE_RASPI
@@ -34,7 +35,8 @@ stOutputDef g_outputDef[] = {
     {"LED2P08 LED", PB_OMSG_LED, IDO_LED8, 8, PB_LED, 2, PB_OFF, 500, 0},
     {"LED2P09 LED", PB_OMSG_LED, IDO_LED9, 9, PB_LED, 2, PB_OFF, 300, 0},
     {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 100, 0},
-    {"NeoPixel LED0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 25, PB_NEOPIXEL, 0, PB_OFF, 0, 0}  
+    {"NeoPixel LED0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 25, PB_NEOPIXEL, 0, PB_OFF, 0, 0},
+    {"NeoPixel LED1", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 12, PB_NEOPIXEL, 1, PB_OFF, 0, 0}  
 };
 
 // Input definitions
@@ -724,33 +726,44 @@ uint8_t AmpDriver::PercentToRegisterValue(uint8_t percent) const {
 // NeoPixelDriver Class Implementation for WS2812B RGB LED Strips
 //==============================================================================
 
-NeoPixelDriver::NeoPixelDriver(unsigned int outputPin, unsigned int numLEDs) 
-    : m_outputPin(outputPin), m_numLEDs(numLEDs), m_hasChanges(false) {
+NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex) 
+    : m_driverIndex(driverIndex), m_outputPin(0), m_numLEDs(0), m_nodes(nullptr), m_hasChanges(false) {
     
-    // Safety check: Warn if LED count exceeds recommended limit
-    // Each LED takes ~30µs to transmit, so interrupts are disabled for numLEDs × 30µs
-    // Recommended: Keep under 60 LEDs (1.8ms) to avoid system impact
-    // Absolute limit: 100 LEDs (3ms) - beyond this may cause USB/audio issues
-    if (numLEDs > NEOPIXEL_MAX_LEDS_ABSOLUTE) {
-        // Clamp to absolute maximum to prevent severe system issues
-        m_numLEDs = NEOPIXEL_MAX_LEDS_ABSOLUTE;
+    // Get the number of LEDs from g_NeoPixelSize array
+    if (driverIndex < sizeof(g_NeoPixelSize) / sizeof(g_NeoPixelSize[0])) {
+        m_numLEDs = g_NeoPixelSize[driverIndex];
+    }
+    
+    // Safety check: Validate LED count
+    if (m_numLEDs == 0 || m_numLEDs > NEOPIXEL_MAX_LEDS_ABSOLUTE) {
+        if (m_numLEDs > NEOPIXEL_MAX_LEDS_ABSOLUTE) {
+            m_numLEDs = NEOPIXEL_MAX_LEDS_ABSOLUTE;
+        }
         #ifdef EXE_MODE_RASPI
         // Note: In production, consider logging this warning
         #endif
     }
     
-    // Allocate arrays for staged and current LED values
-    m_stagedValues = new stNeoPixelNode[m_numLEDs];
-    m_currentValues = new stNeoPixelNode[m_numLEDs];
+    // Find the GPIO pin from g_outputDef for this driver index
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        if (g_outputDef[i].boardType == PB_NEOPIXEL && 
+            g_outputDef[i].boardIndex == static_cast<int>(driverIndex)) {
+            m_outputPin = g_outputDef[i].pin;
+            break;
+        }
+    }
     
-    // Initialize all LEDs to off (black)
+    // Use pre-allocated array from g_NeoPixelNodeArray
+    m_nodes = g_NeoPixelNodeArray[driverIndex];
+    
+    // Initialize all LEDs to off (black) in both staged and current fields
     for (unsigned int i = 0; i < m_numLEDs; i++) {
-        m_stagedValues[i].red = 0;
-        m_stagedValues[i].green = 0;
-        m_stagedValues[i].blue = 0;
-        m_currentValues[i].red = 0;
-        m_currentValues[i].green = 0;
-        m_currentValues[i].blue = 0;
+        m_nodes[i].stagedRed = 0;
+        m_nodes[i].stagedGreen = 0;
+        m_nodes[i].stagedBlue = 0;
+        m_nodes[i].currentRed = 0;
+        m_nodes[i].currentGreen = 0;
+        m_nodes[i].currentBlue = 0;
     }
 
     // Note: GPIO initialization is deferred to InitializeGPIO() method
@@ -779,35 +792,33 @@ NeoPixelDriver::~NeoPixelDriver() {
 #ifdef EXE_MODE_RASPI
     // Turn off all LEDs before cleanup
     for (unsigned int i = 0; i < m_numLEDs; i++) {
-        m_stagedValues[i].red = 0;
-        m_stagedValues[i].green = 0;
-        m_stagedValues[i].blue = 0;
+        m_nodes[i].stagedRed = 0;
+        m_nodes[i].stagedGreen = 0;
+        m_nodes[i].stagedBlue = 0;
     }
     m_hasChanges = true;
     SendStagedNeoPixels();
 #endif
     
-    // Free allocated memory
-    delete[] m_stagedValues;
-    delete[] m_currentValues;
+    // No memory deallocation needed - using pre-allocated arrays
 }
 
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue) {
     if (ledIndex < m_numLEDs) {
         // Only mark as changed if values actually differ from current hardware
-        if (m_currentValues[ledIndex].red != red ||
-            m_currentValues[ledIndex].green != green ||
-            m_currentValues[ledIndex].blue != blue) {
-            m_stagedValues[ledIndex].red = red;
-            m_stagedValues[ledIndex].green = green;
-            m_stagedValues[ledIndex].blue = blue;
+        if (m_nodes[ledIndex].currentRed != red ||
+            m_nodes[ledIndex].currentGreen != green ||
+            m_nodes[ledIndex].currentBlue != blue) {
+            m_nodes[ledIndex].stagedRed = red;
+            m_nodes[ledIndex].stagedGreen = green;
+            m_nodes[ledIndex].stagedBlue = blue;
             m_hasChanges = true;
         }
     }
 }
 
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node) {
-    StageNeoPixel(ledIndex, node.red, node.green, node.blue);
+    StageNeoPixel(ledIndex, node.stagedRed, node.stagedGreen, node.stagedBlue);
 }
 
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness) {
@@ -821,7 +832,7 @@ void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t g
 }
 
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node, uint8_t brightness) {
-    StageNeoPixel(ledIndex, node.red, node.green, node.blue, brightness);
+    StageNeoPixel(ledIndex, node.stagedRed, node.stagedGreen, node.stagedBlue, brightness);
 }
 
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, PBLEDColor color) {
@@ -892,12 +903,12 @@ void NeoPixelDriver::StageNeoPixelAll(uint8_t red, uint8_t green, uint8_t blue) 
     // Directly update the staged array for efficiency
     for (unsigned int i = 0; i < m_numLEDs; i++) {
         // Check if value differs from current hardware
-        if (m_currentValues[i].red != red ||
-            m_currentValues[i].green != green ||
-            m_currentValues[i].blue != blue) {
-            m_stagedValues[i].red = red;
-            m_stagedValues[i].green = green;
-            m_stagedValues[i].blue = blue;
+        if (m_nodes[i].currentRed != red ||
+            m_nodes[i].currentGreen != green ||
+            m_nodes[i].currentBlue != blue) {
+            m_nodes[i].stagedRed = red;
+            m_nodes[i].stagedGreen = green;
+            m_nodes[i].stagedBlue = blue;
             m_hasChanges = true;
         }
     }
@@ -913,11 +924,11 @@ void NeoPixelDriver::StageNeoPixelAll(uint8_t red, uint8_t green, uint8_t blue, 
 }
 
 void NeoPixelDriver::StageNeoPixelAll(const stNeoPixelNode& node) {
-    StageNeoPixelAll(node.red, node.green, node.blue);
+    StageNeoPixelAll(node.stagedRed, node.stagedGreen, node.stagedBlue);
 }
 
 void NeoPixelDriver::StageNeoPixelAll(const stNeoPixelNode& node, uint8_t brightness) {
-    StageNeoPixelAll(node.red, node.green, node.blue, brightness);
+    StageNeoPixelAll(node.stagedRed, node.stagedGreen, node.stagedBlue, brightness);
 }
 
 void NeoPixelDriver::StageNeoPixelAll(PBLEDColor color) {
@@ -1020,9 +1031,9 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     // Send data for each LED in the string
     // WS2812B expects GRB format (not RGB)
     for (unsigned int i = 0; i < m_numLEDs; i++) {
-        SendByte(m_stagedValues[i].green);  // Green first
-        SendByte(m_stagedValues[i].red);    // Red second
-        SendByte(m_stagedValues[i].blue);   // Blue third
+        SendByte(m_nodes[i].stagedGreen);  // Green first
+        SendByte(m_nodes[i].stagedRed);    // Red second
+        SendByte(m_nodes[i].stagedBlue);   // Blue third
     }
     
     // Send reset/latch signal (interrupts enabled for this)
@@ -1031,7 +1042,9 @@ void NeoPixelDriver::SendStagedNeoPixels() {
 
     // Update current values to match staged values
     for (unsigned int i = 0; i < m_numLEDs; i++) {
-        m_currentValues[i] = m_stagedValues[i];
+        m_nodes[i].currentRed = m_nodes[i].stagedRed;
+        m_nodes[i].currentGreen = m_nodes[i].stagedGreen;
+        m_nodes[i].currentBlue = m_nodes[i].stagedBlue;
     }
     
     // Clear the changes flag
