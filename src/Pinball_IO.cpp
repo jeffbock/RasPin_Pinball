@@ -756,6 +756,9 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex)
     // Use pre-allocated array from g_NeoPixelNodeArray
     m_nodes = g_NeoPixelNodeArray[driverIndex];
     
+    // Default to clock_gettime timing method
+    m_timingMethod = NEOPIXEL_TIMING_CLOCKGETTIME;
+    
     // Initialize all LEDs to off (black) in both staged and current fields
     for (unsigned int i = 0; i < m_numLEDs; i++) {
         m_nodes[i].stagedRed = 0;
@@ -1005,6 +1008,21 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     }
 
 #ifdef EXE_MODE_RASPI
+#if NEOPIXEL_USE_RT_PRIORITY
+    // Temporarily elevate to real-time priority for deterministic timing
+    // Requires sudo privileges: sudo ./Pinball
+    struct sched_param sp;
+    sp.sched_priority = 99;  // Highest priority
+    int oldPolicy = SCHED_OTHER;
+    struct sched_param oldParam;
+    pthread_getschedparam(pthread_self(), &oldPolicy, &oldParam);
+    
+    if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp) != 0) {
+        // Failed to set RT priority - continue with normal priority
+        // This is expected if not running with sudo
+    }
+#endif
+
     // Disable interrupts for timing-critical bit-banging
     // 
     // TIMING ANALYSIS:
@@ -1029,14 +1047,19 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     // Send data for each LED in the string
     // WS2812B expects GRB format (not RGB)
     for (unsigned int i = 0; i < m_numLEDs; i++) {
-        SendByte(m_nodes[i].stagedGreen);  // Green first
-        SendByte(m_nodes[i].stagedRed);    // Red second
-        SendByte(m_nodes[i].stagedBlue);   // Blue third
+        SendByte(m_nodes[i].stagedGreen, m_timingMethod);  // Green first
+        SendByte(m_nodes[i].stagedRed, m_timingMethod);    // Red second
+        SendByte(m_nodes[i].stagedBlue, m_timingMethod);   // Blue third
     }
     
     // Send reset/latch signal (interrupts enabled for this)
-    delayMicroseconds(5);  // Small delay to ensure settle time before reset
+    delayMicroseconds(5);  // Small gap before reset
     SendReset();
+
+#if NEOPIXEL_USE_RT_PRIORITY
+    // Restore original scheduling policy
+    pthread_setschedparam(pthread_self(), oldPolicy, &oldParam);
+#endif
 #endif
 
     // Update current values to match staged values
@@ -1059,44 +1082,104 @@ bool NeoPixelDriver::HasStagedChanges() const {
     return m_hasChanges;
 }
 
-void NeoPixelDriver::SendByte(uint8_t byte) {
+void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
 #ifdef EXE_MODE_RASPI
     // WS2812B timing requirements (at 800kHz):
     // Bit 1: 0.8us high, 0.45us low (1.25us total)
     // Bit 0: 0.4us high, 0.85us low (1.25us total)
-    // 
-    // Using nanosecond-precision timing with clock_gettime instead of nop instructions
-    // to avoid CPU frequency scaling issues
     
-    struct timespec ts_start, ts_now;
-    
-    for (int bit = 7; bit >= 0; bit--) {
-        if (byte & (1 << bit)) {
-            // Send a '1' bit: 0.8us high, 0.45us low
-            digitalWrite(m_outputPin, HIGH);
-            clock_gettime(CLOCK_MONOTONIC, &ts_start);
-            // Wait for 0.8us (800ns)
-            do {
-                clock_gettime(CLOCK_MONOTONIC, &ts_now);
-            } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
-                     (ts_now.tv_nsec - ts_start.tv_nsec) < 800);
-            
-            digitalWrite(m_outputPin, LOW);
-            clock_gettime(CLOCK_MONOTONIC, &ts_start);
-            // Wait for 0.45us (450ns)
-            do {
-                clock_gettime(CLOCK_MONOTONIC, &ts_now);
-            } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
-                     (ts_now.tv_nsec - ts_start.tv_nsec) < 450);
-        } else {
-            // Send a '0' bit: 0.4us high, 0.85us low
-            digitalWrite(m_outputPin, HIGH);
-            clock_gettime(CLOCK_MONOTONIC, &ts_start);
-            // Wait for 0.4us (400ns)
-            do {
-                clock_gettime(CLOCK_MONOTONIC, &ts_now);
-            } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
-                     (ts_now.tv_nsec - ts_start.tv_nsec) < 400);
+    if (method == NEOPIXEL_TIMING_CLOCKGETTIME) {
+        // Option 1: Use clock_gettime() for timing (original implementation)
+        // Pros: Portable, no CPU frequency dependency
+        // Cons: Syscall overhead, can be affected by scheduling
+        struct timespec ts_start, ts_now;
+        
+        for (int bit = 7; bit >= 0; bit--) {
+            if (byte & (1 << bit)) {
+                // Send a '1' bit: 0.8us high, 0.45us low
+                digitalWrite(m_outputPin, HIGH);
+                clock_gettime(CLOCK_MONOTONIC, &ts_start);
+                // Wait for 0.8us (800ns)
+                do {
+                    clock_gettime(CLOCK_MONOTONIC, &ts_now);
+                } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                         (ts_now.tv_nsec - ts_start.tv_nsec) < 800);
+                
+                digitalWrite(m_outputPin, LOW);
+                clock_gettime(CLOCK_MONOTONIC, &ts_start);
+                // Wait for 0.45us (450ns)
+                do {
+                    clock_gettime(CLOCK_MONOTONIC, &ts_now);
+                } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                         (ts_now.tv_nsec - ts_start.tv_nsec) < 450);
+            } else {
+                // Send a '0' bit: 0.4us high, 0.85us low
+                digitalWrite(m_outputPin, HIGH);
+                clock_gettime(CLOCK_MONOTONIC, &ts_start);
+                // Wait for 0.4us (400ns)
+                do {
+                    clock_gettime(CLOCK_MONOTONIC, &ts_now);
+                } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                         (ts_now.tv_nsec - ts_start.tv_nsec) < 400);
+                
+                digitalWrite(m_outputPin, LOW);
+                clock_gettime(CLOCK_MONOTONIC, &ts_start);
+                // Wait for 0.85us (850ns)
+                do {
+                    clock_gettime(CLOCK_MONOTONIC, &ts_now);
+                } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                         (ts_now.tv_nsec - ts_start.tv_nsec) < 850);
+            }
+        }
+    } else {  // NEOPIXEL_TIMING_NOP
+        // Option 2: Use assembly NOP instructions (deterministic timing)
+        // Pros: More deterministic, no syscall overhead
+        // Cons: CPU frequency dependent (calibration required)
+        //
+        // CALIBRATION FOR RASPBERRY PI 5:
+        // - CPU: ARM Cortex-A76 @ 2.4GHz (4 cores)
+        // - Clock cycle: ~0.42ns per cycle
+        // - NOP takes ~1 cycle on ARM Cortex-A76
+        // 
+        // Timing calculations (includes digitalWrite overhead of ~50-100ns):
+        // For 800ns: ~2000 NOPs (800ns / 0.42ns - overhead margin)
+        // For 450ns: ~1000 NOPs (450ns / 0.42ns - overhead margin)  
+        // For 400ns: ~900 NOPs (400ns / 0.42ns - overhead margin)
+        // For 850ns: ~2100 NOPs (850ns / 0.42ns - overhead margin)
+        //
+        // Note: These counts compensate for digitalWrite() function call overhead
+        // and are optimized for Pi 5. May need fine-tuning via oscilloscope.
+        
+        for (int bit = 7; bit >= 0; bit--) {
+            if (byte & (1 << bit)) {
+                // Send a '1' bit: 0.8us high, 0.45us low
+                digitalWrite(m_outputPin, HIGH);
+                // Wait ~800ns (Pi 5 @ 2.4GHz)
+                for (volatile int i = 0; i < 2000; i++) {
+                    __asm__ __volatile__("nop");
+                }
+                
+                digitalWrite(m_outputPin, LOW);
+                // Wait ~450ns
+                for (volatile int i = 0; i < 1000; i++) {
+                    __asm__ __volatile__("nop");
+                }
+            } else {
+                // Send a '0' bit: 0.4us high, 0.85us low
+                digitalWrite(m_outputPin, HIGH);
+                // Wait ~400ns
+                for (volatile int i = 0; i < 900; i++) {
+                    __asm__ __volatile__("nop");
+                }
+                
+                digitalWrite(m_outputPin, LOW);
+                // Wait ~850ns
+                for (volatile int i = 0; i < 2100; i++) {
+                    __asm__ __volatile__("nop");
+                }
+            }
+        }
+    }
             
             digitalWrite(m_outputPin, LOW);
             clock_gettime(CLOCK_MONOTONIC, &ts_start);

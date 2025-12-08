@@ -296,6 +296,16 @@ private:
     uint8_t PercentToRegisterValue(uint8_t percent) const;
 };
 
+// Debug flag to enable real-time scheduling priority for NeoPixel transmission
+// Requires running with elevated privileges (sudo)
+#define NEOPIXEL_USE_RT_PRIORITY 0  // Set to 1 to enable SCHED_FIFO priority
+
+// NeoPixel timing method selection
+enum NeoPixelTimingMethod {
+    NEOPIXEL_TIMING_CLOCKGETTIME = 0,  // Use clock_gettime() for timing (current default)
+    NEOPIXEL_TIMING_NOP = 1            // Use assembly NOP instructions (more deterministic)
+};
+
 // NeoPixel LED node structure - defines RGB color for a single LED
 // This are used by the NeoPixelDriver and are pre-allocated during boot time
 struct stNeoPixelNode {
@@ -351,6 +361,10 @@ public:
     // Check if there are staged changes
     bool HasStagedChanges() const;
     
+    // Set timing method (must be set before calling SendStagedNeoPixels)
+    void SetTimingMethod(NeoPixelTimingMethod method) { m_timingMethod = method; }
+    NeoPixelTimingMethod GetTimingMethod() const { return m_timingMethod; }
+    
     // Get pin and LED count
     unsigned int GetOutputPin() const { return m_outputPin; }
     unsigned int GetNumLEDs() const { return m_numLEDs; }
@@ -361,9 +375,10 @@ private:
     unsigned int m_numLEDs;        // Number of LEDs in the string
     stNeoPixelNode* m_nodes;       // Pointer to node array (from g_NeoPixelNodeArray)
     bool m_hasChanges;             // Flag indicating staged changes exist
+    NeoPixelTimingMethod m_timingMethod;  // Timing method to use
     
     // Helper function to send RGB data for a single LED using WS2812B timing
-    void SendByte(uint8_t byte);
+    void SendByte(uint8_t byte, NeoPixelTimingMethod method);
     
     // Helper function to send reset/latch signal
     void SendReset();
