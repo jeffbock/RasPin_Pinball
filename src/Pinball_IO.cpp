@@ -948,8 +948,8 @@ void NeoPixelDriver::SendStagedNeoPixels() {
         return;
     }
 
-#ifdef EXE_MODE_RASPI
-#if NEOPIXEL_USE_RT_PRIORITY
+    #ifdef EXE_MODE_RASPI
+    #if NEOPIXEL_USE_RT_PRIORITY
     // Temporarily elevate to real-time priority for deterministic timing
     // Requires sudo privileges: sudo ./Pinball
     struct sched_param sp;
@@ -962,7 +962,7 @@ void NeoPixelDriver::SendStagedNeoPixels() {
         // Failed to set RT priority - continue with normal priority
         // This is expected if not running with sudo
     }
-#endif
+    #endif
 
     // Disable interrupts for timing-critical bit-banging
     // 
@@ -985,6 +985,9 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     // we rely on tight timing loops instead. Consider using real-time scheduling
     // (SCHED_FIFO) for better timing guarantees.
     
+    digitalWrite(m_outputPin, LOW);
+    delayMicroseconds(60);  // Initial reset pulse
+
     // Send data for each LED in the string
     // WS2812B expects GRB format (not RGB)
     for (unsigned int i = 0; i < m_numLEDs; i++) {
@@ -994,14 +997,13 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     }
     
     // Send reset/latch signal (interrupts enabled for this)
-    delayMicroseconds(5);  // Small gap before reset
     SendReset();
 
-#if NEOPIXEL_USE_RT_PRIORITY
+    #if NEOPIXEL_USE_RT_PRIORITY
     // Restore original scheduling policy
     pthread_setschedparam(pthread_self(), oldPolicy, &oldParam);
-#endif
-#endif
+    #endif
+    #endif // EXE_MODE_RASPI
 
     // Update current values to match staged values
     for (unsigned int i = 0; i < m_numLEDs; i++) {
