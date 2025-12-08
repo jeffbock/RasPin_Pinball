@@ -115,7 +115,8 @@ struct stOutputDef{
 #define IDO_LED10 12
 #define IDO_BALLEJECT2 13
 #define IDO_NEOPIXEL0 14
-#define NUM_OUTPUTS 15
+#define IDO_NEOPIXEL1 15
+#define NUM_OUTPUTS 16
 
 #define IDI_LEFTFLIPPER 0
 #define IDI_RIGHTFLIPPER 1
