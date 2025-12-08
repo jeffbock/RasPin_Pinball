@@ -1821,7 +1821,7 @@ bool PBEngine::pbeSetupIO()
                 // Initialize GPIO for this NeoPixel driver
                 g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).InitializeGPIO();
                 // Stage initial black (off) state for all LEDs
-                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixelAll(255, 255, 255);  
+                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixelAll(0, 0, 0);  
                 #endif
             }
         }

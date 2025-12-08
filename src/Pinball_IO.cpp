@@ -772,6 +772,9 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex)
     // Note: GPIO initialization is deferred to InitializeGPIO() method
     // This allows the constructor to be called during static initialization
     // before wiringPiSetup() has been called
+
+    m_timingMethod = NEOPIXEL_TIMING_CLOCKGETTIME;
+    // m_timingMethod = NEOPIXEL_TIMING_NOP;
 }
 
 #ifdef EXE_MODE_RASPI
@@ -820,6 +823,37 @@ void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t g
     }
 }
 
+// Helper function to convert PBLEDColor enum to RGB values
+void NeoPixelDriver::ColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, uint8_t& blue) {
+    // Initialize all channels to 0
+    red = green = blue = 0;
+    
+    // Set channels to 255 based on color
+    switch (color) {
+        case PB_LEDRED:
+            red = 255;
+            break;
+        case PB_LEDGREEN:
+            green = 255;
+            break;
+        case PB_LEDBLUE:
+            blue = 255;
+            break;
+        case PB_LEDWHITE:
+            red = green = blue = 255;
+            break;
+        case PB_LEDPURPLE:  // Magenta
+            red = blue = 255;
+            break;
+        case PB_LEDYELLOW:
+            red = green = 255;
+            break;
+        case PB_LEDCYAN:
+            green = blue = 255;
+            break;
+    }
+}
+
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node) {
     StageNeoPixel(ledIndex, node.stagedRed, node.stagedGreen, node.stagedBlue);
 }
@@ -840,63 +874,16 @@ void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& 
 
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, PBLEDColor color) {
     // Convert PBLEDColor to RGB values
-    // LED colors use full brightness (255) for active channels
-    uint8_t red = 0, green = 0, blue = 0;
-    
-    switch (color) {
-        case PB_LEDRED:
-            red = 255;
-            break;
-        case PB_LEDGREEN:
-            green = 255;
-            break;
-        case PB_LEDBLUE:
-            blue = 255;
-            break;
-        case PB_LEDWHITE:
-            red = green = blue = 255;
-            break;
-        case PB_LEDPURPLE:  // Magenta
-            red = blue = 255;
-            break;
-        case PB_LEDYELLOW:
-            red = green = 255;
-            break;
-        case PB_LEDCYAN:
-            green = blue = 255;
-            break;
-    }
+    uint8_t red, green, blue;
+    ColorToRGB(color, red, green, blue);
     
     StageNeoPixel(ledIndex, red, green, blue);
 }
 
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, PBLEDColor color, uint8_t brightness) {
     // Convert PBLEDColor to RGB values, then apply brightness
-    uint8_t red = 0, green = 0, blue = 0;
-    
-    switch (color) {
-        case PB_LEDRED:
-            red = 255;
-            break;
-        case PB_LEDGREEN:
-            green = 255;
-            break;
-        case PB_LEDBLUE:
-            blue = 255;
-            break;
-        case PB_LEDWHITE:
-            red = green = blue = 255;
-            break;
-        case PB_LEDPURPLE:  // Magenta
-            red = blue = 255;
-            break;
-        case PB_LEDYELLOW:
-            red = green = 255;
-            break;
-        case PB_LEDCYAN:
-            green = blue = 255;
-            break;
-    }
+    uint8_t red, green, blue;
+    ColorToRGB(color, red, green, blue);
     
     StageNeoPixel(ledIndex, red, green, blue, brightness);
 }
@@ -934,62 +921,16 @@ void NeoPixelDriver::StageNeoPixelAll(const stNeoPixelNode& node, uint8_t bright
 
 void NeoPixelDriver::StageNeoPixelAll(PBLEDColor color) {
     // Convert PBLEDColor to RGB values
-    uint8_t red = 0, green = 0, blue = 0;
-    
-    switch (color) {
-        case PB_LEDRED:
-            red = 255;
-            break;
-        case PB_LEDGREEN:
-            green = 255;
-            break;
-        case PB_LEDBLUE:
-            blue = 255;
-            break;
-        case PB_LEDWHITE:
-            red = green = blue = 255;
-            break;
-        case PB_LEDPURPLE:  // Magenta
-            red = blue = 255;
-            break;
-        case PB_LEDYELLOW:
-            red = green = 255;
-            break;
-        case PB_LEDCYAN:
-            green = blue = 255;
-            break;
-    }
+    uint8_t red, green, blue;
+    ColorToRGB(color, red, green, blue);
     
     StageNeoPixelAll(red, green, blue);
 }
 
 void NeoPixelDriver::StageNeoPixelAll(PBLEDColor color, uint8_t brightness) {
     // Convert PBLEDColor to RGB values, then apply brightness
-    uint8_t red = 0, green = 0, blue = 0;
-    
-    switch (color) {
-        case PB_LEDRED:
-            red = 255;
-            break;
-        case PB_LEDGREEN:
-            green = 255;
-            break;
-        case PB_LEDBLUE:
-            blue = 255;
-            break;
-        case PB_LEDWHITE:
-            red = green = blue = 255;
-            break;
-        case PB_LEDPURPLE:  // Magenta
-            red = blue = 255;
-            break;
-        case PB_LEDYELLOW:
-            red = green = 255;
-            break;
-        case PB_LEDCYAN:
-            green = blue = 255;
-            break;
-    }
+    uint8_t red, green, blue;
+    ColorToRGB(color, red, green, blue);
     
     StageNeoPixelAll(red, green, blue, brightness);
 }
@@ -1178,16 +1119,6 @@ void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
                     __asm__ __volatile__("nop");
                 }
             }
-        }
-    }
-            
-            digitalWrite(m_outputPin, LOW);
-            clock_gettime(CLOCK_MONOTONIC, &ts_start);
-            // Wait for 0.85us (850ns)
-            do {
-                clock_gettime(CLOCK_MONOTONIC, &ts_now);
-            } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
-                     (ts_now.tv_nsec - ts_start.tv_nsec) < 850);
         }
     }
 #endif

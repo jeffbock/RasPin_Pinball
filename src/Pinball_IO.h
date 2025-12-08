@@ -298,7 +298,7 @@ private:
 
 // Debug flag to enable real-time scheduling priority for NeoPixel transmission
 // Requires running with elevated privileges (sudo)
-#define NEOPIXEL_USE_RT_PRIORITY 0  // Set to 1 to enable SCHED_FIFO priority
+#define NEOPIXEL_USE_RT_PRIORITY 1  // Set to 1 to enable SCHED_FIFO priority
 
 // NeoPixel timing method selection
 enum NeoPixelTimingMethod {
@@ -376,6 +376,9 @@ private:
     stNeoPixelNode* m_nodes;       // Pointer to node array (from g_NeoPixelNodeArray)
     bool m_hasChanges;             // Flag indicating staged changes exist
     NeoPixelTimingMethod m_timingMethod;  // Timing method to use
+    
+    // Helper function to convert PBLEDColor enum to RGB values
+    void ColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, uint8_t& blue);
     
     // Helper function to send RGB data for a single LED using WS2812B timing
     void SendByte(uint8_t byte, NeoPixelTimingMethod method);
