@@ -67,7 +67,8 @@ stNeoPixelNode g_NeoPixelNodes1[g_NeoPixelSize[1]];
     m_videoFadeStartTick = 0;
     m_videoFadingIn = false;
     m_videoFadingOut = false;
-    m_videoFadeDurationSec = 2.0f;  
+    m_videoFadeDurationSec = 2.0f;
+    m_sandboxNeoPixelColorIndex = 0;  // Start with PB_LEDRED  
     m_sandboxEjector = nullptr;
 
     // Test Mode variables
@@ -1646,11 +1647,16 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     testCount++;
                 }
                 
-                // Right Flipper - NeoPixel Test (removed - use configured NeoPixel drivers from g_outputDef)
+                // Right Flipper - NeoPixel Test (cycle through colors)
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                    // Set timers for testing
-                    pbeSetWatchdogTimer(10000);  // 10 second watchdog timer
-                    pbeSetTimer(200, 15000);     // 15 second normal timer (ID = 200)
+                    // Get the current color from enum
+                    PBLEDColor currentColor = static_cast<PBLEDColor>(m_sandboxNeoPixelColorIndex);
+                    
+                    // Send message to set all NeoPixels on driver 0 to current color
+                    SendNeoPixelAllMsg(IDO_NEOPIXEL0, currentColor, PB_ON);
+                    
+                    // Advance to next color (cycle through 0-6)
+                    m_sandboxNeoPixelColorIndex = (m_sandboxNeoPixelColorIndex + 1) % 7;
                 }
                 
                 // Left Activate - Test 3 - Video Playback Test (Toggle fade in/out)
@@ -1815,7 +1821,7 @@ bool PBEngine::pbeSetupIO()
                 // Initialize GPIO for this NeoPixel driver
                 g_PBEngine.m_NeoPixelDriverMap.at(boardIndex)->InitializeGPIO();
                 // Stage initial black (off) state for all LEDs
-                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex)->StageNeoPixelAll(0, 0, 0);  
+                g_PBEngine.m_NeoPixelDriverMap.at(boardIndex)->StageNeoPixelAll(255, 255, 255);  
                 #endif
             }
         }

@@ -19,7 +19,7 @@
 #endif
 
 // Output definitions
-// Fields: outputName, outputMsg, id, pin, boardType, boardIndex, lastState, onTimeMS, offTimeMS
+// Fields: outputName, outputMsg, id, pin, boardType, boardIndex (or Neopixel Instance), lastState, onTimeMS, offTimeMS
 stOutputDef g_outputDef[] = {
     {"IO0P8 Sling Shot", PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, 8, PB_IO, 0, PB_OFF, 500, 500}, 
     {"IO1P8 Pop Bumper", PB_OMSG_GENERIC_IO, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF, 1000, 1000},
@@ -903,9 +903,7 @@ void NeoPixelDriver::StageNeoPixelAll(uint8_t red, uint8_t green, uint8_t blue) 
     // Directly update the staged array for efficiency
     for (unsigned int i = 0; i < m_numLEDs; i++) {
         // Check if value differs from current hardware
-        if (m_nodes[i].currentRed != red ||
-            m_nodes[i].currentGreen != green ||
-            m_nodes[i].currentBlue != blue) {
+        if (m_nodes[i].currentRed != red || m_nodes[i].currentGreen != green || m_nodes[i].currentBlue != blue) {
             m_nodes[i].stagedRed = red;
             m_nodes[i].stagedGreen = green;
             m_nodes[i].stagedBlue = blue;

@@ -136,8 +136,6 @@ struct stOutputOptions {
     uint16_t activeLEDMask[NUM_LED_CHIPS];
     const LEDSequence *setLEDSequence;
     const NeoPixelSequence *setNeoPixelSequence;  // For NeoPixel sequences
-    const stNeoPixelNode *neoPixelArray;          // For direct NeoPixel array updates
-    unsigned int neoPixelArrayCount;              // Number of LEDs in array
     uint8_t neoPixelRed;                          // Red channel for single NeoPixel LED (0-255)
     uint8_t neoPixelGreen;                        // Green channel for single NeoPixel LED (0-255)
     uint8_t neoPixelBlue;                         // Blue channel for single NeoPixel LED (0-255)
@@ -372,6 +370,7 @@ public:
     bool m_videoFadingOut;
     float m_videoFadeDurationSec;
     pbdEjector* m_sandboxEjector;
+    int m_sandboxNeoPixelColorIndex;  // Track current color for NeoPixel test
 
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;
