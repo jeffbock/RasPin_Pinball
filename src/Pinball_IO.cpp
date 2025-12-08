@@ -1035,6 +1035,7 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     }
     
     // Send reset/latch signal (interrupts enabled for this)
+    delayMicroseconds(5);  // Small delay to ensure settle time before reset
     SendReset();
 #endif
 
