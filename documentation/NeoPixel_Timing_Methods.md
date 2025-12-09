@@ -128,36 +128,43 @@ driver.SetTimingMethod(NEOPIXEL_TIMING_SPI);
 
 ---
 
-### 4. NEOPIXEL_TIMING_PWM 🚀 (Best Performance)
+### 4. NEOPIXEL_TIMING_PWM 🚧 (Experimental)
 
-**Description**: Uses hardware PWM with DMA for precise timing control.
+**Description**: Uses hardware PWM with duty cycle control for timing.
 
 **How it works**:
 - Configures PWM at 800kHz base frequency
 - Uses duty cycle to control high/low times:
-  - Bit 1: 70% duty cycle (~0.8µs high, 0.45µs low)
-  - Bit 0: 30% duty cycle (~0.4µs high, 0.85µs low)
-- DMA transfers data to PWM controller
+  - Bit 1: 70% duty cycle (~0.875µs high, 0.375µs low)
+  - Bit 0: 30% duty cycle (~0.375µs high, 0.875µs low)
+- **Current implementation**: Uses software delays between PWM writes
+- **Future enhancement**: DMA-based queueing for zero-CPU operation
 
 **Advantages**:
-- ✅ **Best performance** - lowest CPU usage
-- ✅ DMA-based - CPU can do other work
-- ✅ Precise hardware timing
+- ✅ Hardware PWM timing control
+- ✅ Precise duty cycle generation
 - ✅ Not affected by system load
-- ✅ Suitable for high frame rates
+- ✅ Suitable for experimentation
 
 **Disadvantages**:
+- ⚠️ **Current limitation**: Software delays reduce performance benefit
 - ❌ Requires PWM-capable GPIO pin
-- ❌ Complex setup and configuration
 - ❌ May conflict with other PWM uses (e.g., audio)
 - ❌ Pin-specific (only certain GPIOs support PWM)
 - ❌ No instrumentation support
+- 🚧 DMA implementation needed for full performance
 
 **When to use**:
-- High-performance applications
-- Real-time LED animations
-- When CPU resources are limited
-- Multiple simultaneous LED chains
+- Experimental and development purposes
+- When testing PWM-based approaches
+- When you plan to implement DMA queueing
+
+**Future Improvements**:
+The current implementation uses `delayMicroseconds()` between bit writes, which limits performance. A full DMA implementation would:
+- Queue all bit patterns in memory
+- Use DMA to transfer patterns to PWM controller
+- Achieve true zero-CPU transmission
+- Support high frame rates and multiple chains
 
 **Configuration**:
 ```cpp
@@ -176,18 +183,19 @@ driver.SetTimingMethod(NEOPIXEL_TIMING_PWM);
 
 ## Comparison Matrix
 
-| Feature | clock_gettime | NOP | SPI ⭐ | PWM 🚀 |
+| Feature | clock_gettime | NOP | SPI ⭐ | PWM 🚧 |
 |---------|---------------|-----|---------|---------|
-| Reliability | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| CPU Usage | High | Medium | Very Low | Lowest |
+| Reliability | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| CPU Usage | High | Medium | Very Low | Medium* |
 | Portability | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ |
-| System Load Impact | High | Medium | None | None |
+| System Load Impact | High | Medium | None | Low* |
 | Calibration Needed | No | Yes | No | No |
 | Hardware Required | None | None | SPI | PWM |
 | Instrumentation | ✅ | ❌ | ❌ | ❌ |
-| Production Ready | ⚠️ | ⚠️ | ✅ | ✅ |
+| Production Ready | ⚠️ | ⚠️ | ✅ | 🚧 |
 
-**Legend**: ⭐ = Rating, ✅ = Supported, ❌ = Not Supported, ⚠️ = Conditional
+**Legend**: ⭐ = Rating, ✅ = Supported, ❌ = Not Supported, ⚠️ = Conditional, 🚧 = Experimental  
+***Note**: Current PWM implementation uses software delays; DMA version would achieve "Very Low" CPU usage
 
 ---
 
@@ -205,11 +213,11 @@ driver.SetTimingMethod(NEOPIXEL_TIMING_PWM);
 - Zero timing issues
 - Works under any system load
 
-### For High Performance
-→ Use **NEOPIXEL_TIMING_PWM** 🚀
-- Lowest CPU usage
-- DMA-based for best performance
-- Suitable for complex animations
+### For Experimentation
+→ Use **NEOPIXEL_TIMING_PWM** 🚧
+- Test PWM-based approach
+- Hardware timing with duty cycle control
+- Foundation for future DMA implementation
 
 ### For Specific Hardware Only
 → Use **NEOPIXEL_TIMING_NOP**
@@ -229,13 +237,13 @@ void setupNeoPixels() {
     NeoPixelDriver& driver = g_PBEngine.m_NeoPixelDriverMap.at(0);
     
     #ifdef USE_SPI_METHOD
-        // Production: Use SPI for reliability
+        // Production: Use SPI for reliability (recommended)
         driver.SetTimingMethod(NEOPIXEL_TIMING_SPI);
         printf("Using SPI timing (most reliable)\n");
     #elif defined(USE_PWM_METHOD)
-        // High performance: Use PWM with DMA
+        // Experimental: Use PWM (basic implementation)
         driver.SetTimingMethod(NEOPIXEL_TIMING_PWM);
-        printf("Using PWM timing (best performance)\n");
+        printf("Using PWM timing (experimental)\n");
     #elif defined(USE_NOP_METHOD)
         // Calibrated: Use NOP for Pi 5
         driver.SetTimingMethod(NEOPIXEL_TIMING_NOP);
@@ -302,10 +310,12 @@ Approximate CPU overhead per LED (3 bytes = 24 bits):
 |--------|----------|--------------|----------|
 | clock_gettime | ~50-80µs | ~96 | Debugging |
 | NOP | ~30µs | 0 | Calibrated HW |
-| SPI | ~5µs | 1 | Reliability |
-| PWM | <1µs | 1 (DMA) | Performance |
+| SPI | ~5µs | 1 | Reliability ⭐ |
+| PWM (current) | ~35µs | ~24 | Experimental 🚧 |
+| PWM (DMA)* | <1µs | 1 (DMA) | Future |
 
-**Test conditions**: Raspberry Pi 5, 10 LEDs, minimal system load
+**Test conditions**: Raspberry Pi 5, 10 LEDs, minimal system load  
+***Future DMA implementation** would achieve <1µs performance
 
 ---
 

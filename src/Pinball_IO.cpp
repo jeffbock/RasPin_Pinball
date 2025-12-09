@@ -1397,11 +1397,15 @@ void NeoPixelDriver::SendBytePWM(uint8_t byte) {
     }
     
     // Send each bit using PWM duty cycle
-    // Bit 1: ~65% duty cycle (6.5 out of 10 = 0.8us high, 0.45us low)
-    // Bit 0: ~32% duty cycle (3.2 out of 10 = 0.4us high, 0.85us low)
-    const int PWM_BIT1_DUTY = 7;  // Approximately 0.8us high
-    const int PWM_BIT0_DUTY = 3;  // Approximately 0.4us high
+    // With PWM_RANGE = 10:
+    // Bit 1: 70% duty cycle (7 out of 10 = 0.875us high, 0.375us low)
+    // Bit 0: 30% duty cycle (3 out of 10 = 0.375us high, 0.875us low)
+    const int PWM_BIT1_DUTY = 7;  // 70% duty cycle
+    const int PWM_BIT0_DUTY = 3;  // 30% duty cycle
     
+    // Note: This is a simplified implementation for demonstration
+    // A production implementation would use DMA to queue all bit patterns
+    // and transmit them without CPU intervention
     for (int bit = 7; bit >= 0; bit--) {
         bool bitValue = (byte & (1 << bit)) != 0;
         
@@ -1412,6 +1416,7 @@ void NeoPixelDriver::SendBytePWM(uint8_t byte) {
         }
         
         // Wait for the bit duration (1.25us)
+        // TODO: Replace with DMA-based queueing for true zero-CPU operation
         delayMicroseconds(1);
     }
     
