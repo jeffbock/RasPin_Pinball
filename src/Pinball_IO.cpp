@@ -772,9 +772,6 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex)
     // Note: GPIO initialization is deferred to InitializeGPIO() method
     // This allows the constructor to be called during static initialization
     // before wiringPiSetup() has been called
-
-    m_timingMethod = NEOPIXEL_TIMING_CLOCKGETTIME;
-    // m_timingMethod = NEOPIXEL_TIMING_NOP;
     
     // Initialize instrumentation
     m_instrumentation.instrumentationEnabled = false;
