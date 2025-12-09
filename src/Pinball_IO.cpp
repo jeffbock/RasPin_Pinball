@@ -775,6 +775,19 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex)
 
     m_timingMethod = NEOPIXEL_TIMING_CLOCKGETTIME;
     // m_timingMethod = NEOPIXEL_TIMING_NOP;
+    
+    // Initialize instrumentation
+    m_instrumentation.instrumentationEnabled = false;
+    m_instrumentation.numBitsCaptured = 0;
+    m_instrumentation.capturedBytes = 0;
+    m_instrumentation.byteSequenceNumber = 0;
+    m_instrumentation.totalTransmissionTimeNs = 0;
+    for (unsigned int i = 0; i < NEOPIXEL_INSTRUMENTATION_BITS; i++) {
+        m_instrumentation.bitTimings[i].highTimeNs = 0;
+        m_instrumentation.bitTimings[i].lowTimeNs = 0;
+        m_instrumentation.bitTimings[i].meetsSpec = false;
+        m_instrumentation.bitTimings[i].bitValue = false;
+    }
 }
 
 #ifdef EXE_MODE_RASPI
@@ -1035,12 +1048,24 @@ void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
         // Option 1: Use clock_gettime() for timing (original implementation)
         // Pros: Portable, no CPU frequency dependency
         // Cons: Syscall overhead, can be affected by scheduling
-        struct timespec ts_start, ts_now;
+        struct timespec ts_start, ts_now, ts_high_start, ts_high_end, ts_low_start, ts_low_end;
+        
+        // Capture start time for total transmission if instrumentation enabled
+        if (m_instrumentation.instrumentationEnabled) {
+            clock_gettime(CLOCK_MONOTONIC, &ts_start);
+        }
         
         for (int bit = 7; bit >= 0; bit--) {
-            if (byte & (1 << bit)) {
+            bool bitValue = (byte & (1 << bit)) != 0;
+            uint32_t highTimeNs = 0;
+            uint32_t lowTimeNs = 0;
+            
+            if (bitValue) {
                 // Send a '1' bit: 0.8us high, 0.45us low
                 digitalWrite(m_outputPin, HIGH);
+                if (m_instrumentation.instrumentationEnabled) {
+                    clock_gettime(CLOCK_MONOTONIC, &ts_high_start);
+                }
                 clock_gettime(CLOCK_MONOTONIC, &ts_start);
                 // Wait for 0.8us (800ns)
                 do {
@@ -1048,16 +1073,34 @@ void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
                 } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
                          (ts_now.tv_nsec - ts_start.tv_nsec) < 800);
                 
+                if (m_instrumentation.instrumentationEnabled) {
+                    clock_gettime(CLOCK_MONOTONIC, &ts_high_end);
+                    highTimeNs = (ts_high_end.tv_sec - ts_high_start.tv_sec) * 1000000000L + 
+                                 (ts_high_end.tv_nsec - ts_high_start.tv_nsec);
+                }
+                
                 digitalWrite(m_outputPin, LOW);
+                if (m_instrumentation.instrumentationEnabled) {
+                    clock_gettime(CLOCK_MONOTONIC, &ts_low_start);
+                }
                 clock_gettime(CLOCK_MONOTONIC, &ts_start);
                 // Wait for 0.45us (450ns)
                 do {
                     clock_gettime(CLOCK_MONOTONIC, &ts_now);
                 } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
                          (ts_now.tv_nsec - ts_start.tv_nsec) < 450);
+                
+                if (m_instrumentation.instrumentationEnabled) {
+                    clock_gettime(CLOCK_MONOTONIC, &ts_low_end);
+                    lowTimeNs = (ts_low_end.tv_sec - ts_low_start.tv_sec) * 1000000000L + 
+                                (ts_low_end.tv_nsec - ts_low_start.tv_nsec);
+                }
             } else {
                 // Send a '0' bit: 0.4us high, 0.85us low
                 digitalWrite(m_outputPin, HIGH);
+                if (m_instrumentation.instrumentationEnabled) {
+                    clock_gettime(CLOCK_MONOTONIC, &ts_high_start);
+                }
                 clock_gettime(CLOCK_MONOTONIC, &ts_start);
                 // Wait for 0.4us (400ns)
                 do {
@@ -1065,14 +1108,57 @@ void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
                 } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
                          (ts_now.tv_nsec - ts_start.tv_nsec) < 400);
                 
+                if (m_instrumentation.instrumentationEnabled) {
+                    clock_gettime(CLOCK_MONOTONIC, &ts_high_end);
+                    highTimeNs = (ts_high_end.tv_sec - ts_high_start.tv_sec) * 1000000000L + 
+                                 (ts_high_end.tv_nsec - ts_high_start.tv_nsec);
+                }
+                
                 digitalWrite(m_outputPin, LOW);
+                if (m_instrumentation.instrumentationEnabled) {
+                    clock_gettime(CLOCK_MONOTONIC, &ts_low_start);
+                }
                 clock_gettime(CLOCK_MONOTONIC, &ts_start);
                 // Wait for 0.85us (850ns)
                 do {
                     clock_gettime(CLOCK_MONOTONIC, &ts_now);
                 } while ((ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
                          (ts_now.tv_nsec - ts_start.tv_nsec) < 850);
+                
+                if (m_instrumentation.instrumentationEnabled) {
+                    clock_gettime(CLOCK_MONOTONIC, &ts_low_end);
+                    lowTimeNs = (ts_low_end.tv_sec - ts_low_start.tv_sec) * 1000000000L + 
+                                (ts_low_end.tv_nsec - ts_low_start.tv_nsec);
+                }
             }
+            
+            // Store instrumentation data if enabled and space available
+            if (m_instrumentation.instrumentationEnabled && 
+                m_instrumentation.numBitsCaptured < NEOPIXEL_INSTRUMENTATION_BITS) {
+                unsigned int idx = m_instrumentation.numBitsCaptured;
+                m_instrumentation.bitTimings[idx].highTimeNs = highTimeNs;
+                m_instrumentation.bitTimings[idx].lowTimeNs = lowTimeNs;
+                m_instrumentation.bitTimings[idx].bitValue = bitValue;
+                m_instrumentation.bitTimings[idx].meetsSpec = 
+                    CheckBitTimingSpec(highTimeNs, lowTimeNs, bitValue);
+                m_instrumentation.numBitsCaptured++;
+            }
+        }
+        
+        // Update instrumentation metadata
+        if (m_instrumentation.instrumentationEnabled) {
+            // Store the byte value for verification
+            if (m_instrumentation.byteSequenceNumber < 4) {
+                m_instrumentation.capturedBytes |= 
+                    (static_cast<uint32_t>(byte) << (m_instrumentation.byteSequenceNumber * 8));
+            }
+            m_instrumentation.byteSequenceNumber++;
+            
+            // Calculate total transmission time
+            clock_gettime(CLOCK_MONOTONIC, &ts_now);
+            m_instrumentation.totalTransmissionTimeNs = 
+                (ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
+                (ts_now.tv_nsec - ts_start.tv_nsec);
         }
     } else {  // NEOPIXEL_TIMING_NOP
         // Option 2: Use assembly NOP instructions (deterministic timing)
@@ -1124,6 +1210,49 @@ void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
         }
     }
 #endif
+}
+
+// Instrumentation control methods
+void NeoPixelDriver::EnableInstrumentation(bool enable) {
+    m_instrumentation.instrumentationEnabled = enable;
+    if (enable) {
+        // Reset instrumentation data when enabling
+        ResetInstrumentation();
+    }
+}
+
+bool NeoPixelDriver::IsInstrumentationEnabled() const {
+    return m_instrumentation.instrumentationEnabled;
+}
+
+void NeoPixelDriver::ResetInstrumentation() {
+    m_instrumentation.numBitsCaptured = 0;
+    m_instrumentation.capturedBytes = 0;
+    m_instrumentation.byteSequenceNumber = 0;
+    m_instrumentation.totalTransmissionTimeNs = 0;
+    for (unsigned int i = 0; i < NEOPIXEL_INSTRUMENTATION_BITS; i++) {
+        m_instrumentation.bitTimings[i].highTimeNs = 0;
+        m_instrumentation.bitTimings[i].lowTimeNs = 0;
+        m_instrumentation.bitTimings[i].meetsSpec = false;
+        m_instrumentation.bitTimings[i].bitValue = false;
+    }
+}
+
+const stNeoPixelInstrumentation& NeoPixelDriver::GetInstrumentationData() const {
+    return m_instrumentation;
+}
+
+// Helper function to check if bit timing meets WS2812B specification
+bool NeoPixelDriver::CheckBitTimingSpec(uint32_t highTimeNs, uint32_t lowTimeNs, bool bitValue) const {
+    if (bitValue) {
+        // Bit 1: 800ns high (650-950ns), 450ns low (300-600ns)
+        return (highTimeNs >= NEOPIXEL_BIT1_HIGH_MIN_NS && highTimeNs <= NEOPIXEL_BIT1_HIGH_MAX_NS &&
+                lowTimeNs >= NEOPIXEL_BIT1_LOW_MIN_NS && lowTimeNs <= NEOPIXEL_BIT1_LOW_MAX_NS);
+    } else {
+        // Bit 0: 400ns high (250-550ns), 850ns low (700-1000ns)
+        return (highTimeNs >= NEOPIXEL_BIT0_HIGH_MIN_NS && highTimeNs <= NEOPIXEL_BIT0_HIGH_MAX_NS &&
+                lowTimeNs >= NEOPIXEL_BIT0_LOW_MIN_NS && lowTimeNs <= NEOPIXEL_BIT0_LOW_MAX_NS);
+    }
 }
 
 void NeoPixelDriver::SendReset() {

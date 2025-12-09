@@ -325,6 +325,42 @@ struct stNeoPixelNode {
 #define NEOPIXEL_MAX_LEDS_RECOMMENDED 60
 #define NEOPIXEL_MAX_LEDS_ABSOLUTE 100  // Absolute limit (3ms) - may cause issues
 
+// NeoPixel timing instrumentation constants
+#define NEOPIXEL_INSTRUMENTATION_BITS 32  // Track timing for 32 bits (4 bytes / 1 complete 32-bit value)
+
+// NeoPixel timing specification tolerances (in nanoseconds)
+// WS2812B timing requirements with ±150ns tolerance:
+// Bit 1: 800ns high (±150ns), 450ns low (±150ns)
+// Bit 0: 400ns high (±150ns), 850ns low (±150ns)
+#define NEOPIXEL_BIT1_HIGH_MIN_NS 650    // 800ns - 150ns tolerance
+#define NEOPIXEL_BIT1_HIGH_MAX_NS 950    // 800ns + 150ns tolerance
+#define NEOPIXEL_BIT1_LOW_MIN_NS 300     // 450ns - 150ns tolerance
+#define NEOPIXEL_BIT1_LOW_MAX_NS 600     // 450ns + 150ns tolerance
+
+#define NEOPIXEL_BIT0_HIGH_MIN_NS 250    // 400ns - 150ns tolerance
+#define NEOPIXEL_BIT0_HIGH_MAX_NS 550    // 400ns + 150ns tolerance
+#define NEOPIXEL_BIT0_LOW_MIN_NS 700     // 850ns - 150ns tolerance
+#define NEOPIXEL_BIT0_LOW_MAX_NS 1000    // 850ns + 150ns tolerance
+
+// Structure to track timing data for a single bit transmission
+struct stNeoPixelBitTiming {
+    uint32_t highTimeNs;      // Time pin was high in nanoseconds
+    uint32_t lowTimeNs;       // Time pin was low in nanoseconds
+    bool meetsSpec;           // True if timing meets WS2812B specification
+    bool bitValue;            // The actual bit value sent (0 or 1)
+};
+
+// Structure to track timing instrumentation for SendByte operations
+// Tracks up to 32 bits (4 bytes) of timing data for diagnostics
+struct stNeoPixelInstrumentation {
+    stNeoPixelBitTiming bitTimings[NEOPIXEL_INSTRUMENTATION_BITS];  // Timing data for each bit
+    unsigned int numBitsCaptured;     // Number of bits captured (0-32)
+    uint32_t capturedBytes;           // The actual byte values captured (for verification)
+    bool instrumentationEnabled;      // Flag to enable/disable instrumentation
+    unsigned int byteSequenceNumber;  // Sequential byte counter for tracking order
+    uint64_t totalTransmissionTimeNs; // Total time for all captured bits
+};
+
 // NeoPixel Driver class for controlling WS2812B-style RGB LED strips
 // Uses Raspberry Pi GPIO pins directly for bit-banged communication
 // IMPORTANT: Disables interrupts during transmission - limit LED count to avoid system issues
@@ -368,6 +404,12 @@ public:
     // Get pin and LED count
     unsigned int GetOutputPin() const { return m_outputPin; }
     unsigned int GetNumLEDs() const { return m_numLEDs; }
+    
+    // Instrumentation control and access methods
+    void EnableInstrumentation(bool enable);
+    bool IsInstrumentationEnabled() const;
+    void ResetInstrumentation();
+    const stNeoPixelInstrumentation& GetInstrumentationData() const;
 
 private:
     unsigned int m_driverIndex;    // Driver index (corresponds to boardIndex)
@@ -376,12 +418,16 @@ private:
     stNeoPixelNode* m_nodes;       // Pointer to node array (from g_NeoPixelNodeArray)
     bool m_hasChanges;             // Flag indicating staged changes exist
     NeoPixelTimingMethod m_timingMethod;  // Timing method to use
+    stNeoPixelInstrumentation m_instrumentation;  // Timing instrumentation data
     
     // Helper function to convert PBLEDColor enum to RGB values
     void ColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, uint8_t& blue);
     
     // Helper function to send RGB data for a single LED using WS2812B timing
     void SendByte(uint8_t byte, NeoPixelTimingMethod method);
+    
+    // Helper function to check if bit timing meets WS2812B specification
+    bool CheckBitTimingSpec(uint32_t highTimeNs, uint32_t lowTimeNs, bool bitValue) const;
     
     // Helper function to send reset/latch signal
     void SendReset();
