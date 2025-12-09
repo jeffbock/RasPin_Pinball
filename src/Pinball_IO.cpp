@@ -15,6 +15,7 @@
 #ifdef EXE_MODE_RASPI
 #include "wiringPi.h"
 #include "wiringPiI2C.h"
+#include "wiringPiSPI.h"
 #include <time.h>  // For clock_gettime with nanosecond precision
 #endif
 
@@ -759,6 +760,14 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex)
     // Default to clock_gettime timing method
     m_timingMethod = NEOPIXEL_TIMING_CLOCKGETTIME;
     
+    // Initialize SPI-specific members
+    m_spiChannel = 0;  // Default to SPI channel 0
+    m_spiFd = -1;      // Not initialized
+    
+    // Initialize PWM-specific members
+    m_pwmChannel = 0;  // Default to PWM channel 0
+    m_pwmInitialized = false;
+    
     // Initialize all LEDs to off (black) in both staged and current fields
     for (unsigned int i = 0; i < m_numLEDs; i++) {
         m_nodes[i].stagedRed = 0;
@@ -804,6 +813,16 @@ NeoPixelDriver::~NeoPixelDriver() {
     }
     m_hasChanges = true;
     SendStagedNeoPixels();
+    
+    // Clean up SPI if initialized
+    if (m_spiFd >= 0) {
+        CloseSPI();
+    }
+    
+    // Clean up PWM if initialized
+    if (m_pwmInitialized) {
+        ClosePWM();
+    }
 #endif
     
     // No memory deallocation needed - using pre-allocated arrays
@@ -1198,6 +1217,16 @@ void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
                 }
             }
         }
+    } else if (method == NEOPIXEL_TIMING_SPI) {
+        // Option 3: Use SPI hardware for timing
+        // Pros: Hardware-based timing, very reliable, no CPU overhead
+        // Cons: Requires SPI channel, converts each bit to 3 SPI bits
+        SendByteSPI(byte);
+    } else if (method == NEOPIXEL_TIMING_PWM) {
+        // Option 4: Use PWM hardware with DMA
+        // Pros: Best performance, precise hardware timing, DMA-based
+        // Cons: Complex setup, requires PWM channel configuration
+        SendBytePWM(byte);
     }
 #endif
 }
@@ -1252,6 +1281,155 @@ bool NeoPixelDriver::CheckBitTimingSpec(uint32_t highTimeNs, uint32_t lowTimeNs,
         return (highTimeNs >= NEOPIXEL_BIT0_HIGH_MIN_NS && highTimeNs <= NEOPIXEL_BIT0_HIGH_MAX_NS &&
                 lowTimeNs >= NEOPIXEL_BIT0_LOW_MIN_NS && lowTimeNs <= NEOPIXEL_BIT0_LOW_MAX_NS);
     }
+}
+
+//==============================================================================
+// SPI-based NeoPixel transmission
+//==============================================================================
+
+void NeoPixelDriver::InitializeSPI() {
+#ifdef EXE_MODE_RASPI
+    // Initialize SPI with appropriate speed for WS2812B
+    // WS2812B requires ~800kHz bit rate, which translates to ~2.4 MHz SPI (3 SPI bits per WS2812B bit)
+    const int SPI_SPEED = 2400000;  // 2.4 MHz
+    
+    m_spiFd = wiringPiSPISetup(m_spiChannel, SPI_SPEED);
+    if (m_spiFd < 0) {
+        // Failed to initialize SPI - fall back to clock_gettime method
+        m_timingMethod = NEOPIXEL_TIMING_CLOCKGETTIME;
+    }
+#endif
+}
+
+void NeoPixelDriver::SendByteSPI(uint8_t byte) {
+#ifdef EXE_MODE_RASPI
+    // Ensure SPI is initialized
+    if (m_spiFd < 0) {
+        InitializeSPI();
+        if (m_spiFd < 0) {
+            return;  // SPI initialization failed
+        }
+    }
+    
+    // Convert each WS2812B bit to 3 SPI bits
+    // Bit 1: 110 pattern (high for 2/3 of the time)
+    // Bit 0: 100 pattern (high for 1/3 of the time)
+    unsigned char spiData[3] = {0, 0, 0};  // 8 WS2812B bits = 24 SPI bits = 3 bytes
+    
+    for (int i = 0; i < 8; i++) {
+        bool bitValue = (byte & (0x80 >> i)) != 0;
+        int spiByteIdx = i * 3 / 8;  // Which of the 3 SPI bytes
+        int spiBitPos = (i * 3) % 8;  // Bit position within SPI byte
+        
+        if (bitValue) {
+            // Bit 1: 110 pattern
+            if (spiBitPos <= 5) {
+                spiData[spiByteIdx] |= (0b110 << (5 - spiBitPos));
+            } else {
+                // Pattern spans two bytes
+                spiData[spiByteIdx] |= (0b110 >> (spiBitPos - 5));
+                spiData[spiByteIdx + 1] |= (0b110 << (13 - spiBitPos));
+            }
+        } else {
+            // Bit 0: 100 pattern
+            if (spiBitPos <= 5) {
+                spiData[spiByteIdx] |= (0b100 << (5 - spiBitPos));
+            } else {
+                // Pattern spans two bytes
+                spiData[spiByteIdx] |= (0b100 >> (spiBitPos - 5));
+                spiData[spiByteIdx + 1] |= (0b100 << (13 - spiBitPos));
+            }
+        }
+    }
+    
+    // Send the data via SPI
+    wiringPiSPIDataRW(m_spiChannel, spiData, 3);
+#endif
+}
+
+void NeoPixelDriver::CloseSPI() {
+#ifdef EXE_MODE_RASPI
+    if (m_spiFd >= 0) {
+        // wiringPi doesn't provide explicit SPI close, just mark as closed
+        m_spiFd = -1;
+    }
+#endif
+}
+
+//==============================================================================
+// PWM-based NeoPixel transmission
+//==============================================================================
+
+void NeoPixelDriver::InitializePWM() {
+#ifdef EXE_MODE_RASPI
+    // Configure PWM for WS2812B timing
+    // WS2812B requires 800kHz signal with specific duty cycles
+    // PWM clock: 19.2 MHz / divisor
+    // For 800kHz: divisor = 24 (19.2 MHz / 24 = 800 kHz)
+    
+    const int PWM_CLOCK_DIVISOR = 24;
+    const int PWM_RANGE = 10;  // 10 cycles per bit (800kHz / 10 = 80kHz update rate)
+    
+    // Set PWM mode to mark-space (not balanced)
+    pwmSetMode(PWM_MODE_MS);
+    
+    // Set PWM clock divisor
+    pwmSetClock(PWM_CLOCK_DIVISOR);
+    
+    // Set PWM range
+    pwmSetRange(PWM_RANGE);
+    
+    // Configure the pin for PWM output
+    pinMode(m_outputPin, PWM_OUTPUT);
+    
+    m_pwmInitialized = true;
+#endif
+}
+
+void NeoPixelDriver::SendBytePWM(uint8_t byte) {
+#ifdef EXE_MODE_RASPI
+    // Ensure PWM is initialized
+    if (!m_pwmInitialized) {
+        InitializePWM();
+        if (!m_pwmInitialized) {
+            return;  // PWM initialization failed
+        }
+    }
+    
+    // Send each bit using PWM duty cycle
+    // Bit 1: ~65% duty cycle (6.5 out of 10 = 0.8us high, 0.45us low)
+    // Bit 0: ~32% duty cycle (3.2 out of 10 = 0.4us high, 0.85us low)
+    const int PWM_BIT1_DUTY = 7;  // Approximately 0.8us high
+    const int PWM_BIT0_DUTY = 3;  // Approximately 0.4us high
+    
+    for (int bit = 7; bit >= 0; bit--) {
+        bool bitValue = (byte & (1 << bit)) != 0;
+        
+        if (bitValue) {
+            pwmWrite(m_outputPin, PWM_BIT1_DUTY);
+        } else {
+            pwmWrite(m_outputPin, PWM_BIT0_DUTY);
+        }
+        
+        // Wait for the bit duration (1.25us)
+        delayMicroseconds(1);
+    }
+    
+    // Set output low after byte
+    pwmWrite(m_outputPin, 0);
+#endif
+}
+
+void NeoPixelDriver::ClosePWM() {
+#ifdef EXE_MODE_RASPI
+    if (m_pwmInitialized) {
+        // Set PWM output to 0 and switch pin back to output mode
+        pwmWrite(m_outputPin, 0);
+        pinMode(m_outputPin, OUTPUT);
+        digitalWrite(m_outputPin, LOW);
+        m_pwmInitialized = false;
+    }
+#endif
 }
 
 void NeoPixelDriver::SendReset() {

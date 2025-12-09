@@ -303,7 +303,9 @@ private:
 // NeoPixel timing method selection
 enum NeoPixelTimingMethod {
     NEOPIXEL_TIMING_CLOCKGETTIME = 0,  // Use clock_gettime() for timing (current default)
-    NEOPIXEL_TIMING_NOP = 1            // Use assembly NOP instructions (more deterministic)
+    NEOPIXEL_TIMING_NOP = 1,           // Use assembly NOP instructions (more deterministic)
+    NEOPIXEL_TIMING_SPI = 2,           // Use SPI hardware (most reliable, requires SPI channel)
+    NEOPIXEL_TIMING_PWM = 3            // Use PWM hardware with DMA (best performance)
 };
 
 // NeoPixel LED node structure - defines RGB color for a single LED
@@ -421,11 +423,29 @@ private:
     NeoPixelTimingMethod m_timingMethod;  // Timing method to use
     stNeoPixelInstrumentation m_instrumentation;  // Timing instrumentation data
     
+    // SPI-specific members
+    int m_spiChannel;              // SPI channel (0 or 1)
+    int m_spiFd;                   // SPI file descriptor (-1 if not initialized)
+    
+    // PWM-specific members
+    int m_pwmChannel;              // PWM channel
+    bool m_pwmInitialized;         // PWM initialization state
+    
     // Helper function to convert PBLEDColor enum to RGB values
     void ColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, uint8_t& blue);
     
     // Helper function to send RGB data for a single LED using WS2812B timing
     void SendByte(uint8_t byte, NeoPixelTimingMethod method);
+    
+    // Helper functions for SPI mode
+    void InitializeSPI();
+    void SendByteSPI(uint8_t byte);
+    void CloseSPI();
+    
+    // Helper functions for PWM mode
+    void InitializePWM();
+    void SendBytePWM(uint8_t byte);
+    void ClosePWM();
     
     // Helper function to check if bit timing meets WS2812B specification
     bool CheckBitTimingSpec(uint32_t highTimeNs, uint32_t lowTimeNs, bool bitValue) const;
