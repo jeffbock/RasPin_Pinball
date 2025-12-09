@@ -1048,11 +1048,11 @@ void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
         // Option 1: Use clock_gettime() for timing (original implementation)
         // Pros: Portable, no CPU frequency dependency
         // Cons: Syscall overhead, can be affected by scheduling
-        struct timespec ts_start, ts_now, ts_high_start, ts_high_end, ts_low_start, ts_low_end;
+        struct timespec ts_start, ts_now, ts_high_start, ts_high_end, ts_low_start, ts_low_end, ts_byte_start;
         
         // Capture start time for total transmission if instrumentation enabled
         if (m_instrumentation.instrumentationEnabled) {
-            clock_gettime(CLOCK_MONOTONIC, &ts_start);
+            clock_gettime(CLOCK_MONOTONIC, &ts_byte_start);
         }
         
         for (int bit = 7; bit >= 0; bit--) {
@@ -1154,11 +1154,13 @@ void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
             }
             m_instrumentation.byteSequenceNumber++;
             
-            // Calculate total transmission time
+            // Calculate total transmission time for this byte
+            // Note: This is cumulative across all bytes sent since instrumentation was enabled
             clock_gettime(CLOCK_MONOTONIC, &ts_now);
-            m_instrumentation.totalTransmissionTimeNs = 
-                (ts_now.tv_sec - ts_start.tv_sec) * 1000000000L + 
-                (ts_now.tv_nsec - ts_start.tv_nsec);
+            uint64_t byteTransmissionTimeNs = 
+                (ts_now.tv_sec - ts_byte_start.tv_sec) * 1000000000L + 
+                (ts_now.tv_nsec - ts_byte_start.tv_nsec);
+            m_instrumentation.totalTransmissionTimeNs += byteTransmissionTimeNs;
         }
     } else {  // NEOPIXEL_TIMING_NOP
         // Option 2: Use assembly NOP instructions (deterministic timing)

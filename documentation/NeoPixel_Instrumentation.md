@@ -119,12 +119,13 @@ When instrumentation is enabled:
 3. **Data Capture**: Stores timing data for up to 32 bits:
    - Typically captures first 32 bits of transmission (4 bytes)
    - Useful for capturing timing of a complete 32-bit value or one LED (24 bits)
-   - Tracks byte sequence number and total transmission time
+   - Tracks byte sequence number and cumulative transmission time
+   - `totalTransmissionTimeNs` accumulates time across all bytes sent while instrumentation is enabled
 
 4. **Metadata**: Also captures:
    - The actual byte values sent (`capturedBytes`)
    - Sequential byte number (`byteSequenceNumber`)
-   - Total time for all captured bits (`totalTransmissionTimeNs`)
+   - Cumulative transmission time (`totalTransmissionTimeNs`) - accumulates across all bytes sent while instrumentation is enabled
 
 ## Timing Method Compatibility
 
