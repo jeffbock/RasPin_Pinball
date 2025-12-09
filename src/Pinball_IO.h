@@ -327,6 +327,7 @@ struct stNeoPixelNode {
 
 // NeoPixel timing instrumentation constants
 #define NEOPIXEL_INSTRUMENTATION_BITS 32  // Track timing for 32 bits (4 bytes / 1 complete 32-bit value)
+#define NEOPIXEL_MAX_CAPTURED_BYTES 4     // Maximum number of bytes captured (32 bits / 8)
 
 // NeoPixel timing specification tolerances (in nanoseconds)
 // WS2812B timing requirements with ±150ns tolerance:
@@ -428,6 +429,9 @@ private:
     
     // Helper function to check if bit timing meets WS2812B specification
     bool CheckBitTimingSpec(uint32_t highTimeNs, uint32_t lowTimeNs, bool bitValue) const;
+    
+    // Helper function to initialize instrumentation data structure
+    void InitializeInstrumentationData();
     
     // Helper function to send reset/latch signal
     void SendReset();

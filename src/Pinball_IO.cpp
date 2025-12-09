@@ -774,17 +774,7 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex)
     // before wiringPiSetup() has been called
     
     // Initialize instrumentation
-    m_instrumentation.instrumentationEnabled = false;
-    m_instrumentation.numBitsCaptured = 0;
-    m_instrumentation.capturedBytes = 0;
-    m_instrumentation.byteSequenceNumber = 0;
-    m_instrumentation.totalTransmissionTimeNs = 0;
-    for (unsigned int i = 0; i < NEOPIXEL_INSTRUMENTATION_BITS; i++) {
-        m_instrumentation.bitTimings[i].highTimeNs = 0;
-        m_instrumentation.bitTimings[i].lowTimeNs = 0;
-        m_instrumentation.bitTimings[i].meetsSpec = false;
-        m_instrumentation.bitTimings[i].bitValue = false;
-    }
+    InitializeInstrumentationData();
 }
 
 #ifdef EXE_MODE_RASPI
@@ -1144,8 +1134,8 @@ void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
         
         // Update instrumentation metadata
         if (m_instrumentation.instrumentationEnabled) {
-            // Store the byte value for verification
-            if (m_instrumentation.byteSequenceNumber < 4) {
+            // Store the byte value for verification (only first NEOPIXEL_MAX_CAPTURED_BYTES)
+            if (m_instrumentation.byteSequenceNumber < NEOPIXEL_MAX_CAPTURED_BYTES) {
                 m_instrumentation.capturedBytes |= 
                     (static_cast<uint32_t>(byte) << (m_instrumentation.byteSequenceNumber * 8));
             }
@@ -1225,6 +1215,19 @@ bool NeoPixelDriver::IsInstrumentationEnabled() const {
 }
 
 void NeoPixelDriver::ResetInstrumentation() {
+    // Preserve the enabled state
+    bool wasEnabled = m_instrumentation.instrumentationEnabled;
+    InitializeInstrumentationData();
+    m_instrumentation.instrumentationEnabled = wasEnabled;
+}
+
+const stNeoPixelInstrumentation& NeoPixelDriver::GetInstrumentationData() const {
+    return m_instrumentation;
+}
+
+// Helper function to initialize instrumentation data structure
+void NeoPixelDriver::InitializeInstrumentationData() {
+    m_instrumentation.instrumentationEnabled = false;
     m_instrumentation.numBitsCaptured = 0;
     m_instrumentation.capturedBytes = 0;
     m_instrumentation.byteSequenceNumber = 0;
@@ -1235,10 +1238,6 @@ void NeoPixelDriver::ResetInstrumentation() {
         m_instrumentation.bitTimings[i].meetsSpec = false;
         m_instrumentation.bitTimings[i].bitValue = false;
     }
-}
-
-const stNeoPixelInstrumentation& NeoPixelDriver::GetInstrumentationData() const {
-    return m_instrumentation;
 }
 
 // Helper function to check if bit timing meets WS2812B specification
