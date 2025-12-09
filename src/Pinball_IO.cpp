@@ -1138,16 +1138,17 @@ void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
             if (m_instrumentation.byteSequenceNumber < NEOPIXEL_MAX_CAPTURED_BYTES) {
                 m_instrumentation.capturedBytes |= 
                     (static_cast<uint32_t>(byte) << (m_instrumentation.byteSequenceNumber * 8));
+                m_instrumentation.byteSequenceNumber++;
+                
+                // Calculate total transmission time for this byte
+                // Note: This is cumulative across all bytes sent since instrumentation was enabled
+                // Only calculate when we're still capturing bytes to minimize overhead
+                clock_gettime(CLOCK_MONOTONIC, &ts_now);
+                uint64_t byteTransmissionTimeNs = 
+                    (ts_now.tv_sec - ts_byte_start.tv_sec) * 1000000000L + 
+                    (ts_now.tv_nsec - ts_byte_start.tv_nsec);
+                m_instrumentation.totalTransmissionTimeNs += byteTransmissionTimeNs;
             }
-            m_instrumentation.byteSequenceNumber++;
-            
-            // Calculate total transmission time for this byte
-            // Note: This is cumulative across all bytes sent since instrumentation was enabled
-            clock_gettime(CLOCK_MONOTONIC, &ts_now);
-            uint64_t byteTransmissionTimeNs = 
-                (ts_now.tv_sec - ts_byte_start.tv_sec) * 1000000000L + 
-                (ts_now.tv_nsec - ts_byte_start.tv_nsec);
-            m_instrumentation.totalTransmissionTimeNs += byteTransmissionTimeNs;
         }
     } else {  // NEOPIXEL_TIMING_NOP
         // Option 2: Use assembly NOP instructions (deterministic timing)
