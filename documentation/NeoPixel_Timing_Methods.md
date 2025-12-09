@@ -83,11 +83,13 @@ driver.SetTimingMethod(NEOPIXEL_TIMING_NOP);
 **Description**: Uses SPI hardware to generate WS2812B timing signals.
 
 **How it works**:
+- Automatically detects if output pin is SPI-capable (GPIO 10 or 20)
 - Configures SPI at 2.4 MHz (3x WS2812B 800kHz rate)
 - Encodes each WS2812B bit as 3 SPI bits:
   - Bit 1: `110` pattern (high for ~0.8µs, low for ~0.4µs)
   - Bit 0: `100` pattern (high for ~0.4µs, low for ~0.8µs)
 - SPI hardware handles all timing automatically
+- Uses MOSI (Master Out, Slave In) pin to send data TO NeoPixels
 
 **Advantages**:
 - ✅ **Most reliable** - hardware-based timing
@@ -95,29 +97,37 @@ driver.SetTimingMethod(NEOPIXEL_TIMING_NOP);
 - ✅ Not affected by system load or scheduling
 - ✅ Consistent timing regardless of conditions
 - ✅ No calibration needed
+- ✅ Automatic pin validation and channel selection
 
 **Disadvantages**:
-- ❌ Requires SPI channel (SPI0 or SPI1)
-- ❌ Pin must be SPI-capable (check Pi pinout)
+- ❌ Requires SPI-capable pin (GPIO 10 for SPI0 or GPIO 20 for SPI1)
+- ❌ Automatically falls back to clock_gettime if pin is not SPI-capable
 - ❌ 3x bandwidth requirement (24 SPI bits per 8 WS2812B bits)
 - ❌ No instrumentation support
 
 **When to use**:
 - **Best choice for production** deployments
 - When reliability is critical
-- When you have SPI pins available
+- When you have SPI pins available (GPIO 10 or 20)
 - For long LED chains
 - When system is under variable load
 
 **Configuration**:
 ```cpp
-// Use SPI channel 0 (default)
+// The driver automatically detects SPI capability based on output pin
 driver.SetTimingMethod(NEOPIXEL_TIMING_SPI);
 
-// Connect NeoPixel data line to SPI MOSI pin:
-// - SPI0: GPIO 10 (Pin 19)
-// - SPI1: GPIO 20 (Pin 38)
+// Pin configuration in g_outputDef must use SPI MOSI pin:
+// - SPI0 MOSI: GPIO 10 (Physical Pin 19)
+// - SPI1 MOSI: GPIO 20 (Physical Pin 38)
+// If pin is not SPI-capable, automatically falls back to NEOPIXEL_TIMING_CLOCKGETTIME
 ```
+
+**Why MOSI (not MISO)?**
+- MOSI = Master Out, Slave In (Pi sends data TO NeoPixels)
+- MISO = Master In, Slave Out (Pi receives data FROM devices)
+- NeoPixels only receive data, they don't send data back
+- Therefore, we use the MOSI pin for one-way communication
 
 **Hardware Requirements**:
 - SPI-capable GPIO pin (MOSI)
@@ -133,6 +143,7 @@ driver.SetTimingMethod(NEOPIXEL_TIMING_SPI);
 **Description**: Uses hardware PWM with duty cycle control for timing.
 
 **How it works**:
+- Automatically detects if output pin is PWM-capable (GPIO 12, 13, 18, or 19)
 - Configures PWM at 800kHz base frequency
 - Uses duty cycle to control high/low times:
   - Bit 1: 70% duty cycle (~0.875µs high, 0.375µs low)
@@ -144,20 +155,33 @@ driver.SetTimingMethod(NEOPIXEL_TIMING_SPI);
 - ✅ Hardware PWM timing control
 - ✅ Precise duty cycle generation
 - ✅ Not affected by system load
+- ✅ Automatic pin validation and channel selection
 - ✅ Suitable for experimentation
 
 **Disadvantages**:
 - ⚠️ **Current limitation**: Software delays reduce performance benefit
-- ❌ Requires PWM-capable GPIO pin
+- ❌ Requires PWM-capable GPIO pin (12, 13, 18, or 19)
+- ❌ Automatically falls back to clock_gettime if pin is not PWM-capable
 - ❌ May conflict with other PWM uses (e.g., audio)
-- ❌ Pin-specific (only certain GPIOs support PWM)
 - ❌ No instrumentation support
 - 🚧 DMA implementation needed for full performance
 
 **When to use**:
 - Experimental and development purposes
 - When testing PWM-based approaches
+- When you have PWM-capable pins available (GPIO 12, 13, 18, or 19)
 - When you plan to implement DMA queueing
+
+**Configuration**:
+```cpp
+// The driver automatically detects PWM capability based on output pin
+driver.SetTimingMethod(NEOPIXEL_TIMING_PWM);
+
+// Pin configuration in g_outputDef must use PWM-capable pin:
+// - PWM0: GPIO 12 (Physical Pin 32) or GPIO 18 (Physical Pin 12)
+// - PWM1: GPIO 13 (Physical Pin 33) or GPIO 19 (Physical Pin 35)
+// If pin is not PWM-capable, automatically falls back to NEOPIXEL_TIMING_CLOCKGETTIME
+```
 
 **Future Improvements**:
 The current implementation uses `delayMicroseconds()` between bit writes, which limits performance. A full DMA implementation would:

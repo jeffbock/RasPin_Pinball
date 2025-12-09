@@ -761,11 +761,26 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex)
     m_timingMethod = NEOPIXEL_TIMING_CLOCKGETTIME;
     
     // Initialize SPI-specific members
-    m_spiChannel = 0;  // Default to SPI channel 0
+    // Determine SPI channel based on output pin (if SPI-capable)
+    // SPI0 MOSI: GPIO 10, SPI1 MOSI: GPIO 20
+    if (m_outputPin == 10) {
+        m_spiChannel = 0;  // SPI0
+    } else if (m_outputPin == 20) {
+        m_spiChannel = 1;  // SPI1
+    } else {
+        m_spiChannel = -1;  // Not an SPI pin
+    }
     m_spiFd = -1;      // Not initialized
     
     // Initialize PWM-specific members
-    m_pwmChannel = 0;  // Default to PWM channel 0
+    // PWM0: GPIO 12, 18; PWM1: GPIO 13, 19
+    if (m_outputPin == 12 || m_outputPin == 18) {
+        m_pwmChannel = 0;  // PWM0
+    } else if (m_outputPin == 13 || m_outputPin == 19) {
+        m_pwmChannel = 1;  // PWM1
+    } else {
+        m_pwmChannel = -1;  // Not a PWM pin
+    }
     m_pwmInitialized = false;
     
     // Initialize all LEDs to off (black) in both staged and current fields
@@ -1289,6 +1304,13 @@ bool NeoPixelDriver::CheckBitTimingSpec(uint32_t highTimeNs, uint32_t lowTimeNs,
 
 void NeoPixelDriver::InitializeSPI() {
 #ifdef EXE_MODE_RASPI
+    // Validate that the output pin is SPI-capable
+    if (m_spiChannel < 0) {
+        // Pin is not SPI-capable, fall back to clock_gettime method
+        m_timingMethod = NEOPIXEL_TIMING_CLOCKGETTIME;
+        return;
+    }
+    
     // Initialize SPI with appropriate speed for WS2812B
     // WS2812B requires ~800kHz bit rate, which translates to ~2.4 MHz SPI (3 SPI bits per WS2812B bit)
     const int SPI_SPEED = 2400000;  // 2.4 MHz
@@ -1362,6 +1384,13 @@ void NeoPixelDriver::CloseSPI() {
 
 void NeoPixelDriver::InitializePWM() {
 #ifdef EXE_MODE_RASPI
+    // Validate that the output pin is PWM-capable
+    if (m_pwmChannel < 0) {
+        // Pin is not PWM-capable, fall back to clock_gettime method
+        m_timingMethod = NEOPIXEL_TIMING_CLOCKGETTIME;
+        return;
+    }
+    
     // Configure PWM for WS2812B timing
     // WS2812B requires 800kHz signal with specific duty cycles
     // PWM clock: 19.2 MHz / divisor
