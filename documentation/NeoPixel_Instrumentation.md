@@ -4,6 +4,8 @@
 
 The NeoPixel timing instrumentation feature provides detailed diagnostics for WS2812B LED strip communication. It captures high-resolution timing data for each bit transmitted, allowing developers to verify that timing requirements are being met and diagnose any timing issues.
 
+**Note**: For information about the different timing methods (clock_gettime, NOP, SPI, PWM), see [NeoPixel Timing Methods](NeoPixel_Timing_Methods.md).
+
 ## Purpose
 
 WS2812B LEDs require precise timing for reliable operation:
@@ -134,11 +136,16 @@ When instrumentation is enabled:
 
 **Not implemented for:**
 - ❌ `NEOPIXEL_TIMING_NOP` - No instrumentation (timing is NOP-based, adding timing measurements would affect accuracy)
+- ❌ `NEOPIXEL_TIMING_SPI` - No instrumentation (hardware-based, timing handled by SPI controller)
+- ❌ `NEOPIXEL_TIMING_PWM` - No instrumentation (hardware-based, timing handled by PWM/DMA)
 
 The instrumentation is specifically designed for the `clock_gettime()` timing method because:
 1. This method already uses system time calls
 2. Additional timing measurements don't significantly affect accuracy
-3. The NOP method requires calibration and timing measurements would interfere
+3. Hardware methods (SPI/PWM) don't need instrumentation - they provide reliable timing by design
+4. The NOP method requires calibration and timing measurements would interfere
+
+**Note**: If you're experiencing timing issues with `clock_gettime()`, consider switching to SPI or PWM methods for hardware-based reliability. See [NeoPixel Timing Methods](NeoPixel_Timing_Methods.md) for details.
 
 ## Performance Impact
 
@@ -178,7 +185,8 @@ Bit 0: value=1, high=640ns, low=290ns, spec=FAIL
 Close to specification but outside tolerance - may work but not reliable:
 - Try enabling real-time priority
 - Reduce system load
-- Consider switching to NOP-based timing
+- Consider switching to hardware-based timing (SPI or PWM)
+- See [NeoPixel Timing Methods](NeoPixel_Timing_Methods.md) for alternatives
 
 ## Integration with Diagnostic System
 
