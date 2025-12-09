@@ -19,6 +19,16 @@
 #include <time.h>  // For clock_gettime with nanosecond precision
 #endif
 
+// NeoPixel SPI pin constants (Raspberry Pi GPIO numbers)
+constexpr int SPI0_MOSI_PIN = 10;  // SPI0 MOSI (Physical Pin 19)
+constexpr int SPI1_MOSI_PIN = 20;  // SPI1 MOSI (Physical Pin 38)
+
+// NeoPixel PWM pin constants (Raspberry Pi GPIO numbers)
+constexpr int PWM0_PIN_A = 12;  // PWM0 option A (Physical Pin 32)
+constexpr int PWM0_PIN_B = 18;  // PWM0 option B (Physical Pin 12)
+constexpr int PWM1_PIN_A = 13;  // PWM1 option A (Physical Pin 33)
+constexpr int PWM1_PIN_B = 19;  // PWM1 option B (Physical Pin 35)
+
 // Output definitions
 // Fields: outputName, outputMsg, id, pin, boardType, boardIndex (or Neopixel Instance), lastState, onTimeMS, offTimeMS
 stOutputDef g_outputDef[] = {
@@ -762,10 +772,9 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex)
     
     // Initialize SPI-specific members
     // Determine SPI channel based on output pin (if SPI-capable)
-    // SPI0 MOSI: GPIO 10, SPI1 MOSI: GPIO 20
-    if (m_outputPin == 10) {
+    if (m_outputPin == SPI0_MOSI_PIN) {
         m_spiChannel = 0;  // SPI0
-    } else if (m_outputPin == 20) {
+    } else if (m_outputPin == SPI1_MOSI_PIN) {
         m_spiChannel = 1;  // SPI1
     } else {
         m_spiChannel = -1;  // Not an SPI pin
@@ -773,10 +782,10 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex)
     m_spiFd = -1;      // Not initialized
     
     // Initialize PWM-specific members
-    // PWM0: GPIO 12, 18; PWM1: GPIO 13, 19
-    if (m_outputPin == 12 || m_outputPin == 18) {
+    // Determine PWM channel based on output pin (if PWM-capable)
+    if (m_outputPin == PWM0_PIN_A || m_outputPin == PWM0_PIN_B) {
         m_pwmChannel = 0;  // PWM0
-    } else if (m_outputPin == 13 || m_outputPin == 19) {
+    } else if (m_outputPin == PWM1_PIN_A || m_outputPin == PWM1_PIN_B) {
         m_pwmChannel = 1;  // PWM1
     } else {
         m_pwmChannel = -1;  // Not a PWM pin
