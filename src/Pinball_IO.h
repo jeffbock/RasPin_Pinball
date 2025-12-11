@@ -305,7 +305,8 @@ enum NeoPixelTimingMethod {
     NEOPIXEL_TIMING_CLOCKGETTIME = 0,  // Use clock_gettime() for timing (current default)
     NEOPIXEL_TIMING_NOP = 1,           // Use assembly NOP instructions (more deterministic)
     NEOPIXEL_TIMING_SPI = 2,           // Use SPI hardware (most reliable, requires SPI channel)
-    NEOPIXEL_TIMING_PWM = 3            // Use PWM hardware with DMA (best performance)
+    NEOPIXEL_TIMING_PWM = 3,           // Use PWM hardware with DMA (best performance)
+    NEOPIXEL_TIMING_DISABLED = 4       // Hardware initialization failed - NeoPixels disabled
 };
 
 // NeoPixel LED node structure - defines RGB color for a single LED
@@ -332,24 +333,25 @@ struct stNeoPixelNode {
 #define NEOPIXEL_MAX_CAPTURED_BYTES 4     // Maximum number of bytes captured (32 bits / 8)
 
 // NeoPixel timing specification tolerances (in nanoseconds)
-// WS2812B timing requirements with ±150ns tolerance:
-// Bit 1: 800ns high (±150ns), 450ns low (±150ns)
-// Bit 0: 400ns high (±150ns), 850ns low (±150ns)
-#define NEOPIXEL_BIT1_HIGH_MIN_NS 650    // 800ns - 150ns tolerance
-#define NEOPIXEL_BIT1_HIGH_MAX_NS 950    // 800ns + 150ns tolerance
-#define NEOPIXEL_BIT1_LOW_MIN_NS 300     // 450ns - 150ns tolerance
-#define NEOPIXEL_BIT1_LOW_MAX_NS 600     // 450ns + 150ns tolerance
+// SK6812 timing requirements with ±150ns tolerance:
+// Bit 1: 600ns high (±150ns), 600ns low (±150ns)
+// Bit 0: 300ns high (±150ns), 900ns low (±150ns)
+// Reset: >80μs (more strict than WS2812B's >50μs)
+#define NEOPIXEL_BIT1_HIGH_MIN_NS 450    // 600ns - 150ns tolerance
+#define NEOPIXEL_BIT1_HIGH_MAX_NS 750    // 600ns + 150ns tolerance
+#define NEOPIXEL_BIT1_LOW_MIN_NS 450     // 600ns - 150ns tolerance
+#define NEOPIXEL_BIT1_LOW_MAX_NS 750     // 600ns + 150ns tolerance
 
-#define NEOPIXEL_BIT0_HIGH_MIN_NS 250    // 400ns - 150ns tolerance
-#define NEOPIXEL_BIT0_HIGH_MAX_NS 550    // 400ns + 150ns tolerance
-#define NEOPIXEL_BIT0_LOW_MIN_NS 700     // 850ns - 150ns tolerance
-#define NEOPIXEL_BIT0_LOW_MAX_NS 1000    // 850ns + 150ns tolerance
+#define NEOPIXEL_BIT0_HIGH_MIN_NS 150    // 300ns - 150ns tolerance
+#define NEOPIXEL_BIT0_HIGH_MAX_NS 450    // 300ns + 150ns tolerance
+#define NEOPIXEL_BIT0_LOW_MIN_NS 750     // 900ns - 150ns tolerance
+#define NEOPIXEL_BIT0_LOW_MAX_NS 1050    // 900ns + 150ns tolerance
 
 // Structure to track timing data for a single bit transmission
 struct stNeoPixelBitTiming {
     uint32_t highTimeNs;      // Time pin was high in nanoseconds
     uint32_t lowTimeNs;       // Time pin was low in nanoseconds
-    bool meetsSpec;           // True if timing meets WS2812B specification
+    bool meetsSpec;           // True if timing meets SK6812 specification
     bool bitValue;            // The actual bit value sent (0 or 1)
 };
 
@@ -364,7 +366,7 @@ struct stNeoPixelInstrumentation {
     uint64_t totalTransmissionTimeNs; // Total time for all captured bits
 };
 
-// NeoPixel Driver class for controlling WS2812B-style RGB LED strips
+// NeoPixel Driver class for controlling SK6812-style RGB LED strips
 // Uses Raspberry Pi GPIO pins directly for bit-banged communication
 // IMPORTANT: Disables interrupts during transmission - limit LED count to avoid system issues
 class NeoPixelDriver {
@@ -401,7 +403,8 @@ public:
     bool HasStagedChanges() const;
     
     // Set timing method (must be set before calling SendStagedNeoPixels)
-    void SetTimingMethod(NeoPixelTimingMethod method) { m_timingMethod = method; }
+    // Note: Once set to DISABLED, cannot be changed
+    void SetTimingMethod(NeoPixelTimingMethod method);
     NeoPixelTimingMethod GetTimingMethod() const { return m_timingMethod; }
     
     // Get pin and LED count
@@ -434,8 +437,12 @@ private:
     // Helper function to convert PBLEDColor enum to RGB values
     void ColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, uint8_t& blue);
     
-    // Helper function to send RGB data for a single LED using WS2812B timing
+    // Helper function to send RGB data for a single LED using SK6812 timing
     void SendByte(uint8_t byte, NeoPixelTimingMethod method);
+    
+    // Helper functions for different timing methods
+    void SendByteClockGetTime(uint8_t byte);
+    void SendByteNOP(uint8_t byte);
     
     // Helper functions for SPI mode
     void InitializeSPI();
@@ -447,7 +454,7 @@ private:
     void SendBytePWM(uint8_t byte);
     void ClosePWM();
     
-    // Helper function to check if bit timing meets WS2812B specification
+    // Helper function to check if bit timing meets SK6812 specification
     bool CheckBitTimingSpec(uint32_t highTimeNs, uint32_t lowTimeNs, bool bitValue) const;
     
     // Helper function to initialize instrumentation data structure

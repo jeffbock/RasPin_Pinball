@@ -41,7 +41,7 @@ class pbdEjector;
 
 // NeoPixel configuration - LED count for each driver index
 // Index corresponds to boardIndex in g_outputDef. Set to 0 for unused indices.
-constexpr unsigned int g_NeoPixelSize[] = {5,5};  // Driver 0: 5 LEDs, Driver 1: 5 LEDs
+constexpr unsigned int g_NeoPixelSize[] = {35,1};  // Driver 0: 5 LEDs, Driver 1: 1 LED
 
 // Create a an array of NeoPixelNode arrays for each NeoPixel driver
 // These all are pre-allocated during boot time to avoid dynamic memory allocation during runtime
