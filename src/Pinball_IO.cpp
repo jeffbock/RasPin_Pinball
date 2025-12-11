@@ -46,7 +46,7 @@ stOutputDef g_outputDef[] = {
     {"LED2P08 LED", PB_OMSG_LED, IDO_LED8, 8, PB_LED, 2, PB_OFF, 500, 0},
     {"LED2P09 LED", PB_OMSG_LED, IDO_LED9, 9, PB_LED, 2, PB_OFF, 300, 0},
     {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 100, 0},
-    {"NeoPixel0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 25, PB_NEOPIXEL, 0, PB_OFF, 0, 0},
+    {"NeoPixel0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 10, PB_NEOPIXEL, 0, PB_OFF, 0, 0},
     {"NeoPixel1", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL1, 12, PB_NEOPIXEL, 1, PB_OFF, 0, 0}  
 };
 
@@ -767,8 +767,8 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex)
     // Use pre-allocated array from g_NeoPixelNodeArray
     m_nodes = g_NeoPixelNodeArray[driverIndex];
     
-    // Default to clock_gettime timing method
-    m_timingMethod = NEOPIXEL_TIMING_CLOCKGETTIME;
+    // Default to SPI timing method (most reliable)
+    m_timingMethod = NEOPIXEL_TIMING_SPI;
     
     // Initialize SPI-specific members
     // Determine SPI channel based on output pin (if SPI-capable)
