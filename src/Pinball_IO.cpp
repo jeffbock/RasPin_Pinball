@@ -11,6 +11,7 @@
 #include "Pinball_IO.h"
 #include "Pinball_Engine.h"
 #include "PBBuildSwitch.h"
+#include <vector>  // For std::vector in SPI burst mode
 
 #ifdef EXE_MODE_RASPI
 #include "wiringPi.h"
@@ -1518,8 +1519,7 @@ void NeoPixelDriver::SendAllPixelsSPI() {
     // Calculate buffer size: each LED is 3 bytes (GRB), each byte needs 4 SPI bytes
     // Total: m_numLEDs * 3 * 4 bytes
     unsigned int bufferSize = m_numLEDs * 3 * 4;
-    unsigned char* spiBuffer = new unsigned char[bufferSize];
-    memset(spiBuffer, 0, bufferSize);
+    std::vector<unsigned char> spiBuffer(bufferSize, 0);
     
     // Build the entire SPI data buffer
     unsigned int bufferIndex = 0;
@@ -1536,11 +1536,13 @@ void NeoPixelDriver::SendAllPixelsSPI() {
             uint8_t byte = colors[colorIdx];
             
             // Convert each SK6812 bit to 4 SPI bits
+            // Each bit becomes: 1=1110, 0=1000 (4 SPI bits each)
+            // bitOffset is always 0 or 4 since we pack 2 SK6812 bits per SPI byte
             for (int bit = 0; bit < 8; bit++) {
                 bool bitValue = (byte & (0x80 >> bit)) != 0;
                 int spiBitPos = bit * 4;
                 int spiByteIdx = spiBitPos / 8;
-                int bitOffset = spiBitPos % 8;
+                int bitOffset = spiBitPos % 8;  // Will be 0 or 4
                 
                 if (bitValue) {
                     // Bit 1: 1110 pattern
@@ -1556,10 +1558,7 @@ void NeoPixelDriver::SendAllPixelsSPI() {
     }
     
     // Send the entire buffer in one SPI transaction
-    wiringPiSPIDataRW(m_spiChannel, spiBuffer, bufferSize);
-    
-    // Clean up
-    delete[] spiBuffer;
+    wiringPiSPIDataRW(m_spiChannel, spiBuffer.data(), bufferSize);
 #endif
 }
 

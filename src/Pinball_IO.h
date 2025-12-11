@@ -459,8 +459,11 @@ private:
     }
     
     // Helper function to apply brightness scaling to a color component
+    // Optimized using bit shifting for better performance
     inline uint8_t ApplyBrightness(uint8_t color, uint8_t brightness) const {
-        return (uint8_t)((uint16_t)color * brightness / 255);
+        // Fast approximation: (color * brightness + 127) >> 8
+        // Provides similar accuracy to division by 255 with faster execution
+        return (uint8_t)((((uint16_t)color * brightness) + 127) >> 8);
     }
     
     // Helper function to send RGB data for a single LED using SK6812 timing
