@@ -93,7 +93,7 @@ struct stOutputDef{
     PBPinState lastState;
     unsigned int onTimeMS;
     unsigned int offTimeMS;
-
+    unsigned int neoPixelIndex;  // Index of specific NeoPixel LED in chain (for single pixel operations)
 };
 
 // The actual definition of the input items - the user of the library will need to define these for the specific table
@@ -306,7 +306,8 @@ enum NeoPixelTimingMethod {
     NEOPIXEL_TIMING_NOP = 1,           // Use assembly NOP instructions (more deterministic)
     NEOPIXEL_TIMING_SPI = 2,           // Use SPI hardware (most reliable, requires SPI channel)
     NEOPIXEL_TIMING_PWM = 3,           // Use PWM hardware with DMA (best performance)
-    NEOPIXEL_TIMING_DISABLED = 4       // Hardware initialization failed - NeoPixels disabled
+    NEOPIXEL_TIMING_SPI_BURST = 4,     // Use SPI hardware with full string burst transmission
+    NEOPIXEL_TIMING_DISABLED = 5       // Hardware initialization failed - NeoPixels disabled
 };
 
 // NeoPixel LED node structure - defines RGB color for a single LED
@@ -315,10 +316,12 @@ struct stNeoPixelNode {
     uint8_t currentRed;
     uint8_t currentGreen;
     uint8_t currentBlue;
+    uint8_t currentBrightness;
 
     uint8_t stagedRed;
     uint8_t stagedGreen;
     uint8_t stagedBlue;
+    uint8_t stagedBrightness;
 };
 
 // NeoPixel timing and safety constants
@@ -416,6 +419,16 @@ public:
     bool IsInstrumentationEnabled() const;
     void ResetInstrumentation();
     const stNeoPixelInstrumentation& GetInstrumentationData() const;
+    
+    // Brightness control
+    void SetMaxBrightness(uint8_t maxBrightness);
+    uint8_t GetMaxBrightness() const { return m_maxBrightness; }
+    
+    // Single pixel control (immediately sends to hardware)
+    void SetSinglePixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue);
+    void SetSinglePixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);
+    void SetSinglePixel(unsigned int ledIndex, PBLEDColor color);
+    void SetSinglePixel(unsigned int ledIndex, PBLEDColor color, uint8_t brightness);
 
 private:
     unsigned int m_driverIndex;    // Driver index (corresponds to boardIndex)
@@ -434,8 +447,21 @@ private:
     int m_pwmChannel;              // PWM channel
     bool m_pwmInitialized;         // PWM initialization state
     
+    // Brightness control
+    uint8_t m_maxBrightness;       // Maximum allowed brightness (0-255)
+    
     // Helper function to convert PBLEDColor enum to RGB values
     void ColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, uint8_t& blue);
+    
+    // Helper function to cap brightness at maximum
+    inline uint8_t CapBrightness(uint8_t brightness) const {
+        return (brightness > m_maxBrightness) ? m_maxBrightness : brightness;
+    }
+    
+    // Helper function to apply brightness scaling to a color component
+    inline uint8_t ApplyBrightness(uint8_t color, uint8_t brightness) const {
+        return (uint8_t)((uint16_t)color * brightness / 255);
+    }
     
     // Helper function to send RGB data for a single LED using SK6812 timing
     void SendByte(uint8_t byte, NeoPixelTimingMethod method);
@@ -447,6 +473,7 @@ private:
     // Helper functions for SPI mode
     void InitializeSPI();
     void SendByteSPI(uint8_t byte);
+    void SendAllPixelsSPI();  // Send entire pixel string in one burst
     void CloseSPI();
     
     // Helper functions for PWM mode

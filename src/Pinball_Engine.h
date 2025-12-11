@@ -198,8 +198,9 @@ struct stLEDSequence {
 
 // NeoPixel sequence step structure
 struct stNeoPixelSequence {
-    const stNeoPixelNode* nodeArray;  // Pointer to array of RGB values for this step
+    const stNeoPixelNode* nodeArray;  // Pointer to array of RGBB values for this step
     unsigned int onDurationMS;         // Duration to display this step
+    uint8_t brightness;                // Brightness for this step (0-255, default 255)
 };
 
 // NeoPixel sequence info structure

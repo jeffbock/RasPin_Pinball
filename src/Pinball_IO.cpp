@@ -30,24 +30,24 @@ constexpr int PWM1_PIN_A = 13;  // PWM1 option A (Physical Pin 33)
 constexpr int PWM1_PIN_B = 19;  // PWM1 option B (Physical Pin 35)
 
 // Output definitions
-// Fields: outputName, outputMsg, id, pin, boardType, boardIndex (or Neopixel Instance), lastState, onTimeMS, offTimeMS
+// Fields: outputName, outputMsg, id, pin, boardType, boardIndex (or Neopixel Instance), lastState, onTimeMS, offTimeMS, neoPixelIndex
 stOutputDef g_outputDef[] = {
-    {"IO0P8 Sling Shot", PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, 8, PB_IO, 0, PB_OFF, 500, 500}, 
-    {"IO1P8 Pop Bumper", PB_OMSG_GENERIC_IO, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF, 1000, 1000},
-    {"IO2P8 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF, 2000, 2000},
-    {"IO0P15 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT2, 15, PB_IO, 0, PB_OFF, 500, 500},
-    {"Start LED", PB_OMSG_GENERIC_IO, IDO_LED1, 23, PB_RASPI, 0, PB_ON, 0, 0},
-    {"LED0P08 LED", PB_OMSG_LED, IDO_LED2, 8, PB_LED, 0, PB_OFF, 100, 100},
-    {"LED0P09 LED", PB_OMSG_LED, IDO_LED3, 9, PB_LED, 0, PB_OFF, 150, 50},
-    {"LED0P10 LED", PB_OMSG_LED, IDO_LED4, 10, PB_LED, 0, PB_OFF, 200, 0},
-    {"LED1P08 LED", PB_OMSG_LED, IDO_LED5, 8, PB_LED, 1, PB_OFF, 50, 0},
-    {"LED1P09 LED", PB_OMSG_LED, IDO_LED6, 9, PB_LED, 1, PB_OFF, 50, 0},
-    {"LED1P10 LED", PB_OMSG_LED, IDO_LED7, 10, PB_LED, 1, PB_OFF, 50, 0},
-    {"LED2P08 LED", PB_OMSG_LED, IDO_LED8, 8, PB_LED, 2, PB_OFF, 500, 0},
-    {"LED2P09 LED", PB_OMSG_LED, IDO_LED9, 9, PB_LED, 2, PB_OFF, 300, 0},
-    {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 100, 0},
-    {"NeoPixel0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 10, PB_NEOPIXEL, 0, PB_OFF, 0, 0}
-    // {"NeoPixel1", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL1, 12, PB_NEOPIXEL, 1, PB_OFF, 0, 0}  
+    {"IO0P8 Sling Shot", PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, 8, PB_IO, 0, PB_OFF, 500, 500, 0}, 
+    {"IO1P8 Pop Bumper", PB_OMSG_GENERIC_IO, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF, 1000, 1000, 0},
+    {"IO2P8 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF, 2000, 2000, 0},
+    {"IO0P15 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT2, 15, PB_IO, 0, PB_OFF, 500, 500, 0},
+    {"Start LED", PB_OMSG_GENERIC_IO, IDO_LED1, 23, PB_RASPI, 0, PB_ON, 0, 0, 0},
+    {"LED0P08 LED", PB_OMSG_LED, IDO_LED2, 8, PB_LED, 0, PB_OFF, 100, 100, 0},
+    {"LED0P09 LED", PB_OMSG_LED, IDO_LED3, 9, PB_LED, 0, PB_OFF, 150, 50, 0},
+    {"LED0P10 LED", PB_OMSG_LED, IDO_LED4, 10, PB_LED, 0, PB_OFF, 200, 0, 0},
+    {"LED1P08 LED", PB_OMSG_LED, IDO_LED5, 8, PB_LED, 1, PB_OFF, 50, 0, 0},
+    {"LED1P09 LED", PB_OMSG_LED, IDO_LED6, 9, PB_LED, 1, PB_OFF, 50, 0, 0},
+    {"LED1P10 LED", PB_OMSG_LED, IDO_LED7, 10, PB_LED, 1, PB_OFF, 50, 0, 0},
+    {"LED2P08 LED", PB_OMSG_LED, IDO_LED8, 8, PB_LED, 2, PB_OFF, 500, 0, 0},
+    {"LED2P09 LED", PB_OMSG_LED, IDO_LED9, 9, PB_LED, 2, PB_OFF, 300, 0, 0},
+    {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 100, 0, 0},
+    {"NeoPixel0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 10, PB_NEOPIXEL, 0, PB_OFF, 0, 0, 0}
+    // {"NeoPixel1", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL1, 12, PB_NEOPIXEL, 1, PB_OFF, 0, 0, 0}  
 };
 
 // Input definitions
@@ -789,24 +789,29 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex)
     }
     m_pwmInitialized = false;
     
+    // Initialize brightness control
+    m_maxBrightness = 255;  // Default to maximum brightness
+    
     // Select default timing method based on pin capabilities
-    // Priority: SPI (most reliable) > PWM (hardware-based) > clock_gettime (fallback)
+    // Priority: SPI_BURST (fastest) > SPI > PWM > clock_gettime (fallback)
     if (m_spiChannel >= 0) {
-        m_timingMethod = NEOPIXEL_TIMING_SPI;
+        m_timingMethod = NEOPIXEL_TIMING_SPI_BURST;  // Use burst mode by default for SPI
     } else if (m_pwmChannel >= 0) {
         m_timingMethod = NEOPIXEL_TIMING_PWM;
     } else {
         m_timingMethod = NEOPIXEL_TIMING_CLOCKGETTIME;
     }
     
-    // Initialize all LEDs to off (black) in both staged and current fields
+    // Initialize all LEDs to off (black) with full brightness in both staged and current fields
     for (unsigned int i = 0; i < m_numLEDs; i++) {
         m_nodes[i].stagedRed = 0;
         m_nodes[i].stagedGreen = 0;
         m_nodes[i].stagedBlue = 0;
+        m_nodes[i].stagedBrightness = 255;
         m_nodes[i].currentRed = 0;
         m_nodes[i].currentGreen = 0;
         m_nodes[i].currentBlue = 0;
+        m_nodes[i].currentBrightness = 255;
     }
 
     // Note: GPIO initialization is deferred to InitializeGPIO() method
@@ -823,6 +828,7 @@ void NeoPixelDriver::InitializeGPIO() {
     // Initialize based on the timing method
     switch (m_timingMethod) {
         case NEOPIXEL_TIMING_SPI:
+        case NEOPIXEL_TIMING_SPI_BURST:
             // Initialize SPI hardware - this will set up the pin for SPI mode
             InitializeSPI();
             // Send initial reset to put NeoPixels in known state after power-up
@@ -889,17 +895,8 @@ NeoPixelDriver::~NeoPixelDriver() {
 }
 
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue) {
-    if (ledIndex < m_numLEDs) {
-        // Only mark as changed if values actually differ from current hardware
-        if (m_nodes[ledIndex].currentRed != red ||
-            m_nodes[ledIndex].currentGreen != green ||
-            m_nodes[ledIndex].currentBlue != blue) {
-            m_nodes[ledIndex].stagedRed = red;
-            m_nodes[ledIndex].stagedGreen = green;
-            m_nodes[ledIndex].stagedBlue = blue;
-            m_hasChanges = true;
-        }
-    }
+    // Call with default brightness of 255
+    StageNeoPixel(ledIndex, red, green, blue, 255);
 }
 
 // Helper function to convert PBLEDColor enum to RGB values
@@ -934,17 +931,27 @@ void NeoPixelDriver::ColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, 
 }
 
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node) {
-    StageNeoPixel(ledIndex, node.stagedRed, node.stagedGreen, node.stagedBlue);
+    StageNeoPixel(ledIndex, node.stagedRed, node.stagedGreen, node.stagedBlue, node.stagedBrightness);
 }
 
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness) {
-    // Apply brightness scaling to RGB values
-    // brightness: 0 = off, 255 = full brightness
-    uint8_t scaledRed = (red * brightness) / 255;
-    uint8_t scaledGreen = (green * brightness) / 255;
-    uint8_t scaledBlue = (blue * brightness) / 255;
-    
-    StageNeoPixel(ledIndex, scaledRed, scaledGreen, scaledBlue);
+    if (ledIndex < m_numLEDs) {
+        // Cap brightness at maximum
+        brightness = CapBrightness(brightness);
+        
+        // Store the RGB values and brightness
+        // Only mark as changed if values actually differ from current hardware
+        if (m_nodes[ledIndex].currentRed != red ||
+            m_nodes[ledIndex].currentGreen != green ||
+            m_nodes[ledIndex].currentBlue != blue ||
+            m_nodes[ledIndex].currentBrightness != brightness) {
+            m_nodes[ledIndex].stagedRed = red;
+            m_nodes[ledIndex].stagedGreen = green;
+            m_nodes[ledIndex].stagedBlue = blue;
+            m_nodes[ledIndex].stagedBrightness = brightness;
+            m_hasChanges = true;
+        }
+    }
 }
 
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, const stNeoPixelNode& node, uint8_t brightness) {
@@ -969,29 +976,32 @@ void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, PBLEDColor color, uint
 
 // Stage all LEDs in the chain - efficiently updates entire array
 void NeoPixelDriver::StageNeoPixelAll(uint8_t red, uint8_t green, uint8_t blue) {
+    // Use default brightness of 255
+    StageNeoPixelAll(red, green, blue, 255);
+}
+
+void NeoPixelDriver::StageNeoPixelAll(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness) {
+    // Cap brightness at maximum
+    brightness = CapBrightness(brightness);
+    
     // Directly update the staged array for efficiency
     for (unsigned int i = 0; i < m_numLEDs; i++) {
         // Check if value differs from current hardware
-        if (m_nodes[i].currentRed != red || m_nodes[i].currentGreen != green || m_nodes[i].currentBlue != blue) {
+        if (m_nodes[i].currentRed != red || 
+            m_nodes[i].currentGreen != green || 
+            m_nodes[i].currentBlue != blue ||
+            m_nodes[i].currentBrightness != brightness) {
             m_nodes[i].stagedRed = red;
             m_nodes[i].stagedGreen = green;
             m_nodes[i].stagedBlue = blue;
+            m_nodes[i].stagedBrightness = brightness;
             m_hasChanges = true;
         }
     }
 }
 
-void NeoPixelDriver::StageNeoPixelAll(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness) {
-    // Apply brightness scaling
-    uint8_t scaledRed = (red * brightness) / 255;
-    uint8_t scaledGreen = (green * brightness) / 255;
-    uint8_t scaledBlue = (blue * brightness) / 255;
-    
-    StageNeoPixelAll(scaledRed, scaledGreen, scaledBlue);
-}
-
 void NeoPixelDriver::StageNeoPixelAll(const stNeoPixelNode& node) {
-    StageNeoPixelAll(node.stagedRed, node.stagedGreen, node.stagedBlue);
+    StageNeoPixelAll(node.stagedRed, node.stagedGreen, node.stagedBlue, node.stagedBrightness);
 }
 
 void NeoPixelDriver::StageNeoPixelAll(const stNeoPixelNode& node, uint8_t brightness) {
@@ -1019,6 +1029,36 @@ void NeoPixelDriver::StageNeoPixelArray(const stNeoPixelNode* nodeArray, unsigne
     for (unsigned int i = 0; i < numToStage; i++) {
         StageNeoPixel(i, nodeArray[i]);
     }
+}
+
+// Brightness control
+void NeoPixelDriver::SetMaxBrightness(uint8_t maxBrightness) {
+    m_maxBrightness = maxBrightness;
+}
+
+// Single pixel control functions - immediately send to hardware
+void NeoPixelDriver::SetSinglePixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue) {
+    SetSinglePixel(ledIndex, red, green, blue, 255);
+}
+
+void NeoPixelDriver::SetSinglePixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness) {
+    // Stage the single pixel
+    StageNeoPixel(ledIndex, red, green, blue, brightness);
+    
+    // Immediately send if there are changes
+    if (m_hasChanges) {
+        SendStagedNeoPixels();
+    }
+}
+
+void NeoPixelDriver::SetSinglePixel(unsigned int ledIndex, PBLEDColor color) {
+    SetSinglePixel(ledIndex, color, 255);
+}
+
+void NeoPixelDriver::SetSinglePixel(unsigned int ledIndex, PBLEDColor color, uint8_t brightness) {
+    uint8_t red, green, blue;
+    ColorToRGB(color, red, green, blue);
+    SetSinglePixel(ledIndex, red, green, blue, brightness);
 }
 
 void NeoPixelDriver::SendStagedNeoPixels() {
@@ -1066,10 +1106,23 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     
     // Send data for each LED in the string
     // SK6812 expects GRB format (not RGB)
-    for (unsigned int i = 0; i < m_numLEDs; i++) {
-        SendByte(m_nodes[i].stagedGreen, m_timingMethod);  // Green first
-        SendByte(m_nodes[i].stagedRed, m_timingMethod);    // Red second
-        SendByte(m_nodes[i].stagedBlue, m_timingMethod);   // Blue third
+    // Apply brightness scaling during transmission
+    
+    if (m_timingMethod == NEOPIXEL_TIMING_SPI_BURST) {
+        // Use optimized SPI burst mode - sends entire string at once
+        SendAllPixelsSPI();
+    } else {
+        // Use byte-at-a-time mode for other timing methods
+        for (unsigned int i = 0; i < m_numLEDs; i++) {
+            uint8_t brightness = m_nodes[i].stagedBrightness;
+            uint8_t green = ApplyBrightness(m_nodes[i].stagedGreen, brightness);
+            uint8_t red = ApplyBrightness(m_nodes[i].stagedRed, brightness);
+            uint8_t blue = ApplyBrightness(m_nodes[i].stagedBlue, brightness);
+            
+            SendByte(green, m_timingMethod);  // Green first
+            SendByte(red, m_timingMethod);    // Red second
+            SendByte(blue, m_timingMethod);   // Blue third
+        }
     }
     
     // Send reset/latch signal (interrupts enabled for this)
@@ -1086,6 +1139,7 @@ void NeoPixelDriver::SendStagedNeoPixels() {
         m_nodes[i].currentRed = m_nodes[i].stagedRed;
         m_nodes[i].currentGreen = m_nodes[i].stagedGreen;
         m_nodes[i].currentBlue = m_nodes[i].stagedBlue;
+        m_nodes[i].currentBrightness = m_nodes[i].stagedBrightness;
     }
     
     // Clear the changes flag
@@ -1448,6 +1502,64 @@ void NeoPixelDriver::CloseSPI() {
         // wiringPi doesn't provide explicit SPI close, just mark as closed
         m_spiFd = -1;
     }
+#endif
+}
+
+void NeoPixelDriver::SendAllPixelsSPI() {
+#ifdef EXE_MODE_RASPI
+    // Ensure SPI is initialized
+    if (m_spiFd < 0) {
+        InitializeSPI();
+        if (m_spiFd < 0) {
+            return;  // SPI initialization failed
+        }
+    }
+    
+    // Calculate buffer size: each LED is 3 bytes (GRB), each byte needs 4 SPI bytes
+    // Total: m_numLEDs * 3 * 4 bytes
+    unsigned int bufferSize = m_numLEDs * 3 * 4;
+    unsigned char* spiBuffer = new unsigned char[bufferSize];
+    memset(spiBuffer, 0, bufferSize);
+    
+    // Build the entire SPI data buffer
+    unsigned int bufferIndex = 0;
+    for (unsigned int i = 0; i < m_numLEDs; i++) {
+        // Apply brightness scaling
+        uint8_t brightness = m_nodes[i].stagedBrightness;
+        uint8_t green = ApplyBrightness(m_nodes[i].stagedGreen, brightness);
+        uint8_t red = ApplyBrightness(m_nodes[i].stagedRed, brightness);
+        uint8_t blue = ApplyBrightness(m_nodes[i].stagedBlue, brightness);
+        
+        // Convert GRB to SPI format
+        uint8_t colors[3] = {green, red, blue};
+        for (int colorIdx = 0; colorIdx < 3; colorIdx++) {
+            uint8_t byte = colors[colorIdx];
+            
+            // Convert each SK6812 bit to 4 SPI bits
+            for (int bit = 0; bit < 8; bit++) {
+                bool bitValue = (byte & (0x80 >> bit)) != 0;
+                int spiBitPos = bit * 4;
+                int spiByteIdx = spiBitPos / 8;
+                int bitOffset = spiBitPos % 8;
+                
+                if (bitValue) {
+                    // Bit 1: 1110 pattern
+                    spiBuffer[bufferIndex + spiByteIdx] |= (0b1110 << (4 - bitOffset));
+                } else {
+                    // Bit 0: 1000 pattern
+                    spiBuffer[bufferIndex + spiByteIdx] |= (0b1000 << (4 - bitOffset));
+                }
+            }
+            
+            bufferIndex += 4;  // Move to next 4-byte block
+        }
+    }
+    
+    // Send the entire buffer in one SPI transaction
+    wiringPiSPIDataRW(m_spiChannel, spiBuffer, bufferSize);
+    
+    // Clean up
+    delete[] spiBuffer;
 #endif
 }
 
