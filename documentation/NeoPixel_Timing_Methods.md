@@ -132,6 +132,9 @@ driver.SetTimingMethod(NEOPIXEL_TIMING_SPI);
 **Hardware Requirements**:
 - SPI-capable GPIO pin (MOSI)
 - SPI must be enabled in `/boot/config.txt`:
+OR
+- Use the Raspberry Pi Configuration tool (under Preferences) to enable SPI
+
   ```
   dtparam=spi=on
   ```
