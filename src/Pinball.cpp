@@ -942,7 +942,6 @@ void SendAllStagedNeoPixels() {
 // Process NeoPixel output messages
 void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& outputDef) {
     int boardIndex = outputDef.boardIndex;
-    unsigned int neoPixelIndex = outputDef.neoPixelIndex;
     
     // Check if driver exists
     if (g_PBEngine.m_NeoPixelDriverMap.find(boardIndex) == g_PBEngine.m_NeoPixelDriverMap.end()) {
@@ -963,6 +962,7 @@ void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& o
         uint8_t green = message.optionsCopy.neoPixelGreen;
         uint8_t blue = message.optionsCopy.neoPixelBlue;
         uint8_t brightness = message.optionsCopy.brightness;
+        unsigned int neoPixelIndex = message.optionsCopy.neoPixelIndex;  // Get index from options
         
         // Check if this is a single pixel operation (neoPixelIndex > 0)
         // or all pixels operation (neoPixelIndex == 0)

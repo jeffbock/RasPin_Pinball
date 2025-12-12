@@ -68,8 +68,13 @@ stNeoPixelNode g_NeoPixelNodes1[g_NeoPixelSize[1]];
     m_videoFadingIn = false;
     m_videoFadingOut = false;
     m_videoFadeDurationSec = 2.0f;
-    m_sandboxNeoPixelColorIndex = 0;  // Start with PB_LEDRED  
     m_sandboxEjector = nullptr;
+    
+    // Initialize NeoPixel animation variables
+    m_sandboxNeoPixelAnimActive = false;
+    m_sandboxNeoPixelPosition = 1;
+    m_sandboxNeoPixelMovingUp = true;
+    m_sandboxNeoPixelMaxPosition = 0;
 
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
@@ -1590,6 +1595,41 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
             }
             
+            // Handle NeoPixel animation timer
+            if (inputMessage.inputMsg == PB_IMSG_TIMER && 
+                inputMessage.inputId == SANDBOX_NEOPIXEL_TIMER_ID &&
+                m_sandboxNeoPixelAnimActive) {
+                
+                // Clear previous pixels to dark blue (0-based indexing)
+                if (m_sandboxNeoPixelPosition > 1) {
+                    int prevPos = m_sandboxNeoPixelPosition - 1;
+                    SendNeoPixelSingleMsg(IDO_NEOPIXEL0, prevPos - 1, PB_LEDBLUE, 32);
+                    SendNeoPixelSingleMsg(IDO_NEOPIXEL0, prevPos, PB_LEDBLUE, 32);
+                    SendNeoPixelSingleMsg(IDO_NEOPIXEL0, prevPos + 1, PB_LEDBLUE, 32);
+                }
+                
+                // Set current pixels (1-based position maps to 0-based LED indices)
+                SendNeoPixelSingleMsg(IDO_NEOPIXEL0, m_sandboxNeoPixelPosition - 1, PB_LEDPURPLE, 255);  // Purple
+                SendNeoPixelSingleMsg(IDO_NEOPIXEL0, m_sandboxNeoPixelPosition, PB_LEDRED, 255);         // Red
+                SendNeoPixelSingleMsg(IDO_NEOPIXEL0, m_sandboxNeoPixelPosition + 1, PB_LEDPURPLE, 255);  // Purple
+                
+                // Update position
+                if (m_sandboxNeoPixelMovingUp) {
+                    m_sandboxNeoPixelPosition++;
+                    if (m_sandboxNeoPixelPosition >= m_sandboxNeoPixelMaxPosition) {
+                        m_sandboxNeoPixelMovingUp = false;
+                    }
+                } else {
+                    m_sandboxNeoPixelPosition--;
+                    if (m_sandboxNeoPixelPosition <= 1) {
+                        m_sandboxNeoPixelMovingUp = true;
+                    }
+                }
+                
+                // Set next timer
+                pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, 250);
+            }
+            
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 
                 // Start button exits to Start Menu
@@ -1647,16 +1687,33 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     testCount++;
                 }
                 
-                // Right Flipper - NeoPixel Test (cycle through colors)
+                // Right Flipper - NeoPixel Animation Test
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                    // Get the current color from enum
-                    PBLEDColor currentColor = static_cast<PBLEDColor>(m_sandboxNeoPixelColorIndex);
-                    
-                    // Send message to set all NeoPixels on driver 0 to current color
-                    SendNeoPixelAllMsg(IDO_NEOPIXEL0, currentColor, 32);
-                    
-                    // Advance to next color (cycle through 0-6)
-                    m_sandboxNeoPixelColorIndex = (m_sandboxNeoPixelColorIndex + 1) % 7;
+                    if (!m_sandboxNeoPixelAnimActive) {
+                        // Start animation: set all NeoPixels to dark blue
+                        SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);  // Dark blue (brightness 32)
+                        
+                        // Initialize animation state
+                        m_sandboxNeoPixelAnimActive = true;
+                        m_sandboxNeoPixelPosition = 1;  // Start at position 1
+                        m_sandboxNeoPixelMovingUp = true;
+                        
+                        // Get the number of LEDs in the NeoPixel chain
+                        if (m_NeoPixelDriverMap.find(0) != m_NeoPixelDriverMap.end()) {
+                            unsigned int numLEDs = m_NeoPixelDriverMap.at(0).GetNumLEDs();
+                            m_sandboxNeoPixelMaxPosition = (numLEDs >= 3) ? (numLEDs - 2) : 1;
+                        } else {
+                            m_sandboxNeoPixelMaxPosition = 1;
+                        }
+                        
+                        // Start timer for first animation step (250ms)
+                        pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, 250);
+                    } else {
+                        // Stop animation: set all to dark blue and cancel timer
+                        SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);
+                        m_sandboxNeoPixelAnimActive = false;
+                        pbeCancelTimer(SANDBOX_NEOPIXEL_TIMER_ID);
+                    }
                 }
                 
                 // Left Activate - Test 3 - Video Playback Test (Toggle fade in/out)
@@ -1968,6 +2025,7 @@ void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, uint8_t red, uint8_t 
     neoOptions.neoPixelGreen = green;
     neoOptions.neoPixelBlue = blue;
     neoOptions.brightness = brightness;
+    neoOptions.neoPixelIndex = 0;  // 0 means all pixels
     
     // Send the message - the processing will set all LEDs to these RGB values scaled by brightness
     // NeoPixels are always "on" when a message is sent - use black (0,0,0) to turn off
@@ -1995,6 +2053,43 @@ void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, PBLEDColor color, uin
     
     // Call the RGB version with brightness
     SendNeoPixelAllMsg(neoPixelId, red, green, blue, brightness);
+}
+
+// Send NeoPixel message to set a single LED in a chain to specific RGB values
+void PBEngine::SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixelIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness)
+{
+    // Set up NeoPixel options with RGB values, brightness, and pixel index
+    stOutputOptions neoOptions;
+    neoOptions.neoPixelRed = red;
+    neoOptions.neoPixelGreen = green;
+    neoOptions.neoPixelBlue = blue;
+    neoOptions.brightness = brightness;
+    neoOptions.neoPixelIndex = pixelIndex + 1;  // Convert 0-based to 1-based for message (0 means all pixels)
+    
+    // Send the message - the processing will set the specific LED to these RGB values scaled by brightness
+    SendOutputMsg(PB_OMSG_NEOPIXEL, neoPixelId, PB_ON, false, &neoOptions);
+}
+
+// Send NeoPixel message to set a single LED in a chain to a specific color (enum)
+void PBEngine::SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixelIndex, PBLEDColor color, uint8_t brightness)
+{
+    // Convert color enum to RGB values
+    uint8_t red = 0, green = 0, blue = 0;
+    
+    // Map color enum to full brightness RGB (0 or 255)
+    switch (color) {
+        case PB_LEDRED:     red = 255; break;
+        case PB_LEDGREEN:   green = 255; break;
+        case PB_LEDBLUE:    blue = 255; break;
+        case PB_LEDWHITE:   red = green = blue = 255; break;
+        case PB_LEDPURPLE:  red = blue = 255; break;
+        case PB_LEDYELLOW:  red = green = 255; break;
+        case PB_LEDCYAN:    green = blue = 255; break;
+        default:            break; // Unknown color, all stay at 0 (off/black)
+    }
+    
+    // Call the RGB version with brightness
+    SendNeoPixelSingleMsg(neoPixelId, pixelIndex, red, green, blue, brightness);
 }
 
 // Function to set or unset autoOutput for an input by array index

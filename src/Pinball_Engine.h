@@ -139,6 +139,7 @@ struct stOutputOptions {
     uint8_t neoPixelRed;                          // Red channel for single NeoPixel LED (0-255)
     uint8_t neoPixelGreen;                        // Green channel for single NeoPixel LED (0-255)
     uint8_t neoPixelBlue;                         // Blue channel for single NeoPixel LED (0-255)
+    unsigned int neoPixelIndex;                   // Index of specific pixel in chain (0=all, 1+=specific pixel)
 };
 
 struct stOutputMessage {
@@ -169,6 +170,9 @@ struct stTimerEntry {
 
 // Reserved timer ID for the watchdog timer
 #define WATCHDOGTIMER_ID 0
+
+// Timer ID for sandbox NeoPixel animation
+#define SANDBOX_NEOPIXEL_TIMER_ID 100
 
 // Maximum number of active timers allowed
 #define MAX_TIMERS 10
@@ -274,6 +278,8 @@ public:
     void SendSeqMsg(const LEDSequence* sequence, const uint16_t* mask, PBSequenceLoopMode loopMode, PBPinState outputState);
     void SendNeoPixelAllMsg(unsigned int neoPixelId, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness = 255);
     void SendNeoPixelAllMsg(unsigned int neoPixelId, PBLEDColor color, uint8_t brightness = 255);
+    void SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixelIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness = 255);
+    void SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixelIndex, PBLEDColor color, uint8_t brightness = 255);
     
     // Input configuration functions
     bool SetAutoOutput(unsigned int index, bool autoOutputEnabled);
@@ -372,7 +378,12 @@ public:
     bool m_videoFadingOut;
     float m_videoFadeDurationSec;
     pbdEjector* m_sandboxEjector;
-    int m_sandboxNeoPixelColorIndex;  // Track current color for NeoPixel test
+    
+    // NeoPixel animation variables for sandbox test
+    bool m_sandboxNeoPixelAnimActive;    // Animation is running
+    int m_sandboxNeoPixelPosition;       // Current position of the 3-pixel group (1-based)
+    bool m_sandboxNeoPixelMovingUp;      // True = moving up, False = moving down
+    int m_sandboxNeoPixelMaxPosition;    // Maximum position based on LED count
 
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;
