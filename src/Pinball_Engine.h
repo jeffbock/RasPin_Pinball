@@ -494,7 +494,8 @@ private:
     bool pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int fontSprite, unsigned int selectedItem, 
                               int x, int y, int lineSpacing, std::map<unsigned int, std::string>* menuItems,
                               bool useShadow, bool useCursor, unsigned int redShadow, 
-                              unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset);
+                              unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset,
+                              unsigned int disabledItemsMask = 0x0);
 
     // Private functions for loading main state screens
     bool pbeLoadDefaultBackground();

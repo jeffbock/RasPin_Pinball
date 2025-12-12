@@ -421,7 +421,8 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
 bool PBEngine::pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int fontSprite, unsigned int selectedItem, 
                                     int x, int y, int lineSpacing, std::map<unsigned int, std::string>* menuItems,
                                     bool useShadow, bool useCursor, unsigned int redShadow, 
-                                    unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset){
+                                    unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset,
+                                    unsigned int disabledItemsMask){
 
     // Check that the cursor sprite and font sprite are valid, and fontSprite is actually a font
     if ((gfxIsSprite(cursorSprite) == false) && (useCursor ==  true)) {
@@ -470,14 +471,38 @@ bool PBEngine::pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int font
         // Calculate the x position of the menu item
         menuY = y + (itemIndex * (fontHeight + lineSpacing));
 
+        // Check if this item is disabled (bit is set in the mask)
+        bool isDisabled = (disabledItemsMask & (1 << item.first)) != 0;
+
         // Render the menu item with shadow depending on the selected item
         if (selectedItem == item.first) {
-            if (useShadow) gfxRenderShadowString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT, redShadow, greenShadow, blueShadow, alphaShadow, shadowOffset);
-            else gfxRenderString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT);
+            // If disabled, render in grey even for selected items
+            if (isDisabled) {
+                gfxSetColor(fontSprite, 128, 128, 128, 255);
+            }
+            
+            if (useShadow && !isDisabled) {
+                gfxRenderShadowString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT, redShadow, greenShadow, blueShadow, alphaShadow, shadowOffset);
+            } else {
+                gfxRenderString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT);
+            }
+
+            // Restore original color if it was changed
+            if (isDisabled) {
+                gfxSetColor(fontSprite, 255, 255, 255, 255);
+            }
 
             if (useCursor) gfxRenderSprite (cursorSprite, cursorX, menuY + cursorCenterOffset);
         } else {
+            // If disabled, render in grey (128, 128, 128)
+            if (isDisabled) {
+                gfxSetColor(fontSprite, 128, 128, 128, 255);
+            }
             gfxRenderString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT);
+            // Restore original color if it was changed
+            if (isDisabled) {
+                gfxSetColor(fontSprite, 255, 255, 255, 255);
+            }
         }
         itemIndex++;
     }
@@ -538,7 +563,9 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
     gfxSetColor(m_StartMenuFontId, 255 ,255, 255, 255);
 
     // Render the menu items with shadow depending on the selected item
-    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentMenuItem, 620, 260, 25, &g_mainMenu, true, true, 64, 0, 255, 255, 8);
+    // If self-test failed, disable "Play Pinball" menu item (index 0)
+    unsigned int disabledItemsMask = m_PassSelfTest ? 0x0 : (1 << 0);  // Bit 0 = "Play Pinball"
+    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentMenuItem, 620, 260, 25, &g_mainMenu, true, true, 64, 0, 255, 255, 8, disabledItemsMask);
 
     // Add insturctions to the bottom of the screen - calculate the x position based on string length
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
@@ -937,7 +964,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 255, 64, 64, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Right Flipper" + rfState + ":", centerX - 200, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "NeoPixel Rotation + Timer Test ", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "NeoPixel Test", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Left Activate - Bright Cyan-Blue (like blue LED light)
     std::string laState = m_LAON ? " (ON)" : " (OFF)";
@@ -1839,11 +1866,14 @@ bool PBEngine::pbeSetupIO()
                 g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output ID: " + std::to_string(g_outputDef[i].id));
                 g_PBEngine.m_PassSelfTest = false;
             }
-            // Check that the board type and pin number are unique
+            // Check that the board type, board index, and pin number are unique (all three must match)
+            // Note: Different board types (PB_LED vs PB_NEOPIXEL vs PB_RASPI) are different hardware, so same pin is OK
             if (g_outputDef[i].boardType == g_outputDef[j].boardType && 
                 g_outputDef[i].boardIndex == g_outputDef[j].boardIndex && 
                 g_outputDef[i].pin == g_outputDef[j].pin) {
-                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output board/board index/pin: " + std::to_string(g_outputDef[i].id));
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output board/board index/pin: Board " + 
+                    std::to_string(g_outputDef[i].boardIndex) + " Pin " + std::to_string(g_outputDef[i].pin) + 
+                    " used by ID " + std::to_string(g_outputDef[i].id) + " and ID " + std::to_string(g_outputDef[j].id));
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
@@ -1908,7 +1938,9 @@ bool PBEngine::pbeSetupIO()
             int boardIndex = g_outputDef[i].boardIndex;
             if (g_PBEngine.m_NeoPixelDriverMap.find(boardIndex) == g_PBEngine.m_NeoPixelDriverMap.end()) {
                 // Create NeoPixel driver with index and SPI buffer - it will look up pin and LED count automatically
-                g_PBEngine.m_NeoPixelDriverMap.emplace(boardIndex, boardIndex, g_NeoPixelSPIBufferArray[boardIndex]);
+                g_PBEngine.m_NeoPixelDriverMap.emplace(std::piecewise_construct,
+                    std::forward_as_tuple(boardIndex),
+                    std::forward_as_tuple(boardIndex, g_NeoPixelSPIBufferArray[boardIndex]));
                 
                 #ifdef EXE_MODE_RASPI
                 // Initialize GPIO for this NeoPixel driver
