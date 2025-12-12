@@ -1600,18 +1600,43 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 inputMessage.inputId == SANDBOX_NEOPIXEL_TIMER_ID &&
                 m_sandboxNeoPixelAnimActive) {
                 
-                // Clear previous pixels to dark blue (0-based indexing)
-                if (m_sandboxNeoPixelPosition > 1) {
-                    int prevPos = m_sandboxNeoPixelPosition - 1;
-                    SendNeoPixelSingleMsg(IDO_NEOPIXEL0, prevPos - 1, PB_LEDBLUE, 32);
-                    SendNeoPixelSingleMsg(IDO_NEOPIXEL0, prevPos, PB_LEDBLUE, 32);
-                    SendNeoPixelSingleMsg(IDO_NEOPIXEL0, prevPos + 1, PB_LEDBLUE, 32);
+                // Get LED count for bounds checking
+                unsigned int numLEDs = 0;
+                if (m_NeoPixelDriverMap.find(0) != m_NeoPixelDriverMap.end()) {
+                    numLEDs = m_NeoPixelDriverMap.at(0).GetNumLEDs();
                 }
                 
-                // Set current pixels (1-based position maps to 0-based LED indices)
-                SendNeoPixelSingleMsg(IDO_NEOPIXEL0, m_sandboxNeoPixelPosition - 1, PB_LEDPURPLE, 255);  // Purple
-                SendNeoPixelSingleMsg(IDO_NEOPIXEL0, m_sandboxNeoPixelPosition, PB_LEDRED, 255);         // Red
-                SendNeoPixelSingleMsg(IDO_NEOPIXEL0, m_sandboxNeoPixelPosition + 1, PB_LEDPURPLE, 255);  // Purple
+                // Clear previous pixels to dark blue (0-based indexing with bounds checking)
+                if (m_sandboxNeoPixelPosition > 1 && numLEDs > 0) {
+                    int prevPos = m_sandboxNeoPixelPosition - 1;
+                    // Check bounds for each pixel before sending
+                    if (prevPos - 1 >= 0 && prevPos - 1 < (int)numLEDs) {
+                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, prevPos - 1, PB_LEDBLUE, 32);
+                    }
+                    if (prevPos >= 0 && prevPos < (int)numLEDs) {
+                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, prevPos, PB_LEDBLUE, 32);
+                    }
+                    if (prevPos + 1 >= 0 && prevPos + 1 < (int)numLEDs) {
+                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, prevPos + 1, PB_LEDBLUE, 32);
+                    }
+                }
+                
+                // Set current pixels (1-based position maps to 0-based LED indices) with bounds checking
+                if (numLEDs >= 3) {
+                    int idx1 = m_sandboxNeoPixelPosition - 1;
+                    int idx2 = m_sandboxNeoPixelPosition;
+                    int idx3 = m_sandboxNeoPixelPosition + 1;
+                    
+                    if (idx1 >= 0 && idx1 < (int)numLEDs) {
+                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx1, PB_LEDPURPLE, 255);  // Purple
+                    }
+                    if (idx2 >= 0 && idx2 < (int)numLEDs) {
+                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx2, PB_LEDRED, 255);     // Red
+                    }
+                    if (idx3 >= 0 && idx3 < (int)numLEDs) {
+                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx3, PB_LEDPURPLE, 255);  // Purple
+                    }
+                }
                 
                 // Update position
                 if (m_sandboxNeoPixelMovingUp) {
@@ -1649,6 +1674,12 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         m_sandboxEjector->pbdEnable(false);
                         m_sandboxEjector->pbdInit();
                         m_sandboxEjector = nullptr;  // Will be deleted by pbeClearDevices
+                    }
+                    
+                    // Clean up NeoPixel animation state and timer
+                    if (m_sandboxNeoPixelAnimActive) {
+                        pbeTimerStop(SANDBOX_NEOPIXEL_TIMER_ID);
+                        m_sandboxNeoPixelAnimActive = false;
                     }
                     
                     // Clear all devices when exiting sandbox
@@ -1712,7 +1743,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         // Stop animation: set all to dark blue and cancel timer
                         SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);
                         m_sandboxNeoPixelAnimActive = false;
-                        pbeCancelTimer(SANDBOX_NEOPIXEL_TIMER_ID);
+                        pbeTimerStop(SANDBOX_NEOPIXEL_TIMER_ID);
                     }
                 }
                 
