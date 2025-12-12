@@ -22,6 +22,9 @@ enum PBPinState {
     PB_BRIGHTNESS = 3
 };
 
+// NeoPixel index constant for all pixels
+#define ALLNEOPIXELS 0
+
 // RGB LED Color definitions
 enum PBLEDColor {
     PB_LEDBLACK = 0,      // Red only
@@ -305,9 +308,8 @@ enum NeoPixelTimingMethod {
     NEOPIXEL_TIMING_CLOCKGETTIME = 0,  // Use clock_gettime() for timing (current default)
     NEOPIXEL_TIMING_NOP = 1,           // Use assembly NOP instructions (more deterministic)
     NEOPIXEL_TIMING_SPI = 2,           // Use SPI hardware (most reliable, requires SPI channel)
-    NEOPIXEL_TIMING_PWM = 3,           // Use PWM hardware with DMA (best performance)
-    NEOPIXEL_TIMING_SPI_BURST = 4,     // Use SPI hardware with full string burst transmission
-    NEOPIXEL_TIMING_DISABLED = 5       // Hardware initialization failed - NeoPixels disabled
+    NEOPIXEL_TIMING_SPI_BURST = 3,     // Use SPI hardware with full string burst transmission
+    NEOPIXEL_TIMING_DISABLED = 4       // Hardware initialization failed - NeoPixels disabled
 };
 
 // NeoPixel LED node structure - defines RGB color for a single LED
@@ -374,7 +376,7 @@ struct stNeoPixelInstrumentation {
 // IMPORTANT: Disables interrupts during transmission - limit LED count to avoid system issues
 class NeoPixelDriver {
 public:
-    NeoPixelDriver(unsigned int driverIndex);
+    NeoPixelDriver(unsigned int driverIndex, unsigned char* spiBuffer);
     ~NeoPixelDriver();
 
     // Initialize GPIO pins (must be called after wiringPiSetup())
@@ -442,10 +444,7 @@ private:
     // SPI-specific members
     int m_spiChannel;              // SPI channel (0 or 1)
     int m_spiFd;                   // SPI file descriptor (-1 if not initialized)
-    
-    // PWM-specific members
-    int m_pwmChannel;              // PWM channel
-    bool m_pwmInitialized;         // PWM initialization state
+    unsigned char* m_spiBuffer;    // Pre-allocated SPI buffer (passed from initialization)
     
     // Brightness control
     uint8_t m_maxBrightness;       // Maximum allowed brightness (0-255)
@@ -478,11 +477,6 @@ private:
     void SendByteSPI(uint8_t byte);
     void SendAllPixelsSPI();  // Send entire pixel string in one burst
     void CloseSPI();
-    
-    // Helper functions for PWM mode
-    void InitializePWM();
-    void SendBytePWM(uint8_t byte);
-    void ClosePWM();
     
     // Helper function to check if bit timing meets SK6812 specification
     bool CheckBitTimingSpec(uint32_t highTimeNs, uint32_t lowTimeNs, bool bitValue) const;

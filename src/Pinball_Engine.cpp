@@ -12,6 +12,11 @@ stNeoPixelNode* g_NeoPixelNodeArray[2];
 stNeoPixelNode g_NeoPixelNodes0[g_NeoPixelSize[0]];
 stNeoPixelNode g_NeoPixelNodes1[g_NeoPixelSize[1]];
 
+// Define NeoPixel SPI buffer arrays (declared as extern in Pinball_Engine.h)
+unsigned char* g_NeoPixelSPIBufferArray[2];
+unsigned char g_NeoPixelSPIBuffer0[g_NeoPixelSPIBufferSize[0]];
+unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
+
 // Class functions for PBEngine
  PBEngine::PBEngine() {
 
@@ -1902,8 +1907,8 @@ bool PBEngine::pbeSetupIO()
             // Initialize NeoPixel driver if not already created for this boardIndex
             int boardIndex = g_outputDef[i].boardIndex;
             if (g_PBEngine.m_NeoPixelDriverMap.find(boardIndex) == g_PBEngine.m_NeoPixelDriverMap.end()) {
-                // Create NeoPixel driver with index - it will look up pin and LED count automatically
-                g_PBEngine.m_NeoPixelDriverMap.emplace(boardIndex, boardIndex);
+                // Create NeoPixel driver with index and SPI buffer - it will look up pin and LED count automatically
+                g_PBEngine.m_NeoPixelDriverMap.emplace(boardIndex, boardIndex, g_NeoPixelSPIBufferArray[boardIndex]);
                 
                 #ifdef EXE_MODE_RASPI
                 // Initialize GPIO for this NeoPixel driver
@@ -2056,7 +2061,7 @@ void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, uint8_t red, uint8_t 
     neoOptions.neoPixelGreen = green;
     neoOptions.neoPixelBlue = blue;
     neoOptions.brightness = brightness;
-    neoOptions.neoPixelIndex = 0;  // 0 means all pixels
+    neoOptions.neoPixelIndex = ALLNEOPIXELS;  // ALLNEOPIXELS means all pixels
     
     // Send the message - the processing will set all LEDs to these RGB values scaled by brightness
     // NeoPixels are always "on" when a message is sent - use black (0,0,0) to turn off

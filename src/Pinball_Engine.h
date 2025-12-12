@@ -41,7 +41,14 @@ class pbdEjector;
 
 // NeoPixel configuration - LED count for each driver index
 // Index corresponds to boardIndex in g_outputDef. Set to 0 for unused indices.
-constexpr unsigned int g_NeoPixelSize[] = {35,1};  // Driver 0: 5 LEDs, Driver 1: 1 LED
+constexpr unsigned int g_NeoPixelSize[] = {35,1};  // Driver 0: 35 LEDs, Driver 1: 1 LED
+
+// Calculate SPI buffer sizes: each LED is 3 bytes (GRB), each byte needs 4 SPI bytes
+// Total: numLEDs * 3 * 4 bytes
+constexpr unsigned int g_NeoPixelSPIBufferSize[] = {
+    g_NeoPixelSize[0] * 3 * 4,  // Driver 0 SPI buffer size
+    g_NeoPixelSize[1] * 3 * 4   // Driver 1 SPI buffer size
+};
 
 // Create a an array of NeoPixelNode arrays for each NeoPixel driver
 // These all are pre-allocated during boot time to avoid dynamic memory allocation during runtime
@@ -50,10 +57,17 @@ extern stNeoPixelNode* g_NeoPixelNodeArray[2];
 extern stNeoPixelNode g_NeoPixelNodes0[g_NeoPixelSize[0]];  // Driver 0 nodes
 extern stNeoPixelNode g_NeoPixelNodes1[g_NeoPixelSize[1]];  // Driver 1 nodes
 
+// Pre-allocated SPI buffers for each NeoPixel driver (can be null if not using SPI modes)
+extern unsigned char* g_NeoPixelSPIBufferArray[2];
+extern unsigned char g_NeoPixelSPIBuffer0[g_NeoPixelSPIBufferSize[0]];  // Driver 0 SPI buffer
+extern unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];  // Driver 1 SPI buffer
+
 // Initialize NeoPixel array pointers - call during early initialization
 inline void initNeoPixelArrays() {
     g_NeoPixelNodeArray[0] = g_NeoPixelNodes0;
     g_NeoPixelNodeArray[1] = g_NeoPixelNodes1;
+    g_NeoPixelSPIBufferArray[0] = g_NeoPixelSPIBuffer0;
+    g_NeoPixelSPIBufferArray[1] = g_NeoPixelSPIBuffer1;
 }
 
 // Sequence timing defines - this will need to be updated if more LED chips are added

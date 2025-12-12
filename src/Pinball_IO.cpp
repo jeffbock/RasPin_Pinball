@@ -11,7 +11,7 @@
 #include "Pinball_IO.h"
 #include "Pinball_Engine.h"
 #include "PBBuildSwitch.h"
-#include <vector>  // For std::vector in SPI burst mode
+#include <cstring>  // For memset in SPI buffer operations
 
 #ifdef EXE_MODE_RASPI
 #include "wiringPi.h"
@@ -23,12 +23,6 @@
 // NeoPixel SPI pin constants (Raspberry Pi GPIO numbers)
 constexpr int SPI0_MOSI_PIN = 10;  // SPI0 MOSI (Physical Pin 19)
 constexpr int SPI1_MOSI_PIN = 20;  // SPI1 MOSI (Physical Pin 38)
-
-// NeoPixel PWM pin constants (Raspberry Pi GPIO numbers)
-constexpr int PWM0_PIN_A = 12;  // PWM0 option A (Physical Pin 32)
-constexpr int PWM0_PIN_B = 18;  // PWM0 option B (Physical Pin 12)
-constexpr int PWM1_PIN_A = 13;  // PWM1 option A (Physical Pin 33)
-constexpr int PWM1_PIN_B = 19;  // PWM1 option B (Physical Pin 35)
 
 // Output definitions
 // Fields: outputName, outputMsg, id, pin, boardType, boardIndex (or Neopixel Instance), lastState, onTimeMS, offTimeMS, neoPixelIndex
@@ -738,8 +732,8 @@ uint8_t AmpDriver::PercentToRegisterValue(uint8_t percent) const {
 // NeoPixelDriver Class Implementation for SK6812 RGB LED Strips
 //==============================================================================
 
-NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex) 
-    : m_driverIndex(driverIndex), m_outputPin(0), m_numLEDs(0), m_nodes(nullptr), m_hasChanges(false) {
+NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex, unsigned char* spiBuffer) 
+    : m_driverIndex(driverIndex), m_outputPin(0), m_numLEDs(0), m_nodes(nullptr), m_hasChanges(false), m_spiBuffer(spiBuffer) {
     
     // Get the number of LEDs from g_NeoPixelSize array
     if (driverIndex < sizeof(g_NeoPixelSize) / sizeof(g_NeoPixelSize[0])) {
@@ -779,26 +773,13 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex)
     }
     m_spiFd = -1;      // Not initialized
     
-    // Initialize PWM-specific members
-    // Determine PWM channel based on output pin (if PWM-capable)
-    if (m_outputPin == PWM0_PIN_A || m_outputPin == PWM0_PIN_B) {
-        m_pwmChannel = 0;  // PWM0
-    } else if (m_outputPin == PWM1_PIN_A || m_outputPin == PWM1_PIN_B) {
-        m_pwmChannel = 1;  // PWM1
-    } else {
-        m_pwmChannel = -1;  // Not a PWM pin
-    }
-    m_pwmInitialized = false;
-    
     // Initialize brightness control
     m_maxBrightness = 255;  // Default to maximum brightness
     
     // Select default timing method based on pin capabilities
-    // Priority: SPI_BURST (fastest) > SPI > PWM > clock_gettime (fallback)
+    // Priority: SPI_BURST (fastest) > SPI > clock_gettime (fallback)
     if (m_spiChannel >= 0) {
         m_timingMethod = NEOPIXEL_TIMING_SPI_BURST;  // Use burst mode by default for SPI
-    } else if (m_pwmChannel >= 0) {
-        m_timingMethod = NEOPIXEL_TIMING_PWM;
     } else {
         m_timingMethod = NEOPIXEL_TIMING_CLOCKGETTIME;
     }
@@ -832,15 +813,6 @@ void NeoPixelDriver::InitializeGPIO() {
         case NEOPIXEL_TIMING_SPI_BURST:
             // Initialize SPI hardware - this will set up the pin for SPI mode
             InitializeSPI();
-            // Send initial reset to put NeoPixels in known state after power-up
-            if (m_timingMethod != NEOPIXEL_TIMING_DISABLED) {
-                SendReset();
-            }
-            break;
-            
-        case NEOPIXEL_TIMING_PWM:
-            // Initialize PWM hardware - this will set up the pin for PWM mode
-            InitializePWM();
             // Send initial reset to put NeoPixels in known state after power-up
             if (m_timingMethod != NEOPIXEL_TIMING_DISABLED) {
                 SendReset();
@@ -884,11 +856,6 @@ NeoPixelDriver::~NeoPixelDriver() {
     // Clean up SPI if initialized
     if (m_spiFd >= 0) {
         CloseSPI();
-    }
-    
-    // Clean up PWM if initialized
-    if (m_pwmInitialized) {
-        ClosePWM();
     }
 #endif
     
@@ -1184,9 +1151,6 @@ void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
             break;
         case NEOPIXEL_TIMING_SPI:
             SendByteSPI(byte);
-            break;
-        case NEOPIXEL_TIMING_PWM:
-            SendBytePWM(byte);
             break;
         case NEOPIXEL_TIMING_DISABLED:
         default:
@@ -1519,7 +1483,13 @@ void NeoPixelDriver::SendAllPixelsSPI() {
     // Calculate buffer size: each LED is 3 bytes (GRB), each byte needs 4 SPI bytes
     // Total: m_numLEDs * 3 * 4 bytes
     unsigned int bufferSize = m_numLEDs * 3 * 4;
-    std::vector<unsigned char> spiBuffer(bufferSize, 0);
+    
+    // Use pre-allocated SPI buffer (passed during construction)
+    // Clear the buffer
+    if (m_spiBuffer == nullptr) {
+        return;  // No buffer available
+    }
+    memset(m_spiBuffer, 0, bufferSize);
     
     // Build the entire SPI data buffer
     unsigned int bufferIndex = 0;
@@ -1546,10 +1516,10 @@ void NeoPixelDriver::SendAllPixelsSPI() {
                 
                 if (bitValue) {
                     // Bit 1: 1110 pattern
-                    spiBuffer[bufferIndex + spiByteIdx] |= (0b1110 << (4 - bitOffset));
+                    m_spiBuffer[bufferIndex + spiByteIdx] |= (0b1110 << (4 - bitOffset));
                 } else {
                     // Bit 0: 1000 pattern
-                    spiBuffer[bufferIndex + spiByteIdx] |= (0b1000 << (4 - bitOffset));
+                    m_spiBuffer[bufferIndex + spiByteIdx] |= (0b1000 << (4 - bitOffset));
                 }
             }
             
@@ -1558,101 +1528,13 @@ void NeoPixelDriver::SendAllPixelsSPI() {
     }
     
     // Send the entire buffer in one SPI transaction
-    wiringPiSPIDataRW(m_spiChannel, spiBuffer.data(), bufferSize);
+    wiringPiSPIDataRW(m_spiChannel, m_spiBuffer, bufferSize);
 #endif
 }
 
 //==============================================================================
-// PWM-based NeoPixel transmission
+// Reset/Latch signal
 //==============================================================================
-
-void NeoPixelDriver::InitializePWM() {
-#ifdef EXE_MODE_RASPI
-    // Validate that the output pin is PWM-capable
-    if (m_pwmChannel < 0) {
-        // Pin is not PWM-capable - disable NeoPixels
-        char msg[256];
-        snprintf(msg, sizeof(msg), "NeoPixel driver %u: Pin %u is not PWM-capable. NeoPixels disabled.", 
-                 m_driverIndex, m_outputPin);
-        g_PBEngine.pbeSendConsole(msg);
-        m_timingMethod = NEOPIXEL_TIMING_DISABLED;
-        return;
-    }
-    
-    // Configure PWM for SK6812 timing
-    // SK6812 requires ~833kHz signal with specific duty cycles
-    // PWM clock: 19.2 MHz / divisor
-    // For 833kHz: divisor = 23 (19.2 MHz / 23 = 834.78 kHz)
-    
-    const int PWM_CLOCK_DIVISOR = 23;
-    const int PWM_RANGE = 10;  // 10 cycles per bit (833kHz / 10 = 83.3kHz update rate)
-    
-    // Set PWM mode to mark-space (not balanced)
-    pwmSetMode(PWM_MODE_MS);
-    
-    // Set PWM clock divisor
-    pwmSetClock(PWM_CLOCK_DIVISOR);
-    
-    // Set PWM range
-    pwmSetRange(PWM_RANGE);
-    
-    // Configure the pin for PWM output
-    pinMode(m_outputPin, PWM_OUTPUT);
-    
-    m_pwmInitialized = true;
-#endif
-}
-
-void NeoPixelDriver::SendBytePWM(uint8_t byte) {
-#ifdef EXE_MODE_RASPI
-    // Ensure PWM is initialized
-    if (!m_pwmInitialized) {
-        InitializePWM();
-        if (!m_pwmInitialized) {
-            return;  // PWM initialization failed
-        }
-    }
-    
-    // Send each bit using PWM duty cycle
-    // With PWM_RANGE = 10 at 833kHz (1.2us per bit):
-    // Bit 1: 50% duty cycle (5 out of 10 = 0.6us high, 0.6us low)
-    // Bit 0: 25% duty cycle (2.5 out of 10 = 0.3us high, 0.9us low)
-    const int PWM_BIT1_DUTY = 5;  // 50% duty cycle
-    const int PWM_BIT0_DUTY = 2;  // 20% duty cycle (closest to 25%)
-    
-    // Note: This is a simplified implementation for demonstration
-    // A production implementation would use DMA to queue all bit patterns
-    // and transmit them without CPU intervention
-    for (int bit = 7; bit >= 0; bit--) {
-        bool bitValue = (byte & (1 << bit)) != 0;
-        
-        if (bitValue) {
-            pwmWrite(m_outputPin, PWM_BIT1_DUTY);
-        } else {
-            pwmWrite(m_outputPin, PWM_BIT0_DUTY);
-        }
-        
-        // Wait for the bit duration (1.25us)
-        // TODO: Replace with DMA-based queueing for true zero-CPU operation
-        delayMicroseconds(1);
-    }
-    
-    // Set output low after byte
-    pwmWrite(m_outputPin, 0);
-#endif
-}
-
-void NeoPixelDriver::ClosePWM() {
-#ifdef EXE_MODE_RASPI
-    if (m_pwmInitialized) {
-        // Set PWM output to 0 and switch pin back to output mode
-        pwmWrite(m_outputPin, 0);
-        pinMode(m_outputPin, OUTPUT);
-        digitalWrite(m_outputPin, LOW);
-        m_pwmInitialized = false;
-    }
-#endif
-}
 
 void NeoPixelDriver::SendReset() {
 #ifdef EXE_MODE_RASPI
@@ -1665,14 +1547,6 @@ void NeoPixelDriver::SendReset() {
             if (m_spiFd >= 0) {
                 unsigned char resetData[34] = {0};  // 34 bytes of zeros
                 write(m_spiFd, resetData, sizeof(resetData));
-            }
-            break;
-            
-        case NEOPIXEL_TIMING_PWM:
-            // For PWM mode, set duty cycle to 0 and wait
-            if (m_pwmInitialized) {
-                pwmWrite(m_outputPin, 0);  // 0% duty cycle = LOW
-                delayMicroseconds(80);     // 80us reset time
             }
             break;
             
