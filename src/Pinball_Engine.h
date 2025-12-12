@@ -41,7 +41,14 @@ class pbdEjector;
 
 // NeoPixel configuration - LED count for each driver index
 // Index corresponds to boardIndex in g_outputDef. Set to 0 for unused indices.
-constexpr unsigned int g_NeoPixelSize[] = {5,5};  // Driver 0: 5 LEDs, Driver 1: 5 LEDs
+constexpr unsigned int g_NeoPixelSize[] = {35,1};  // Driver 0: 35 LEDs, Driver 1: 1 LED
+
+// Calculate SPI buffer sizes: each LED is 3 bytes (GRB), each byte needs 4 SPI bytes
+// Total: numLEDs * 3 * 4 bytes
+constexpr unsigned int g_NeoPixelSPIBufferSize[] = {
+    g_NeoPixelSize[0] * 3 * 4,  // Driver 0 SPI buffer size
+    g_NeoPixelSize[1] * 3 * 4   // Driver 1 SPI buffer size
+};
 
 // Create a an array of NeoPixelNode arrays for each NeoPixel driver
 // These all are pre-allocated during boot time to avoid dynamic memory allocation during runtime
@@ -50,10 +57,17 @@ extern stNeoPixelNode* g_NeoPixelNodeArray[2];
 extern stNeoPixelNode g_NeoPixelNodes0[g_NeoPixelSize[0]];  // Driver 0 nodes
 extern stNeoPixelNode g_NeoPixelNodes1[g_NeoPixelSize[1]];  // Driver 1 nodes
 
+// Pre-allocated SPI buffers for each NeoPixel driver (can be null if not using SPI modes)
+extern unsigned char* g_NeoPixelSPIBufferArray[2];
+extern unsigned char g_NeoPixelSPIBuffer0[g_NeoPixelSPIBufferSize[0]];  // Driver 0 SPI buffer
+extern unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];  // Driver 1 SPI buffer
+
 // Initialize NeoPixel array pointers - call during early initialization
 inline void initNeoPixelArrays() {
     g_NeoPixelNodeArray[0] = g_NeoPixelNodes0;
     g_NeoPixelNodeArray[1] = g_NeoPixelNodes1;
+    g_NeoPixelSPIBufferArray[0] = g_NeoPixelSPIBuffer0;
+    g_NeoPixelSPIBufferArray[1] = g_NeoPixelSPIBuffer1;
 }
 
 // Sequence timing defines - this will need to be updated if more LED chips are added
@@ -139,6 +153,7 @@ struct stOutputOptions {
     uint8_t neoPixelRed;                          // Red channel for single NeoPixel LED (0-255)
     uint8_t neoPixelGreen;                        // Green channel for single NeoPixel LED (0-255)
     uint8_t neoPixelBlue;                         // Blue channel for single NeoPixel LED (0-255)
+    unsigned int neoPixelIndex;                   // Index of specific pixel in chain (0=all, 1+=specific pixel)
 };
 
 struct stOutputMessage {
@@ -170,6 +185,9 @@ struct stTimerEntry {
 // Reserved timer ID for the watchdog timer
 #define WATCHDOGTIMER_ID 0
 
+// Timer ID for sandbox NeoPixel animation
+#define SANDBOX_NEOPIXEL_TIMER_ID 100
+
 // Maximum number of active timers allowed
 #define MAX_TIMERS 10
 
@@ -198,8 +216,9 @@ struct stLEDSequence {
 
 // NeoPixel sequence step structure
 struct stNeoPixelSequence {
-    const stNeoPixelNode* nodeArray;  // Pointer to array of RGB values for this step
+    const stNeoPixelNode* nodeArray;  // Pointer to array of RGBB values for this step
     unsigned int onDurationMS;         // Duration to display this step
+    uint8_t brightness;                // Brightness for this step (0-255, default 255)
 };
 
 // NeoPixel sequence info structure
@@ -273,6 +292,8 @@ public:
     void SendSeqMsg(const LEDSequence* sequence, const uint16_t* mask, PBSequenceLoopMode loopMode, PBPinState outputState);
     void SendNeoPixelAllMsg(unsigned int neoPixelId, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness = 255);
     void SendNeoPixelAllMsg(unsigned int neoPixelId, PBLEDColor color, uint8_t brightness = 255);
+    void SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixelIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness = 255);
+    void SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixelIndex, PBLEDColor color, uint8_t brightness = 255);
     
     // Input configuration functions
     bool SetAutoOutput(unsigned int index, bool autoOutputEnabled);
@@ -371,7 +392,12 @@ public:
     bool m_videoFadingOut;
     float m_videoFadeDurationSec;
     pbdEjector* m_sandboxEjector;
-    int m_sandboxNeoPixelColorIndex;  // Track current color for NeoPixel test
+    
+    // NeoPixel animation variables for sandbox test
+    bool m_sandboxNeoPixelAnimActive;    // Animation is running
+    int m_sandboxNeoPixelPosition;       // Current position of the 3-pixel group (1-based)
+    bool m_sandboxNeoPixelMovingUp;      // True = moving up, False = moving down
+    int m_sandboxNeoPixelMaxPosition;    // Maximum position based on LED count
 
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;
