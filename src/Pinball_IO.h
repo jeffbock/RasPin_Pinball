@@ -23,7 +23,7 @@ enum PBPinState {
 };
 
 // NeoPixel index constant for all pixels
-#define ALLNEOPIXELS 0
+#define ALLNEOPIXELS 9999
 
 // RGB LED Color definitions
 enum PBLEDColor {
