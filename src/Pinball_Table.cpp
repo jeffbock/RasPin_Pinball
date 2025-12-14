@@ -416,6 +416,12 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     gfxSetScaleFactor(m_StartMenuFontId, 1.2, false);
     gfxRenderString(m_StartMenuFontId, scoreText, (ACTIVEDISPX+(1024/3)), ACTIVEDISPY + 350, 5, GFX_TEXTCENTER);
     
+    // Render the current ball indicator in lower left (same color as main score)
+    gfxSetColor(m_StartMenuFontId, 255, 255, 255, mainAlpha);
+    gfxSetScaleFactor(m_StartMenuFontId, 0.5, false);
+    std::string ballText = "Ball: " + std::to_string(m_playerStates[m_currentPlayer].currentBall);
+    gfxRenderString(m_StartMenuFontId, ballText, ACTIVEDISPX + 10, ACTIVEDISPY + 680, 3, GFX_TEXTLEFT);
+    
     // Render other player scores at the bottom (small grey text)
     gfxSetColor(m_StartMenuFontId, 128, 128, 128, 255); // Light grey color for visibility
     gfxSetScaleFactor(m_StartMenuFontId, 0.375, false); // 25% smaller than 0.5
