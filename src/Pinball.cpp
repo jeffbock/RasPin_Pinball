@@ -962,16 +962,20 @@ void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& o
         uint8_t green = message.optionsCopy.neoPixelGreen;
         uint8_t blue = message.optionsCopy.neoPixelBlue;
         uint8_t brightness = message.optionsCopy.brightness;
+        unsigned int neoPixelIndex = message.optionsCopy.neoPixelIndex;  // Get index from options
         
-        // Scale RGB values by brightness (brightness is 0-255)
-        // Formula: scaledValue = (originalValue * brightness) / 255
-        red = (red * brightness) / 255;
-        green = (green * brightness) / 255;
-        blue = (blue * brightness) / 255;
-        
-        // Set all LEDs in the chain to the scaled RGB color
-        // (For individual LED control, a different message type or structure would be needed)
-        g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixelAll(red, green, blue);
+        // Check if this is a single pixel operation (neoPixelIndex != ALLNEOPIXELS)
+        // or all pixels operation (neoPixelIndex == ALLNEOPIXELS)
+        if (neoPixelIndex != ALLNEOPIXELS) {
+            // Single pixel operation - use SetSinglePixel which stages and immediately sends
+            // Index is already 0-based, use directly
+            g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).SetSinglePixel(
+                neoPixelIndex, red, green, blue, brightness);
+        } else {
+            // All pixels operation - stage all LEDs
+            // Note: brightness is stored in the node and applied during transmission
+            g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixelAll(red, green, blue, brightness);
+        }
     }
     
     // Update last state
@@ -1075,10 +1079,28 @@ void ProcessActiveNeoPixelSequence(int driverIndex) {
             
             // Stage the entire array for this step
             if (currentStep.nodeArray != nullptr) {
-                g_PBEngine.m_NeoPixelDriverMap.at(driverIndex).StageNeoPixelArray(
-                    currentStep.nodeArray,
-                    g_PBEngine.m_NeoPixelDriverMap.at(driverIndex).GetNumLEDs()
-                );
+                // If step has a brightness value (not 255), apply it to override node brightness
+                // Otherwise use the brightness stored in each node
+                if (currentStep.brightness < 255) {
+                    // Apply step brightness as a scaling factor to all LEDs
+                    unsigned int numLEDs = g_PBEngine.m_NeoPixelDriverMap.at(driverIndex).GetNumLEDs();
+                    for (unsigned int i = 0; i < numLEDs; i++) {
+                        uint8_t scaledBrightness = (currentStep.nodeArray[i].stagedBrightness * currentStep.brightness) / 255;
+                        g_PBEngine.m_NeoPixelDriverMap.at(driverIndex).StageNeoPixel(
+                            i,
+                            currentStep.nodeArray[i].stagedRed,
+                            currentStep.nodeArray[i].stagedGreen,
+                            currentStep.nodeArray[i].stagedBlue,
+                            scaledBrightness
+                        );
+                    }
+                } else {
+                    // Use node brightness as-is
+                    g_PBEngine.m_NeoPixelDriverMap.at(driverIndex).StageNeoPixelArray(
+                        currentStep.nodeArray,
+                        g_PBEngine.m_NeoPixelDriverMap.at(driverIndex).GetNumLEDs()
+                    );
+                }
             }
         }
         

@@ -12,6 +12,11 @@ stNeoPixelNode* g_NeoPixelNodeArray[2];
 stNeoPixelNode g_NeoPixelNodes0[g_NeoPixelSize[0]];
 stNeoPixelNode g_NeoPixelNodes1[g_NeoPixelSize[1]];
 
+// Define NeoPixel SPI buffer arrays (declared as extern in Pinball_Engine.h)
+unsigned char* g_NeoPixelSPIBufferArray[2];
+unsigned char g_NeoPixelSPIBuffer0[g_NeoPixelSPIBufferSize[0]];
+unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
+
 // Class functions for PBEngine
  PBEngine::PBEngine() {
 
@@ -68,8 +73,13 @@ stNeoPixelNode g_NeoPixelNodes1[g_NeoPixelSize[1]];
     m_videoFadingIn = false;
     m_videoFadingOut = false;
     m_videoFadeDurationSec = 2.0f;
-    m_sandboxNeoPixelColorIndex = 0;  // Start with PB_LEDRED  
     m_sandboxEjector = nullptr;
+    
+    // Initialize NeoPixel animation variables
+    m_sandboxNeoPixelAnimActive = false;
+    m_sandboxNeoPixelPosition = 0;
+    m_sandboxNeoPixelMovingUp = true;
+    m_sandboxNeoPixelMaxPosition = 0;
 
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
@@ -411,7 +421,8 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
 bool PBEngine::pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int fontSprite, unsigned int selectedItem, 
                                     int x, int y, int lineSpacing, std::map<unsigned int, std::string>* menuItems,
                                     bool useShadow, bool useCursor, unsigned int redShadow, 
-                                    unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset){
+                                    unsigned int greenShadow, unsigned int blueShadow, unsigned int alphaShadow, unsigned int shadowOffset,
+                                    unsigned int disabledItemsMask){
 
     // Check that the cursor sprite and font sprite are valid, and fontSprite is actually a font
     if ((gfxIsSprite(cursorSprite) == false) && (useCursor ==  true)) {
@@ -460,14 +471,38 @@ bool PBEngine::pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int font
         // Calculate the x position of the menu item
         menuY = y + (itemIndex * (fontHeight + lineSpacing));
 
+        // Check if this item is disabled (bit is set in the mask)
+        bool isDisabled = (disabledItemsMask & (1 << item.first)) != 0;
+
         // Render the menu item with shadow depending on the selected item
         if (selectedItem == item.first) {
-            if (useShadow) gfxRenderShadowString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT, redShadow, greenShadow, blueShadow, alphaShadow, shadowOffset);
-            else gfxRenderString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT);
+            // If disabled, render in grey even for selected items
+            if (isDisabled) {
+                gfxSetColor(fontSprite, 128, 128, 128, 255);
+            }
+            
+            if (useShadow && !isDisabled) {
+                gfxRenderShadowString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT, redShadow, greenShadow, blueShadow, alphaShadow, shadowOffset);
+            } else {
+                gfxRenderString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT);
+            }
+
+            // Restore original color if it was changed
+            if (isDisabled) {
+                gfxSetColor(fontSprite, 255, 255, 255, 255);
+            }
 
             if (useCursor) gfxRenderSprite (cursorSprite, cursorX, menuY + cursorCenterOffset);
         } else {
+            // If disabled, render in grey (128, 128, 128)
+            if (isDisabled) {
+                gfxSetColor(fontSprite, 128, 128, 128, 255);
+            }
             gfxRenderString(fontSprite, itemText, menuX + cursorWidth + CURSOR_TO_MENU_SPACING, menuY, 1, GFX_TEXTLEFT);
+            // Restore original color if it was changed
+            if (isDisabled) {
+                gfxSetColor(fontSprite, 255, 255, 255, 255);
+            }
         }
         itemIndex++;
     }
@@ -528,7 +563,9 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
     gfxSetColor(m_StartMenuFontId, 255 ,255, 255, 255);
 
     // Render the menu items with shadow depending on the selected item
-    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentMenuItem, 620, 260, 25, &g_mainMenu, true, true, 64, 0, 255, 255, 8);
+    // If self-test failed, disable "Play Pinball" menu item (index 0)
+    unsigned int disabledItemsMask = m_PassSelfTest ? 0x0 : (1 << 0);  // Bit 0 = "Play Pinball"
+    pbeRenderGenericMenu(m_StartMenuSwordId, m_StartMenuFontId, m_CurrentMenuItem, 620, 260, 25, &g_mainMenu, true, true, 64, 0, 255, 255, 8, disabledItemsMask);
 
     // Add insturctions to the bottom of the screen - calculate the x position based on string length
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
@@ -927,7 +964,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 255, 64, 64, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Right Flipper" + rfState + ":", centerX - 200, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "NeoPixel Rotation + Timer Test ", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "NeoPixel Test", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Left Activate - Bright Cyan-Blue (like blue LED light)
     std::string laState = m_LAON ? " (ON)" : " (OFF)";
@@ -1590,6 +1627,77 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
             }
             
+            // Handle NeoPixel animation timer
+            if (inputMessage.inputMsg == PB_IMSG_TIMER && 
+                inputMessage.inputId == SANDBOX_NEOPIXEL_TIMER_ID &&
+                m_sandboxNeoPixelAnimActive) {
+                
+                // Get LED count for bounds checking
+                unsigned int numLEDs = 0;
+                if (m_NeoPixelDriverMap.find(0) != m_NeoPixelDriverMap.end()) {
+                    numLEDs = m_NeoPixelDriverMap.at(0).GetNumLEDs();
+                }
+                
+                // Clear previous pixels to dark blue (0-based indexing with bounds checking)
+                // When moving forward, clear pixels behind. When moving backward, clear pixels ahead.
+                if (numLEDs > 0) {
+                    int clearPos;
+                    if (m_sandboxNeoPixelMovingUp) {
+                        // Moving forward: clear the pixels we're leaving behind
+                        clearPos = m_sandboxNeoPixelPosition - 1;
+                    } else {
+                        // Moving backward: clear the pixels we're leaving ahead
+                        clearPos = m_sandboxNeoPixelPosition + 1;
+                    }
+                    
+                    // Clear the 3-pixel trail
+                    if (clearPos - 1 >= 0 && clearPos - 1 < (int)numLEDs) {
+                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos - 1, PB_LEDBLUE, 32);
+                    }
+                    if (clearPos >= 0 && clearPos < (int)numLEDs) {
+                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos, PB_LEDBLUE, 32);
+                    }
+                    if (clearPos + 1 >= 0 && clearPos + 1 < (int)numLEDs) {
+                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos + 1, PB_LEDBLUE, 32);
+                    }
+                }
+                
+                // Update position BEFORE setting pixels
+                if (m_sandboxNeoPixelMovingUp) {
+                    m_sandboxNeoPixelPosition++;
+                    if (m_sandboxNeoPixelPosition >= m_sandboxNeoPixelMaxPosition) {
+                        m_sandboxNeoPixelMovingUp = false;
+                        m_sandboxNeoPixelPosition = m_sandboxNeoPixelMaxPosition;  // Clamp to max
+                    }
+                } else {
+                    m_sandboxNeoPixelPosition--;
+                    if (m_sandboxNeoPixelPosition <= 0) {
+                        m_sandboxNeoPixelMovingUp = true;
+                        m_sandboxNeoPixelPosition = 0;  // Clamp to min
+                    }
+                }
+                
+                // Set current pixels (position is the 0-based LED index for the center red pixel)
+                if (numLEDs > 0) {
+                    int idx1 = m_sandboxNeoPixelPosition - 1;  // Left purple
+                    int idx2 = m_sandboxNeoPixelPosition;       // Center red
+                    int idx3 = m_sandboxNeoPixelPosition + 1;   // Right purple
+                    
+                    if (idx1 >= 0 && idx1 < (int)numLEDs) {
+                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx1, PB_LEDPURPLE, 255);  // Purple
+                    }
+                    if (idx2 >= 0 && idx2 < (int)numLEDs) {
+                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx2, PB_LEDRED, 255);     // Red
+                    }
+                    if (idx3 >= 0 && idx3 < (int)numLEDs) {
+                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx3, PB_LEDPURPLE, 255);  // Purple
+                    }
+                }
+                
+                // Set next timer
+                pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, 50);
+            }
+            
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 
                 // Start button exits to Start Menu
@@ -1609,6 +1717,12 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         m_sandboxEjector->pbdEnable(false);
                         m_sandboxEjector->pbdInit();
                         m_sandboxEjector = nullptr;  // Will be deleted by pbeClearDevices
+                    }
+                    
+                    // Clean up NeoPixel animation state and timer
+                    if (m_sandboxNeoPixelAnimActive) {
+                        pbeTimerStop(SANDBOX_NEOPIXEL_TIMER_ID);
+                        m_sandboxNeoPixelAnimActive = false;
                     }
                     
                     // Clear all devices when exiting sandbox
@@ -1647,16 +1761,33 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     testCount++;
                 }
                 
-                // Right Flipper - NeoPixel Test (cycle through colors)
+                // Right Flipper - NeoPixel Animation Test
                 if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
-                    // Get the current color from enum
-                    PBLEDColor currentColor = static_cast<PBLEDColor>(m_sandboxNeoPixelColorIndex);
-                    
-                    // Send message to set all NeoPixels on driver 0 to current color
-                    SendNeoPixelAllMsg(IDO_NEOPIXEL0, currentColor, 32);
-                    
-                    // Advance to next color (cycle through 0-6)
-                    m_sandboxNeoPixelColorIndex = (m_sandboxNeoPixelColorIndex + 1) % 7;
+                    if (!m_sandboxNeoPixelAnimActive) {
+                        // Start animation: set all NeoPixels to dark blue
+                        SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);  // Dark blue (brightness 32)
+                        
+                        // Initialize animation state
+                        m_sandboxNeoPixelAnimActive = true;
+                        m_sandboxNeoPixelPosition = 0;  // Start at position 0 (red at first LED)
+                        m_sandboxNeoPixelMovingUp = true;
+                        
+                        // Get the number of LEDs in the NeoPixel chain
+                        if (m_NeoPixelDriverMap.find(0) != m_NeoPixelDriverMap.end()) {
+                            unsigned int numLEDs = m_NeoPixelDriverMap.at(0).GetNumLEDs();
+                            m_sandboxNeoPixelMaxPosition = (numLEDs >= 1) ? (numLEDs - 1) : 0;
+                        } else {
+                            m_sandboxNeoPixelMaxPosition = 0;
+                        }
+                        
+                        // Start timer for first animation step (250ms)
+                        pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, 250);
+                    } else {
+                        // Stop animation: set all to dark blue and cancel timer
+                        SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);
+                        m_sandboxNeoPixelAnimActive = false;
+                        pbeTimerStop(SANDBOX_NEOPIXEL_TIMER_ID);
+                    }
                 }
                 
                 // Left Activate - Test 3 - Video Playback Test (Toggle fade in/out)
@@ -1746,11 +1877,14 @@ bool PBEngine::pbeSetupIO()
                 g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output ID: " + std::to_string(g_outputDef[i].id));
                 g_PBEngine.m_PassSelfTest = false;
             }
-            // Check that the board type and pin number are unique
+            // Check that the board type, board index, and pin number are unique (all three must match)
+            // Note: Different board types (PB_LED vs PB_NEOPIXEL vs PB_RASPI) are different hardware, so same pin is OK
             if (g_outputDef[i].boardType == g_outputDef[j].boardType && 
                 g_outputDef[i].boardIndex == g_outputDef[j].boardIndex && 
                 g_outputDef[i].pin == g_outputDef[j].pin) {
-                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output board/board index/pin: " + std::to_string(g_outputDef[i].id));
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output board/board index/pin: Board " + 
+                    std::to_string(g_outputDef[i].boardIndex) + " Pin " + std::to_string(g_outputDef[i].pin) + 
+                    " used by ID " + std::to_string(g_outputDef[i].id) + " and ID " + std::to_string(g_outputDef[j].id));
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
@@ -1814,8 +1948,10 @@ bool PBEngine::pbeSetupIO()
             // Initialize NeoPixel driver if not already created for this boardIndex
             int boardIndex = g_outputDef[i].boardIndex;
             if (g_PBEngine.m_NeoPixelDriverMap.find(boardIndex) == g_PBEngine.m_NeoPixelDriverMap.end()) {
-                // Create NeoPixel driver with index - it will look up pin and LED count automatically
-                g_PBEngine.m_NeoPixelDriverMap.emplace(boardIndex, boardIndex);
+                // Create NeoPixel driver with index and SPI buffer - it will look up pin and LED count automatically
+                g_PBEngine.m_NeoPixelDriverMap.emplace(std::piecewise_construct,
+                    std::forward_as_tuple(boardIndex),
+                    std::forward_as_tuple(boardIndex, g_NeoPixelSPIBufferArray[boardIndex]));
                 
                 #ifdef EXE_MODE_RASPI
                 // Initialize GPIO for this NeoPixel driver
@@ -1968,17 +2104,18 @@ void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, uint8_t red, uint8_t 
     neoOptions.neoPixelGreen = green;
     neoOptions.neoPixelBlue = blue;
     neoOptions.brightness = brightness;
+    neoOptions.neoPixelIndex = ALLNEOPIXELS;  // ALLNEOPIXELS means all pixels
     
     // Send the message - the processing will set all LEDs to these RGB values scaled by brightness
     // NeoPixels are always "on" when a message is sent - use black (0,0,0) to turn off
     SendOutputMsg(PB_OMSG_NEOPIXEL, neoPixelId, PB_ON, false, &neoOptions);
 }
 
-// Send NeoPixel message to set all LEDs in a chain to a specific color (enum)
-void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, PBLEDColor color, uint8_t brightness)
+// Helper function to convert PBLEDColor enum to RGB values
+void PBEngine::ConvertColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, uint8_t& blue)
 {
-    // Convert color enum to RGB values
-    uint8_t red = 0, green = 0, blue = 0;
+    // Initialize to 0 (off/black)
+    red = green = blue = 0;
     
     // Map color enum to full brightness RGB (0 or 255)
     // Note: Use a color enum with all zeros (or call the RGB version with 0,0,0) to turn off
@@ -1992,9 +2129,43 @@ void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, PBLEDColor color, uin
         case PB_LEDCYAN:    green = blue = 255; break;
         default:            break; // Unknown color, all stay at 0 (off/black)
     }
+}
+
+// Send NeoPixel message to set all LEDs in a chain to a specific color (enum)
+void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, PBLEDColor color, uint8_t brightness)
+{
+    // Convert color enum to RGB values
+    uint8_t red = 0, green = 0, blue = 0;
+    ConvertColorToRGB(color, red, green, blue);
     
     // Call the RGB version with brightness
     SendNeoPixelAllMsg(neoPixelId, red, green, blue, brightness);
+}
+
+// Send NeoPixel message to set a single LED in a chain to specific RGB values
+void PBEngine::SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixelIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness)
+{
+    // Set up NeoPixel options with RGB values, brightness, and pixel index
+    stOutputOptions neoOptions;
+    neoOptions.neoPixelRed = red;
+    neoOptions.neoPixelGreen = green;
+    neoOptions.neoPixelBlue = blue;
+    neoOptions.brightness = brightness;
+    neoOptions.neoPixelIndex = pixelIndex;  // Use 0-based index directly (9999 means all pixels)
+    
+    // Send the message - the processing will set the specific LED to these RGB values scaled by brightness
+    SendOutputMsg(PB_OMSG_NEOPIXEL, neoPixelId, PB_ON, false, &neoOptions);
+}
+
+// Send NeoPixel message to set a single LED in a chain to a specific color (enum)
+void PBEngine::SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixelIndex, PBLEDColor color, uint8_t brightness)
+{
+    // Convert color enum to RGB values
+    uint8_t red = 0, green = 0, blue = 0;
+    ConvertColorToRGB(color, red, green, blue);
+    
+    // Call the RGB version with brightness
+    SendNeoPixelSingleMsg(neoPixelId, pixelIndex, red, green, blue, brightness);
 }
 
 // Function to set or unset autoOutput for an input by array index
@@ -2059,7 +2230,7 @@ bool PBEngine::pbeSetWatchdogTimer(unsigned int timerValueMS) {
 // When the timer expires, an input message with PB_IMSG_TIMER will be sent
 // with the inputId set to the user-supplied timerId
 // Returns true if timer was added successfully, false if limit reached or timerId is 0
-bool PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS) {
+bool PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS, bool repeat) {
     // Timer ID 0 is reserved for the watchdog timer
     if (timerId == WATCHDOGTIMER_ID) {
         return false;
@@ -2077,6 +2248,7 @@ bool PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS) {
     timerEntry.durationMS = timerValueMS;
     timerEntry.startTickMS = currentTick;
     timerEntry.expireTickMS = currentTick + timerValueMS;
+    timerEntry.repeat = repeat;
     
     // Note: Currently single-threaded, mutex locking not needed
     // std::lock_guard<std::mutex> lock(m_timerQMutex);
@@ -2137,6 +2309,13 @@ void PBEngine::pbeProcessTimers() {
             
             // Add the timer expiration message to the input queue
             m_inputQueue.push(inputMessage);
+            
+            // If this is a repeat timer, restart it
+            if (timerEntry.repeat) {
+                timerEntry.startTickMS = currentTick;
+                timerEntry.expireTickMS = currentTick + timerEntry.durationMS;
+                remainingTimers.push(timerEntry);
+            }
         } else {
             // Timer has not expired - keep it in the queue
             remainingTimers.push(timerEntry);
@@ -2220,6 +2399,20 @@ void PBEngine::pbeTimerStop(unsigned int timerId) {
     
     // Swap the remaining timers back into the main timer queue
     m_timerQueue = std::move(remainingTimers);
+}
+
+// Stop all timers, and optionally stop the watchdog timer
+void PBEngine::pbeTimerStopAll(bool stopWatchdog) {
+    // Clear the entire timer queue
+    while (!m_timerQueue.empty()) {
+        m_timerQueue.pop();
+    }
+    
+    // Stop the watchdog timer if requested
+    if (stopWatchdog) {
+        m_watchdogTimer.durationMS = 0;
+        m_watchdogTimer.expireTickMS = 0;
+    }
 }
 
 // Reload function to reset all engine screen load states

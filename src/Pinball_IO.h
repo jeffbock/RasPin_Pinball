@@ -22,6 +22,9 @@ enum PBPinState {
     PB_BRIGHTNESS = 3
 };
 
+// NeoPixel index constant for all pixels
+#define ALLNEOPIXELS 9999
+
 // RGB LED Color definitions
 enum PBLEDColor {
     PB_LEDBLACK = 0,      // Red only
@@ -93,7 +96,7 @@ struct stOutputDef{
     PBPinState lastState;
     unsigned int onTimeMS;
     unsigned int offTimeMS;
-
+    unsigned int neoPixelIndex;  // Index of specific NeoPixel LED in chain (for single pixel operations)
 };
 
 // The actual definition of the input items - the user of the library will need to define these for the specific table
@@ -117,7 +120,7 @@ struct stOutputDef{
 #define IDO_BALLEJECT2 13
 #define IDO_NEOPIXEL0 14
 #define IDO_NEOPIXEL1 15
-#define NUM_OUTPUTS 16
+#define NUM_OUTPUTS 15
 
 #define IDI_LEFTFLIPPER 0
 #define IDI_RIGHTFLIPPER 1
@@ -303,7 +306,10 @@ private:
 // NeoPixel timing method selection
 enum NeoPixelTimingMethod {
     NEOPIXEL_TIMING_CLOCKGETTIME = 0,  // Use clock_gettime() for timing (current default)
-    NEOPIXEL_TIMING_NOP = 1            // Use assembly NOP instructions (more deterministic)
+    NEOPIXEL_TIMING_NOP = 1,           // Use assembly NOP instructions (more deterministic)
+    NEOPIXEL_TIMING_SPI = 2,           // Use SPI hardware (most reliable, requires SPI channel)
+    NEOPIXEL_TIMING_SPI_BURST = 3,     // Use SPI hardware with full string burst transmission
+    NEOPIXEL_TIMING_DISABLED = 4       // Hardware initialization failed - NeoPixels disabled
 };
 
 // NeoPixel LED node structure - defines RGB color for a single LED
@@ -312,10 +318,12 @@ struct stNeoPixelNode {
     uint8_t currentRed;
     uint8_t currentGreen;
     uint8_t currentBlue;
+    uint8_t currentBrightness;
 
     uint8_t stagedRed;
     uint8_t stagedGreen;
     uint8_t stagedBlue;
+    uint8_t stagedBrightness;
 };
 
 // NeoPixel timing and safety constants
@@ -325,12 +333,50 @@ struct stNeoPixelNode {
 #define NEOPIXEL_MAX_LEDS_RECOMMENDED 60
 #define NEOPIXEL_MAX_LEDS_ABSOLUTE 100  // Absolute limit (3ms) - may cause issues
 
-// NeoPixel Driver class for controlling WS2812B-style RGB LED strips
+// NeoPixel timing instrumentation constants
+#define NEOPIXEL_INSTRUMENTATION_BITS 32  // Track timing for 32 bits (4 bytes / 1 complete 32-bit value)
+#define NEOPIXEL_MAX_CAPTURED_BYTES 4     // Maximum number of bytes captured (32 bits / 8)
+
+// NeoPixel timing specification tolerances (in nanoseconds)
+// SK6812 timing requirements with ±150ns tolerance:
+// Bit 1: 600ns high (±150ns), 600ns low (±150ns)
+// Bit 0: 300ns high (±150ns), 900ns low (±150ns)
+// Reset: >80μs (more strict than WS2812B's >50μs)
+#define NEOPIXEL_BIT1_HIGH_MIN_NS 450    // 600ns - 150ns tolerance
+#define NEOPIXEL_BIT1_HIGH_MAX_NS 750    // 600ns + 150ns tolerance
+#define NEOPIXEL_BIT1_LOW_MIN_NS 450     // 600ns - 150ns tolerance
+#define NEOPIXEL_BIT1_LOW_MAX_NS 750     // 600ns + 150ns tolerance
+
+#define NEOPIXEL_BIT0_HIGH_MIN_NS 150    // 300ns - 150ns tolerance
+#define NEOPIXEL_BIT0_HIGH_MAX_NS 450    // 300ns + 150ns tolerance
+#define NEOPIXEL_BIT0_LOW_MIN_NS 750     // 900ns - 150ns tolerance
+#define NEOPIXEL_BIT0_LOW_MAX_NS 1050    // 900ns + 150ns tolerance
+
+// Structure to track timing data for a single bit transmission
+struct stNeoPixelBitTiming {
+    uint32_t highTimeNs;      // Time pin was high in nanoseconds
+    uint32_t lowTimeNs;       // Time pin was low in nanoseconds
+    bool meetsSpec;           // True if timing meets SK6812 specification
+    bool bitValue;            // The actual bit value sent (0 or 1)
+};
+
+// Structure to track timing instrumentation for SendByte operations
+// Tracks up to 32 bits (4 bytes) of timing data for diagnostics
+struct stNeoPixelInstrumentation {
+    stNeoPixelBitTiming bitTimings[NEOPIXEL_INSTRUMENTATION_BITS];  // Timing data for each bit
+    unsigned int numBitsCaptured;     // Number of bits captured (0-32)
+    uint32_t capturedBytes;           // The actual byte values captured (for verification)
+    bool instrumentationEnabled;      // Flag to enable/disable instrumentation
+    unsigned int byteSequenceNumber;  // Sequential byte counter for tracking order
+    uint64_t totalTransmissionTimeNs; // Total time for all captured bits
+};
+
+// NeoPixel Driver class for controlling SK6812-style RGB LED strips
 // Uses Raspberry Pi GPIO pins directly for bit-banged communication
 // IMPORTANT: Disables interrupts during transmission - limit LED count to avoid system issues
 class NeoPixelDriver {
 public:
-    NeoPixelDriver(unsigned int driverIndex);
+    NeoPixelDriver(unsigned int driverIndex, unsigned char* spiBuffer);
     ~NeoPixelDriver();
 
     // Initialize GPIO pins (must be called after wiringPiSetup())
@@ -362,12 +408,29 @@ public:
     bool HasStagedChanges() const;
     
     // Set timing method (must be set before calling SendStagedNeoPixels)
-    void SetTimingMethod(NeoPixelTimingMethod method) { m_timingMethod = method; }
+    // Note: Once set to DISABLED, cannot be changed
+    void SetTimingMethod(NeoPixelTimingMethod method);
     NeoPixelTimingMethod GetTimingMethod() const { return m_timingMethod; }
     
     // Get pin and LED count
     unsigned int GetOutputPin() const { return m_outputPin; }
     unsigned int GetNumLEDs() const { return m_numLEDs; }
+    
+    // Instrumentation control and access methods
+    void EnableInstrumentation(bool enable);
+    bool IsInstrumentationEnabled() const;
+    void ResetInstrumentation();
+    const stNeoPixelInstrumentation& GetInstrumentationData() const;
+    
+    // Brightness control
+    void SetMaxBrightness(uint8_t maxBrightness);
+    uint8_t GetMaxBrightness() const { return m_maxBrightness; }
+    
+    // Single pixel control (immediately sends to hardware)
+    void SetSinglePixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue);
+    void SetSinglePixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);
+    void SetSinglePixel(unsigned int ledIndex, PBLEDColor color);
+    void SetSinglePixel(unsigned int ledIndex, PBLEDColor color, uint8_t brightness);
 
 private:
     unsigned int m_driverIndex;    // Driver index (corresponds to boardIndex)
@@ -375,13 +438,52 @@ private:
     unsigned int m_numLEDs;        // Number of LEDs in the string
     stNeoPixelNode* m_nodes;       // Pointer to node array (from g_NeoPixelNodeArray)
     bool m_hasChanges;             // Flag indicating staged changes exist
+    bool m_gpioInitialized;        // Flag indicating GPIO has been initialized
     NeoPixelTimingMethod m_timingMethod;  // Timing method to use
+    stNeoPixelInstrumentation m_instrumentation;  // Timing instrumentation data
+    
+    // SPI-specific members
+    int m_spiChannel;              // SPI channel (0 or 1)
+    int m_spiFd;                   // SPI file descriptor (-1 if not initialized)
+    unsigned char* m_spiBuffer;    // Pre-allocated SPI buffer (passed from initialization)
+    
+    // Brightness control
+    uint8_t m_maxBrightness;       // Maximum allowed brightness (0-255)
     
     // Helper function to convert PBLEDColor enum to RGB values
     void ColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, uint8_t& blue);
     
-    // Helper function to send RGB data for a single LED using WS2812B timing
+    // Helper function to cap brightness at maximum
+    inline uint8_t CapBrightness(uint8_t brightness) const {
+        return (brightness > m_maxBrightness) ? m_maxBrightness : brightness;
+    }
+    
+    // Helper function to apply brightness scaling to a color component
+    // Optimized using bit shifting for better performance
+    inline uint8_t ApplyBrightness(uint8_t color, uint8_t brightness) const {
+        // Fast approximation: (color * brightness + 127) >> 8
+        // Provides similar accuracy to division by 255 with faster execution
+        return (uint8_t)((((uint16_t)color * brightness) + 127) >> 8);
+    }
+    
+    // Helper function to send RGB data for a single LED using SK6812 timing
     void SendByte(uint8_t byte, NeoPixelTimingMethod method);
+    
+    // Helper functions for different timing methods
+    void SendByteClockGetTime(uint8_t byte);
+    void SendByteNOP(uint8_t byte);
+    
+    // Helper functions for SPI mode
+    void InitializeSPI();
+    void SendByteSPI(uint8_t byte);
+    void SendAllPixelsSPI();  // Send entire pixel string in one burst
+    void CloseSPI();
+    
+    // Helper function to check if bit timing meets SK6812 specification
+    bool CheckBitTimingSpec(uint32_t highTimeNs, uint32_t lowTimeNs, bool bitValue) const;
+    
+    // Helper function to initialize instrumentation data structure
+    void InitializeInstrumentationData();
     
     // Helper function to send reset/latch signal
     void SendReset();
