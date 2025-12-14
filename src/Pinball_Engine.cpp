@@ -2111,11 +2111,11 @@ void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, uint8_t red, uint8_t 
     SendOutputMsg(PB_OMSG_NEOPIXEL, neoPixelId, PB_ON, false, &neoOptions);
 }
 
-// Send NeoPixel message to set all LEDs in a chain to a specific color (enum)
-void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, PBLEDColor color, uint8_t brightness)
+// Helper function to convert PBLEDColor enum to RGB values
+void PBEngine::ConvertColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, uint8_t& blue)
 {
-    // Convert color enum to RGB values
-    uint8_t red = 0, green = 0, blue = 0;
+    // Initialize to 0 (off/black)
+    red = green = blue = 0;
     
     // Map color enum to full brightness RGB (0 or 255)
     // Note: Use a color enum with all zeros (or call the RGB version with 0,0,0) to turn off
@@ -2129,6 +2129,14 @@ void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, PBLEDColor color, uin
         case PB_LEDCYAN:    green = blue = 255; break;
         default:            break; // Unknown color, all stay at 0 (off/black)
     }
+}
+
+// Send NeoPixel message to set all LEDs in a chain to a specific color (enum)
+void PBEngine::SendNeoPixelAllMsg(unsigned int neoPixelId, PBLEDColor color, uint8_t brightness)
+{
+    // Convert color enum to RGB values
+    uint8_t red = 0, green = 0, blue = 0;
+    ConvertColorToRGB(color, red, green, blue);
     
     // Call the RGB version with brightness
     SendNeoPixelAllMsg(neoPixelId, red, green, blue, brightness);
@@ -2154,18 +2162,7 @@ void PBEngine::SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixel
 {
     // Convert color enum to RGB values
     uint8_t red = 0, green = 0, blue = 0;
-    
-    // Map color enum to full brightness RGB (0 or 255)
-    switch (color) {
-        case PB_LEDRED:     red = 255; break;
-        case PB_LEDGREEN:   green = 255; break;
-        case PB_LEDBLUE:    blue = 255; break;
-        case PB_LEDWHITE:   red = green = blue = 255; break;
-        case PB_LEDPURPLE:  red = blue = 255; break;
-        case PB_LEDYELLOW:  red = green = 255; break;
-        case PB_LEDCYAN:    green = blue = 255; break;
-        default:            break; // Unknown color, all stay at 0 (off/black)
-    }
+    ConvertColorToRGB(color, red, green, blue);
     
     // Call the RGB version with brightness
     SendNeoPixelSingleMsg(neoPixelId, pixelIndex, red, green, blue, brightness);
@@ -2233,7 +2230,7 @@ bool PBEngine::pbeSetWatchdogTimer(unsigned int timerValueMS) {
 // When the timer expires, an input message with PB_IMSG_TIMER will be sent
 // with the inputId set to the user-supplied timerId
 // Returns true if timer was added successfully, false if limit reached or timerId is 0
-bool PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS) {
+bool PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS, bool repeat) {
     // Timer ID 0 is reserved for the watchdog timer
     if (timerId == WATCHDOGTIMER_ID) {
         return false;
@@ -2251,6 +2248,7 @@ bool PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS) {
     timerEntry.durationMS = timerValueMS;
     timerEntry.startTickMS = currentTick;
     timerEntry.expireTickMS = currentTick + timerValueMS;
+    timerEntry.repeat = repeat;
     
     // Note: Currently single-threaded, mutex locking not needed
     // std::lock_guard<std::mutex> lock(m_timerQMutex);
@@ -2311,6 +2309,13 @@ void PBEngine::pbeProcessTimers() {
             
             // Add the timer expiration message to the input queue
             m_inputQueue.push(inputMessage);
+            
+            // If this is a repeat timer, restart it
+            if (timerEntry.repeat) {
+                timerEntry.startTickMS = currentTick;
+                timerEntry.expireTickMS = currentTick + timerEntry.durationMS;
+                remainingTimers.push(timerEntry);
+            }
         } else {
             // Timer has not expired - keep it in the queue
             remainingTimers.push(timerEntry);
@@ -2394,6 +2399,20 @@ void PBEngine::pbeTimerStop(unsigned int timerId) {
     
     // Swap the remaining timers back into the main timer queue
     m_timerQueue = std::move(remainingTimers);
+}
+
+// Stop all timers, and optionally stop the watchdog timer
+void PBEngine::pbeTimerStopAll(bool stopWatchdog) {
+    // Clear the entire timer queue
+    while (!m_timerQueue.empty()) {
+        m_timerQueue.pop();
+    }
+    
+    // Stop the watchdog timer if requested
+    if (stopWatchdog) {
+        m_watchdogTimer.durationMS = 0;
+        m_watchdogTimer.expireTickMS = 0;
+    }
 }
 
 // Reload function to reset all engine screen load states

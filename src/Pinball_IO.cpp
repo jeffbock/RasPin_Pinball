@@ -733,7 +733,7 @@ uint8_t AmpDriver::PercentToRegisterValue(uint8_t percent) const {
 //==============================================================================
 
 NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex, unsigned char* spiBuffer) 
-    : m_driverIndex(driverIndex), m_outputPin(0), m_numLEDs(0), m_nodes(nullptr), m_hasChanges(false), m_spiBuffer(spiBuffer) {
+    : m_driverIndex(driverIndex), m_outputPin(0), m_numLEDs(0), m_nodes(nullptr), m_hasChanges(false), m_gpioInitialized(false), m_spiBuffer(spiBuffer) {
     
     // Get the number of LEDs from g_NeoPixelSize array
     if (driverIndex < sizeof(g_NeoPixelSize) / sizeof(g_NeoPixelSize[0])) {
@@ -745,9 +745,7 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex, unsigned char* spiBuffe
         if (m_numLEDs > NEOPIXEL_MAX_LEDS_ABSOLUTE) {
             m_numLEDs = NEOPIXEL_MAX_LEDS_ABSOLUTE;
         }
-        #ifdef EXE_MODE_RASPI
-        // Note: In production, consider logging this warning
-        #endif
+        
     }
     
     // Find the GPIO pin from g_outputDef for this driver index
@@ -834,11 +832,15 @@ void NeoPixelDriver::InitializeGPIO() {
             // NeoPixels are disabled - do nothing
             break;
     }
+    
+    // Mark GPIO as initialized
+    m_gpioInitialized = true;
 }
 #else
 // Windows/non-RasPi version - no GPIO initialization needed
 void NeoPixelDriver::InitializeGPIO() {
     // No-op on non-Raspberry Pi platforms
+    m_gpioInitialized = true;
 }
 #endif
 
@@ -858,8 +860,6 @@ NeoPixelDriver::~NeoPixelDriver() {
         CloseSPI();
     }
 #endif
-    
-    // No memory deallocation needed - using pre-allocated arrays
 }
 
 void NeoPixelDriver::StageNeoPixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue) {
@@ -1035,6 +1035,12 @@ void NeoPixelDriver::SendStagedNeoPixels() {
         return;
     }
 
+    // Check to see if the GPIO has been initialized
+    if (!m_gpioInitialized) {
+        return;
+    }
+
+    
     #ifdef EXE_MODE_RASPI
     #if NEOPIXEL_USE_RT_PRIORITY
     // Temporarily elevate to real-time priority for deterministic timing
@@ -1051,27 +1057,6 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     }
     #endif
 
-    // Disable interrupts for timing-critical bit-banging
-    // 
-    // TIMING ANALYSIS:
-    // - Each LED: 3 bytes × 8 bits × 1.25µs = 30µs
-    // - 10 LEDs = 300µs interrupt disable (0.3ms) - safe
-    // - 60 LEDs = 1,800µs interrupt disable (1.8ms) - recommended max
-    // - 100 LEDs = 3,000µs interrupt disable (3ms) - absolute max
-    //
-    // SYSTEM IMPACT:
-    // - Below 2ms: Generally safe, minimal impact on USB/audio/network
-    // - 2-5ms: May cause occasional USB packet drops or audio glitches
-    // - Above 5ms: Risk of network packet loss and noticeable system lag
-    //
-    // Context switching is prevented by interrupt disable - this is the BEST
-    // approach for SK6812 timing requirements. Alternative approaches like
-    // RT_PREEMPT, DMA, or PWM are either overkill or hardware-dependent.
-    //
-    // Note: Interrupt disable requires kernel/privileged mode. On modern Linux,
-    // we rely on tight timing loops instead. Consider using real-time scheduling
-    // (SCHED_FIFO) for better timing guarantees.
-    
     // Send data for each LED in the string
     // SK6812 expects GRB format (not RGB)
     // Apply brightness scaling during transmission

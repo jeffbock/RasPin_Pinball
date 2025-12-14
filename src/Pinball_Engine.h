@@ -180,6 +180,7 @@ struct stTimerEntry {
     unsigned int durationMS;       // Timer duration in milliseconds
     unsigned long startTickMS;     // Time when timer was started
     unsigned long expireTickMS;    // Time when timer should expire
+    bool repeat;                   // If true, timer automatically restarts after expiring
 };
 
 // Reserved timer ID for the watchdog timer
@@ -308,11 +309,12 @@ public:
     void pbeExecuteDevices();
     
     // Timer functions
-    bool pbeSetTimer(unsigned int timerId, unsigned int timerValueMS);
+    bool pbeSetTimer(unsigned int timerId, unsigned int timerValueMS, bool repeat = false);
     bool pbeSetWatchdogTimer(unsigned int timerValueMS);
     void pbeProcessTimers();
     bool pbeTimerActive(unsigned int timerId);
     void pbeTimerStop(unsigned int timerId);
+    void pbeTimerStopAll(bool stopWatchdog = false);
     
     #ifdef EXE_MODE_RASPI
         // This map is used for whatever arbitrary Raspberry Pi inputs are used (from the main board)
@@ -461,6 +463,9 @@ private:
     
     // Helper function to calculate console rendering parameters
     unsigned int pbeGetMaxConsoleLines(unsigned int startingY);
+
+    // Helper function to convert PBLEDColor enum to RGB values
+    void ConvertColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, uint8_t& blue);
 
     // Main table Variables, etc..
     bool m_PBTBLStartLoaded; 

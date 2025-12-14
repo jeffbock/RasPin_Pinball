@@ -438,6 +438,7 @@ private:
     unsigned int m_numLEDs;        // Number of LEDs in the string
     stNeoPixelNode* m_nodes;       // Pointer to node array (from g_NeoPixelNodeArray)
     bool m_hasChanges;             // Flag indicating staged changes exist
+    bool m_gpioInitialized;        // Flag indicating GPIO has been initialized
     NeoPixelTimingMethod m_timingMethod;  // Timing method to use
     stNeoPixelInstrumentation m_instrumentation;  // Timing instrumentation data
     
