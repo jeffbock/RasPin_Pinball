@@ -121,6 +121,15 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
         m_secondaryScoreAnims[i].reset();
     }
     
+    // Status text animation initialization
+    m_statustextFadeIn = true;
+    m_statusTextFadeStart = 0;
+    m_statusTextDisplayStart = 0;
+    m_statusText[0] = "Welcome to Dragons of Destiny Pinball";
+    m_statusText[1] = "Collect gold with the bumpers, hire heroes at the Inn";
+    m_currentActiveText = 0;
+    m_previousActiveText = 0;
+    
     // NeoPixel sequence map is initialized on-demand when NeoPixel drivers are created
     
     // Initialize watchdog timer (timerId = 0)

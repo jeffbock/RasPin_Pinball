@@ -448,6 +448,14 @@ public:
     
     // Secondary score slot animations (up to 3 slots for non-current players)
     SecondaryScoreAnimState m_secondaryScoreAnims[3];
+    
+    // Status text fade animation tracking
+    bool m_statustextFadeIn;
+    unsigned long m_statusTextFadeStart;
+    unsigned long m_statusTextDisplayStart;
+    std::string m_statusText[2];
+    int m_currentActiveText;
+    int m_previousActiveText;
 private:
 
     PBMainState m_mainState;
@@ -548,6 +556,8 @@ private:
     // Helper functions
     std::string formatScoreWithCommas(unsigned long score); // Format score with thousand separators
     void pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick); // Render all player scores
+    void pbeRenderStatusText(unsigned long currentTick, unsigned long lastTick); // Render status text with fade effects
+    void pbeSetStatusText(int index, const std::string& text); // Set status text by index (0 or 1)
 
     // Texture release functions
     void pbeReleaseMenuTextures();

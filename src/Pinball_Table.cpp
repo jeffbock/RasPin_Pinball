@@ -369,7 +369,7 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
         pbeSendConsole("ERROR: Failed to load main screen resources");
         return (false);
     }
-    
+
     // Clear to black background
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
     
@@ -378,7 +378,10 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     
     // Render all player scores
     pbeRenderPlayerScores(currentTick, lastTick);
-    
+
+    // Render status text with fade effects
+    pbeRenderStatusText(currentTick, lastTick);
+
     // Render status icons and values
     pbeRenderStatus(currentTick, lastTick);
     
@@ -388,7 +391,9 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
 // Supprot render routines for the main screen
 void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick){
     // Calculate fade-in alpha for main score
+    
     unsigned int mainAlpha = 255;
+
     if (m_mainScoreAnimActive) {
         float elapsedSec = (currentTick - m_mainScoreAnimStartTick) / 1000.0f;
         float animDuration = 1.5f;
@@ -415,12 +420,6 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     std::string scoreText = formatScoreWithCommas(getCurrentPlayerScore());
     gfxSetScaleFactor(m_StartMenuFontId, 1.2, false);
     gfxRenderString(m_StartMenuFontId, scoreText, (ACTIVEDISPX+(1024/3)), ACTIVEDISPY + 350, 5, GFX_TEXTCENTER);
-    
-    // Render the current ball indicator in lower left (same color as main score)
-    gfxSetColor(m_StartMenuFontId, 255, 255, 255, mainAlpha);
-    gfxSetScaleFactor(m_StartMenuFontId, 0.5, false);
-    std::string ballText = "Ball: " + std::to_string(m_playerStates[m_currentPlayer].currentBall);
-    gfxRenderString(m_StartMenuFontId, ballText, ACTIVEDISPX + 10, ACTIVEDISPY + 680, 3, GFX_TEXTLEFT);
     
     // Render other player scores at the bottom (small grey text)
     gfxSetColor(m_StartMenuFontId, 128, 128, 128, 255); // Light grey color for visibility
@@ -467,6 +466,105 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
         
         slotIndex++;
     }
+}
+
+void PBEngine::pbeSetStatusText(int index, const std::string& text){
+    if (index >= 0 && index <= 1) {
+        m_statusText[index] = text;
+    }
+}
+
+void PBEngine::pbeRenderStatusText(unsigned long currentTick, unsigned long lastTick){
+    // Calculate position: right justified to (active width - 1/3 active width)
+    // Active width is 1024, so 1/3 is ~341, right edge is at 1024 - 341 = 683
+    int rightX = ACTIVEDISPX + 683;
+    int yPos = ACTIVEDISPY + 660; // Same vertical position as Ball text
+    
+    // Render the current ball indicator in lower left (same color as main score)
+    gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 0.35, false);
+    std::string ballText = "Ball: " + std::to_string(m_playerStates[m_currentPlayer].currentBall);
+    gfxRenderString(m_StartMenuFontId, ballText, ACTIVEDISPX + 10, yPos, 3, GFX_TEXTLEFT);
+    
+    // Check if both strings are empty - skip rendering entirely
+    if (m_statusText[0].empty() && m_statusText[1].empty()) {
+        return;
+    }
+    
+    // Initialize fade start time on first call
+    if (m_statusTextFadeStart == 0) {
+        m_statusTextFadeStart = currentTick;
+    }
+    
+    // Check if we're switching text
+    if (m_currentActiveText != m_previousActiveText) {
+        // Only switch if the new text is not empty
+        if (m_statusText[m_currentActiveText].empty()) {
+            // New text is empty, revert to previous
+            m_currentActiveText = m_previousActiveText;
+        } else if (m_statustextFadeIn) {
+            // Text changed - start fade out of old text if we were fading in
+            m_statustextFadeIn = false;
+            m_statusTextFadeStart = currentTick;
+        }
+    }
+    
+    // Calculate fade alpha
+    unsigned int alpha = 0;
+    float fadeDuration = 500.0f; // 500ms fade time
+    float elapsedSec = (currentTick - m_statusTextFadeStart) / 1000.0f;
+    float elapsedMs = elapsedSec * 1000.0f;
+    
+    // Determine which text to render based on fade state
+    int textToRender = m_statustextFadeIn ? m_currentActiveText : m_previousActiveText;
+    
+    if (!m_statustextFadeIn) {
+        // Fading out
+        if (elapsedMs >= fadeDuration) {
+            // Fade out complete, start fading in new text
+            alpha = 0;
+            m_statustextFadeIn = true;
+            m_previousActiveText = m_currentActiveText;
+            m_statusTextFadeStart = currentTick;
+        } else {
+            // Linear fade from 255 to 0
+            float progress = elapsedMs / fadeDuration;
+            alpha = static_cast<unsigned int>(255.0f * (1.0f - progress));
+        }
+    } else {
+        // Fading in
+        if (elapsedMs >= fadeDuration) {
+            // Fade in complete
+            alpha = 255;
+            
+            // Start display timer if not already started
+            if (m_statusTextDisplayStart == 0) {
+                m_statusTextDisplayStart = currentTick;
+            }
+            
+            // Check if other text entry is not empty and display duration has elapsed
+            int otherTextIndex = (m_currentActiveText == 0) ? 1 : 0;
+            if (!m_statusText[otherTextIndex].empty()) {
+                float displayDuration = 4000.0f; // 3 seconds display time
+                float displayElapsedMs = (currentTick - m_statusTextDisplayStart);
+                
+                if (displayElapsedMs >= displayDuration) {
+                    // Switch to other text (will trigger fade out on next frame)
+                    m_currentActiveText = otherTextIndex;
+                    m_statusTextDisplayStart = 0;
+                }
+            }
+        } else {
+            // Linear fade from 0 to 255
+            float progress = elapsedMs / fadeDuration;
+            alpha = static_cast<unsigned int>(255.0f * progress);
+        }
+    }
+    
+    // Render the current status text
+    gfxSetColor(m_StartMenuFontId, 255, 255, 255, alpha);
+    gfxSetScaleFactor(m_StartMenuFontId, 0.35, false);
+    gfxRenderString(m_StartMenuFontId, m_statusText[textToRender], rightX, yPos, 3, GFX_TEXTRIGHT);
 }
 
 bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick){
