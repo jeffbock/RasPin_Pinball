@@ -4,8 +4,10 @@ raspibuild/
 RasPi_CMake/build/
 RasPi_CMake/_codeql_build_dir/
 RasPi_CMake/RasPi_CMake
+RasPi_CMake/CMakeFiles/
 src/lib_ogl_win/libEGL.dll.lib
 src/lib_ogl_win/libGLESv2.dll.lib
 src/lib_ogl_raspi/libEGL.dll.lib
 src/lib_ogl_raspi/libGLESv2.dll.lib
 *.pdb
+*.o
