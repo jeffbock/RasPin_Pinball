@@ -1649,7 +1649,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 sandboxNeoPixelStep();
                 
                 // Set next timer
-                pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, 50);
+                pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, SANDBOX_NEOPIXEL_TIMER_INTERVAL_MS);
             }
             
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
@@ -1739,8 +1739,8 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             // Step mode: perform first animation step immediately
                             sandboxNeoPixelStep();
                         } else {
-                            // Timer mode: start timer for first animation step (50ms)
-                            pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, 50);
+                            // Timer mode: start timer for first animation step
+                            pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, SANDBOX_NEOPIXEL_TIMER_INTERVAL_MS);
                         }
                     } else {
                         // Animation already active

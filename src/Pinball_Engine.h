@@ -188,6 +188,7 @@ struct stTimerEntry {
 
 // Timer ID for sandbox NeoPixel animation
 #define SANDBOX_NEOPIXEL_TIMER_ID 100
+#define SANDBOX_NEOPIXEL_TIMER_INTERVAL_MS 50
 
 // Maximum number of active timers allowed
 #define MAX_TIMERS 10

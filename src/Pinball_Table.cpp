@@ -769,7 +769,7 @@ bool PBEngine::pbeTableInit(){
         // Find the corresponding output ID from g_outputDef
         for (int i = 0; i < NUM_OUTPUTS; i++) {
             if (g_outputDef[i].boardIndex == boardIndex && g_outputDef[i].type == PBOUT_NEOPIXEL) {
-                // Set all pixels to black (0, 0, 0) with full brightness
+                // Set all pixels to black/off (0, 0, 0)
                 SendNeoPixelAllMsg(i, 0, 0, 0, 255);
                 break;
             }
