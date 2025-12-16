@@ -556,6 +556,8 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
         m_RestartMenu = false;
         gfxSetScaleFactor(m_StartMenuSwordId, 0.9, false);
         gfxSetRotateDegrees(m_StartMenuSwordId, 0.0f, false);
+        // Restart the menu music when returning to main menu
+        m_soundSystem.pbsPlayMusic(SOUNDMENUTHEME);
     } 
     
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
