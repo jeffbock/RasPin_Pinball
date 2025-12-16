@@ -762,6 +762,20 @@ bool PBEngine::pbeTableInit(){
     pbdEjector* ballEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
     pbeAddDevice(ballEjector);
     
+    // Initialize all NeoPixels to black/off when starting the pinball game
+    // Iterate through all NeoPixel drivers in the map
+    for (auto& driver : m_NeoPixelDriverMap) {
+        int boardIndex = driver.first;
+        // Find the corresponding output ID from g_outputDef
+        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            if (g_outputDef[i].boardIndex == boardIndex && g_outputDef[i].type == PBOUT_NEOPIXEL) {
+                // Set all pixels to black (0, 0, 0) with full brightness
+                SendNeoPixelAllMsg(i, 0, 0, 0, 255);
+                break;
+            }
+        }
+    }
+    
     return (true);
 }
 

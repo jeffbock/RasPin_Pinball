@@ -397,6 +397,7 @@ public:
     
     // NeoPixel animation variables for sandbox test
     bool m_sandboxNeoPixelAnimActive;    // Animation is running
+    bool m_sandboxNeoPixelStepMode;      // True = step mode (manual), False = timer mode (automatic)
     int m_sandboxNeoPixelPosition;       // Current position of the 3-pixel group (1-based)
     bool m_sandboxNeoPixelMovingUp;      // True = moving up, False = moving down
     int m_sandboxNeoPixelMaxPosition;    // Maximum position based on LED count
@@ -558,6 +559,9 @@ private:
     void pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick); // Render all player scores
     void pbeRenderStatusText(unsigned long currentTick, unsigned long lastTick); // Render status text with fade effects
     void pbeSetStatusText(int index, const std::string& text); // Set status text by index (0 or 1)
+    
+    // Sandbox NeoPixel helper functions
+    void sandboxNeoPixelStep(); // Advance NeoPixel animation by one step
 
     // Texture release functions
     void pbeReleaseMenuTextures();

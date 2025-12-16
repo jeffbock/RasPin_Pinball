@@ -77,6 +77,7 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     
     // Initialize NeoPixel animation variables
     m_sandboxNeoPixelAnimActive = false;
+    m_sandboxNeoPixelStepMode = true;  // Default to step mode
     m_sandboxNeoPixelPosition = 0;
     m_sandboxNeoPixelMovingUp = true;
     m_sandboxNeoPixelMaxPosition = 0;
@@ -973,7 +974,8 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 255, 64, 64, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Right Flipper" + rfState + ":", centerX - 200, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "NeoPixel Test", centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    std::string neoPixelMode = m_sandboxNeoPixelStepMode ? "NeoPixel Test (Step Mode)" : "NeoPixel Test (Timer Mode)";
+    gfxRenderShadowString(m_defaultFontSpriteId, neoPixelMode, centerX + 50, startY + lineSpacing, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Left Activate - Bright Cyan-Blue (like blue LED light)
     std::string laState = m_LAON ? " (ON)" : " (OFF)";
@@ -1637,72 +1639,14 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
             }
             
-            // Handle NeoPixel animation timer
+            // Handle NeoPixel animation timer (only active in timer mode)
             if (inputMessage.inputMsg == PB_IMSG_TIMER && 
                 inputMessage.inputId == SANDBOX_NEOPIXEL_TIMER_ID &&
-                m_sandboxNeoPixelAnimActive) {
+                m_sandboxNeoPixelAnimActive &&
+                !m_sandboxNeoPixelStepMode) {  // Only process in timer mode
                 
-                // Get LED count for bounds checking
-                unsigned int numLEDs = 0;
-                if (m_NeoPixelDriverMap.find(0) != m_NeoPixelDriverMap.end()) {
-                    numLEDs = m_NeoPixelDriverMap.at(0).GetNumLEDs();
-                }
-                
-                // Clear previous pixels to dark blue (0-based indexing with bounds checking)
-                // When moving forward, clear pixels behind. When moving backward, clear pixels ahead.
-                if (numLEDs > 0) {
-                    int clearPos;
-                    if (m_sandboxNeoPixelMovingUp) {
-                        // Moving forward: clear the pixels we're leaving behind
-                        clearPos = m_sandboxNeoPixelPosition - 1;
-                    } else {
-                        // Moving backward: clear the pixels we're leaving ahead
-                        clearPos = m_sandboxNeoPixelPosition + 1;
-                    }
-                    
-                    // Clear the 3-pixel trail
-                    if (clearPos - 1 >= 0 && clearPos - 1 < (int)numLEDs) {
-                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos - 1, PB_LEDBLUE, 32);
-                    }
-                    if (clearPos >= 0 && clearPos < (int)numLEDs) {
-                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos, PB_LEDBLUE, 32);
-                    }
-                    if (clearPos + 1 >= 0 && clearPos + 1 < (int)numLEDs) {
-                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos + 1, PB_LEDBLUE, 32);
-                    }
-                }
-                
-                // Update position BEFORE setting pixels
-                if (m_sandboxNeoPixelMovingUp) {
-                    m_sandboxNeoPixelPosition++;
-                    if (m_sandboxNeoPixelPosition >= m_sandboxNeoPixelMaxPosition) {
-                        m_sandboxNeoPixelMovingUp = false;
-                        m_sandboxNeoPixelPosition = m_sandboxNeoPixelMaxPosition;  // Clamp to max
-                    }
-                } else {
-                    m_sandboxNeoPixelPosition--;
-                    if (m_sandboxNeoPixelPosition <= 0) {
-                        m_sandboxNeoPixelMovingUp = true;
-                        m_sandboxNeoPixelPosition = 0;  // Clamp to min
-                    }
-                }
-                
-                // Set current pixels (position is the 0-based LED index for the center red pixel)
-                if (numLEDs > 0) {
-                    int idx1 = m_sandboxNeoPixelPosition - 1;  // Left purple
-                    int idx2 = m_sandboxNeoPixelPosition;       // Center red
-                    int idx3 = m_sandboxNeoPixelPosition + 1;   // Right purple
-                    
-                    if (idx1 >= 0 && idx1 < (int)numLEDs) {
-                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx1, PB_LEDPURPLE, 255);  // Purple
-                    }
-                    if (idx2 >= 0 && idx2 < (int)numLEDs) {
-                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx2, PB_LEDRED, 255);     // Red
-                    }
-                    if (idx3 >= 0 && idx3 < (int)numLEDs) {
-                        SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx3, PB_LEDPURPLE, 255);  // Purple
-                    }
-                }
+                // Advance animation by one step
+                sandboxNeoPixelStep();
                 
                 // Set next timer
                 pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, 50);
@@ -1790,13 +1734,25 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             m_sandboxNeoPixelMaxPosition = 0;
                         }
                         
-                        // Start timer for first animation step (250ms)
-                        pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, 250);
+                        // In step mode, do first step. In timer mode, start timer.
+                        if (m_sandboxNeoPixelStepMode) {
+                            // Step mode: perform first animation step immediately
+                            sandboxNeoPixelStep();
+                        } else {
+                            // Timer mode: start timer for first animation step (50ms)
+                            pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, 50);
+                        }
                     } else {
-                        // Stop animation: set all to dark blue and cancel timer
-                        SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);
-                        m_sandboxNeoPixelAnimActive = false;
-                        pbeTimerStop(SANDBOX_NEOPIXEL_TIMER_ID);
+                        // Animation already active
+                        if (m_sandboxNeoPixelStepMode) {
+                            // Step mode: advance one step
+                            sandboxNeoPixelStep();
+                        } else {
+                            // Timer mode: toggle off (stop animation)
+                            SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);
+                            m_sandboxNeoPixelAnimActive = false;
+                            pbeTimerStop(SANDBOX_NEOPIXEL_TIMER_ID);
+                        }
                     }
                 }
                 
@@ -2431,6 +2387,71 @@ void PBEngine::pbeEngineReload() {
     m_bootUpLoaded = false;
     m_startMenuLoaded = false;
     m_RestartMenu = true;
+}
+
+// Sandbox NeoPixel step function - advances the animation by one step
+void PBEngine::sandboxNeoPixelStep() {
+    // Get LED count for bounds checking
+    unsigned int numLEDs = 0;
+    if (m_NeoPixelDriverMap.find(0) != m_NeoPixelDriverMap.end()) {
+        numLEDs = m_NeoPixelDriverMap.at(0).GetNumLEDs();
+    }
+    
+    // Clear previous pixels to dark blue (0-based indexing with bounds checking)
+    // When moving forward, clear pixels behind. When moving backward, clear pixels ahead.
+    if (numLEDs > 0) {
+        int clearPos;
+        if (m_sandboxNeoPixelMovingUp) {
+            // Moving forward: clear the pixels we're leaving behind
+            clearPos = m_sandboxNeoPixelPosition - 1;
+        } else {
+            // Moving backward: clear the pixels we're leaving ahead
+            clearPos = m_sandboxNeoPixelPosition + 1;
+        }
+        
+        // Clear the 3-pixel trail
+        if (clearPos - 1 >= 0 && clearPos - 1 < (int)numLEDs) {
+            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos - 1, PB_LEDBLUE, 32);
+        }
+        if (clearPos >= 0 && clearPos < (int)numLEDs) {
+            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos, PB_LEDBLUE, 32);
+        }
+        if (clearPos + 1 >= 0 && clearPos + 1 < (int)numLEDs) {
+            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos + 1, PB_LEDBLUE, 32);
+        }
+    }
+    
+    // Update position BEFORE setting pixels
+    if (m_sandboxNeoPixelMovingUp) {
+        m_sandboxNeoPixelPosition++;
+        if (m_sandboxNeoPixelPosition >= m_sandboxNeoPixelMaxPosition) {
+            m_sandboxNeoPixelMovingUp = false;
+            m_sandboxNeoPixelPosition = m_sandboxNeoPixelMaxPosition;  // Clamp to max
+        }
+    } else {
+        m_sandboxNeoPixelPosition--;
+        if (m_sandboxNeoPixelPosition <= 0) {
+            m_sandboxNeoPixelMovingUp = true;
+            m_sandboxNeoPixelPosition = 0;  // Clamp to min
+        }
+    }
+    
+    // Set current pixels (position is the 0-based LED index for the center red pixel)
+    if (numLEDs > 0) {
+        int idx1 = m_sandboxNeoPixelPosition - 1;  // Left purple
+        int idx2 = m_sandboxNeoPixelPosition;       // Center red
+        int idx3 = m_sandboxNeoPixelPosition + 1;   // Right purple
+        
+        if (idx1 >= 0 && idx1 < (int)numLEDs) {
+            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx1, PB_LEDPURPLE, 255);  // Purple
+        }
+        if (idx2 >= 0 && idx2 < (int)numLEDs) {
+            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx2, PB_LEDRED, 255);     // Red
+        }
+        if (idx3 >= 0 && idx3 < (int)numLEDs) {
+            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx3, PB_LEDPURPLE, 255);  // Purple
+        }
+    }
 }
 
 
