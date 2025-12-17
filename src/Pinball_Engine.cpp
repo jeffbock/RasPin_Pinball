@@ -6,6 +6,7 @@
 #include "Pinball.h"
 #include "PBSequences.h"
 #include "PBDevice.h"
+#include <cmath>
 
 // Define NeoPixel global arrays (declared as extern in Pinball_Engine.h)
 stNeoPixelNode* g_NeoPixelNodeArray[2];
@@ -2449,6 +2450,231 @@ void PBEngine::sandboxNeoPixelStep() {
         }
     }
     
+}
+
+// NeoPixel Gradual Fade - All pixels fade from start color to end color over time
+// Parameters:
+//   startR, startG, startB: Starting color (RGB 0-255)
+//   endR, endG, endB: Ending color (RGB 0-255)
+//   neoPixelId: Which NeoPixel output pin/chain to control
+//   stepTimeMS: Minimum time in milliseconds between updates
+//   totalDurationMS: Total duration for the full transition
+//   restart: If true, restart the animation when complete
+void PBEngine::neoPixelGradualFade(uint8_t startR, uint8_t startG, uint8_t startB,
+                                   uint8_t endR, uint8_t endG, uint8_t endB,
+                                   unsigned int neoPixelId, unsigned int stepTimeMS,
+                                   unsigned int totalDurationMS, bool restart)
+{
+    // Static variables to track state over time
+    static bool initialized = false;
+    static std::chrono::steady_clock::time_point startTime;
+    static std::chrono::steady_clock::time_point lastStepTime;
+    static unsigned int lastNeoPixelId = 0;
+    
+    // Get current time
+    auto currentTime = std::chrono::steady_clock::now();
+    
+    // Initialize or reset if this is the first call or if neoPixelId changed
+    if (!initialized || lastNeoPixelId != neoPixelId) {
+        initialized = true;
+        startTime = currentTime;
+        lastStepTime = currentTime;
+        lastNeoPixelId = neoPixelId;
+        
+        // Get LED count
+        unsigned int numLEDs = 0;
+        if (m_NeoPixelDriverMap.find(neoPixelId) != m_NeoPixelDriverMap.end()) {
+            numLEDs = m_NeoPixelDriverMap.at(neoPixelId).GetNumLEDs();
+        }
+        
+        // Initialize all pixels to start color
+        for (unsigned int i = 0; i < numLEDs; i++) {
+            SendNeoPixelSingleMsg(neoPixelId, i, startR, startG, startB, 255);
+        }
+        return;
+    }
+    
+    // Check if step time has elapsed
+    auto stepElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastStepTime);
+    if (stepElapsed.count() < stepTimeMS) {
+        return; // Not time for next step yet
+    }
+    
+    // Update last step time
+    lastStepTime = currentTime;
+    
+    // Calculate elapsed time since start
+    auto totalElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime);
+    unsigned int elapsedMS = totalElapsed.count();
+    
+    // Check if animation is complete
+    if (elapsedMS >= totalDurationMS) {
+        if (restart) {
+            // Restart the animation
+            startTime = currentTime;
+            elapsedMS = 0;
+        } else {
+            // Animation complete, set all pixels to final color
+            unsigned int numLEDs = 0;
+            if (m_NeoPixelDriverMap.find(neoPixelId) != m_NeoPixelDriverMap.end()) {
+                numLEDs = m_NeoPixelDriverMap.at(neoPixelId).GetNumLEDs();
+            }
+            for (unsigned int i = 0; i < numLEDs; i++) {
+                SendNeoPixelSingleMsg(neoPixelId, i, endR, endG, endB, 255);
+            }
+            return;
+        }
+    }
+    
+    // Calculate interpolation factor (0.0 to 1.0)
+    float progress = (float)elapsedMS / (float)totalDurationMS;
+    
+    // Interpolate color values
+    uint8_t currentR = (uint8_t)(startR + (endR - startR) * progress);
+    uint8_t currentG = (uint8_t)(startG + (endG - startG) * progress);
+    uint8_t currentB = (uint8_t)(startB + (endB - startB) * progress);
+    
+    // Get LED count and update all pixels
+    unsigned int numLEDs = 0;
+    if (m_NeoPixelDriverMap.find(neoPixelId) != m_NeoPixelDriverMap.end()) {
+        numLEDs = m_NeoPixelDriverMap.at(neoPixelId).GetNumLEDs();
+    }
+    
+    for (unsigned int i = 0; i < numLEDs; i++) {
+        SendNeoPixelSingleMsg(neoPixelId, i, currentR, currentG, currentB, 255);
+    }
+}
+
+// NeoPixel Sweep From Ends - Color changes symmetrically from both ends toward middle
+// with gradient effect based on distance from center
+// Parameters:
+//   startR, startG, startB: Starting color (RGB 0-255)
+//   endR, endG, endB: Ending color (RGB 0-255)
+//   neoPixelId: Which NeoPixel output pin/chain to control
+//   stepTimeMS: Minimum time in milliseconds between pixel updates
+//   totalDurationMS: Total duration for the full transition
+//   restart: If true, restart the animation when complete
+void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t startB,
+                                     uint8_t endR, uint8_t endG, uint8_t endB,
+                                     unsigned int neoPixelId, unsigned int stepTimeMS,
+                                     unsigned int totalDurationMS, bool restart)
+{
+    // Static variables to track state over time
+    static bool initialized = false;
+    static std::chrono::steady_clock::time_point startTime;
+    static std::chrono::steady_clock::time_point lastStepTime;
+    static unsigned int lastNeoPixelId = 0;
+    
+    // Get current time
+    auto currentTime = std::chrono::steady_clock::now();
+    
+    // Initialize or reset if this is the first call or if neoPixelId changed
+    if (!initialized || lastNeoPixelId != neoPixelId) {
+        initialized = true;
+        startTime = currentTime;
+        lastStepTime = currentTime;
+        lastNeoPixelId = neoPixelId;
+        
+        // Get LED count
+        unsigned int numLEDs = 0;
+        if (m_NeoPixelDriverMap.find(neoPixelId) != m_NeoPixelDriverMap.end()) {
+            numLEDs = m_NeoPixelDriverMap.at(neoPixelId).GetNumLEDs();
+        }
+        
+        // Initialize all pixels to start color
+        for (unsigned int i = 0; i < numLEDs; i++) {
+            SendNeoPixelSingleMsg(neoPixelId, i, startR, startG, startB, 255);
+        }
+        return;
+    }
+    
+    // Check if step time has elapsed
+    auto stepElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastStepTime);
+    if (stepElapsed.count() < stepTimeMS) {
+        return; // Not time for next step yet
+    }
+    
+    // Update last step time
+    lastStepTime = currentTime;
+    
+    // Get LED count
+    unsigned int numLEDs = 0;
+    if (m_NeoPixelDriverMap.find(neoPixelId) != m_NeoPixelDriverMap.end()) {
+        numLEDs = m_NeoPixelDriverMap.at(neoPixelId).GetNumLEDs();
+    }
+    
+    if (numLEDs == 0) {
+        return; // No LEDs to control
+    }
+    
+    // Calculate elapsed time since start
+    auto totalElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime);
+    unsigned int elapsedMS = totalElapsed.count();
+    
+    // Check if animation is complete
+    if (elapsedMS >= totalDurationMS) {
+        if (restart) {
+            // Restart the animation
+            startTime = currentTime;
+            elapsedMS = 0;
+        } else {
+            // Animation complete, set all pixels to final color
+            for (unsigned int i = 0; i < numLEDs; i++) {
+                SendNeoPixelSingleMsg(neoPixelId, i, endR, endG, endB, 255);
+            }
+            return;
+        }
+    }
+    
+    // Calculate overall progress (0.0 to 1.0)
+    float overallProgress = (float)elapsedMS / (float)totalDurationMS;
+    
+    // Calculate center position (works for both even and odd number of LEDs)
+    float center = (float)(numLEDs - 1) / 2.0f;
+    
+    // Update each pixel with gradient based on distance from center
+    for (unsigned int i = 0; i < numLEDs; i++) {
+        // Calculate distance from center (0.0 to 1.0)
+        // Pixels at the ends (0 and numLEDs-1) have distance 1.0
+        // Pixels at the center have distance 0.0
+        float distanceFromCenter = fabs((float)i - center) / (center + 0.0001f); // Add small value to avoid division by zero
+        
+        // Calculate pixel progress based on overall time and distance from center
+        // Pixels farther from center (closer to ends) progress faster
+        // When distanceFromCenter = 1.0 (ends), progress = overallProgress
+        // When distanceFromCenter = 0.0 (center), progress = 0 until overallProgress catches up
+        float pixelProgress = 0.0f;
+        
+        // The key insight: outer pixels should reach final color first
+        // Progress for each pixel is scaled by how far it is from center
+        // Outer pixels (distance = 1.0) reach progress = 1.0 when overallProgress = 1.0
+        // Center pixels (distance = 0.0) only reach progress = 1.0 at the very end
+        if (overallProgress > 0.0f) {
+            // Calculate when this pixel should start changing
+            // Pixels at ends start immediately (threshold = 0)
+            // Pixels at center start later (threshold closer to 1)
+            float threshold = 1.0f - distanceFromCenter;
+            
+            if (overallProgress >= threshold) {
+                // This pixel should be changing now
+                // Map the remaining time to this pixel's progress
+                if (distanceFromCenter > 0.0001f) {
+                    pixelProgress = (overallProgress - threshold) / distanceFromCenter;
+                    if (pixelProgress > 1.0f) pixelProgress = 1.0f;
+                } else {
+                    // Center pixel only reaches full color at the end
+                    pixelProgress = (overallProgress >= 0.999f) ? 1.0f : 0.0f;
+                }
+            }
+        }
+        
+        // Interpolate color for this pixel
+        uint8_t currentR = (uint8_t)(startR + (endR - startR) * pixelProgress);
+        uint8_t currentG = (uint8_t)(startG + (endG - startG) * pixelProgress);
+        uint8_t currentB = (uint8_t)(startB + (endB - startB) * pixelProgress);
+        
+        SendNeoPixelSingleMsg(neoPixelId, i, currentR, currentG, currentB, 255);
+    }
 }
 
 
