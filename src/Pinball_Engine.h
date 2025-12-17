@@ -41,7 +41,7 @@ class pbdEjector;
 
 // NeoPixel configuration - LED count for each driver index
 // Index corresponds to boardIndex in g_outputDef. Set to 0 for unused indices.
-constexpr unsigned int g_NeoPixelSize[] = {35,1};  // Driver 0: 35 LEDs, Driver 1: 1 LED
+constexpr unsigned int g_NeoPixelSize[] = {5,1};  // Driver 0: 35 LEDs, Driver 1: 1 LED
 
 // Calculate SPI buffer sizes: each LED is 3 bytes (GRB), each byte needs 4 SPI bytes
 // Total: numLEDs * 3 * 4 bytes

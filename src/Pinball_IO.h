@@ -425,12 +425,6 @@ public:
     // Brightness control
     void SetMaxBrightness(uint8_t maxBrightness);
     uint8_t GetMaxBrightness() const { return m_maxBrightness; }
-    
-    // Single pixel control (immediately sends to hardware)
-    void SetSinglePixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue);
-    void SetSinglePixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);
-    void SetSinglePixel(unsigned int ledIndex, PBLEDColor color);
-    void SetSinglePixel(unsigned int ledIndex, PBLEDColor color, uint8_t brightness);
 
 private:
     unsigned int m_driverIndex;    // Driver index (corresponds to boardIndex)

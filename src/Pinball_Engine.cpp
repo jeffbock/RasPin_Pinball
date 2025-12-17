@@ -77,7 +77,7 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     
     // Initialize NeoPixel animation variables
     m_sandboxNeoPixelAnimActive = false;
-    m_sandboxNeoPixelStepMode = true;  // Default to step mode
+    m_sandboxNeoPixelStepMode = false;  
     m_sandboxNeoPixelPosition = 0;
     m_sandboxNeoPixelMovingUp = true;
     m_sandboxNeoPixelMaxPosition = 0;
@@ -1725,7 +1725,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         
                         // Initialize animation state
                         m_sandboxNeoPixelAnimActive = true;
-                        m_sandboxNeoPixelPosition = 0;  // Start at position 0 (red at first LED)
+                        m_sandboxNeoPixelPosition = -1;  // Start at position -1 (will mean red at at index 0 on first step)
                         m_sandboxNeoPixelMovingUp = true;
                         
                         // Get the number of LEDs in the NeoPixel chain
@@ -2395,6 +2395,7 @@ void PBEngine::pbeEngineReload() {
 void PBEngine::sandboxNeoPixelStep() {
     // Get LED count for bounds checking
     unsigned int numLEDs = 0;
+
     if (m_NeoPixelDriverMap.find(0) != m_NeoPixelDriverMap.end()) {
         numLEDs = m_NeoPixelDriverMap.at(0).GetNumLEDs();
     }
@@ -2402,14 +2403,7 @@ void PBEngine::sandboxNeoPixelStep() {
     // Clear previous pixels to dark blue (0-based indexing with bounds checking)
     // When moving forward, clear pixels behind. When moving backward, clear pixels ahead.
     if (numLEDs > 0) {
-        int clearPos;
-        if (m_sandboxNeoPixelMovingUp) {
-            // Moving forward: clear the pixels we're leaving behind
-            clearPos = m_sandboxNeoPixelPosition - 1;
-        } else {
-            // Moving backward: clear the pixels we're leaving ahead
-            clearPos = m_sandboxNeoPixelPosition + 1;
-        }
+        int clearPos = m_sandboxNeoPixelPosition;
         
         // Clear the 3-pixel trail
         if (clearPos - 1 >= 0 && clearPos - 1 < (int)numLEDs) {
@@ -2422,8 +2416,8 @@ void PBEngine::sandboxNeoPixelStep() {
             SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos + 1, PB_LEDBLUE, 32);
         }
     }
-    
-    // Update position BEFORE setting pixels
+
+    // Update the positon for the next rendering
     if (m_sandboxNeoPixelMovingUp) {
         m_sandboxNeoPixelPosition++;
         if (m_sandboxNeoPixelPosition >= m_sandboxNeoPixelMaxPosition) {
@@ -2454,6 +2448,7 @@ void PBEngine::sandboxNeoPixelStep() {
             SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx3, PB_LEDPURPLE, 255);  // Purple
         }
     }
+    
 }
 
 

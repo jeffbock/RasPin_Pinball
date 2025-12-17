@@ -768,7 +768,7 @@ bool PBEngine::pbeTableInit(){
         int boardIndex = driver.first;
         // Find the corresponding output ID from g_outputDef
         for (int i = 0; i < NUM_OUTPUTS; i++) {
-            if (g_outputDef[i].boardIndex == boardIndex && g_outputDef[i].type == PBOUT_NEOPIXEL) {
+            if (g_outputDef[i].boardIndex == boardIndex && g_outputDef[i].boardType == PB_NEOPIXEL) {
                 // Set all pixels to black/off (0, 0, 0)
                 SendNeoPixelAllMsg(i, 0, 0, 0, 255);
                 break;

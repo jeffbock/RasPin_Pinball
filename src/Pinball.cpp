@@ -967,10 +967,8 @@ void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& o
         // Check if this is a single pixel operation (neoPixelIndex != ALLNEOPIXELS)
         // or all pixels operation (neoPixelIndex == ALLNEOPIXELS)
         if (neoPixelIndex != ALLNEOPIXELS) {
-            // Single pixel operation - use SetSinglePixel which stages and immediately sends
-            // Index is already 0-based, use directly
-            g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).SetSinglePixel(
-                neoPixelIndex, red, green, blue, brightness);
+            // Single pixel operation, index is already 0-based, use directly
+            g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).StageNeoPixel(neoPixelIndex, red, green, blue, brightness);
         } else {
             // All pixels operation - stage all LEDs
             // Note: brightness is stored in the node and applied during transmission

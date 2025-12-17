@@ -1004,31 +1004,6 @@ void NeoPixelDriver::SetMaxBrightness(uint8_t maxBrightness) {
     m_maxBrightness = maxBrightness;
 }
 
-// Single pixel control functions - immediately send to hardware
-void NeoPixelDriver::SetSinglePixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue) {
-    SetSinglePixel(ledIndex, red, green, blue, 255);
-}
-
-void NeoPixelDriver::SetSinglePixel(unsigned int ledIndex, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness) {
-    // Stage the single pixel
-    StageNeoPixel(ledIndex, red, green, blue, brightness);
-    
-    // Immediately send if there are changes
-    if (m_hasChanges) {
-        SendStagedNeoPixels();
-    }
-}
-
-void NeoPixelDriver::SetSinglePixel(unsigned int ledIndex, PBLEDColor color) {
-    SetSinglePixel(ledIndex, color, 255);
-}
-
-void NeoPixelDriver::SetSinglePixel(unsigned int ledIndex, PBLEDColor color, uint8_t brightness) {
-    uint8_t red, green, blue;
-    ColorToRGB(color, red, green, blue);
-    SetSinglePixel(ledIndex, red, green, blue, brightness);
-}
-
 void NeoPixelDriver::SendStagedNeoPixels() {
     // Only send if there are changes
     if (!m_hasChanges) {
