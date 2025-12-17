@@ -2468,15 +2468,15 @@ void PBEngine::neoPixelGradualFade(uint8_t startR, uint8_t startG, uint8_t start
     // Structure to hold state for each neoPixelId
     struct FadeState {
         bool initialized;
-        std::chrono::steady_clock::time_point startTime;
-        std::chrono::steady_clock::time_point lastStepTime;
+        unsigned long startTimeMS;
+        unsigned long lastStepTimeMS;
     };
     
     // Static map to track state per neoPixelId
     static std::map<unsigned int, FadeState> stateMap;
     
     // Get current time
-    auto currentTime = std::chrono::steady_clock::now();
+    unsigned long currentTimeMS = GetTickCountGfx();
     
     // Get or create state for this neoPixelId
     FadeState& state = stateMap[neoPixelId];
@@ -2484,50 +2484,35 @@ void PBEngine::neoPixelGradualFade(uint8_t startR, uint8_t startG, uint8_t start
     // Initialize or reset if this is the first call
     if (!state.initialized) {
         state.initialized = true;
-        state.startTime = currentTime;
-        state.lastStepTime = currentTime;
-        
-        // Get LED count
-        unsigned int numLEDs = 0;
-        if (m_NeoPixelDriverMap.find(neoPixelId) != m_NeoPixelDriverMap.end()) {
-            numLEDs = m_NeoPixelDriverMap.at(neoPixelId).GetNumLEDs();
-        }
+        state.startTimeMS = currentTimeMS;
+        state.lastStepTimeMS = currentTimeMS;
         
         // Initialize all pixels to start color
-        for (unsigned int i = 0; i < numLEDs; i++) {
-            SendNeoPixelSingleMsg(neoPixelId, i, startR, startG, startB, 255);
-        }
+        SendNeoPixelAllMsg(neoPixelId, startR, startG, startB, 255);
         return;
     }
     
     // Check if step time has elapsed
-    auto stepElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - state.lastStepTime);
-    if (stepElapsed.count() < stepTimeMS) {
+    unsigned long stepElapsedMS = currentTimeMS - state.lastStepTimeMS;
+    if (stepElapsedMS < stepTimeMS) {
         return; // Not time for next step yet
     }
     
     // Update last step time
-    state.lastStepTime = currentTime;
+    state.lastStepTimeMS = currentTimeMS;
     
     // Calculate elapsed time since start
-    auto totalElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - state.startTime);
-    unsigned int elapsedMS = totalElapsed.count();
+    unsigned long elapsedMS = currentTimeMS - state.startTimeMS;
     
     // Check if animation is complete
     if (elapsedMS >= totalDurationMS) {
         if (restart) {
             // Restart the animation
-            state.startTime = currentTime;
+            state.startTimeMS = currentTimeMS;
             elapsedMS = 0;
         } else {
             // Animation complete, set all pixels to final color
-            unsigned int numLEDs = 0;
-            if (m_NeoPixelDriverMap.find(neoPixelId) != m_NeoPixelDriverMap.end()) {
-                numLEDs = m_NeoPixelDriverMap.at(neoPixelId).GetNumLEDs();
-            }
-            for (unsigned int i = 0; i < numLEDs; i++) {
-                SendNeoPixelSingleMsg(neoPixelId, i, endR, endG, endB, 255);
-            }
+            SendNeoPixelAllMsg(neoPixelId, endR, endG, endB, 255);
             return;
         }
     }
@@ -2540,15 +2525,8 @@ void PBEngine::neoPixelGradualFade(uint8_t startR, uint8_t startG, uint8_t start
     uint8_t currentG = (uint8_t)(startG + (endG - startG) * progress);
     uint8_t currentB = (uint8_t)(startB + (endB - startB) * progress);
     
-    // Get LED count and update all pixels
-    unsigned int numLEDs = 0;
-    if (m_NeoPixelDriverMap.find(neoPixelId) != m_NeoPixelDriverMap.end()) {
-        numLEDs = m_NeoPixelDriverMap.at(neoPixelId).GetNumLEDs();
-    }
-    
-    for (unsigned int i = 0; i < numLEDs; i++) {
-        SendNeoPixelSingleMsg(neoPixelId, i, currentR, currentG, currentB, 255);
-    }
+    // Update all pixels with interpolated color
+    SendNeoPixelAllMsg(neoPixelId, currentR, currentG, currentB, 255);
 }
 
 // NeoPixel Sweep From Ends - Color changes symmetrically from both ends toward middle
@@ -2572,15 +2550,15 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
     // Structure to hold state for each neoPixelId
     struct SweepState {
         bool initialized;
-        std::chrono::steady_clock::time_point startTime;
-        std::chrono::steady_clock::time_point lastStepTime;
+        unsigned long startTimeMS;
+        unsigned long lastStepTimeMS;
     };
     
     // Static map to track state per neoPixelId
     static std::map<unsigned int, SweepState> stateMap;
     
     // Get current time
-    auto currentTime = std::chrono::steady_clock::now();
+    unsigned long currentTimeMS = GetTickCountGfx();
     
     // Get or create state for this neoPixelId
     SweepState& state = stateMap[neoPixelId];
@@ -2588,30 +2566,22 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
     // Initialize or reset if this is the first call
     if (!state.initialized) {
         state.initialized = true;
-        state.startTime = currentTime;
-        state.lastStepTime = currentTime;
-        
-        // Get LED count
-        unsigned int numLEDs = 0;
-        if (m_NeoPixelDriverMap.find(neoPixelId) != m_NeoPixelDriverMap.end()) {
-            numLEDs = m_NeoPixelDriverMap.at(neoPixelId).GetNumLEDs();
-        }
+        state.startTimeMS = currentTimeMS;
+        state.lastStepTimeMS = currentTimeMS;
         
         // Initialize all pixels to start color
-        for (unsigned int i = 0; i < numLEDs; i++) {
-            SendNeoPixelSingleMsg(neoPixelId, i, startR, startG, startB, 255);
-        }
+        SendNeoPixelAllMsg(neoPixelId, startR, startG, startB, 255);
         return;
     }
     
     // Check if step time has elapsed
-    auto stepElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - state.lastStepTime);
-    if (stepElapsed.count() < stepTimeMS) {
+    unsigned long stepElapsedMS = currentTimeMS - state.lastStepTimeMS;
+    if (stepElapsedMS < stepTimeMS) {
         return; // Not time for next step yet
     }
     
     // Update last step time
-    state.lastStepTime = currentTime;
+    state.lastStepTimeMS = currentTimeMS;
     
     // Get LED count
     unsigned int numLEDs = 0;
@@ -2624,20 +2594,17 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
     }
     
     // Calculate elapsed time since start
-    auto totalElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - state.startTime);
-    unsigned int elapsedMS = totalElapsed.count();
+    unsigned long elapsedMS = currentTimeMS - state.startTimeMS;
     
     // Check if animation is complete
     if (elapsedMS >= totalDurationMS) {
         if (restart) {
             // Restart the animation
-            state.startTime = currentTime;
+            state.startTimeMS = currentTimeMS;
             elapsedMS = 0;
         } else {
             // Animation complete, set all pixels to final color
-            for (unsigned int i = 0; i < numLEDs; i++) {
-                SendNeoPixelSingleMsg(neoPixelId, i, endR, endG, endB, 255);
-            }
+            SendNeoPixelAllMsg(neoPixelId, endR, endG, endB, 255);
             return;
         }
     }
