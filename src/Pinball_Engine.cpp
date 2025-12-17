@@ -2465,21 +2465,27 @@ void PBEngine::neoPixelGradualFade(uint8_t startR, uint8_t startG, uint8_t start
                                    unsigned int neoPixelId, unsigned int stepTimeMS,
                                    unsigned int totalDurationMS, bool restart)
 {
-    // Static variables to track state over time
-    static bool initialized = false;
-    static std::chrono::steady_clock::time_point startTime;
-    static std::chrono::steady_clock::time_point lastStepTime;
-    static unsigned int lastNeoPixelId = 0;
+    // Structure to hold state for each neoPixelId
+    struct FadeState {
+        bool initialized;
+        std::chrono::steady_clock::time_point startTime;
+        std::chrono::steady_clock::time_point lastStepTime;
+    };
+    
+    // Static map to track state per neoPixelId
+    static std::map<unsigned int, FadeState> stateMap;
     
     // Get current time
     auto currentTime = std::chrono::steady_clock::now();
     
-    // Initialize or reset if this is the first call or if neoPixelId changed
-    if (!initialized || lastNeoPixelId != neoPixelId) {
-        initialized = true;
-        startTime = currentTime;
-        lastStepTime = currentTime;
-        lastNeoPixelId = neoPixelId;
+    // Get or create state for this neoPixelId
+    FadeState& state = stateMap[neoPixelId];
+    
+    // Initialize or reset if this is the first call
+    if (!state.initialized) {
+        state.initialized = true;
+        state.startTime = currentTime;
+        state.lastStepTime = currentTime;
         
         // Get LED count
         unsigned int numLEDs = 0;
@@ -2495,23 +2501,23 @@ void PBEngine::neoPixelGradualFade(uint8_t startR, uint8_t startG, uint8_t start
     }
     
     // Check if step time has elapsed
-    auto stepElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastStepTime);
+    auto stepElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - state.lastStepTime);
     if (stepElapsed.count() < stepTimeMS) {
         return; // Not time for next step yet
     }
     
     // Update last step time
-    lastStepTime = currentTime;
+    state.lastStepTime = currentTime;
     
     // Calculate elapsed time since start
-    auto totalElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime);
+    auto totalElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - state.startTime);
     unsigned int elapsedMS = totalElapsed.count();
     
     // Check if animation is complete
     if (elapsedMS >= totalDurationMS) {
         if (restart) {
             // Restart the animation
-            startTime = currentTime;
+            state.startTime = currentTime;
             elapsedMS = 0;
         } else {
             // Animation complete, set all pixels to final color
@@ -2559,21 +2565,31 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
                                      unsigned int neoPixelId, unsigned int stepTimeMS,
                                      unsigned int totalDurationMS, bool restart)
 {
-    // Static variables to track state over time
-    static bool initialized = false;
-    static std::chrono::steady_clock::time_point startTime;
-    static std::chrono::steady_clock::time_point lastStepTime;
-    static unsigned int lastNeoPixelId = 0;
+    // Constants for numerical stability and animation thresholds
+    static const float EPSILON = 0.0001f;
+    static const float COMPLETION_THRESHOLD = 0.999f;
+    
+    // Structure to hold state for each neoPixelId
+    struct SweepState {
+        bool initialized;
+        std::chrono::steady_clock::time_point startTime;
+        std::chrono::steady_clock::time_point lastStepTime;
+    };
+    
+    // Static map to track state per neoPixelId
+    static std::map<unsigned int, SweepState> stateMap;
     
     // Get current time
     auto currentTime = std::chrono::steady_clock::now();
     
-    // Initialize or reset if this is the first call or if neoPixelId changed
-    if (!initialized || lastNeoPixelId != neoPixelId) {
-        initialized = true;
-        startTime = currentTime;
-        lastStepTime = currentTime;
-        lastNeoPixelId = neoPixelId;
+    // Get or create state for this neoPixelId
+    SweepState& state = stateMap[neoPixelId];
+    
+    // Initialize or reset if this is the first call
+    if (!state.initialized) {
+        state.initialized = true;
+        state.startTime = currentTime;
+        state.lastStepTime = currentTime;
         
         // Get LED count
         unsigned int numLEDs = 0;
@@ -2589,13 +2605,13 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
     }
     
     // Check if step time has elapsed
-    auto stepElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastStepTime);
+    auto stepElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - state.lastStepTime);
     if (stepElapsed.count() < stepTimeMS) {
         return; // Not time for next step yet
     }
     
     // Update last step time
-    lastStepTime = currentTime;
+    state.lastStepTime = currentTime;
     
     // Get LED count
     unsigned int numLEDs = 0;
@@ -2608,14 +2624,14 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
     }
     
     // Calculate elapsed time since start
-    auto totalElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime);
+    auto totalElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - state.startTime);
     unsigned int elapsedMS = totalElapsed.count();
     
     // Check if animation is complete
     if (elapsedMS >= totalDurationMS) {
         if (restart) {
             // Restart the animation
-            startTime = currentTime;
+            state.startTime = currentTime;
             elapsedMS = 0;
         } else {
             // Animation complete, set all pixels to final color
@@ -2637,7 +2653,7 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
         // Calculate distance from center (0.0 to 1.0)
         // Pixels at the ends (0 and numLEDs-1) have distance 1.0
         // Pixels at the center have distance 0.0
-        float distanceFromCenter = fabs((float)i - center) / (center + 0.0001f); // Add small value to avoid division by zero
+        float distanceFromCenter = fabs((float)i - center) / (center + EPSILON); // Add small value to avoid division by zero
         
         // Calculate pixel progress based on overall time and distance from center
         // Pixels farther from center (closer to ends) progress faster
@@ -2658,12 +2674,12 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
             if (overallProgress >= threshold) {
                 // This pixel should be changing now
                 // Map the remaining time to this pixel's progress
-                if (distanceFromCenter > 0.0001f) {
+                if (distanceFromCenter > EPSILON) {
                     pixelProgress = (overallProgress - threshold) / distanceFromCenter;
                     if (pixelProgress > 1.0f) pixelProgress = 1.0f;
                 } else {
                     // Center pixel only reaches full color at the end
-                    pixelProgress = (overallProgress >= 0.999f) ? 1.0f : 0.0f;
+                    pixelProgress = (overallProgress >= COMPLETION_THRESHOLD) ? 1.0f : 0.0f;
                 }
             }
         }
