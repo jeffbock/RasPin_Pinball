@@ -402,6 +402,7 @@ public:
     int m_sandboxNeoPixelPosition;       // Current position of the 3-pixel group (1-based)
     bool m_sandboxNeoPixelMovingUp;      // True = moving up, False = moving down
     int m_sandboxNeoPixelMaxPosition;    // Maximum position based on LED count
+    int m_sandboxNeoPixelAnimMode;       // 0=original step, 1=gradual fade, 2=sweep from ends
 
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;
