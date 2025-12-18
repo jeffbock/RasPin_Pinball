@@ -1,12 +1,12 @@
 # RasPin Pinball Framework
 A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is to fully develop a low cost system of SW and HW using Raspberry Pi and various easy to source HW pieces with typical modern pinball machnine capabilities.  Developed from scratch to learn and develop and entire architecture from top to bottom.  Compared to other pinball frameworks, RasPin is intended to be unique to Raspberry Pi, low cost, easy to implement, small and efficient and really intended for the hobbyist who wants a hand in every piece of the machine they want to build.
 
-<img width="400" alt="RasPinMenu" src="https://github.com/user-attachments/assets/80699574-9bf8-4ebb-9889-d9ec4445964f" />
-<img width="400" alt="RasPinDiag" src="https://github.com/user-attachments/assets/78baad46-6c7f-4157-8284-754867c45b45" />
+<img width="400" alt="Main" src="https://github.com/user-attachments/assets/4cca1044-11f2-49b0-9a04-07f01f3636d4" />
+<img width="400" alt="Settings" src="https://github.com/user-attachments/assets/ae7a281d-bd2e-4194-bca6-df9027b6d494" />
 <img width="400" alt="StartScreen" src="https://github.com/user-attachments/assets/b516174f-b142-4b0e-9c75-2702062400b2" />
-<img width="400" alt="GameScreen" src="https://github.com/user-attachments/assets/31004bd0-dc78-486f-8f01-0cf3a2f9fed7" />
-<img width="400" alt="RasPin" src="https://github.com/user-attachments/assets/a15879aa-0a3b-4ca7-8cfd-c8a9cbe4cf9a" />
-<img width="400" height="1512" alt="BaseHW" src="https://github.com/user-attachments/assets/989e1e88-8786-43c8-bf0c-c8ffe9036ce2" />
+<img width="400"alt="Game" src="https://github.com/user-attachments/assets/429c6e0d-82e5-4d91-80c3-b7df7e8f1e19" />
+<img width="400" alt="NeoPixelHW" src="https://github.com/user-attachments/assets/6943b0b3-35fb-4170-a80e-49459dd16450" />
+<img width="400" alt="BaseHW" src="https://github.com/user-attachments/assets/989e1e88-8786-43c8-bf0c-c8ffe9036ce2" />
 
 Prototype hardware shown, full machine in development.
 
@@ -19,7 +19,7 @@ Prototype hardware shown, full machine in development.
 - Simplified HW architecture for easy debug, understanding and implemention
 - Message based input and output processing utilizing Raspberry Pi, and TI I2C IO and LED expanders optimized to decrease latency and minimize HW traffic
 - Automatic LED control and sequence animation for dynamic lighting effects
-- NeoPixel (WS2812B) RGB LED strip support with sequence animation and color control
+- NeoPixel (SK6812) RGB LED strip support with sequence animation and color control (but could easily be changed for other neopixel timings.
 - Easy to use music and sound effect system with multiple channels
 - Full setup / control and diagnostics menus and capability, along with straight-forward ability to add / expand for your own personalize machine.
 - TODO: Prototype HW (mechanics, flippers, slings, etc..), build a cabinet and implement a full game (currently only game test screens).
@@ -51,6 +51,7 @@ Prototype hardware shown, full machine in development.
     - Allows for complete decoupling of inputs and outputs - maximum flexibility of how to respond to inputs but design to reduce latency
     - IO expanders (based on TI TCA9555) / driver boards used in conjunction with Pi controller to greatly expand number of elements in the system.
     - LED expander (based on TI TLC59116) with blinking, dimming and group control to offload LED management for core HW as much as possible
+    - NeoPixel support via Raspberry Pi5 SPI pins (support up to two distinct chains)
     - Modular structure for I/O devices to allow ease of integration of any new controllers.
 -  Sound and display using standard HDMI and audio output jacks from the Pi controller.  The code has flexibility in primary screen selection for the table.
     - Can use HDMI speaker sound or external amplifier based on readily avaialble MAX9744 breakout boards.
