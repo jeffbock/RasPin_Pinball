@@ -41,7 +41,7 @@ class pbdEjector;
 
 // NeoPixel configuration - LED count for each driver index
 // Index corresponds to boardIndex in g_outputDef. Set to 0 for unused indices.
-constexpr unsigned int g_NeoPixelSize[] = {5,1};  // Driver 0: 35 LEDs, Driver 1: 1 LED
+constexpr unsigned int g_NeoPixelSize[] = {35,1};  // Driver 0: 35 LEDs, Driver 1: 1 LED
 
 // Calculate SPI buffer sizes: each LED is 3 bytes (GRB), each byte needs 4 SPI bytes
 // Total: numLEDs * 3 * 4 bytes
@@ -188,7 +188,7 @@ struct stTimerEntry {
 
 // Timer ID for sandbox NeoPixel animation
 #define SANDBOX_NEOPIXEL_TIMER_ID 100
-#define SANDBOX_NEOPIXEL_TIMER_INTERVAL_MS 50
+#define SANDBOX_NEOPIXEL_TIMER_INTERVAL_MS 100
 
 // Maximum number of active timers allowed
 #define MAX_TIMERS 10
@@ -569,12 +569,25 @@ private:
     void neoPixelGradualFade(uint8_t startR, uint8_t startG, uint8_t startB,
                              uint8_t endR, uint8_t endG, uint8_t endB,
                              unsigned int neoPixelId, unsigned int stepTimeMS,
-                             unsigned int totalDurationMS, bool restart);
+                             unsigned int totalDurationMS, bool restart, bool loop = false);
     
     void neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t startB,
                                uint8_t endR, uint8_t endG, uint8_t endB,
                                unsigned int neoPixelId, unsigned int stepTimeMS,
-                               unsigned int totalDurationMS, bool restart);
+                               unsigned int totalDurationMS, bool restart, bool loop = false);
+    
+    void neoPixelToggle(uint8_t color1R, uint8_t color1G, uint8_t color1B,
+                        uint8_t color2R, uint8_t color2G, uint8_t color2B,
+                        uint8_t color3R, uint8_t color3G, uint8_t color3B,
+                        uint8_t color4R, uint8_t color4G, uint8_t color4B,
+                        uint8_t colorMask,
+                        unsigned int neoPixelId, unsigned int stepTimeMS,
+                        unsigned int totalDurationMS, bool loop = false);
+    
+    void neoPixelSplitToggle(uint8_t startR, uint8_t startG, uint8_t startB,
+                             uint8_t endR, uint8_t endG, uint8_t endB,
+                             unsigned int neoPixelId, unsigned int stepTimeMS,
+                             unsigned int totalDurationMS, bool loop = false);
 
     // Texture release functions
     void pbeReleaseMenuTextures();

@@ -984,6 +984,8 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
         case 0: animMode = "Original Step"; break;
         case 1: animMode = "Gradual Fade"; break;
         case 2: animMode = "Sweep From Ends"; break;
+        case 3: animMode = "Toggle"; break;
+        case 4: animMode = "Split Toggle"; break;
         default: animMode = "Unknown"; break;
     }
     std::string neoPixelInfo = neoPixelMode + " - " + animMode;
@@ -991,9 +993,9 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     
     // Reset Button - Show mode cycling
     gfxSetColor(m_defaultFontSpriteId, 255, 200, 0, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Reset Button:", centerX - 200, startY + (1.5 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Reset Button:", centerX - 180, startY + (1.6 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Cycle Mode: " + animMode, centerX + 50, startY + (1.5 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Cycle Mode: " + animMode, centerX + 50, startY + (1.6 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Left Activate - Bright Cyan-Blue (like blue LED light)
     std::string laState = m_LAON ? " (ON)" : " (OFF)";
@@ -1670,22 +1672,45 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         sandboxNeoPixelStep();
                         break;
                     case 1:
-                        // Gradual fade: Red to Blue over 3 seconds, looping
+                        // Gradual fade: Red to Blue over 3 seconds, bidirectional loop
                         neoPixelGradualFade(255, 0, 0,  // Start: Red
                                           0, 0, 255,    // End: Blue
                                           IDO_NEOPIXEL0, 
-                                          50,           // Update every 50ms
+                                          100,          // Update every 50ms
                                           3000,         // 3 second duration
-                                          true);        // Loop
+                                          false,        // Don't restart (use loop instead)
+                                          true);        // Loop bidirectionally
                         break;
                     case 2:
-                        // Sweep from ends: Green to Purple over 4 seconds, looping
+                        // Sweep from ends: Green to Purple over 4 seconds, bidirectional loop
                         neoPixelSweepFromEnds(0, 255, 0,  // Start: Green
                                             128, 0, 128,  // End: Purple
                                             IDO_NEOPIXEL0,
-                                            50,           // Update every 50ms
+                                            100,          // Update every 100ms
                                             4000,         // 4 second duration
-                                            true);        // Loop
+                                            false,        // Don't restart (use loop instead)
+                                            true);        // Loop bidirectionally
+                        break;
+                    case 3:
+                        // Toggle: Cyan, Yellow, Green, Red rotating pattern
+                        neoPixelToggle(0, 255, 255,    // Color 1: Cyan
+                                      255, 255, 0,     // Color 2: Yellow
+                                      0, 255, 0,       // Color 3: Green
+                                      255, 0, 0,       // Color 4: Red
+                                      0x0F,            // Mask: all 4 colors active (0b1111)
+                                      IDO_NEOPIXEL0,
+                                      200,             // Shift every 200ms
+                                      0,               // Duration ignored when looping
+                                      true);           // Loop continuously
+                        break;
+                    case 4:
+                        // Split Toggle: Purple and Orange, swapping halves
+                        neoPixelSplitToggle(128, 0, 128,  // Start: Purple
+                                           255, 165, 0,   // End: Orange
+                                           IDO_NEOPIXEL0,
+                                           400,           // Toggle every 400ms
+                                           0,             // Duration ignored when looping
+                                           true);         // Loop continuously
                         break;
                 }
                 
@@ -1766,7 +1791,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     }
                     
                     // Cycle to next mode
-                    m_sandboxNeoPixelAnimMode = (m_sandboxNeoPixelAnimMode + 1) % 3;
+                    m_sandboxNeoPixelAnimMode = (m_sandboxNeoPixelAnimMode + 1) % 5;
                 }
                 
                 // Right Flipper - NeoPixel Animation Test
@@ -2531,16 +2556,18 @@ void PBEngine::sandboxNeoPixelStep() {
 //   stepTimeMS: Minimum time in milliseconds between updates
 //   totalDurationMS: Total duration for the full transition
 //   restart: If true, restart the animation when complete
+//   loop: If true, fade back to start color when done (bidirectional). If false, stop at end color.
 void PBEngine::neoPixelGradualFade(uint8_t startR, uint8_t startG, uint8_t startB,
                                    uint8_t endR, uint8_t endG, uint8_t endB,
                                    unsigned int neoPixelId, unsigned int stepTimeMS,
-                                   unsigned int totalDurationMS, bool restart)
+                                   unsigned int totalDurationMS, bool restart, bool loop)
 {
     // Structure to hold state for each neoPixelId
     struct FadeState {
         bool initialized;
         unsigned long startTimeMS;
         unsigned long lastStepTimeMS;
+        bool fadingForward;  // True = start to end, False = end to start
     };
     
     // Static map to track state per neoPixelId
@@ -2577,12 +2604,18 @@ void PBEngine::neoPixelGradualFade(uint8_t startR, uint8_t startG, uint8_t start
     
     // Check if animation is complete
     if (elapsedMS >= totalDurationMS) {
-        if (restart) {
-            // Restart the animation
+        if (loop) {
+            // Loop mode: reverse direction and continue
+            state.fadingForward = !state.fadingForward;
             state.startTimeMS = currentTimeMS;
             elapsedMS = 0;
+        } else if (restart) {
+            // Restart mode: jump back to beginning
+            state.startTimeMS = currentTimeMS;
+            state.fadingForward = true;
+            elapsedMS = 0;
         } else {
-            // Animation complete, set all pixels to final color
+            // One-shot mode: stop at final color
             SendNeoPixelAllMsg(neoPixelId, endR, endG, endB, 255);
             return;
         }
@@ -2591,10 +2624,19 @@ void PBEngine::neoPixelGradualFade(uint8_t startR, uint8_t startG, uint8_t start
     // Calculate interpolation factor (0.0 to 1.0)
     float progress = (float)elapsedMS / (float)totalDurationMS;
     
-    // Interpolate color values
-    uint8_t currentR = (uint8_t)(startR + (endR - startR) * progress);
-    uint8_t currentG = (uint8_t)(startG + (endG - startG) * progress);
-    uint8_t currentB = (uint8_t)(startB + (endB - startB) * progress);
+    // Interpolate color values based on fade direction
+    uint8_t currentR, currentG, currentB;
+    if (state.fadingForward) {
+        // Fading from start to end
+        currentR = (uint8_t)(startR + (endR - startR) * progress);
+        currentG = (uint8_t)(startG + (endG - startG) * progress);
+        currentB = (uint8_t)(startB + (endB - startB) * progress);
+    } else {
+        // Fading from end to start
+        currentR = (uint8_t)(endR + (startR - endR) * progress);
+        currentG = (uint8_t)(endG + (startG - endG) * progress);
+        currentB = (uint8_t)(endB + (startB - endB) * progress);
+    }
     
     // Update all pixels with interpolated color
     SendNeoPixelAllMsg(neoPixelId, currentR, currentG, currentB, 255);
@@ -2609,10 +2651,11 @@ void PBEngine::neoPixelGradualFade(uint8_t startR, uint8_t startG, uint8_t start
 //   stepTimeMS: Minimum time in milliseconds between pixel updates
 //   totalDurationMS: Total duration for the full transition
 //   restart: If true, restart the animation when complete
+//   loop: If true, sweep back from center to ends when done (bidirectional). If false, stop at end color.
 void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t startB,
                                      uint8_t endR, uint8_t endG, uint8_t endB,
                                      unsigned int neoPixelId, unsigned int stepTimeMS,
-                                     unsigned int totalDurationMS, bool restart)
+                                     unsigned int totalDurationMS, bool restart, bool loop)
 {
     // Constants for numerical stability and animation thresholds
     static const float EPSILON = 0.0001f;
@@ -2623,6 +2666,7 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
         bool initialized;
         unsigned long startTimeMS;
         unsigned long lastStepTimeMS;
+        bool sweepingForward;  // True = ends to center, False = center to ends
     };
     
     // Static map to track state per neoPixelId
@@ -2654,10 +2698,21 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
     // Update last step time
     state.lastStepTimeMS = currentTimeMS;
     
-    // Get LED count
+    // Get LED count - need to find the board index from the output ID
     unsigned int numLEDs = 0;
-    if (m_NeoPixelDriverMap.find(neoPixelId) != m_NeoPixelDriverMap.end()) {
-        numLEDs = m_NeoPixelDriverMap.at(neoPixelId).GetNumLEDs();
+    int boardIndex = -1;
+    
+    // Find the board index for this neoPixelId
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        if (g_outputDef[i].id == neoPixelId && g_outputDef[i].boardType == PB_NEOPIXEL) {
+            boardIndex = g_outputDef[i].boardIndex;
+            break;
+        }
+    }
+    
+    // Get LED count using board index
+    if (boardIndex >= 0 && m_NeoPixelDriverMap.find(boardIndex) != m_NeoPixelDriverMap.end()) {
+        numLEDs = m_NeoPixelDriverMap.at(boardIndex).GetNumLEDs();
     }
     
     if (numLEDs == 0) {
@@ -2669,13 +2724,19 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
     
     // Check if animation is complete
     if (elapsedMS >= totalDurationMS) {
-        if (restart) {
-            // Restart the animation
+        if (loop) {
+            // Loop mode: reverse direction and continue
+            state.sweepingForward = !state.sweepingForward;
             state.startTimeMS = currentTimeMS;
             elapsedMS = 0;
+        } else if (restart) {
+            // Restart mode: jump back to beginning
+            state.startTimeMS = currentTimeMS;
+            state.sweepingForward = true;
+            elapsedMS = 0;
         } else {
-            // Animation complete, set all pixels to final color
-            SendNeoPixelAllMsg(neoPixelId, endR, endG, endB, 255);
+            // One-shot mode: keep all pixels at final color, don't reset
+            // Don't send message - pixels are already at their final state from last update
             return;
         }
     }
@@ -2694,41 +2755,328 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
         float distanceFromCenter = fabs((float)i - center) / (center + EPSILON); // Add small value to avoid division by zero
         
         // Calculate pixel progress based on overall time and distance from center
-        // Pixels farther from center (closer to ends) progress faster
-        // When distanceFromCenter = 1.0 (ends), progress = overallProgress
-        // When distanceFromCenter = 0.0 (center), progress = 0 until overallProgress catches up
+        // When sweeping forward: outer pixels (ends) progress faster
+        // When sweeping backward: inner pixels (center) progress faster
         float pixelProgress = 0.0f;
         
-        // The key insight: outer pixels should reach final color first
-        // Progress for each pixel is scaled by how far it is from center
-        // Outer pixels (distance = 1.0) reach progress = 1.0 when overallProgress = 1.0
-        // Center pixels (distance = 0.0) only reach progress = 1.0 at the very end
         if (overallProgress > 0.0f) {
-            // Calculate when this pixel should start changing
-            // Pixels at ends start immediately (threshold = 0)
-            // Pixels at center start later (threshold closer to 1)
-            float threshold = 1.0f - distanceFromCenter;
+            float threshold, progressRange;
+            
+            if (state.sweepingForward) {
+                // Sweeping from ends to center
+                // Pixels at ends start immediately (threshold = 0)
+                // Pixels at center start later (threshold closer to 1)
+                threshold = 1.0f - distanceFromCenter;
+                progressRange = distanceFromCenter;
+            } else {
+                // Sweeping from center to ends (reverse)
+                // Pixels at center start immediately (threshold = 0)
+                // Pixels at ends start later (threshold closer to 1)
+                threshold = distanceFromCenter;
+                progressRange = 1.0f - distanceFromCenter;
+            }
             
             if (overallProgress >= threshold) {
                 // This pixel should be changing now
                 // Map the remaining time to this pixel's progress
-                if (distanceFromCenter > EPSILON) {
-                    pixelProgress = (overallProgress - threshold) / distanceFromCenter;
+                if (progressRange > EPSILON) {
+                    pixelProgress = (overallProgress - threshold) / progressRange;
                     if (pixelProgress > 1.0f) pixelProgress = 1.0f;
                 } else {
-                    // Center pixel only reaches full color at the end
+                    // Edge case for center/end pixels
                     pixelProgress = (overallProgress >= COMPLETION_THRESHOLD) ? 1.0f : 0.0f;
                 }
             }
         }
         
-        // Interpolate color for this pixel
-        uint8_t currentR = (uint8_t)(startR + (endR - startR) * pixelProgress);
-        uint8_t currentG = (uint8_t)(startG + (endG - startG) * pixelProgress);
-        uint8_t currentB = (uint8_t)(startB + (endB - startB) * pixelProgress);
+        // Interpolate color for this pixel based on sweep direction
+        uint8_t currentR, currentG, currentB;
+        if (state.sweepingForward) {
+            // Sweeping from ends (start color) to center (end color)
+            currentR = (uint8_t)(startR + (endR - startR) * pixelProgress);
+            currentG = (uint8_t)(startG + (endG - startG) * pixelProgress);
+            currentB = (uint8_t)(startB + (endB - startB) * pixelProgress);
+        } else {
+            // Sweeping from center (end color) back to ends (start color)
+            currentR = (uint8_t)(endR + (startR - endR) * pixelProgress);
+            currentG = (uint8_t)(endG + (startG - endG) * pixelProgress);
+            currentB = (uint8_t)(endB + (startB - endB) * pixelProgress);
+        }
+        
         
         SendNeoPixelSingleMsg(neoPixelId, i, currentR, currentG, currentB, 255);
     }
 }
+
+// NeoPixel Toggle - Pixels cycle through up to 4 colors, shifting on each step
+// Parameters:
+//   color1R/G/B through color4R/G/B: Four colors to cycle (RGB 0-255)
+//   colorMask: Bitmask to select active colors (bit 0-3 for colors 1-4)
+//              Example: 0x0F (0b1111) = all 4 colors, 0x03 (0b0011) = only colors 1-2
+//   neoPixelId: Which NeoPixel output pin/chain to control
+//   stepTimeMS: Time in milliseconds between shifts
+//   totalDurationMS: Total duration (ignored if loop=true)
+//   loop: If true, rotate continuously. If false, stop after totalDurationMS.
+void PBEngine::neoPixelToggle(uint8_t color1R, uint8_t color1G, uint8_t color1B,
+                              uint8_t color2R, uint8_t color2G, uint8_t color2B,
+                              uint8_t color3R, uint8_t color3G, uint8_t color3B,
+                              uint8_t color4R, uint8_t color4G, uint8_t color4B,
+                              uint8_t colorMask,
+                              unsigned int neoPixelId, unsigned int stepTimeMS,
+                              unsigned int totalDurationMS, bool loop)
+{
+    // Structure to hold state for each neoPixelId
+    struct ToggleState {
+        bool initialized;
+        unsigned long startTimeMS;
+        unsigned long lastStepTimeMS;
+        int shiftOffset;  // Current rotation offset (0-3)
+    };
+    
+    // Static map to track state per neoPixelId
+    static std::map<unsigned int, ToggleState> stateMap;
+    
+    // Get current time
+    unsigned long currentTimeMS = GetTickCountGfx();
+    
+    // Get or create state for this neoPixelId
+    ToggleState& state = stateMap[neoPixelId];
+    
+    // Build color array based on mask
+    struct Color { uint8_t r, g, b; };
+    Color colors[4];
+    int activeColors[4];
+    int numActiveColors = 0;
+    
+    // Populate color array
+    colors[0] = {color1R, color1G, color1B};
+    colors[1] = {color2R, color2G, color2B};
+    colors[2] = {color3R, color3G, color3B};
+    colors[3] = {color4R, color4G, color4B};
+    
+    // Build list of active colors based on mask
+    for (int i = 0; i < 4; i++) {
+        if (colorMask & (1 << i)) {
+            activeColors[numActiveColors++] = i;
+        }
+    }
+    
+    // Need at least one active color
+    if (numActiveColors == 0) {
+        return;
+    }
+    
+    // Initialize or reset if this is the first call
+    if (!state.initialized) {
+        state.initialized = true;
+        state.startTimeMS = currentTimeMS;
+        state.lastStepTimeMS = currentTimeMS;
+        state.shiftOffset = 0;
+        
+        // Get LED count - need to find the board index from the output ID
+        unsigned int numLEDs = 0;
+        int boardIndex = -1;
+        
+        // Find the board index for this neoPixelId
+        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            if (g_outputDef[i].id == neoPixelId && g_outputDef[i].boardType == PB_NEOPIXEL) {
+                boardIndex = g_outputDef[i].boardIndex;
+                break;
+            }
+        }
+        
+        // Get LED count using board index
+        if (boardIndex >= 0 && m_NeoPixelDriverMap.find(boardIndex) != m_NeoPixelDriverMap.end()) {
+            numLEDs = m_NeoPixelDriverMap.at(boardIndex).GetNumLEDs();
+        }
+        
+        // Initialize pixels with color pattern
+        for (unsigned int i = 0; i < numLEDs; i++) {
+            int colorIndex = activeColors[i % numActiveColors];
+            SendNeoPixelSingleMsg(neoPixelId, i, colors[colorIndex].r, colors[colorIndex].g, colors[colorIndex].b, 255);
+        }
+        return;
+    }
+    
+    // Check if step time has elapsed
+    unsigned long stepElapsedMS = currentTimeMS - state.lastStepTimeMS;
+    if (stepElapsedMS < stepTimeMS) {
+        return; // Not time for next step yet
+    }
+    
+    // Update last step time
+    state.lastStepTimeMS = currentTimeMS;
+    
+    // Check if animation should stop (only if not looping)
+    if (!loop) {
+        unsigned long totalElapsedMS = currentTimeMS - state.startTimeMS;
+        if (totalElapsedMS >= totalDurationMS) {
+            // Animation complete, keep current state
+            return;
+        }
+    }
+    
+    // Increment shift offset (rotates colors)
+    state.shiftOffset = (state.shiftOffset + 1) % numActiveColors;
+    
+    // Get LED count
+    unsigned int numLEDs = 0;
+    int boardIndex = -1;
+    
+    // Find the board index for this neoPixelId
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        if (g_outputDef[i].id == neoPixelId && g_outputDef[i].boardType == PB_NEOPIXEL) {
+            boardIndex = g_outputDef[i].boardIndex;
+            break;
+        }
+    }
+    
+    // Get LED count using board index
+    if (boardIndex >= 0 && m_NeoPixelDriverMap.find(boardIndex) != m_NeoPixelDriverMap.end()) {
+        numLEDs = m_NeoPixelDriverMap.at(boardIndex).GetNumLEDs();
+    }
+    
+    if (numLEDs == 0) {
+        return; // No LEDs to control
+    }
+    
+    // Update all pixels with shifted pattern
+    for (unsigned int i = 0; i < numLEDs; i++) {
+        // Calculate which color this pixel gets after rotation
+        int patternIndex = (i + state.shiftOffset) % numActiveColors;
+        int colorIndex = activeColors[patternIndex];
+        SendNeoPixelSingleMsg(neoPixelId, i, colors[colorIndex].r, colors[colorIndex].g, colors[colorIndex].b, 255);
+    }
+}
+
+// NeoPixel Split Toggle - First half one color, second half another, swap on each step
+// Parameters:
+//   startR, startG, startB: First color (RGB 0-255)
+//   endR, endG, endB: Second color (RGB 0-255)
+//   neoPixelId: Which NeoPixel output pin/chain to control
+//   stepTimeMS: Time in milliseconds between swaps
+//   totalDurationMS: Total duration (ignored if loop=true)
+//   loop: If true, toggle continuously. If false, stop after totalDurationMS.
+void PBEngine::neoPixelSplitToggle(uint8_t startR, uint8_t startG, uint8_t startB,
+                                   uint8_t endR, uint8_t endG, uint8_t endB,
+                                   unsigned int neoPixelId, unsigned int stepTimeMS,
+                                   unsigned int totalDurationMS, bool loop)
+{
+    // Structure to hold state for each neoPixelId
+    struct SplitToggleState {
+        bool initialized;
+        unsigned long startTimeMS;
+        unsigned long lastStepTimeMS;
+        bool swapped;  // True when colors are swapped
+    };
+    
+    // Static map to track state per neoPixelId
+    static std::map<unsigned int, SplitToggleState> stateMap;
+    
+    // Get current time
+    unsigned long currentTimeMS = GetTickCountGfx();
+    
+    // Get or create state for this neoPixelId
+    SplitToggleState& state = stateMap[neoPixelId];
+    
+    // Get LED count - need to find the board index from the output ID
+    unsigned int numLEDs = 0;
+    int boardIndex = -1;
+    
+    // Find the board index for this neoPixelId
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        if (g_outputDef[i].id == neoPixelId && g_outputDef[i].boardType == PB_NEOPIXEL) {
+            boardIndex = g_outputDef[i].boardIndex;
+            break;
+        }
+    }
+    
+    // Get LED count using board index
+    if (boardIndex >= 0 && m_NeoPixelDriverMap.find(boardIndex) != m_NeoPixelDriverMap.end()) {
+        numLEDs = m_NeoPixelDriverMap.at(boardIndex).GetNumLEDs();
+    }
+    
+    if (numLEDs == 0) {
+        return; // No LEDs to control
+    }
+    
+    // Initialize or reset if this is the first call
+    if (!state.initialized) {
+        state.initialized = true;
+        state.startTimeMS = currentTimeMS;
+        state.lastStepTimeMS = currentTimeMS;
+        state.swapped = false;
+        
+        // Initialize pixels with split pattern
+        int midPoint = numLEDs / 2;
+        
+        for (unsigned int i = 0; i < numLEDs; i++) {
+            if (i < midPoint) {
+                // First half: start color
+                SendNeoPixelSingleMsg(neoPixelId, i, startR, startG, startB, 255);
+            } else if (i > midPoint || numLEDs % 2 == 0) {
+                // Second half: end color (skip middle pixel if odd count)
+                SendNeoPixelSingleMsg(neoPixelId, i, endR, endG, endB, 255);
+            } else {
+                // Middle pixel (only if odd number of LEDs): blend the two colors
+                uint8_t blendR = (startR + endR) / 2;
+                uint8_t blendG = (startG + endG) / 2;
+                uint8_t blendB = (startB + endB) / 2;
+                SendNeoPixelSingleMsg(neoPixelId, i, blendR, blendG, blendB, 255);
+            }
+        }
+        return;
+    }
+    
+    // Check if step time has elapsed
+    unsigned long stepElapsedMS = currentTimeMS - state.lastStepTimeMS;
+    if (stepElapsedMS < stepTimeMS) {
+        return; // Not time for next step yet
+    }
+    
+    // Update last step time
+    state.lastStepTimeMS = currentTimeMS;
+    
+    // Check if animation should stop (only if not looping)
+    if (!loop) {
+        unsigned long totalElapsedMS = currentTimeMS - state.startTimeMS;
+        if (totalElapsedMS >= totalDurationMS) {
+            // Animation complete, keep current state
+            return;
+        }
+    }
+    
+    // Toggle the swap state
+    state.swapped = !state.swapped;
+    
+    // Update all pixels with swapped pattern
+    int midPoint = numLEDs / 2;
+    
+    for (unsigned int i = 0; i < numLEDs; i++) {
+        if (i < midPoint) {
+            // First half
+            if (state.swapped) {
+                SendNeoPixelSingleMsg(neoPixelId, i, endR, endG, endB, 255);
+            } else {
+                SendNeoPixelSingleMsg(neoPixelId, i, startR, startG, startB, 255);
+            }
+        } else if (i > midPoint || numLEDs % 2 == 0) {
+            // Second half
+            if (state.swapped) {
+                SendNeoPixelSingleMsg(neoPixelId, i, startR, startG, startB, 255);
+            } else {
+                SendNeoPixelSingleMsg(neoPixelId, i, endR, endG, endB, 255);
+            }
+        } else {
+            // Middle pixel (only if odd number of LEDs): always blend the two colors
+            uint8_t blendR = (startR + endR) / 2;
+            uint8_t blendG = (startG + endG) / 2;
+            uint8_t blendB = (startB + endB) / 2;
+            SendNeoPixelSingleMsg(neoPixelId, i, blendR, blendG, blendB, 255);
+        }
+    }
+}
+
+
 
 
