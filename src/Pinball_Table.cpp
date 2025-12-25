@@ -388,7 +388,7 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     return (true);
 }
 
-// Supprot render routines for the main screen
+// Support render routines for the main screen
 void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick){
     // Calculate fade-in alpha for main score
     
@@ -416,8 +416,60 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     std::string playerLabel = "Player " + std::to_string(m_currentPlayer + 1);
     gfxRenderString(m_StartMenuFontId, playerLabel, (ACTIVEDISPX+(1024/3)), ACTIVEDISPY + 280, 5, GFX_TEXTCENTER);
     
+    // Calculate animated score for main player
+    unsigned long displayScore = m_playerStates[m_currentPlayer].score;
+    
+    if (m_playerStates[m_currentPlayer].score != m_playerStates[m_currentPlayer].inProgressScore) {
+        // Check if score changed during animation - if so, update inProgressScore to current display value and restart
+        if (m_playerStates[m_currentPlayer].score != m_playerStates[m_currentPlayer].previousScore) {
+            // Calculate current display score before restarting
+            if (m_playerStates[m_currentPlayer].scoreUpdateStartTick > 0) {
+                unsigned long elapsedMS = currentTick - m_playerStates[m_currentPlayer].scoreUpdateStartTick;
+                if (elapsedMS < UPDATESCOREMS) {
+                    float progress = (float)elapsedMS / (float)UPDATESCOREMS;
+                    long scoreDiff = m_playerStates[m_currentPlayer].previousScore - m_playerStates[m_currentPlayer].inProgressScore;
+                    displayScore = m_playerStates[m_currentPlayer].inProgressScore + (unsigned long)(scoreDiff * progress);
+                    displayScore = ((displayScore + 9) / 10) * 10;
+                    // Set inProgressScore to current display value so score never goes down
+                    m_playerStates[m_currentPlayer].inProgressScore = displayScore;
+                }
+            }
+            // Restart animation from current position to new score
+            m_playerStates[m_currentPlayer].scoreUpdateStartTick = currentTick;
+            m_playerStates[m_currentPlayer].previousScore = m_playerStates[m_currentPlayer].score;
+        }
+        
+        // Initialize animation start time if not set
+        if (m_playerStates[m_currentPlayer].scoreUpdateStartTick == 0) {
+            m_playerStates[m_currentPlayer].scoreUpdateStartTick = currentTick;
+        }
+        
+        // Calculate time elapsed since animation started
+        unsigned long elapsedMS = currentTick - m_playerStates[m_currentPlayer].scoreUpdateStartTick;
+        
+        if (elapsedMS >= UPDATESCOREMS) {
+            // Animation complete, show final score
+            displayScore = m_playerStates[m_currentPlayer].score;
+            m_playerStates[m_currentPlayer].inProgressScore = m_playerStates[m_currentPlayer].score;
+            m_playerStates[m_currentPlayer].previousScore = m_playerStates[m_currentPlayer].score;
+            m_playerStates[m_currentPlayer].scoreUpdateStartTick = 0;
+        } else {
+            // Calculate interpolated score based on elapsed time
+            float progress = (float)elapsedMS / (float)UPDATESCOREMS;
+            long scoreDiff = m_playerStates[m_currentPlayer].score - m_playerStates[m_currentPlayer].inProgressScore;
+            displayScore = m_playerStates[m_currentPlayer].inProgressScore + (unsigned long)(scoreDiff * progress);
+            
+            // Round up to nearest 10
+            displayScore = ((displayScore + 9) / 10) * 10;
+        }
+    } else {
+        // Scores are equal, reset animation tracking
+        m_playerStates[m_currentPlayer].previousScore = m_playerStates[m_currentPlayer].score;
+        m_playerStates[m_currentPlayer].scoreUpdateStartTick = 0;
+    }
+    
     // Render the current player's score with commas
-    std::string scoreText = formatScoreWithCommas(getCurrentPlayerScore());
+    std::string scoreText = formatScoreWithCommas(displayScore);
     gfxSetScaleFactor(m_StartMenuFontId, 1.2, false);
     gfxRenderString(m_StartMenuFontId, scoreText, (ACTIVEDISPX+(1024/3)), ACTIVEDISPY + 350, 5, GFX_TEXTCENTER);
     

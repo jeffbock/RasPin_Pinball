@@ -62,7 +62,10 @@ class pbGameState {
 public:
     PBTableState mainGameState;       // Main game state for this player
     PBTBLMainScreenState screenState; // Screen state for this player
-    unsigned long score;              // Current score
+    unsigned long score;              // Actual Current score
+    unsigned long inProgressScore;    // Score accumulated during current ball
+    unsigned long previousScore;      // Previous score to detect changes during animation
+    unsigned long scoreUpdateStartTick; // Tick when score update animation started
     bool enabled;                     // Is this player slot enabled/active
     unsigned int currentBall;         // Current ball number (1-based)
     bool ballSaveEnabled;             // Ball save active flag
@@ -93,6 +96,9 @@ public:
         mainGameState = PBTableState::PBTBL_MAINSCREEN;
         screenState = PBTBLMainScreenState::MAIN_SHOWSCORE;
         score = 0;
+        inProgressScore = 0;
+        previousScore = 0;
+        scoreUpdateStartTick = 0;
         // Note: enabled flag is NOT reset here - must be set explicitly
         currentBall = 1;
         ballSaveEnabled = false;
@@ -117,5 +123,6 @@ public:
 
 #define ACTIVEDISPX 448
 #define ACTIVEDISPY 268
+#define UPDATESCOREMS 1000
 
 #endif // Pinball_Table_h
