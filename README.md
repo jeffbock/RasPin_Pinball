@@ -18,8 +18,9 @@ Prototype hardware shown, full machine in development.
 - Video playback through FFMPEG integrated into sprite / rendering system
 - Simplified HW architecture for easy debug, understanding and implemention
 - Message based input and output processing utilizing Raspberry Pi, and TI I2C IO and LED expanders optimized to decrease latency and minimize HW traffic
+- Timer system with dedicated watchdog timer and user timers for timed game events
 - Automatic LED control and sequence animation for dynamic lighting effects
-- NeoPixel (SK6812) RGB LED strip support with sequence animation and color control (but could easily be changed for other neopixel timings.
+- NeoPixel (SK6812/WS2812B) RGB LED strip support with multiple timing methods (clock_gettime, NOP, SPI, PWM), sequence animation, and full color control
 - Easy to use music and sound effect system with multiple channels
 - Full setup / control and diagnostics menus and capability, along with straight-forward ability to add / expand for your own personalize machine.
 - TODO: Prototype HW (mechanics, flippers, slings, etc..), build a cabinet and implement a full game (currently only game test screens).
@@ -30,9 +31,11 @@ Prototype hardware shown, full machine in development.
 - **[How To Build](documentation/HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
 
 - **API Reference Documentation:**
-  - **[PBEngine API](documentation/PBEngine_API.md)** - Core engine class, game state, and output control
+  - **[PBEngine API](documentation/PBEngine_API.md)** - Core engine class, game state, timer system, and output control
   - **[I/O Processing API](documentation/IO_Processing_API.md)** - Input/output message processing and hardware communication
-  - **[LED Control API](documentation/LED_Control_API.md)** - LED control, sequences, and animation patterns
+  - **[LED Control API](documentation/LED_Control_API.md)** - LED control, NeoPixel RGB strips, sequences, and animation patterns
+  - **[NeoPixel Timing Methods](documentation/NeoPixel_Timing_Methods.md)** - Timing methods for reliable NeoPixel control (clock_gettime, NOP, SPI, PWM)
+  - **[NeoPixel Instrumentation](documentation/NeoPixel_Instrumentation.md)** - Diagnostic tools for NeoPixel timing verification
   - **[PBDevice API](documentation/PBDevice_API.md)** - Device management framework for complex pinball mechanisms
   - **[Platform Init API](documentation/Platform_Init_API.md)** - Platform initialization, main loop, and configuration
   - **[Game Creation API](documentation/Game_Creation_API.md)** - Graphics (PBGfx), sound (PBSound), video playback (PBVideoPlayer), sprites, animations, and screen management 
