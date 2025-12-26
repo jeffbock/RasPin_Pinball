@@ -43,6 +43,7 @@ Agentic Code AI is highly recommended as tool to utilize the RaspPin framework. 
 │  • State machine (Menu, Play, Test, etc.)                       │
 │  • Message queue management                                     │
 │  • Output control (SendOutputMsg, SendSeqMsg)                   │
+│  • Timer system (watchdog + user timers)                        │
 │  • Save/Load system                                             │
 └──┬──────────────┬─────────────────┬────────────────┬───────────┘
    │              │                 │                │
@@ -53,6 +54,7 @@ Agentic Code AI is highly recommended as tool to utilize the RaspPin framework. 
 │Sprites │  │ Music    │  │          │  │ Input Msg   │  │ Sequences   │
 │Anims   │  │ Effects  │  │FFmpeg    │  │ Output Msg  │  │ Patterns    │
 │Text    │  │ Volume   │  │Sync      │  │ Debounce    │  │ Brightness  │
+│        │  │          │  │          │  │             │  │ NeoPixels   │
 └────────┘  └──────────┘  └──────────┘  └─────────────┘  └─────────────┘
 ```
 
@@ -60,10 +62,14 @@ Agentic Code AI is highly recommended as tool to utilize the RaspPin framework. 
 
 ```
 Hardware Inputs → Debounce → Input Messages → Game Logic → Output Messages → Hardware
-     │                            ▲                 │              │
-     │                            │                 │              │
-     └────────────────────────────┘                 └──────────────┘
-           (Optional Auto-Output)                   (LED Sequences)
+      │                            ▲                 │              │
+      │                            │                 │              │
+      └────────────────────────────┘                 └──────────────┘
+            (Optional Auto-Output)                   (LED Sequences/NeoPixels)
+                                   ▲
+                                   │
+                         Timer Expirations
+                         (Delayed Events)
 ```
 
 ---
@@ -300,6 +306,7 @@ stVideoInfo info = videoPlayer.pbvpGetVideoInfo();
 - Group operations (chip-wide dimming/blinking)
 - Animated sequences with multiple loop modes
 - Deferred message queue during sequences
+- RGB addressable LED strip control (NeoPixels/WS2812B)
 
 **LED Sequence Flow:**
 ```
@@ -315,7 +322,18 @@ Define Sequence Steps ──→ Start Sequence ──→ Auto-Play Animation ─
 - **Ping-Pong:** Forward then backward, stop
 - **Ping-Pong Loop:** Bounce back and forth continuously
 
-**Documentation:** [LED_Control_API.md](LED_Control_API.md)
+**NeoPixel RGB LEDs:**
+- Full 24-bit RGB color control per LED
+- WS2812B/SK6812 addressable LED strips
+- Multiple timing methods (clock_gettime, NOP, SPI, PWM)
+- Hardware-based SPI timing (recommended for production)
+- Animation sequences with color patterns
+- Brightness control and color presets
+
+**Documentation:** 
+- [LED_Control_API.md](LED_Control_API.md) - LED drivers and sequences
+- [NeoPixel_Timing_Methods.md](NeoPixel_Timing_Methods.md) - Timing methods for reliable NeoPixel control
+- [NeoPixel_Instrumentation.md](NeoPixel_Instrumentation.md) - Diagnostic tools for timing verification
 
 ---
 
@@ -448,6 +466,120 @@ Initialize Device ──→ Enable ──→ Start Run ──→ Execute Loop
 
 ---
 
+### 8. Timer System
+
+**What It Does:**
+- Delayed event generation for timed game mechanics
+- Dedicated watchdog timer for critical timing
+- Multiple concurrent user timers (up to 10)
+- Automatic input message generation on expiration
+- Integration with game state management
+
+**Timer Architecture:**
+```
+┌─────────────────────────────────────────────────┐
+│           Timer System Components               │
+│                                                 │
+│  ┌───────────────────────────────────┐         │
+│  │    Watchdog Timer (ID=0)         │         │
+│  │  • Dedicated storage             │         │
+│  │  • Critical timing events        │         │
+│  │  • Doesn't count against limit   │         │
+│  └───────────────────────────────────┘         │
+│                                                 │
+│  ┌───────────────────────────────────┐         │
+│  │    User Timer Queue (1-10 timers)│         │
+│  │  • Custom timer IDs              │         │
+│  │  • Game-specific events          │         │
+│  │  • Optional repeat mode          │         │
+│  └───────────────────────────────────┘         │
+└─────────────────────────────────────────────────┘
+                     ▼
+         ┌─────────────────────┐
+         │ Timer Expiration    │
+         │ Generates Input Msg │
+         │ PB_IMSG_TIMER       │
+         └─────────────────────┘
+                     ▼
+         ┌─────────────────────┐
+         │   Game Logic        │
+         │   Processes Event   │
+         └─────────────────────┘
+```
+
+**Timer Types:**
+
+**Watchdog Timer (ID=0):**
+- Single dedicated timer with its own storage
+- Doesn't consume a slot in the 10-timer queue
+- Ideal for critical game events (ball save, skill shot windows)
+- Checked first in all timer operations for efficiency
+
+**User Timers (IDs 1+):**
+- Up to 10 concurrent timers in queue
+- Custom IDs for different game events
+- Optional repeat mode for periodic events
+- Processed after watchdog timer
+
+**Timer Message Flow:**
+```
+Set Timer ──→ Timer Running ──→ Timer Expires ──→ Input Message Generated
+    │              │                  │                    │
+    └──(start)     └──(countdown)     └──(expire)         └──(PB_IMSG_TIMER)
+                                                                │
+                                                                ▼
+                                                         Game Logic Handles
+```
+
+**Common Use Cases:**
+- **Ball Save Timer**: Grace period after ball launch
+- **Skill Shot Window**: Time limit for skill shot scoring
+- **Multiball Delay**: Delay between ejecting multiple balls
+- **Mode Timeout**: Time-limited game modes
+- **Bonus Countdown**: Animated bonus display timing
+- **Periodic Events**: Repeating timers for animations or effects
+
+**Example Usage:**
+```cpp
+// Define timer IDs
+#define TIMER_BALL_SAVE 100
+#define TIMER_SKILL_SHOT 101
+#define TIMER_MULTIBALL_DELAY 102
+
+// Set a 5-second ball save timer
+g_PBEngine.pbeSetTimer(TIMER_BALL_SAVE, 5000);
+
+// Set watchdog timer (dedicated, doesn't count against limit)
+g_PBEngine.pbeSetWatchdogTimer(10000);
+
+// Handle timer expiration in game logic
+if (inputMessage.inputMsg == PB_IMSG_TIMER) {
+    switch (inputMessage.inputId) {
+        case WATCHDOGTIMER:  // ID = 0
+            // Watchdog timer expired
+            break;
+        case TIMER_BALL_SAVE:
+            // Ball save period ended
+            break;
+        case TIMER_SKILL_SHOT:
+            // Skill shot window closed
+            break;
+    }
+}
+```
+
+**Key Features:**
+- **Automatic Management**: Timers are processed automatically in main loop
+- **Flexible IDs**: Use meaningful names via #define constants
+- **Non-blocking**: Timers run in background without halting game
+- **Message-based**: Timer events delivered through input message queue
+- **Status Checking**: Query if timer is still active
+- **Early Cancellation**: Stop timers before expiration if needed
+
+**Documentation:** [PBEngine_API.md](PBEngine_API.md) (Timer System section)
+
+---
+
 ## Platform Architecture
 
 ### Cross-Platform Design
@@ -505,19 +637,22 @@ Raspberry Pi Build:
                   ┌─────────┐ ┌──────────────────┐
                   │ Direct  │ │  I2C Expanders   │
                   │ Inputs  │ │                  │
-                  └─────────┘ │ • IO (TCA9555)   │
-                              │ • LED (TLC59116) │
-                              └────────┬─────────┘
-                                       │
-                ┌──────────────────────┴────────────────────┐
-                ▼                                           ▼
-        ┌───────────────┐                          ┌───────────────┐
-        │ Input Devices │                          │Output Devices │
-        │               │                          │               │
-        │ • Switches    │                          │ • Solenoids   │
-        │ • Buttons     │                          │ • Motors      │
-        │ • Sensors     │                          │ • LEDs        │
-        └───────────────┘                          └───────────────┘
+                  │ GPIO    │ │ • IO (TCA9555)   │
+                  │         │ │ • LED (TLC59116) │
+                  │NeoPixel │ │                  │
+                  │ Strips  │ └────────┬─────────┘
+                  └─────────┘          │
+                      │                │
+        ┌─────────────┴────────────────┴────────────────────┐
+        ▼                                                    ▼
+┌───────────────┐                                   ┌───────────────┐
+│ Input Devices │                                   │Output Devices │
+│               │                                   │               │
+│ • Switches    │                                   │ • Solenoids   │
+│ • Buttons     │                                   │ • Motors      │
+│ • Sensors     │                                   │ • LEDs        │
+│               │                                   │ • RGB Strips  │
+└───────────────┘                                   └───────────────┘
 ```
 
 ### I/O Chip Configuration
@@ -533,6 +668,16 @@ Raspberry Pi Build:
 - Individual brightness control (256 levels)
 - Group dimming and blinking modes
 - Hardware handles LED timing
+
+**NeoPixel RGB LED Strips (WS2812B/SK6812):**
+- Direct GPIO control for addressable RGB LED strips
+- Full 24-bit color control per LED
+- Multiple timing methods (clock_gettime, NOP, SPI, PWM)
+- SPI method recommended for production (hardware-based, most reliable)
+- Independent brightness control and color presets
+- Animation sequences with autonomous playback
+- Recommended maximum: 60 LEDs per driver
+- Can use multiple drivers for larger installations
 
 ---
 
@@ -555,9 +700,11 @@ Input Detection → Input Message → Game Logic → Output Message → Hardware
 - **Logging:** Easy to record and replay games
 - **Auto-Output:** Optional direct routing for instant response
 - **Testing:** Inject messages without hardware
+- **Timers:** Time-delayed events generate messages automatically
 
 ### Message Flow Example
 
+**Hardware Input Example:**
 ```
 1. Player presses left flipper button
    ↓
@@ -574,6 +721,22 @@ Input Detection → Input Message → Game Logic → Output Message → Hardware
 6. Message placed in output queue
    ↓
 7. I/O system sends signal to hardware
+```
+
+**Timer-Generated Input Example:**
+```
+1. Game sets timer: pbeSetTimer(TIMER_BALL_SAVE, 5000)
+   ↓
+2. Timer runs in background for 5 seconds
+   ↓
+3. Timer expires - input message created:
+   {inputMsg: PB_IMSG_TIMER, inputId: TIMER_BALL_SAVE, tick: 6234}
+   ↓
+4. Message placed in input queue
+   ↓
+5. Game code processes timer event
+   ↓
+6. Game takes appropriate action (end ball save, etc.)
 ```
 
 ---
@@ -861,12 +1024,15 @@ This PR includes comprehensive documentation for each subsystem:
 
 ### Hardware Control
 5. **[IO_Processing_API.md](IO_Processing_API.md)** - Input/output message system and hardware communication
-6. **[LED_Control_API.md](LED_Control_API.md)** - LED control and animation sequences
-7. **[PBDevice_API.md](PBDevice_API.md)** - Device management for complex pinball mechanisms
+6. **[LED_Control_API.md](LED_Control_API.md)** - LED control, NeoPixel RGB strips, and animation sequences
+7. **[NeoPixel_Timing_Methods.md](NeoPixel_Timing_Methods.md)** - Timing methods for reliable NeoPixel control (clock_gettime, NOP, SPI, PWM)
+8. **[NeoPixel_Instrumentation.md](NeoPixel_Instrumentation.md)** - Diagnostic tools for NeoPixel timing verification
+9. **[PBDevice_API.md](PBDevice_API.md)** - Device management for complex pinball mechanisms
 
 ### Additional Resources
-8. **[HowToBuild.md](HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
-9. **[UsersGuide.md](UsersGuide.md)** - Comprehensive framework guide (pre-existing)
+10. **[HowToBuild.md](HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
+11. **[Utilities_Guide.md](Utilities_Guide.md)** - Utility tools and helpers
+12. **[UsersGuide.md](UsersGuide.md)** - Comprehensive framework guide (pre-existing)
 
 ---
 
@@ -965,12 +1131,14 @@ The RasPin Pinball Framework provides a complete, flexible foundation for buildi
 ---
 
 **Documentation in Framework:**
-- PBEngine_API.md - Core engine class
-- IO_Processing_API.md - Message-based I/O system  
-- LED_Control_API.md - LED control and sequences
-- PBDevice_API.md - Device management framework for complex mechanisms
-- Platform_Init_API.md - Initialization and main loop
-- Game_Creation_API.md - Graphics, sound, video playback, and screen management
-- FontGen_Guide.md - Font generation utility
+- **PBEngine_API.md** - Core engine class with timer system
+- **IO_Processing_API.md** - Message-based I/O system  
+- **LED_Control_API.md** - LED control, NeoPixel RGB strips, and sequences
+- **NeoPixel_Timing_Methods.md** - Timing methods for reliable NeoPixel control
+- **NeoPixel_Instrumentation.md** - Diagnostic tools for NeoPixel timing
+- **PBDevice_API.md** - Device management framework for complex mechanisms
+- **Platform_Init_API.md** - Initialization and main loop
+- **Game_Creation_API.md** - Graphics, sound, video playback, and screen management
+- **Utilities_Guide.md** - Utility tools and helpers
 
 Each document contains detailed API references, code examples, and best practices based on actual framework usage.
