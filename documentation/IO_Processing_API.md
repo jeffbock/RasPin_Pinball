@@ -559,7 +559,7 @@ All inputs are automatically debounced to prevent switch bounce:
 
 ## See Also
 
-- **PBEngine_API.md** - Core engine class and message queue management
-- **LED_Control_API.md** - LED sequence and animation control
-- **Platform_Init_API.md** - Hardware initialization
-- **UsersGuide.md** - Complete framework guide
+- **[PBEngine_API.md](PBEngine_API.md)** - Core engine class, timer system, and message queue management
+- **[LED_Control_API.md](LED_Control_API.md)** - LED sequence, NeoPixel control, and animation
+- **[Platform_Init_API.md](Platform_Init_API.md)** - Hardware initialization
+- **[RasPin_Overview.md](RasPin_Overview.md)** - Overall framework architecture

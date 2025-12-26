@@ -352,3 +352,11 @@ Approximate CPU overhead per LED (3 bytes = 24 bits):
 - [wiringPi Documentation](http://wiringpi.com/)
 - [Raspberry Pi SPI Documentation](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#serial-peripheral-interface-spi)
 - [Raspberry Pi PWM Documentation](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#pulse-width-modulation)
+
+---
+
+## See Also
+
+- **[LED_Control_API.md](LED_Control_API.md)** - NeoPixel control functions and sequences
+- **[NeoPixel_Instrumentation.md](NeoPixel_Instrumentation.md)** - Diagnostic tools for timing verification
+- **[RasPin_Overview.md](RasPin_Overview.md)** - Overall framework architecture including NeoPixels

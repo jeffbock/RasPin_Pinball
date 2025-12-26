@@ -722,6 +722,8 @@ The implementation disables interrupts during LED data transmission for timing a
 
 ## See Also
 
-- **PBEngine_API.md** - Core engine and SendOutputMsg() details
-- **IO_Processing_API.md** - Output message processing
-- **UsersGuide.md** - Complete framework guide with hardware details
+- **[PBEngine_API.md](PBEngine_API.md)** - Core engine and SendOutputMsg() details
+- **[IO_Processing_API.md](IO_Processing_API.md)** - Output message processing
+- **[NeoPixel_Timing_Methods.md](NeoPixel_Timing_Methods.md)** - Timing methods for reliable NeoPixel control
+- **[NeoPixel_Instrumentation.md](NeoPixel_Instrumentation.md)** - Diagnostic tools for NeoPixel timing
+- **[RasPin_Overview.md](RasPin_Overview.md)** - Overall framework architecture
