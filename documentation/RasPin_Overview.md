@@ -675,7 +675,9 @@ Raspberry Pi Build:
 - Direct GPIO control for addressable RGB LED strips
 - Full 24-bit color control per LED
 - Multiple timing methods (clock_gettime, NOP, SPI, PWM)
+- **SPI GPIO pins (GPIO 10 or 20) are strongly preferred** for reliable operation
 - SPI method recommended for production (hardware-based, most reliable)
+- SPI must be enabled via Raspberry Pi Configuration tool (Preferences → Interfaces → SPI)
 - Independent brightness control and color presets
 - Animation sequences with autonomous playback
 - Recommended maximum: 60 LEDs per driver

@@ -78,9 +78,9 @@ driver.SetTimingMethod(NEOPIXEL_TIMING_NOP);
 
 ---
 
-### 3. NEOPIXEL_TIMING_SPI ⭐ (Recommended)
+### 3. NEOPIXEL_TIMING_SPI ⭐ (Recommended - Preferred GPIO)
 
-**Description**: Uses SPI hardware to generate WS2812B timing signals.
+**Description**: Uses SPI hardware to generate WS2812B timing signals. **This is the preferred method using SPI-capable GPIO pins for best reliability.**
 
 **How it works**:
 - Automatically detects if output pin is SPI-capable (GPIO 10 or 20)
@@ -130,14 +130,17 @@ driver.SetTimingMethod(NEOPIXEL_TIMING_SPI);
 - Therefore, we use the MOSI pin for one-way communication
 
 **Hardware Requirements**:
-- SPI-capable GPIO pin (MOSI)
-- SPI must be enabled in `/boot/config.txt`:
-OR
-- Use the Raspberry Pi Configuration tool (under Preferences) to enable SPI
+- SPI-capable GPIO pin (MOSI): GPIO 10 for SPI0 or GPIO 20 for SPI1
+- **SPI must be enabled in Raspberry Pi configuration** using one of these methods:
+  1. **Raspberry Pi Configuration tool** (Recommended): Preferences → Raspberry Pi Configuration → Interfaces → Enable SPI
+  2. Edit `/boot/config.txt` and add: `dtparam=spi=on`, then reboot
 
-  ```
-  dtparam=spi=on
-  ```
+**Verifying SPI is enabled**:
+```bash
+# Check if SPI device exists
+ls /dev/spidev*
+# Should show: /dev/spidev0.0 /dev/spidev0.1 (for SPI0)
+```
 
 ---
 
@@ -228,17 +231,20 @@ driver.SetTimingMethod(NEOPIXEL_TIMING_PWM);
 
 ## Choosing the Right Method
 
+**⭐ Recommended: Use SPI-capable GPIO pins (GPIO 10 or 20) for NeoPixel connections whenever possible. This provides the most reliable operation with hardware-based timing.**
+
+### For Production (SPI Available) - **PREFERRED**
+→ Use **NEOPIXEL_TIMING_SPI** ⭐
+- Most reliable hardware-based method
+- Zero timing issues
+- Works under any system load
+- **Requires SPI enabled via Raspberry Pi Configuration tool**
+
 ### For Development & Debugging
 → Use **NEOPIXEL_TIMING_CLOCKGETTIME**
 - Supports instrumentation for diagnostics
 - Easy to debug timing issues
 - No hardware setup required
-
-### For Production (SPI Available)
-→ Use **NEOPIXEL_TIMING_SPI** ⭐
-- Most reliable hardware-based method
-- Zero timing issues
-- Works under any system load
 
 ### For Experimentation
 → Use **NEOPIXEL_TIMING_PWM** 🚧
