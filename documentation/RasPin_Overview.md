@@ -66,10 +66,12 @@ Hardware Inputs → Debounce → Input Messages → Game Logic → Output Messag
       │                            │                 │              │
       └────────────────────────────┘                 └──────────────┘
             (Optional Auto-Output)                   (LED Sequences/NeoPixels)
-                                   ▲
-                                   │
-                         Timer Expirations
-                         (Delayed Events)
+                                   ▲                           
+                                   │                           
+                         ┌─────────┴──────────┐               
+                         │                    │               
+                  Timer Expirations    Device Processing      
+                  (Delayed Events)     (State Machines)       
 ```
 
 ---
@@ -853,21 +855,29 @@ Initialize:
     • Load settings
     
 Main Loop (60 FPS):
-    1. Process I/O
+    1. Execute Devices
+       └─→ Process device state machines
+       └─→ Update device states
+    
+    2. Process Timers
+       └─→ Check for expired timers
+       └─→ Generate timer input messages
+    
+    3. Process I/O
        └─→ Read inputs
        └─→ Send outputs
     
-    2. Process Input Messages
+    4. Process Input Messages
        └─→ Update game state
        └─→ Generate output messages
     
-    3. Render Frame
+    5. Render Frame
        └─→ Clear screen
        └─→ Draw sprites
        └─→ Render text
        └─→ Swap buffers
     
-    4. Frame Limiting
+    6. Frame Limiting
        └─→ Wait if needed
     
     Repeat ↑
