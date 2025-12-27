@@ -631,8 +631,8 @@ if (!g_PBEngine.pbeSetupIO()) {
 
 ## See Also
 
-- **PBEngine_API.md** - Core engine class reference
-- **IO_Processing_API.md** - I/O processing details
-- **LED_Control_API.md** - LED and sequence control
-- **HowToBuild.md** - Build instructions and configuration
-- **UsersGuide.md** - Complete framework documentation
+- **[PBEngine_API.md](PBEngine_API.md)** - Core engine class reference
+- **[IO_Processing_API.md](IO_Processing_API.md)** - I/O processing details
+- **[LED_Control_API.md](LED_Control_API.md)** - LED and NeoPixel control
+- **[RasPin_Overview.md](RasPin_Overview.md)** - Overall framework architecture
+- **[HowToBuild.md](HowToBuild.md)** - Build instructions and configuration
