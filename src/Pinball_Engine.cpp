@@ -1714,10 +1714,11 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                            true);         // Loop continuously
                         break;
                     case 5:
-                        // Strobe: White light with 100ms cycle time
+                        // Strobe: White light with 2000ms off time, accelerating over 20 seconds
                         neoPixelStrobe(255, 255, 255,  // White color
                                       IDO_NEOPIXEL0,
-                                      100,             // 100ms cycle time (5ms on, 95ms off)
+                                      2000,            // 2000ms off time (5ms on is fixed)
+                                      20000,           // 20 second overall duration with acceleration
                                       true);           // Loop continuously
                         break;
                 }
@@ -1837,11 +1838,15 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                     neoPixelSweepFromEnds(0, 255, 0, 128, 0, 128, IDO_NEOPIXEL0, 50, 4000, true);
                                     break;
                                 case 5:
-                                    neoPixelStrobe(255, 255, 255, IDO_NEOPIXEL0, 100, true);
+                                    neoPixelStrobe(255, 255, 255, IDO_NEOPIXEL0, 2000, 0, true, true);
                                     break;
                             }
                         } else {
                             // Timer mode: start timer for animation
+                            // For strobe mode, reset state when starting
+                            if (m_sandboxNeoPixelAnimMode == 5) {
+                                neoPixelStrobe(255, 255, 255, IDO_NEOPIXEL0, 2000, 20000, true, true);
+                            }
                             pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, SANDBOX_NEOPIXEL_TIMER_INTERVAL_MS);
                         }
                     } else {
@@ -1857,7 +1862,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                     neoPixelSweepFromEnds(0, 255, 0, 128, 0, 128, IDO_NEOPIXEL0, 50, 4000, true);
                                     break;
                                 case 5:
-                                    neoPixelStrobe(255, 255, 255, IDO_NEOPIXEL0, 100, true);
+                                    neoPixelStrobe(255, 255, 255, IDO_NEOPIXEL0, 95, 0, true);
                                     break;
                             }
                         } else {
@@ -3091,21 +3096,25 @@ void PBEngine::neoPixelSplitToggle(uint8_t startR, uint8_t startG, uint8_t start
     }
 }
 
-// NeoPixel Strobe - Flashes between black and a specified color at a fixed rate
+// NeoPixel Strobe - Flashes between black and a specified color
 // Parameters:
 //   colorR, colorG, colorB: The color to strobe (RGB 0-255)
 //   neoPixelId: Which NeoPixel output pin/chain to control
-//   timeValueMS: Total time for one complete cycle (on + off). Color on time is fixed at 5ms.
+//   timeOffMS: Base off time in milliseconds (on time is fixed at 5ms)
+//   timeOverallMS: If non-zero, scales off time based on remaining time and stops when elapsed
 //   loop: If true, strobe continuously. If false, stop after one cycle.
+//   resetState: If true, resets the strobe state to start from the beginning
 void PBEngine::neoPixelStrobe(uint8_t colorR, uint8_t colorG, uint8_t colorB,
-                              unsigned int neoPixelId, unsigned int timeValueMS,
-                              bool loop)
+                              unsigned int neoPixelId, unsigned int timeOffMS,
+                              unsigned int timeOverallMS, bool loop,
+                              bool resetState)
 {
     // Structure to hold state for each neoPixelId
     struct StrobeState {
         bool initialized;
-        unsigned long lastToggleTimeMS;
-        bool colorOn;  // True when color is on, false when black
+        unsigned long startTimeMS;      // Start time for overall duration tracking
+        unsigned long lastToggleTimeMS; // Last time we toggled color
+        bool colorOn;                   // True when color is on, false when black
     };
     
     // Static map to track state per neoPixelId
@@ -3117,9 +3126,15 @@ void PBEngine::neoPixelStrobe(uint8_t colorR, uint8_t colorG, uint8_t colorB,
     // Get or create state for this neoPixelId
     StrobeState& state = stateMap[neoPixelId];
     
+    // Reset state if requested
+    if (resetState) {
+        state.initialized = false;
+    }
+    
     // Initialize or reset if this is the first call
     if (!state.initialized) {
         state.initialized = true;
+        state.startTimeMS = currentTimeMS;
         state.lastToggleTimeMS = currentTimeMS;
         state.colorOn = true;  // Start with color on
         
@@ -3128,24 +3143,47 @@ void PBEngine::neoPixelStrobe(uint8_t colorR, uint8_t colorG, uint8_t colorB,
         return;
     }
     
-    // Calculate elapsed time since last toggle
-    unsigned long elapsedMS = currentTimeMS - state.lastToggleTimeMS;
-    
     // Define the on time as 5ms
     const unsigned int onTimeMS = 5;
     
-    // Calculate off time (remaining time in the cycle)
-    unsigned int offTimeMS = (timeValueMS > onTimeMS) ? (timeValueMS - onTimeMS) : 0;
+    // Calculate current off time based on timeOverallMS
+    unsigned int currentOffTimeMS = timeOffMS;
+    
+    if (timeOverallMS > 0) {
+        // Calculate elapsed time since start
+        unsigned long elapsedTotalMS = currentTimeMS - state.startTimeMS;
+        
+        // Check if overall time has expired
+        if (elapsedTotalMS >= timeOverallMS) {
+            // Time is up - set all pixels to the on color and stop
+            SendNeoPixelAllMsg(neoPixelId, colorR, colorG, colorB, 255);
+            return;
+        }
+        
+        // Calculate remaining time as a fraction (0.0 to 1.0)
+        float remainingFraction = (float)(timeOverallMS - elapsedTotalMS) / (float)timeOverallMS;
+        
+        // Scale the off time by remaining fraction
+        currentOffTimeMS = (unsigned int)(timeOffMS * remainingFraction);
+        
+        // Ensure minimum off time of 1ms to avoid divide-by-zero or too-fast strobing
+        if (currentOffTimeMS < 1) {
+            currentOffTimeMS = 1;
+        }
+    }
+    
+    // Calculate elapsed time since last toggle
+    unsigned long elapsedMS = currentTimeMS - state.lastToggleTimeMS;
     
     // Check if it's time to toggle
     bool shouldToggle = false;
     if (state.colorOn && elapsedMS >= onTimeMS) {
         // Color is on and on time has elapsed, switch to black
         shouldToggle = true;
-    } else if (!state.colorOn && elapsedMS >= offTimeMS) {
+    } else if (!state.colorOn && elapsedMS >= currentOffTimeMS) {
         // Color is off and off time has elapsed
-        if (loop) {
-            // In loop mode, switch back to color
+        if (loop || timeOverallMS > 0) {
+            // In loop mode or with overall time, switch back to color
             shouldToggle = true;
         } else {
             // In one-shot mode, stay black

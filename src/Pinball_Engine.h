@@ -590,8 +590,9 @@ private:
                              unsigned int totalDurationMS, bool loop = false);
     
     void neoPixelStrobe(uint8_t colorR, uint8_t colorG, uint8_t colorB,
-                        unsigned int neoPixelId, unsigned int timeValueMS,
-                        bool loop = true);
+                        unsigned int neoPixelId, unsigned int timeOffMS,
+                        unsigned int timeOverallMS = 0, bool loop = true,
+                        bool resetState = false);
 
     // Texture release functions
     void pbeReleaseMenuTextures();
