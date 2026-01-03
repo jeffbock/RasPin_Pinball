@@ -588,6 +588,10 @@ private:
                              uint8_t endR, uint8_t endG, uint8_t endB,
                              unsigned int neoPixelId, unsigned int stepTimeMS,
                              unsigned int totalDurationMS, bool loop = false);
+    
+    void neoPixelStrobe(uint8_t colorR, uint8_t colorG, uint8_t colorB,
+                        unsigned int neoPixelId, unsigned int timeValueMS,
+                        bool loop = true);
 
     // Texture release functions
     void pbeReleaseMenuTextures();
