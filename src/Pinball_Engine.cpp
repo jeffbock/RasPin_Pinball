@@ -151,6 +151,10 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     
     // Auto output control - default to disable since the menus launch first
     m_autoOutputEnable = false;
+    
+    // Screen manager initialization
+    m_currentDisplayedScreen = -1;
+    m_currentScreenStartTick = 0;
  }
 
  PBEngine::~PBEngine(){
