@@ -280,6 +280,29 @@ public:
     void pbeForceUpdateState();
     PBMainState pbeGetMainState() { return m_mainState; }
 
+    // ========================================================================
+    // MODE SYSTEM FUNCTIONS
+    // ========================================================================
+    
+    // Mode management functions
+    void pbeUpdateModeState(unsigned long currentTick);
+    bool pbeCheckModeTransition(unsigned long currentTick);
+    void pbeEnterMode(PBTableMode newMode, unsigned long currentTick);
+    void pbeExitMode(PBTableMode exitingMode, unsigned long currentTick);
+    
+    // Mode-specific state update functions
+    void pbeUpdateNormalPlayMode(stInputMessage inputMessage, unsigned long currentTick);
+    void pbeUpdateMultiballMode(stInputMessage inputMessage, unsigned long currentTick);
+    
+    // Mode qualification check functions
+    bool pbeCheckMultiballQualified();
+    
+    // Screen manager functions
+    void pbeRequestScreen(int screenId, ScreenPriority priority, unsigned long durationMs, bool canBePreempted);
+    void pbeUpdateScreenManager(unsigned long currentTick);
+    void pbeClearScreenRequests();
+    int pbeGetCurrentScreen();
+
     // Save File Functions
     bool pbeLoadSaveFile(bool loadDefaults, bool resetScores);
     bool pbeSaveFile();
@@ -601,6 +624,15 @@ private:
     
     // Device management - vector of all registered devices
     std::vector<PBDevice*> m_devices;
+    
+    // ========================================================================
+    // MODE SYSTEM PRIVATE MEMBERS
+    // ========================================================================
+    
+    // Centralized screen manager
+    std::vector<ScreenRequest> m_screenQueue;
+    int m_currentDisplayedScreen;
+    unsigned long m_currentScreenStartTick;
 };
 
 // Global variable declaration
