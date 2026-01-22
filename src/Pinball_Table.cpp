@@ -11,7 +11,7 @@
 #include "PBDevice.h"
 #include <algorithm>  // For std::sort in screen manager
 
-// PBEgine Class Fucntions for the main pinball game
+// PBEgine Class Functions for the main pinball game
 
 // Main load function for the pinball game start screen
 bool PBEngine::pbeLoadGameStart(){
@@ -1043,48 +1043,14 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                 }
             }
             
-            // Update mode system state
-            pbeUpdateModeState(gfxGetTicks());
-            
-            // Update screen manager
-            pbeUpdateScreenManager(gfxGetTicks());
-            
-            // Route input to current mode's update function
-            ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
-            switch (modeState.currentMode) {
-                case PBTableMode::MODE_NORMAL_PLAY:
-                    pbeUpdateNormalPlayMode(inputMessage, gfxGetTicks());
-                    break;
-                case PBTableMode::MODE_MULTIBALL:
-                    pbeUpdateMultiballMode(inputMessage, gfxGetTicks());
-                    break;
-                default:
-                    break;
-            }
+            // Update mode system
+            pbeUpdateModeSystem(inputMessage, gfxGetTicks());
             
             break;
         }
         case PBTableState::PBTBL_STDPLAY: {
             // Standard play mode - delegates to mode system
-            
-            // Update mode system state
-            pbeUpdateModeState(gfxGetTicks());
-            
-            // Update screen manager
-            pbeUpdateScreenManager(gfxGetTicks());
-            
-            // Route input to current mode's update function
-            ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
-            switch (modeState.currentMode) {
-                case PBTableMode::MODE_NORMAL_PLAY:
-                    pbeUpdateNormalPlayMode(inputMessage, gfxGetTicks());
-                    break;
-                case PBTableMode::MODE_MULTIBALL:
-                    pbeUpdateMultiballMode(inputMessage, gfxGetTicks());
-                    break;
-                default:
-                    break;
-            }
+            pbeUpdateModeSystem(inputMessage, gfxGetTicks());
 
             break;
         }
@@ -1136,6 +1102,28 @@ void PBEngine::pbeTableReload() {
 // ========================================================================
 // MODE SYSTEM IMPLEMENTATION
 // ========================================================================
+
+// Helper function to update mode system - reduces code duplication
+void PBEngine::pbeUpdateModeSystem(stInputMessage inputMessage, unsigned long currentTick) {
+    // Update mode system state
+    pbeUpdateModeState(currentTick);
+    
+    // Update screen manager
+    pbeUpdateScreenManager(currentTick);
+    
+    // Route input to current mode's update function
+    ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
+    switch (modeState.currentMode) {
+        case PBTableMode::MODE_NORMAL_PLAY:
+            pbeUpdateNormalPlayMode(inputMessage, currentTick);
+            break;
+        case PBTableMode::MODE_MULTIBALL:
+            pbeUpdateMultiballMode(inputMessage, currentTick);
+            break;
+        default:
+            break;
+    }
+}
 
 // Main mode state update function - called each frame to update current mode
 void PBEngine::pbeUpdateModeState(unsigned long currentTick) {

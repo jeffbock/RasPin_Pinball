@@ -290,6 +290,9 @@ public:
     void pbeEnterMode(PBTableMode newMode, unsigned long currentTick);
     void pbeExitMode(PBTableMode exitingMode, unsigned long currentTick);
     
+    // Helper function to update mode system (reduces code duplication)
+    void pbeUpdateModeSystem(stInputMessage inputMessage, unsigned long currentTick);
+    
     // Mode-specific state update functions
     void pbeUpdateNormalPlayMode(stInputMessage inputMessage, unsigned long currentTick);
     void pbeUpdateMultiballMode(stInputMessage inputMessage, unsigned long currentTick);
