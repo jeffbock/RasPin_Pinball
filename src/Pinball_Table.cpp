@@ -1044,13 +1044,13 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
             }
             
             // Update mode system
-            pbeUpdateModeSystem(inputMessage, gfxGetTicks());
+            pbeUpdateModeSystem(inputMessage, GetTickCountGfx());
             
             break;
         }
         case PBTableState::PBTBL_STDPLAY: {
             // Standard play mode - delegates to mode system
-            pbeUpdateModeSystem(inputMessage, gfxGetTicks());
+            pbeUpdateModeSystem(inputMessage, GetTickCountGfx());
 
             break;
         }
@@ -1368,7 +1368,7 @@ void PBEngine::pbeRequestScreen(int screenId, ScreenPriority priority,
     request.screenId = screenId;
     request.priority = priority;
     request.durationMs = durationMs;
-    request.requestTick = gfxGetTicks();
+    request.requestTick = GetTickCountGfx();
     request.canBePreempted = canBePreempted;
     
     // Add to queue (we'll sort by priority in update function)

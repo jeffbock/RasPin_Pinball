@@ -70,6 +70,7 @@ struct stInputDef{
     bool autoOutput;
     unsigned int autoOutputId;
     PBPinState autoPinState;
+    bool autoOutputUsePulse;  // true = pulse output, false = track input state
 };
 
 // Output defintions
@@ -104,7 +105,7 @@ struct stOutputDef{
 
 // The actual definition of the output items - the user of the library will need to define these for the specific table
 
-#define IDO_SLINGSHOT 0
+#define IDO_LEFTSLING 0
 #define IDO_POPBUMPER 1
 #define IDO_LED1 2
 #define IDO_BALLEJECT 3
@@ -120,7 +121,10 @@ struct stOutputDef{
 #define IDO_BALLEJECT2 13
 #define IDO_NEOPIXEL0 14
 #define IDO_NEOPIXEL1 15
-#define NUM_OUTPUTS 15
+#define IDO_RIGHTSLING 16
+#define IDO_LEFTFLIP 17
+#define IDO_RIGHTFLIP 18
+#define NUM_OUTPUTS 18  
 
 #define IDI_LEFTFLIPPER 0
 #define IDI_RIGHTFLIPPER 1
@@ -131,7 +135,9 @@ struct stOutputDef{
 #define IDI_SENSOR1 6
 #define IDI_SENSOR2 7
 #define IDI_SENSOR3 8
-#define NUM_INPUTS 9
+#define IDI_LEFTSLING 9
+#define IDI_RIGHTSLING 10
+#define NUM_INPUTS 11
 
 // Declare the shared variables for input / output structures.
 extern stInputDef g_inputDef[];

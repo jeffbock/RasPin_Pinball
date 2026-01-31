@@ -27,9 +27,12 @@ constexpr int SPI1_MOSI_PIN = 20;  // SPI1 MOSI (Physical Pin 38)
 // Output definitions
 // Fields: outputName, outputMsg, id, pin, boardType, boardIndex (or Neopixel Instance), lastState, onTimeMS, offTimeMS, neoPixelIndex
 stOutputDef g_outputDef[] = {
-    {"IO0P8 Sling Shot", PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, 8, PB_IO, 0, PB_OFF, 500, 500, 0}, 
-    {"IO1P8 Pop Bumper", PB_OMSG_GENERIC_IO, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF, 1000, 1000, 0},
-    {"IO2P8 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF, 2000, 2000, 0},
+    {"IO0P08 LeftSling", PB_OMSG_GENERIC_IO, IDO_LEFTSLING, 8, PB_IO, 0, PB_OFF, 250, 250, 0}, 
+    {"IO0P09 RightSling", PB_OMSG_GENERIC_IO, IDO_RIGHTSLING, 9, PB_IO, 0, PB_OFF, 250, 250, 0}, 
+    {"IO0P10 LeftFlipper", PB_OMSG_GENERIC_IO, IDO_LEFTFLIP, 10, PB_IO, 0, PB_OFF, 100, 100, 0}, 
+    {"IO0P11 RightFlipper", PB_OMSG_GENERIC_IO, IDO_RIGHTFLIP, 11, PB_IO, 0, PB_OFF, 100, 100, 0}, 
+    {"IO1P08 Pop Bumper", PB_OMSG_GENERIC_IO, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF, 1000, 1000, 0},
+    {"IO2P08 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF, 2000, 2000, 0},
     {"IO0P15 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT2, 15, PB_IO, 0, PB_OFF, 500, 500, 0},
     {"Start LED", PB_OMSG_GENERIC_IO, IDO_LED1, 23, PB_RASPI, 0, PB_ON, 0, 0, 0},
     {"LED0P08 LED", PB_OMSG_LED, IDO_LED2, 8, PB_LED, 0, PB_OFF, 100, 100, 0},
@@ -46,17 +49,19 @@ stOutputDef g_outputDef[] = {
 };
 
 // Input definitions
-// Fields: inputName, simMapKey, inputMsg, id, pin, boardType, boardIndex, lastState, lastStateTick, debounceTimeMS, autoOutput, autoOutputId, autoPinState
+// Fields: inputName, simMapKey, inputMsg, id, pin, boardType, boardIndex, lastState, lastStateTick, debounceTimeMS, autoOutput, autoOutputId, autoPinState, autoOutputUsePulse
 stInputDef g_inputDef[] = {
-    {"Left Flipper", "A", PB_IMSG_BUTTON, IDI_LEFTFLIPPER, 27, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_LED2, PB_ON},
-    {"Right Flipper", "D", PB_IMSG_BUTTON, IDI_RIGHTFLIPPER, 17, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_LED3, PB_ON},
-    {"Left Activate", "Q", PB_IMSG_BUTTON, IDI_LEFTACTIVATE, 5, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
-    {"Right Activate", "E", PB_IMSG_BUTTON, IDI_RIGHTACTIVATE,22, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
-    {"Start", "Z", PB_IMSG_BUTTON, IDI_START, 6, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
-    {"Reset", "C", PB_IMSG_BUTTON, IDI_RESET, 24, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
-    {"IO0P07 Eject SW2", "1", PB_IMSG_SENSOR, IDI_SENSOR1, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF},
-    {"IO1P07", "2", PB_IMSG_SENSOR, IDI_SENSOR2, 7, PB_IO, 1, PB_OFF, 0, 5, false, 0, PB_OFF},
-    {"IO2P07", "3", PB_IMSG_SENSOR, IDI_SENSOR3, 7, PB_IO, 2, PB_OFF, 0, 5, false, 0, PB_OFF}
+    {"Left Flipper", "A", PB_IMSG_BUTTON, IDI_LEFTFLIPPER, 27, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_LEFTFLIP, PB_ON, false},
+    {"Right Flipper", "D", PB_IMSG_BUTTON, IDI_RIGHTFLIPPER, 17, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_RIGHTFLIP, PB_ON, false},
+    {"Left Activate", "Q", PB_IMSG_BUTTON, IDI_LEFTACTIVATE, 5, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    {"Right Activate", "E", PB_IMSG_BUTTON, IDI_RIGHTACTIVATE,22, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    {"Start", "Z", PB_IMSG_BUTTON, IDI_START, 6, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    {"Reset", "C", PB_IMSG_BUTTON, IDI_RESET, 24, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    {"IO0P07 Eject SW2", "1", PB_IMSG_SENSOR, IDI_SENSOR1, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    {"IO1P07", "2", PB_IMSG_SENSOR, IDI_SENSOR2, 7, PB_IO, 1, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    {"IO2P07", "3", PB_IMSG_SENSOR, IDI_SENSOR3, 7, PB_IO, 2, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    {"IO2P06 LSLING", "4", PB_IMSG_JETBUMPER, IDI_LEFTSLING, 6, PB_IO, 2, PB_OFF, 0, 5, true, IDO_LEFTSLING, PB_ON, true},
+    {"IO2P05 RSLING", "5", PB_IMSG_JETBUMPER, IDI_RIGHTSLING, 5, PB_IO, 2, PB_OFF, 0, 5, true, IDO_RIGHTSLING, PB_ON, true}
 };
 
 // LEDDriver Class Implementation for TLC59116 LED Driver Chip

@@ -84,6 +84,10 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_sandboxNeoPixelMaxPosition = 0;
     m_sandboxNeoPixelAnimMode = 0;  // Default to original step animation
 
+    // Simple Flip Mode variables
+    m_RestartSimpleFlipMode = true;
+    m_OverlayWasOnBeforeSimpleFlip = false;
+
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
     m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false; 
@@ -298,6 +302,7 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
         case PB_SETTINGS: return pbeRenderSettings(currentTick, lastTick); break;
         case PB_DIAGNOSTICS: return pbeRenderDiagnostics(currentTick, lastTick); break;
         case PB_TESTSANDBOX: return pbeRenderTestSandbox(currentTick, lastTick); break;
+        case PB_SIMPLEFLIPMODE: return pbeRenderSimpleFlipMode(currentTick, lastTick); break;
         default:
             pbeSendConsole("ERROR: Unknown main state in pbeRenderScreen");
             return (false);
@@ -885,7 +890,7 @@ bool PBEngine::pbeLoadTestSandbox(){
     
     // Create and register sandbox ejector device if not already created
     if (!m_sandboxEjector) {
-        m_sandboxEjector = new pbdEjector(this, IDI_SENSOR1, IDO_SLINGSHOT, IDO_BALLEJECT2);
+        m_sandboxEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LEFTSLING, IDO_BALLEJECT2);
         pbeAddDevice(m_sandboxEjector);
     }
     
@@ -1150,6 +1155,58 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
     return (true);   
 }
  
+// Simple Flip Mode Screen
+
+bool PBEngine::pbeLoadSimpleFlipMode(){
+    // Simple Flip Mode uses test mode resources
+    if (!pbeLoadTestMode()) {
+        pbeSendConsole("ERROR: Failed to load test mode resources in pbeLoadSimpleFlipMode");
+        return (false);
+    }
+    
+    return (true);
+}
+
+bool PBEngine::pbeRenderSimpleFlipMode(unsigned long currentTick, unsigned long lastTick){
+    
+    if (!pbeLoadSimpleFlipMode()) {
+        pbeSendConsole("ERROR: Failed to load simple flip mode resources");
+        return (false);
+    }
+    
+    if (m_RestartSimpleFlipMode) {
+        m_RestartSimpleFlipMode = false;
+        
+        // Remember if overlay was already on before entering
+        m_OverlayWasOnBeforeSimpleFlip = m_EnableOverlay;
+        
+        // Enable overlay for this mode
+        if (!m_EnableOverlay) {
+            m_EnableOverlay = true;
+        }
+        
+        // Enable auto outputs
+        SetAutoOutputEnable(true);
+    }
+    
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    
+    // Render the default background
+    pbeRenderDefaultBackground(currentTick, lastTick);
+    
+    // Render title (matching other menu title formats)
+    gfxSetColor(m_StartMenuFontId, 255, 165, 0, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 2.0, false);
+    gfxRenderShadowString(m_StartMenuFontId, "Simple Flip Mode", (PB_SCREENWIDTH/2), 15, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 6);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.5, false);
+    
+    // Render exit instructions in lower right
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Press Start to Exit", PB_SCREENWIDTH - 200, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    
+    return (true);
+}
+
 // Benchmark Screen
 bool PBEngine::pbeLoadBenchmark(){
 
@@ -1378,12 +1435,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         case (1):  m_mainState = PB_SETTINGS; m_RestartSettings = true; break;
                         case (2):  m_mainState = PB_DIAGNOSTICS; m_RestartDiagnostics = true; break;
                         case (3):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
-                        #if ENABLE_TEST_SANDBOX
+                        #if ENABLE_TEST_SANDBOX == 1
                         case (4):  
                             m_mainState = PB_TESTSANDBOX; 
                             m_RestartTestSandbox = true; 
                             // Pause background music when entering sandbox
                             m_soundSystem.pbsPauseMusic();
+                            break;
+                        #elif ENABLE_TEST_SANDBOX == 2
+                        case (4):
+                            m_mainState = PB_SIMPLEFLIPMODE;
+                            m_RestartSimpleFlipMode = true;
+                            // Don't pause music for simple flip mode
                             break;
                         #endif
                         default: break;
@@ -1774,7 +1837,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 
                     if (testCount % 3 == 0) {  
                         // Sending Test Messages
-                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, PB_ON, true);
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_LEFTSLING, PB_ON, true);
                         SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_POPBUMPER, PB_ON, true);
                         SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_BALLEJECT, PB_ON, true);
 
@@ -1931,6 +1994,27 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             }
         break;
         }
+        
+        case PB_SIMPLEFLIPMODE: {
+            // Simple Flip Mode - Just handle Start button to exit
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputId == IDI_START) {
+                    // Disable auto outputs
+                    SetAutoOutputEnable(false);
+                    
+                    // Restore overlay state to what it was before entering
+                    if (!m_OverlayWasOnBeforeSimpleFlip) {
+                        m_EnableOverlay = false;
+                    }
+                    
+                    // Return to main menu
+                    m_mainState = PB_STARTMENU;
+                    m_RestartMenu = true;
+                }
+            }
+        break;
+        }
+        
         default: break;
     }
 }
@@ -2256,14 +2340,17 @@ void PBEngine::SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixel
     SendNeoPixelSingleMsg(neoPixelId, pixelIndex, red, green, blue, brightness);
 }
 
-// Function to set or unset autoOutput for an input by array index
+// Function to set or unset autoOutput for an input by ID
 bool PBEngine::SetAutoOutput(unsigned int id, bool autoOutputEnabled)
 {
-    if (id < NUM_INPUTS) {
-        g_inputDef[id].autoOutput = autoOutputEnabled;
-        return true;  // Valid index, updated
+    // Find the input definition array index for this id
+    for (int idx = 0; idx < NUM_INPUTS; idx++) {
+        if (g_inputDef[idx].id == id) {
+            g_inputDef[idx].autoOutput = autoOutputEnabled;
+            return true;  // Valid ID, updated
+        }
     }
-    return false;  // Invalid index
+    return false;  // Invalid ID
 }
 //==============================================================================
 // Device Management Functions

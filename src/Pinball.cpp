@@ -267,35 +267,49 @@ bool  PBProcessInput() {
         int currentState = input.readPin();
         inputMessage.sentTick = g_PBEngine.GetTickCountGfx();
 
+        // Find the input definition array index for this inputId
+        int inputDefIndex = -1;
+        for (int idx = 0; idx < NUM_INPUTS; idx++) {
+            if (g_inputDef[idx].id == inputId) {
+                inputDefIndex = idx;
+                break;
+            }
+        }
+        
+        if (inputDefIndex == -1) continue; // Input definition not found, skip
+
         // Check if the state has changed
-        if (currentState != g_inputDef[inputId].lastState) {
+        if (currentState != g_inputDef[inputDefIndex].lastState) {
             // Create an input message
-            inputMessage.inputMsg = g_inputDef[inputId].inputMsg;
-            inputMessage.inputId = g_inputDef[inputId].id;
+            inputMessage.inputMsg = g_inputDef[inputDefIndex].inputMsg;
+            inputMessage.inputId = g_inputDef[inputDefIndex].id;
             if (currentState == 0) {
                 inputMessage.inputState = PB_ON;
-                g_inputDef[inputId].lastState = PB_ON;
+                g_inputDef[inputDefIndex].lastState = PB_ON;
             }
             else{
                 inputMessage.inputState = PB_OFF;
-                g_inputDef[inputId].lastState = PB_OFF;
+                g_inputDef[inputDefIndex].lastState = PB_OFF;
             }
             
             g_PBEngine.m_inputQueue.push(inputMessage);
             
             // Check if autoOutput is enabled globally and for this input
-            if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[inputId].autoOutput) {
+            if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[inputDefIndex].autoOutput) {
                 // Find the output type for the autoOutputId
                 PBOutputMsg outputType = PB_OMSG_LED; // Default to LED
                 for (int j = 0; j < NUM_OUTPUTS; j++) {
-                    if (g_outputDef[j].id == g_inputDef[inputId].autoOutputId) {
+                    if (g_outputDef[j].id == g_inputDef[inputDefIndex].autoOutputId) {
                         outputType = g_outputDef[j].outputMsg;
                         break;
                     }
                 }
                 
-                // Send output message with the specified autoPinState
-                g_PBEngine.SendOutputMsg(outputType, g_inputDef[inputId].autoOutputId, g_inputDef[inputId].autoPinState, true);
+                // Send output message with current input state (autoPinState can be used to invert if needed)
+                PBPinState outputState = (g_inputDef[inputDefIndex].autoPinState == PB_ON) ? inputMessage.inputState : 
+                                         (inputMessage.inputState == PB_ON ? PB_OFF : PB_ON);
+                // Use pulse mode based on autoOutputUsePulse field
+                g_PBEngine.SendOutputMsg(outputType, g_inputDef[inputDefIndex].autoOutputId, outputState, g_inputDef[inputDefIndex].autoOutputUsePulse);
             }
         }
     }
@@ -339,8 +353,11 @@ bool  PBProcessInput() {
                         }
                     }
                     
-                    // Send output message with the specified autoPinState
-                    g_PBEngine.SendOutputMsg(outputType, g_inputDef[i].autoOutputId, g_inputDef[i].autoPinState, true);
+                    // Send output message with current input state (autoPinState can be used to invert if needed)
+                    PBPinState outputState = (g_inputDef[i].autoPinState == PB_ON) ? inputMessage.inputState : 
+                                             (inputMessage.inputState == PB_ON ? PB_OFF : PB_ON);
+                    // Use pulse mode based on autoOutputUsePulse field
+                    g_PBEngine.SendOutputMsg(outputType, g_inputDef[i].autoOutputId, outputState, g_inputDef[i].autoOutputUsePulse);
                 }
             }
         }
