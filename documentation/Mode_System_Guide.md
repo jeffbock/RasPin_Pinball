@@ -121,7 +121,7 @@ struct ScreenRequest {
     ScreenPriority priority;         // Priority level
     unsigned long durationMs;        // How long to display (0 = until cleared)
     unsigned long requestTick;       // When request was made
-    bool canBePreempted;             // Can higher priority preempt this?
+    bool canBePreempted;             // Can this screen be preempted by any higher priority request?
 };
 ```
 

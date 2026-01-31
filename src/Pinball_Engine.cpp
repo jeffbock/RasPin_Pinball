@@ -2022,34 +2022,78 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 // Function checks the input / output structures for errors and if Raspberry Pi, sets up the GPIO pins
 bool PBEngine::pbeSetupIO()
 {
-    // Check the input definitions and ensure no duplicates
-    // Need to change this to a self test function - will need to set up Raspberry I/O and breakout boards
+    // Validation checks for input/output definitions
+    // These checks verify the configuration is valid after initialization
+    g_PBEngine.pbeSendConsole("RasPin: Validating I/O configuration");
+    g_PBEngine.pbeSendConsole("RasPin: Total Inputs: " + std::to_string(NUM_INPUTS));
+    g_PBEngine.pbeSendConsole("RasPin: Total Outputs: " + std::to_string(NUM_OUTPUTS));
+    
+    // Check for duplicate board/pin assignments in inputs
     for (int i = 0; i < NUM_INPUTS; i++) {
-        if (i == 0) g_PBEngine.pbeSendConsole("RasPin: Total Inputs: " + std::to_string(NUM_INPUTS)); 
-        // Check that the board type and pin number are unique
         for (int j = i + 1; j < NUM_INPUTS; j++) {
             if (g_inputDef[i].boardType == g_inputDef[j].boardType && 
                 g_inputDef[i].boardIndex == g_inputDef[j].boardIndex && 
                 g_inputDef[i].pin == g_inputDef[j].pin) {
-                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate input board/board index/pin for inputs " + 
-                    std::to_string(i) + " and " + std::to_string(j));
+                std::string boardName = (g_inputDef[i].boardType == PB_RASPI) ? "RASPI" : 
+                                       (g_inputDef[i].boardType == PB_IO) ? "IO" : "UNKNOWN";
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate input pin assignment - " + 
+                    g_inputDef[i].inputName + " and " + g_inputDef[j].inputName + 
+                    " both use " + boardName + " board " + std::to_string(g_inputDef[i].boardIndex) + 
+                    " pin " + std::to_string(g_inputDef[i].pin));
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
     }
+    
+    // Check for invalid board type configurations in inputs
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        // LED boards cannot be inputs
+        if (g_inputDef[i].boardType == PB_LED) {
+            g_PBEngine.pbeSendConsole("RasPin: ERROR: Input " + g_inputDef[i].inputName + 
+                " (index " + std::to_string(i) + ") is configured as PB_LED - LED boards are output-only!");
+            g_PBEngine.m_PassSelfTest = false;
+        }
+        // NeoPixel boards cannot be inputs
+        if (g_inputDef[i].boardType == PB_NEOPIXEL) {
+            g_PBEngine.pbeSendConsole("RasPin: ERROR: Input " + g_inputDef[i].inputName + 
+                " (index " + std::to_string(i) + ") is configured as PB_NEOPIXEL - NeoPixels are output-only!");
+            g_PBEngine.m_PassSelfTest = false;
+        }
+    }
 
-    // Check the output definitions and ensure no duplicates
+    // Check for duplicate board/pin assignments in outputs
     for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (i == 0) g_PBEngine.pbeSendConsole("RasPin: Total Outputs: " + std::to_string(NUM_OUTPUTS)); 
-        // Check that the board type, board index, and pin number are unique (all three must match)
-        // Note: Different board types (PB_LED vs PB_NEOPIXEL vs PB_RASPI) are different hardware, so same pin is OK
         for (int j = i + 1; j < NUM_OUTPUTS; j++) {
             if (g_outputDef[i].boardType == g_outputDef[j].boardType && 
                 g_outputDef[i].boardIndex == g_outputDef[j].boardIndex && 
                 g_outputDef[i].pin == g_outputDef[j].pin) {
-                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output board/board index/pin: Board " + 
-                    std::to_string(g_outputDef[i].boardIndex) + " Pin " + std::to_string(g_outputDef[i].pin) + 
-                    " used by outputs " + std::to_string(i) + " and " + std::to_string(j));
+                std::string boardName = (g_outputDef[i].boardType == PB_RASPI) ? "RASPI" : 
+                                       (g_outputDef[i].boardType == PB_IO) ? "IO" :
+                                       (g_outputDef[i].boardType == PB_LED) ? "LED" :
+                                       (g_outputDef[i].boardType == PB_NEOPIXEL) ? "NEOPIXEL" : "UNKNOWN";
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output pin assignment - " + 
+                    g_outputDef[i].outputName + " and " + g_outputDef[j].outputName + 
+                    " both use " + boardName + " board " + std::to_string(g_outputDef[i].boardIndex) + 
+                    " pin " + std::to_string(g_outputDef[i].pin));
+                g_PBEngine.m_PassSelfTest = false;
+            }
+        }
+    }
+    
+    // Check for conflicting pin usage between inputs and outputs on same board/pin
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        for (int j = 0; j < NUM_OUTPUTS; j++) {
+            // Only check boards that support both input and output (RASPI and IO)
+            if ((g_inputDef[i].boardType == PB_RASPI || g_inputDef[i].boardType == PB_IO) &&
+                g_inputDef[i].boardType == g_outputDef[j].boardType &&
+                g_inputDef[i].boardIndex == g_outputDef[j].boardIndex &&
+                g_inputDef[i].pin == g_outputDef[j].pin) {
+                std::string boardName = (g_inputDef[i].boardType == PB_RASPI) ? "RASPI" : "IO";
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Pin conflict - Input " + g_inputDef[i].inputName + 
+                    " and output " + g_outputDef[j].outputName + " both use " + boardName + 
+                    " board " + std::to_string(g_inputDef[i].boardIndex) + 
+                    " pin " + std::to_string(g_inputDef[i].pin) + 
+                    " - a pin cannot be both input and output!");
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
@@ -2075,6 +2119,11 @@ bool PBEngine::pbeSetupIO()
             if (g_inputDef[i].boardIndex < NUM_IO_CHIPS) {
                 g_PBEngine.m_IOChip[g_inputDef[i].boardIndex].ConfigurePin(g_inputDef[i].pin, PB_INPUT);
                 g_PBEngine.m_IOChip[g_inputDef[i].boardIndex].SetPinDebounceTime(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS);
+            } else {
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Input " + g_inputDef[i].inputName + 
+                    " references IO board " + std::to_string(g_inputDef[i].boardIndex) + 
+                    " which exceeds NUM_IO_CHIPS (" + std::to_string(NUM_IO_CHIPS) + ")");
+                g_PBEngine.m_PassSelfTest = false;
             }
         }
     }
@@ -2098,6 +2147,11 @@ bool PBEngine::pbeSetupIO()
             if (g_outputDef[i].boardIndex < NUM_IO_CHIPS) {
                 g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].ConfigurePin(g_outputDef[i].pin, PB_OUTPUT);    
                 g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].StageOutputPin(g_outputDef[i].pin, g_outputDef[i].lastState);  // Initialize to HIGH
+            } else {
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Output " + g_outputDef[i].outputName + 
+                    " references IO board " + std::to_string(g_outputDef[i].boardIndex) + 
+                    " which exceeds NUM_IO_CHIPS (" + std::to_string(NUM_IO_CHIPS) + ")");
+                g_PBEngine.m_PassSelfTest = false;
             }
         }
         else if (g_outputDef[i].boardType == PB_LED) {
@@ -2107,6 +2161,11 @@ bool PBEngine::pbeSetupIO()
                     g_PBEngine.m_LEDChip[g_outputDef[i].boardIndex].StageLEDControl(true, g_outputDef[i].pin, LEDOn);  // Initialize to ON
                 else
                 g_PBEngine.m_LEDChip[g_outputDef[i].boardIndex].StageLEDControl(false, g_outputDef[i].pin, LEDOff);  // Initialize to OFF
+            } else {
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Output " + g_outputDef[i].outputName + 
+                    " references LED board " + std::to_string(g_outputDef[i].boardIndex) + 
+                    " which exceeds NUM_LED_CHIPS (" + std::to_string(NUM_LED_CHIPS) + ")");
+                g_PBEngine.m_PassSelfTest = false;
             }
         }
         else if (g_outputDef[i].boardType == PB_NEOPIXEL) {

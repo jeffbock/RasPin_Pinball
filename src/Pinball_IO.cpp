@@ -32,66 +32,114 @@ static stInputDef g_inputDef[NUM_INPUTS];
 class PBEngine;
 extern PBEngine g_PBEngine;
 
+// Helper function to set an output definition entry with validation
+static bool SetOutputDef(int index, const char* name, PBOutputMsg msg, unsigned int pin, 
+                         PBBoardType boardType, unsigned int boardIndex, PBPinState lastState,
+                         unsigned int onTimeMS, unsigned int offTimeMS, unsigned int neoPixelIndex,
+                         bool* initialized, bool& hasErrors) {
+    // Bounds check
+    if (index < 0 || index >= NUM_OUTPUTS) {
+        g_PBEngine.pbeSendConsole("RasPin: ERROR: Output index " + std::to_string(index) + 
+                                 " (" + std::string(name) + ") out of bounds (max " + 
+                                 std::to_string(NUM_OUTPUTS-1) + ")");
+        hasErrors = true;
+        return false;
+    }
+    
+    // Duplicate check
+    if (initialized[index]) {
+        g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output index " + std::to_string(index) + 
+                                 " (" + std::string(name) + ")");
+        hasErrors = true;
+        return false;
+    }
+    
+    // Initialize the entry
+    g_outputDef[index].outputName = name;
+    g_outputDef[index].outputMsg = msg;
+    g_outputDef[index].pin = pin;
+    g_outputDef[index].boardType = boardType;
+    g_outputDef[index].boardIndex = boardIndex;
+    g_outputDef[index].lastState = lastState;
+    g_outputDef[index].onTimeMS = onTimeMS;
+    g_outputDef[index].offTimeMS = offTimeMS;
+    g_outputDef[index].neoPixelIndex = neoPixelIndex;
+    
+    initialized[index] = true;
+    return true;
+}
+
+// Helper function to set an input definition entry with validation
+static bool SetInputDef(int index, const char* name, const char* simKey, PBInputMsg msg,
+                        unsigned int pin, PBBoardType boardType, unsigned int boardIndex,
+                        PBPinState lastState, unsigned long lastStateTick, unsigned long debounceTimeMS,
+                        bool autoOutput, unsigned int autoOutputId, PBPinState autoPinState, 
+                        bool autoOutputUsePulse, bool* initialized, bool& hasErrors) {
+    // Bounds check
+    if (index < 0 || index >= NUM_INPUTS) {
+        g_PBEngine.pbeSendConsole("RasPin: ERROR: Input index " + std::to_string(index) + 
+                                 " (" + std::string(name) + ") out of bounds (max " + 
+                                 std::to_string(NUM_INPUTS-1) + ")");
+        hasErrors = true;
+        return false;
+    }
+    
+    // Duplicate check
+    if (initialized[index]) {
+        g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate input index " + std::to_string(index) + 
+                                 " (" + std::string(name) + ")");
+        hasErrors = true;
+        return false;
+    }
+    
+    // Initialize the entry
+    g_inputDef[index].inputName = name;
+    g_inputDef[index].simMapKey = simKey;
+    g_inputDef[index].inputMsg = msg;
+    g_inputDef[index].pin = pin;
+    g_inputDef[index].boardType = boardType;
+    g_inputDef[index].boardIndex = boardIndex;
+    g_inputDef[index].lastState = lastState;
+    g_inputDef[index].lastStateTick = lastStateTick;
+    g_inputDef[index].debounceTimeMS = debounceTimeMS;
+    g_inputDef[index].autoOutput = autoOutput;
+    g_inputDef[index].autoOutputId = autoOutputId;
+    g_inputDef[index].autoPinState = autoPinState;
+    g_inputDef[index].autoOutputUsePulse = autoOutputUsePulse;
+    
+    initialized[index] = true;
+    return true;
+}
+
 // Initialize output definitions array
 // This function must be called before using g_outputDef
+// Each output is initialized using its IDO_* #define as the array index
 void InitializeOutputDefs() {
     // Track which indices have been initialized to detect duplicates
     bool initialized[NUM_OUTPUTS] = {false};
     bool hasErrors = false;
     
-    // Helper lambda to check and set an index
-    auto setOutput = [&](int index, const char* name, PBOutputMsg msg, unsigned int pin, 
-                         PBBoardType boardType, unsigned int boardIndex, PBPinState lastState,
-                         unsigned int onTimeMS, unsigned int offTimeMS, unsigned int neoPixelIndex) {
-        // Bounds check
-        if (index < 0 || index >= NUM_OUTPUTS) {
-            g_PBEngine.pbeSendConsole("RasPin: ERROR: Output index " + std::to_string(index) + 
-                                     " out of bounds (max " + std::to_string(NUM_OUTPUTS-1) + ")");
-            hasErrors = true;
-            return;
-        }
-        
-        // Duplicate check
-        if (initialized[index]) {
-            g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output index " + std::to_string(index));
-            hasErrors = true;
-            return;
-        }
-        
-        // Initialize the entry
-        g_outputDef[index].outputName = name;
-        g_outputDef[index].outputMsg = msg;
-        g_outputDef[index].pin = pin;
-        g_outputDef[index].boardType = boardType;
-        g_outputDef[index].boardIndex = boardIndex;
-        g_outputDef[index].lastState = lastState;
-        g_outputDef[index].onTimeMS = onTimeMS;
-        g_outputDef[index].offTimeMS = offTimeMS;
-        g_outputDef[index].neoPixelIndex = neoPixelIndex;
-        
-        initialized[index] = true;
-    };
-    
     // Initialize each output using its #define index
-    setOutput(IDO_LEFTSLING, "IO0P08 LeftSling", PB_OMSG_GENERIC_IO, 8, PB_IO, 0, PB_OFF, 250, 250, 0);
-    setOutput(IDO_POPBUMPER, "IO1P08 Pop Bumper", PB_OMSG_GENERIC_IO, 8, PB_IO, 1, PB_OFF, 1000, 1000, 0);
-    setOutput(IDO_LED1, "Start LED", PB_OMSG_GENERIC_IO, 23, PB_RASPI, 0, PB_ON, 0, 0, 0);
-    setOutput(IDO_BALLEJECT, "IO2P08 Ball Eject", PB_OMSG_GENERIC_IO, 8, PB_IO, 2, PB_OFF, 2000, 2000, 0);
-    setOutput(IDO_LED2, "LED0P08 LED", PB_OMSG_LED, 8, PB_LED, 0, PB_OFF, 100, 100, 0);
-    setOutput(IDO_LED3, "LED0P09 LED", PB_OMSG_LED, 9, PB_LED, 0, PB_OFF, 150, 50, 0);
-    setOutput(IDO_LED4, "LED0P10 LED", PB_OMSG_LED, 10, PB_LED, 0, PB_OFF, 200, 0, 0);
-    setOutput(IDO_LED5, "LED1P08 LED", PB_OMSG_LED, 8, PB_LED, 1, PB_OFF, 50, 0, 0);
-    setOutput(IDO_LED6, "LED1P09 LED", PB_OMSG_LED, 9, PB_LED, 1, PB_OFF, 50, 0, 0);
-    setOutput(IDO_LED7, "LED1P10 LED", PB_OMSG_LED, 10, PB_LED, 1, PB_OFF, 50, 0, 0);
-    setOutput(IDO_LED8, "LED2P08 LED", PB_OMSG_LED, 8, PB_LED, 2, PB_OFF, 500, 0, 0);
-    setOutput(IDO_LED9, "LED2P09 LED", PB_OMSG_LED, 9, PB_LED, 2, PB_OFF, 300, 0, 0);
-    setOutput(IDO_LED10, "LED2P10 LED", PB_OMSG_LED, 10, PB_LED, 2, PB_OFF, 100, 0, 0);
-    setOutput(IDO_BALLEJECT2, "IO0P15 Ball Eject", PB_OMSG_GENERIC_IO, 15, PB_IO, 0, PB_OFF, 500, 500, 0);
-    setOutput(IDO_NEOPIXEL0, "NeoPixel0", PB_OMSG_NEOPIXEL, 10, PB_NEOPIXEL, 0, PB_OFF, 0, 0, 0);
-    setOutput(IDO_NEOPIXEL1, "NeoPixel1", PB_OMSG_NEOPIXEL, 12, PB_NEOPIXEL, 1, PB_OFF, 0, 0, 0);
-    setOutput(IDO_RIGHTSLING, "IO0P09 RightSling", PB_OMSG_GENERIC_IO, 9, PB_IO, 0, PB_OFF, 250, 250, 0);
-    setOutput(IDO_LEFTFLIP, "IO0P10 LeftFlipper", PB_OMSG_GENERIC_IO, 10, PB_IO, 0, PB_OFF, 100, 100, 0);
-    setOutput(IDO_RIGHTFLIP, "IO0P11 RightFlipper", PB_OMSG_GENERIC_IO, 11, PB_IO, 0, PB_OFF, 100, 100, 0);
+    // Format: SetOutputDef(index, name, msg_type, pin, board_type, board_index, initial_state, on_time_ms, off_time_ms, neopixel_index)
+    SetOutputDef(IDO_LEFTSLING, "IO0P08 LeftSling", PB_OMSG_GENERIC_IO, 8, PB_IO, 0, PB_OFF, 250, 250, 0, initialized, hasErrors);
+    SetOutputDef(IDO_POPBUMPER, "IO1P08 Pop Bumper", PB_OMSG_GENERIC_IO, 8, PB_IO, 1, PB_OFF, 1000, 1000, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LED1, "Start LED", PB_OMSG_GENERIC_IO, 23, PB_RASPI, 0, PB_ON, 0, 0, 0, initialized, hasErrors);
+    SetOutputDef(IDO_BALLEJECT, "IO2P08 Ball Eject", PB_OMSG_GENERIC_IO, 8, PB_IO, 2, PB_OFF, 2000, 2000, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LED2, "LED0P08 LED", PB_OMSG_LED, 8, PB_LED, 0, PB_OFF, 100, 100, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LED3, "LED0P09 LED", PB_OMSG_LED, 9, PB_LED, 0, PB_OFF, 150, 50, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LED4, "LED0P10 LED", PB_OMSG_LED, 10, PB_LED, 0, PB_OFF, 200, 0, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LED5, "LED1P08 LED", PB_OMSG_LED, 8, PB_LED, 1, PB_OFF, 50, 0, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LED6, "LED1P09 LED", PB_OMSG_LED, 9, PB_LED, 1, PB_OFF, 50, 0, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LED7, "LED1P10 LED", PB_OMSG_LED, 10, PB_LED, 1, PB_OFF, 50, 0, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LED8, "LED2P08 LED", PB_OMSG_LED, 8, PB_LED, 2, PB_OFF, 500, 0, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LED9, "LED2P09 LED", PB_OMSG_LED, 9, PB_LED, 2, PB_OFF, 300, 0, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LED10, "LED2P10 LED", PB_OMSG_LED, 10, PB_LED, 2, PB_OFF, 100, 0, 0, initialized, hasErrors);
+    SetOutputDef(IDO_BALLEJECT2, "IO0P15 Ball Eject", PB_OMSG_GENERIC_IO, 15, PB_IO, 0, PB_OFF, 500, 500, 0, initialized, hasErrors);
+    SetOutputDef(IDO_NEOPIXEL0, "NeoPixel0", PB_OMSG_NEOPIXEL, 10, PB_NEOPIXEL, 0, PB_OFF, 0, 0, 0, initialized, hasErrors);
+    SetOutputDef(IDO_NEOPIXEL1, "NeoPixel1", PB_OMSG_NEOPIXEL, 12, PB_NEOPIXEL, 1, PB_OFF, 0, 0, 0, initialized, hasErrors);
+    SetOutputDef(IDO_RIGHTSLING, "IO0P09 RightSling", PB_OMSG_GENERIC_IO, 9, PB_IO, 0, PB_OFF, 250, 250, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LEFTFLIP, "IO0P10 LeftFlipper", PB_OMSG_GENERIC_IO, 10, PB_IO, 0, PB_OFF, 100, 100, 0, initialized, hasErrors);
+    SetOutputDef(IDO_RIGHTFLIP, "IO0P11 RightFlipper", PB_OMSG_GENERIC_IO, 11, PB_IO, 0, PB_OFF, 100, 100, 0, initialized, hasErrors);
     
     if (hasErrors) {
         g_PBEngine.pbeSendConsole("RasPin: ERROR: Output initialization failed!");
@@ -102,62 +150,25 @@ void InitializeOutputDefs() {
 
 // Initialize input definitions array
 // This function must be called before using g_inputDef
+// Each input is initialized using its IDI_* #define as the array index
 void InitializeInputDefs() {
     // Track which indices have been initialized to detect duplicates
     bool initialized[NUM_INPUTS] = {false};
     bool hasErrors = false;
     
-    // Helper lambda to check and set an index
-    auto setInput = [&](int index, const char* name, const char* simKey, PBInputMsg msg,
-                        unsigned int pin, PBBoardType boardType, unsigned int boardIndex,
-                        PBPinState lastState, unsigned long lastStateTick, unsigned long debounceTimeMS,
-                        bool autoOutput, unsigned int autoOutputId, PBPinState autoPinState, 
-                        bool autoOutputUsePulse) {
-        // Bounds check
-        if (index < 0 || index >= NUM_INPUTS) {
-            g_PBEngine.pbeSendConsole("RasPin: ERROR: Input index " + std::to_string(index) + 
-                                     " out of bounds (max " + std::to_string(NUM_INPUTS-1) + ")");
-            hasErrors = true;
-            return;
-        }
-        
-        // Duplicate check
-        if (initialized[index]) {
-            g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate input index " + std::to_string(index));
-            hasErrors = true;
-            return;
-        }
-        
-        // Initialize the entry
-        g_inputDef[index].inputName = name;
-        g_inputDef[index].simMapKey = simKey;
-        g_inputDef[index].inputMsg = msg;
-        g_inputDef[index].pin = pin;
-        g_inputDef[index].boardType = boardType;
-        g_inputDef[index].boardIndex = boardIndex;
-        g_inputDef[index].lastState = lastState;
-        g_inputDef[index].lastStateTick = lastStateTick;
-        g_inputDef[index].debounceTimeMS = debounceTimeMS;
-        g_inputDef[index].autoOutput = autoOutput;
-        g_inputDef[index].autoOutputId = autoOutputId;
-        g_inputDef[index].autoPinState = autoPinState;
-        g_inputDef[index].autoOutputUsePulse = autoOutputUsePulse;
-        
-        initialized[index] = true;
-    };
-    
     // Initialize each input using its #define index
-    setInput(IDI_LEFTFLIPPER, "Left Flipper", "A", PB_IMSG_BUTTON, 27, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_LEFTFLIP, PB_ON, false);
-    setInput(IDI_RIGHTFLIPPER, "Right Flipper", "D", PB_IMSG_BUTTON, 17, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_RIGHTFLIP, PB_ON, false);
-    setInput(IDI_LEFTACTIVATE, "Left Activate", "Q", PB_IMSG_BUTTON, 5, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false);
-    setInput(IDI_RIGHTACTIVATE, "Right Activate", "E", PB_IMSG_BUTTON, 22, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false);
-    setInput(IDI_START, "Start", "Z", PB_IMSG_BUTTON, 6, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false);
-    setInput(IDI_RESET, "Reset", "C", PB_IMSG_BUTTON, 24, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false);
-    setInput(IDI_SENSOR1, "IO0P07 Eject SW2", "1", PB_IMSG_SENSOR, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false);
-    setInput(IDI_SENSOR2, "IO1P07", "2", PB_IMSG_SENSOR, 7, PB_IO, 1, PB_OFF, 0, 5, false, 0, PB_OFF, false);
-    setInput(IDI_SENSOR3, "IO2P07", "3", PB_IMSG_SENSOR, 7, PB_IO, 2, PB_OFF, 0, 5, false, 0, PB_OFF, false);
-    setInput(IDI_LEFTSLING, "IO2P06 LSLING", "4", PB_IMSG_JETBUMPER, 6, PB_IO, 2, PB_OFF, 0, 5, true, IDO_LEFTSLING, PB_ON, true);
-    setInput(IDI_RIGHTSLING, "IO2P05 RSLING", "5", PB_IMSG_JETBUMPER, 5, PB_IO, 2, PB_OFF, 0, 5, true, IDO_RIGHTSLING, PB_ON, true);
+    // Format: SetInputDef(index, name, sim_key, msg_type, pin, board_type, board_index, initial_state, state_tick, debounce_ms, auto_output, auto_output_id, auto_pin_state, auto_use_pulse)
+    SetInputDef(IDI_LEFTFLIPPER, "Left Flipper", "A", PB_IMSG_BUTTON, 27, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_LEFTFLIP, PB_ON, false, initialized, hasErrors);
+    SetInputDef(IDI_RIGHTFLIPPER, "Right Flipper", "D", PB_IMSG_BUTTON, 17, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_RIGHTFLIP, PB_ON, false, initialized, hasErrors);
+    SetInputDef(IDI_LEFTACTIVATE, "Left Activate", "Q", PB_IMSG_BUTTON, 5, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_RIGHTACTIVATE, "Right Activate", "E", PB_IMSG_BUTTON, 22, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_START, "Start", "Z", PB_IMSG_BUTTON, 6, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_RESET, "Reset", "C", PB_IMSG_BUTTON, 24, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_SENSOR1, "IO0P07 Eject SW2", "1", PB_IMSG_SENSOR, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_SENSOR2, "IO1P07", "2", PB_IMSG_SENSOR, 7, PB_IO, 1, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_SENSOR3, "IO2P07", "3", PB_IMSG_SENSOR, 7, PB_IO, 2, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_LEFTSLING, "IO2P06 LSLING", "4", PB_IMSG_JETBUMPER, 6, PB_IO, 2, PB_OFF, 0, 5, true, IDO_LEFTSLING, PB_ON, true, initialized, hasErrors);
+    SetInputDef(IDI_RIGHTSLING, "IO2P05 RSLING", "5", PB_IMSG_JETBUMPER, 5, PB_IO, 2, PB_OFF, 0, 5, true, IDO_RIGHTSLING, PB_ON, true, initialized, hasErrors);
     
     if (hasErrors) {
         g_PBEngine.pbeSendConsole("RasPin: ERROR: Input initialization failed!");
