@@ -812,7 +812,7 @@ bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick)
 bool PBEngine::pbeTableInit(){
     
     // Initialize and register the ball ejector device (using example IDs - can be configured per table)
-    pbdEjector* ballEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
+    pbdEjector* ballEjector = new pbdEjector(this, IDI_IO0P07_EJECTSW2, IDO_LED0P08_LSlingLED, IDO_IO2P08_EJECT);
     pbeAddDevice(ballEjector);
     
     // Initialize all NeoPixels to black/off when starting the pinball game
@@ -974,7 +974,7 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
     
     // Check for reset button press first, regardless of current state (unless already in reset)
     if (m_tableState != PBTableState::PBTBL_RESET) {
-        if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON && inputMessage.inputId == IDI_RESET) {
+        if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON && inputMessage.inputId == IDI_RPIOP24_RESET) {
             if (!m_ResetButtonPressed) {
                 // First time reset is pressed - save current state and enter reset mode
                 m_StateBeforeReset = m_tableState;
@@ -994,7 +994,7 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
 
             // Handle button presses during start screen
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_START) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
                     // Start button opens the doors
                     m_tableScreenState = PBTBLScreenState::START_OPENDOOR;
                 }
@@ -1015,27 +1015,27 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
         case PBTableState::PBTBL_MAINSCREEN: {
             // Handle start button press to add players
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_START) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
                     if (pbeTryAddPlayer()){
                         // Play the sword cut sound
                         m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
                     }
                 }
                 // Handle activate buttons to add score
-                else if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                else if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                     addPlayerScore(100);
                 }
-                else if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                else if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                     addPlayerScore(10000);
                 }
                 // Handle flipper buttons to enable/disable all characters
-                else if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                else if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     // Enable all characters
                     m_playerStates[m_currentPlayer].knightJoined = true;
                     m_playerStates[m_currentPlayer].priestJoined = true;
                     m_playerStates[m_currentPlayer].rangerJoined = true;
                 }
-                else if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                else if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     // Disable all characters
                     m_playerStates[m_currentPlayer].knightJoined = false;
                     m_playerStates[m_currentPlayer].priestJoined = false;
@@ -1057,7 +1057,7 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
         case PBTableState::PBTBL_RESET: {
             // Handle reset state inputs
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_RESET) {
+                if (inputMessage.inputId == IDI_RPIOP24_RESET) {
                     // Reset pressed again - clean up and return to main menu
                     m_ResetButtonPressed = false;
                     m_GameStarted = false; // Reset game started flag
@@ -1073,11 +1073,11 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                     m_soundSystem.pbsStopAllEffects();
                     m_soundSystem.pbsStopMusic();
                 }
-                else if (inputMessage.inputId == IDI_START || 
-                         inputMessage.inputId == IDI_LEFTACTIVATE || 
-                         inputMessage.inputId == IDI_RIGHTACTIVATE ||
-                         inputMessage.inputId == IDI_LEFTFLIPPER ||
-                         inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                else if (inputMessage.inputId == IDI_RPIOP06_START || 
+                         inputMessage.inputId == IDI_RPIOP05_LACTIVATE || 
+                         inputMessage.inputId == IDI_RPIOP22_RACTIVATE ||
+                         inputMessage.inputId == IDI_RPIOP27_LFLIP ||
+                         inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     // Any other button pressed - cancel reset and return to previous state
                     m_ResetButtonPressed = false;
                     m_tableState = m_StateBeforeReset;
@@ -1318,7 +1318,7 @@ void PBEngine::pbeUpdateNormalPlayMode(stInputMessage inputMessage, unsigned lon
     // Handle inputs specific to normal play mode
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
         // Example: Left activate button changes state in normal play
-        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
             if (modeState.normalPlayState == PBNormalPlayState::NORMAL_IDLE) {
                 modeState.normalPlayState = PBNormalPlayState::NORMAL_ACTIVE;
                 modeState.normalPlayStateStartTick = currentTick;
@@ -1326,7 +1326,7 @@ void PBEngine::pbeUpdateNormalPlayMode(stInputMessage inputMessage, unsigned lon
             }
         }
         // Right activate button drains ball
-        else if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+        else if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
             if (modeState.normalPlayState == PBNormalPlayState::NORMAL_ACTIVE) {
                 modeState.normalPlayState = PBNormalPlayState::NORMAL_DRAIN;
                 modeState.normalPlayStateStartTick = currentTick;
@@ -1343,7 +1343,7 @@ void PBEngine::pbeUpdateMultiballMode(stInputMessage inputMessage, unsigned long
     // Handle inputs specific to multiball mode
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
         // Example: Add scoring in multiball
-        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
             addPlayerScore(5000); // Higher scoring in multiball
             pbeSendConsole("Multiball jackpot!");
         }

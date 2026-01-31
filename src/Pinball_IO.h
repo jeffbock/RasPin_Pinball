@@ -105,38 +105,30 @@ struct stOutputDef{
 
 // The actual definition of the output items - the user of the library will need to define these for the specific table
 
-#define IDO_LEFTSLING 0
-#define IDO_POPBUMPER 1
-#define IDO_LED1 2
-#define IDO_BALLEJECT 3
-#define IDO_LED2 4
-#define IDO_LED3 5
-#define IDO_LED4 6
-#define IDO_LED5 7
-#define IDO_LED6 8
-#define IDO_LED7 9
-#define IDO_LED8 10
-#define IDO_LED9 11
-#define IDO_LED10 12
-#define IDO_BALLEJECT2 13
-#define IDO_NEOPIXEL0 14
-#define IDO_NEOPIXEL1 15
-#define IDO_RIGHTSLING 16
-#define IDO_LEFTFLIP 17
-#define IDO_RIGHTFLIP 18
-#define NUM_OUTPUTS 19  
+#define IDO_RPIOP23_StartLED 0
+#define IDO_IOD0P10_LFLIP 1
+#define IDO_IOD0P11_RFLIP 2
+#define IDO_LED0P08_LSlingLED 3
+#define IDO_LED0P09_RSlingLED 4
+#define IDO_IOD0P08_LSLING 5
+#define IDO_IOD0P09_RSLING 6
+#define IDO_IO2P08_EJECT 7
+#define IDO_LED0P10_EJECTLED 8
+#define IDO_IO1P08_POP 9
+#define IDO_RPIOP10_NEOPIXEL0 10
+#define NUM_OUTPUTS 11  
 
-#define IDI_LEFTFLIPPER 0
-#define IDI_RIGHTFLIPPER 1
-#define IDI_LEFTACTIVATE 2
-#define IDI_RIGHTACTIVATE 3
-#define IDI_START 4
-#define IDI_RESET 5
-#define IDI_SENSOR1 6
-#define IDI_SENSOR2 7
-#define IDI_SENSOR3 8
-#define IDI_LEFTSLING 9
-#define IDI_RIGHTSLING 10
+#define IDI_RPIOP27_LFLIP 0
+#define IDI_RPIOP17_RFLIP 1
+#define IDI_RPIOP05_LACTIVATE 2
+#define IDI_RPIOP22_RACTIVATE 3
+#define IDI_RPIOP06_START 4
+#define IDI_RPIOP24_RESET 5
+#define IDI_IO0P07_EJECTSW2 6
+#define IDI_IO1P07_SENSOR2 7
+#define IDI_IO2P07_SENSOR3 8
+#define IDI_IO2P06_LSLING 9
+#define IDI_IO2P05_RSLING 10
 #define NUM_INPUTS 11
 
 // Declare the shared variables for input / output structures.

@@ -890,7 +890,7 @@ bool PBEngine::pbeLoadTestSandbox(){
     
     // Create and register sandbox ejector device if not already created
     if (!m_sandboxEjector) {
-        m_sandboxEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LEFTSLING, IDO_BALLEJECT2);
+        m_sandboxEjector = new pbdEjector(this, IDI_IO0P07_EJECTSW2, IDO_IOD0P08_LSLING, IDO_IO2P08_EJECT);
         pbeAddDevice(m_sandboxEjector);
     }
     
@@ -1383,18 +1383,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             // Handle button presses in BOOTUP state
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 // Only start button exits to start menu
-                if (inputMessage.inputId == IDI_START) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
                     m_mainState = PB_STARTMENU;
                     m_RestartMenu = true;
                 }
                 // Left flipper or left activate: scroll console one line earlier (up)
-                else if (inputMessage.inputId == IDI_LEFTFLIPPER || inputMessage.inputId == IDI_LEFTACTIVATE) {
+                else if (inputMessage.inputId == IDI_RPIOP27_LFLIP || inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                     if (m_consoleStartLine > 0) {
                         m_consoleStartLine--;
                     }
                 }
                 // Right flipper or right activate: scroll console one line later (down)
-                else if (inputMessage.inputId == IDI_RIGHTFLIPPER || inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                else if (inputMessage.inputId == IDI_RPIOP17_RFLIP || inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                     // Calculate the maximum start line using helper function
                     unsigned int maxLinesOnScreen = pbeGetMaxConsoleLines(CONSOLE_START_Y);
                     unsigned int totalLines = (unsigned int)m_consoleQueue.size();
@@ -1412,7 +1412,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_STARTMENU: {
             // If either left button is pressed, subtract 1 from m_currentMenuItem
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     // Get the current menu item count from g_mainMenu
                     if (m_CurrentMenuItem > 0) {
                         m_CurrentMenuItem--;
@@ -1420,7 +1420,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     }
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
-                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     int temp = g_mainMenu.size();
                     if (m_CurrentMenuItem < (temp -1)) {
                         m_CurrentMenuItem++;
@@ -1428,7 +1428,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     }
                 }
 
-                if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
                     // Do something based on the menu item
                     switch (m_CurrentMenuItem) {
                         case (0):  if (m_PassSelfTest) m_mainState = PB_PLAYGAME; break;
@@ -1458,7 +1458,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_DIAGNOSTICS: {
 
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     // Get the current menu item count from g_mainMenu
                     if (m_CurrentDiagnosticsItem > 0) {
                         m_CurrentDiagnosticsItem--;
@@ -1466,7 +1466,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     }
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
-                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     int temp = g_diagnosticsMenu.size();
                     if (m_CurrentDiagnosticsItem < (temp -1)) {
                         m_CurrentDiagnosticsItem++;
@@ -1475,23 +1475,23 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
             }
 
-            if (((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) && inputMessage.inputState == PB_ON){
+            if (((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) && inputMessage.inputState == PB_ON){
                 switch (m_CurrentDiagnosticsItem) {
                     case (0): m_mainState = PB_TESTMODE; m_RestartTestMode = true; m_EnableOverlay = false; break;
                     case (1): m_mainState = PB_BENCHMARK; m_RestartBenchmark = true; break;
-                    case (2): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                    case (2): if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
                         if (m_EnableOverlay) m_EnableOverlay = false;
                         else m_EnableOverlay = true;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                     }
                     break;
-                    case (3): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                    case (3): if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
                         if (m_ShowFPS) m_ShowFPS = false;
                         else m_ShowFPS = true;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                     }
                     break;
-                    case (4): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                    case (4): if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
                         m_mainState = PB_BOOTUP;
                         m_RestartBootUp = true;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
@@ -1501,7 +1501,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
             }
 
-            if (inputMessage.inputId == IDI_START) {
+            if (inputMessage.inputId == IDI_RPIOP06_START) {
                 // Save the values to the settings file and exit the screen
                 m_mainState = PB_STARTMENU;
                 m_RestartMenu = true;
@@ -1513,19 +1513,19 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_TESTMODE: {
             
             // Record state of flipper and activation buttons
-            if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+            if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                 if (inputMessage.inputState == PB_ON) m_LFON = true;
                 else m_LFON = false;
             }
-            if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+            if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                 if (inputMessage.inputState == PB_ON) m_RFON = true;
                 else m_RFON = false;
             }
-            if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+            if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                 if (inputMessage.inputState == PB_ON) m_LAON = true;
                 else m_LAON = false;
             }
-            if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+            if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                 if (inputMessage.inputState == PB_ON) m_RAON = true;
                 else m_RAON = false;
             }
@@ -1534,16 +1534,16 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             if (m_TestMode == PB_TESTOUTPUT) {
                 // Send the output message to the output queue - this will be connected to HW
                 if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON && (!m_LAON && !m_RAON)) {
-                    if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                    if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                         if (m_CurrentOutputItem > 0) m_CurrentOutputItem--;
                     }
                     // If either right button is pressed, add 1 to m_currentMenuItem
-                    if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                    if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                         if (m_CurrentOutputItem < (NUM_OUTPUTS -1)) m_CurrentOutputItem++;
                     }
                 }
 
-                if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
                     // Handle NeoPixel outputs differently - initialize entire chain to black or white
                     if (g_outputDef[m_CurrentOutputItem].boardType == PB_NEOPIXEL) {
                         // Toggle state
@@ -1584,21 +1584,21 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         }
         case PB_SETTINGS: {
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     if (m_CurrentSettingsItem > 0) {
                         m_CurrentSettingsItem--;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
                     }
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
-                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     int temp = g_settingsMenu.size();
                     if (m_CurrentSettingsItem < (temp -1)) {
                         m_CurrentSettingsItem++;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
                     }
                 }
-                if (inputMessage.inputId == IDI_START) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
                     // Save the values to the settings file and exit the screen
                     pbeSaveFile();
                     m_mainState = PB_STARTMENU;
@@ -1606,17 +1606,17 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
             }
 
-            if (((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) && inputMessage.inputState == PB_ON){
+            if (((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) && inputMessage.inputState == PB_ON){
                 switch (m_CurrentSettingsItem) {
                     case (0): {
-                        if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                             if (m_saveFileData.mainVolume < 10) {
                                 m_saveFileData.mainVolume++;
                                 m_ampDriver.SetVolume(m_saveFileData.mainVolume * 10);  // Convert 0-10 to 0-100%
                                 g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                             }
                         }
-                        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                             if (m_saveFileData.mainVolume > 0) {
                                 m_saveFileData.mainVolume--;
                                 m_ampDriver.SetVolume(m_saveFileData.mainVolume * 10);  // Convert 0-10 to 0-100%
@@ -1626,12 +1626,12 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         break;
                     }
                     case (1): {
-                        if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                             if (m_saveFileData.musicVolume < 10) m_saveFileData.musicVolume++;
                             g_PBEngine.m_soundSystem.pbsSetMusicVolume(m_saveFileData.musicVolume * 10);
                             g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                         }
-                        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                             if (m_saveFileData.musicVolume > 0) m_saveFileData.musicVolume--;
                             g_PBEngine.m_soundSystem.pbsSetMusicVolume(m_saveFileData.musicVolume * 10);
                             g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
@@ -1639,13 +1639,13 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         break;
                     }
                     case (2): {
-                        if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                             if (m_saveFileData.ballsPerGame < 9) {
                                 m_saveFileData.ballsPerGame++;
                                 g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                             }
                         }
-                        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                             if (m_saveFileData.ballsPerGame > 1) {
                                 m_saveFileData.ballsPerGame--;
                                 g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
@@ -1654,7 +1654,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         break;
                     }
                     case (3): {
-                        if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                             switch (m_saveFileData.difficulty) {
                                 case PB_EASY: m_saveFileData.difficulty = PB_NORMAL; g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);break;
                                 case PB_NORMAL: m_saveFileData.difficulty = PB_HARD; g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);break;
@@ -1662,7 +1662,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                 case PB_EPIC: m_saveFileData.difficulty = PB_EPIC; break;
                             }
                         }
-                        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                             switch (m_saveFileData.difficulty) {
                                 case PB_EASY: m_saveFileData.difficulty = PB_EASY; break;
                                 case PB_NORMAL: m_saveFileData.difficulty = PB_EASY; g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);break;
@@ -1673,7 +1673,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         break;
                     }
                     case (4): {
-                        if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                        if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
                             resetHighScores();
                             g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                         }
@@ -1709,19 +1709,19 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_TESTSANDBOX: {
             // Track button states for display (only for button messages)
             if (inputMessage.inputMsg == PB_IMSG_BUTTON) {
-                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     if (inputMessage.inputState == PB_ON) m_LFON = true;
                     else m_LFON = false;
                 }
-                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     if (inputMessage.inputState == PB_ON) m_RFON = true;
                     else m_RFON = false;
                 }
-                if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                     if (inputMessage.inputState == PB_ON) m_LAON = true;
                     else m_LAON = false;
                 }
-                if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                     if (inputMessage.inputState == PB_ON) m_RAON = true;
                     else m_RAON = false;
                 }
@@ -1743,7 +1743,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         // Gradual fade: Red to Blue over 3 seconds, bidirectional loop
                         neoPixelGradualFade(255, 0, 0,  // Start: Red
                                           0, 0, 255,    // End: Blue
-                                          IDO_NEOPIXEL0, 
+                                          IDO_RPIOP10_NEOPIXEL0, 
                                           100,          // Update every 50ms
                                           3000,         // 3 second duration
                                           false,        // Don't restart (use loop instead)
@@ -1753,7 +1753,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         // Sweep from ends: Green to Purple over 4 seconds, bidirectional loop
                         neoPixelSweepFromEnds(0, 255, 0,  // Start: Green
                                             128, 0, 128,  // End: Purple
-                                            IDO_NEOPIXEL0,
+                                            IDO_RPIOP10_NEOPIXEL0,
                                             100,          // Update every 100ms
                                             4000,         // 4 second duration
                                             false,        // Don't restart (use loop instead)
@@ -1766,7 +1766,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                       0, 255, 0,       // Color 3: Green
                                       255, 0, 0,       // Color 4: Red
                                       0x0F,            // Mask: all 4 colors active (0b1111)
-                                      IDO_NEOPIXEL0,
+                                      IDO_RPIOP10_NEOPIXEL0,
                                       200,             // Shift every 200ms
                                       0,               // Duration ignored when looping
                                       true);           // Loop continuously
@@ -1775,7 +1775,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         // Split Toggle: Purple and Orange, swapping halves
                         neoPixelSplitToggle(128, 0, 128,  // Start: Purple
                                            255, 165, 0,   // End: Orange
-                                           IDO_NEOPIXEL0,
+                                           IDO_RPIOP10_NEOPIXEL0,
                                            400,           // Toggle every 400ms
                                            0,             // Duration ignored when looping
                                            true);         // Loop continuously
@@ -1783,7 +1783,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     case 5:
                         // Strobe: White light with 2000ms off time, accelerating over 20 seconds
                         neoPixelStrobe(255, 255, 255,  // White color
-                                      IDO_NEOPIXEL0,
+                                      IDO_RPIOP10_NEOPIXEL0,
                                       2000,            // 2000ms off time (5ms on is fixed)
                                       20000,           // 20 second overall duration with acceleration
                                       true);           // Loop continuously
@@ -1797,7 +1797,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 
                 // Start button exits to Start Menu
-                if (inputMessage.inputId == IDI_START) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
                     // Clean up video player before exiting
                     if (m_sandboxVideoPlayer) {
                         m_sandboxVideoPlayer->pbvpStop();
@@ -1832,18 +1832,19 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
                 
                 // Left Flipper - Test 1
-                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     static int testCount = 0;
 
                     if (testCount % 3 == 0) {  
                         // Sending Test Messages
-                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_LEFTSLING, PB_ON, true);
-                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_POPBUMPER, PB_ON, true);
-                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_BALLEJECT, PB_ON, true);
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_IOD0P08_LSLING, PB_ON, true);
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_IO1P08_POP, PB_ON, true);
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_IO2P08_EJECT, PB_ON, true);
 
-                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDCYAN, PB_ON, false);
-                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDYELLOW, PB_ON, false);
-                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDPURPLE, PB_ON, false);
+                        // Note: RGB LED test code commented out - these IDs refer to non-existent hardware in current config
+                        // SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDCYAN, PB_ON, false);
+                        // SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDYELLOW, PB_ON, false);
+                        // SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDPURPLE, PB_ON, false);
                     }
                     else if (testCount % 3 == 1) {
                         // Turn on RGB color cycle sequence
@@ -1858,10 +1859,10 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
                 
                 // Reset Button - Cycle through NeoPixel animation modes
-                if (inputMessage.inputId == IDI_RESET) {
+                if (inputMessage.inputId == IDI_RPIOP24_RESET) {
                     // Stop current animation if active
                     if (m_sandboxNeoPixelAnimActive) {
-                        SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);
+                        SendNeoPixelAllMsg(IDO_RPIOP10_NEOPIXEL0, PB_LEDBLUE, 32);
                         m_sandboxNeoPixelAnimActive = false;
                         pbeTimerStop(SANDBOX_NEOPIXEL_TIMER_ID);
                     }
@@ -1871,7 +1872,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
                 
                 // Right Flipper - NeoPixel Animation Test
-                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     if (!m_sandboxNeoPixelAnimActive) {
                         // Start animation
                         m_sandboxNeoPixelAnimActive = true;
@@ -1879,7 +1880,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         // Initialize based on mode
                         if (m_sandboxNeoPixelAnimMode == 0) {
                             // Original step animation needs initialization
-                            SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);  // Dark blue (brightness 32)
+                            SendNeoPixelAllMsg(IDO_RPIOP10_NEOPIXEL0, PB_LEDBLUE, 32);  // Dark blue (brightness 32)
                             m_sandboxNeoPixelPosition = -1;  // Start at position -1
                             m_sandboxNeoPixelMovingUp = true;
                             
@@ -1899,20 +1900,20 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             switch(m_sandboxNeoPixelAnimMode) {
                                 case 0: sandboxNeoPixelStep(); break;
                                 case 1: 
-                                    neoPixelGradualFade(255, 0, 0, 0, 0, 255, IDO_NEOPIXEL0, 50, 3000, true);
+                                    neoPixelGradualFade(255, 0, 0, 0, 0, 255, IDO_RPIOP10_NEOPIXEL0, 50, 3000, true);
                                     break;
                                 case 2:
-                                    neoPixelSweepFromEnds(0, 255, 0, 128, 0, 128, IDO_NEOPIXEL0, 50, 4000, true);
+                                    neoPixelSweepFromEnds(0, 255, 0, 128, 0, 128, IDO_RPIOP10_NEOPIXEL0, 50, 4000, true);
                                     break;
                                 case 5:
-                                    neoPixelStrobe(255, 255, 255, IDO_NEOPIXEL0, 2000, 0, true, true);
+                                    neoPixelStrobe(255, 255, 255, IDO_RPIOP10_NEOPIXEL0, 2000, 0, true, true);
                                     break;
                             }
                         } else {
                             // Timer mode: start timer for animation
                             // For strobe mode, reset state when starting
                             if (m_sandboxNeoPixelAnimMode == 5) {
-                                neoPixelStrobe(255, 255, 255, IDO_NEOPIXEL0, 2000, 20000, true, true);
+                                neoPixelStrobe(255, 255, 255, IDO_RPIOP10_NEOPIXEL0, 2000, 20000, true, true);
                             }
                             pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, SANDBOX_NEOPIXEL_TIMER_INTERVAL_MS);
                         }
@@ -1923,18 +1924,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             switch(m_sandboxNeoPixelAnimMode) {
                                 case 0: sandboxNeoPixelStep(); break;
                                 case 1:
-                                    neoPixelGradualFade(255, 0, 0, 0, 0, 255, IDO_NEOPIXEL0, 50, 3000, true);
+                                    neoPixelGradualFade(255, 0, 0, 0, 0, 255, IDO_RPIOP10_NEOPIXEL0, 50, 3000, true);
                                     break;
                                 case 2:
-                                    neoPixelSweepFromEnds(0, 255, 0, 128, 0, 128, IDO_NEOPIXEL0, 50, 4000, true);
+                                    neoPixelSweepFromEnds(0, 255, 0, 128, 0, 128, IDO_RPIOP10_NEOPIXEL0, 50, 4000, true);
                                     break;
                                 case 5:
-                                    neoPixelStrobe(255, 255, 255, IDO_NEOPIXEL0, 95, 0, true);
+                                    neoPixelStrobe(255, 255, 255, IDO_RPIOP10_NEOPIXEL0, 95, 0, true);
                                     break;
                             }
                         } else {
                             // Timer mode: toggle off (stop animation)
-                            SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);
+                            SendNeoPixelAllMsg(IDO_RPIOP10_NEOPIXEL0, PB_LEDBLUE, 32);
                             m_sandboxNeoPixelAnimActive = false;
                             pbeTimerStop(SANDBOX_NEOPIXEL_TIMER_ID);
                         }
@@ -1942,7 +1943,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
                 
                 // Left Activate - Test 3 - Video Playback Test (Toggle fade in/out)
-                if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                     if (m_sandboxVideoLoaded && m_sandboxVideoPlayer) {
                         pbvPlaybackState videoState = m_sandboxVideoPlayer->pbvpGetPlaybackState();
                         
@@ -1979,7 +1980,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
                 
                 // Right Activate - Test 4 - Ejector Device Test
-                if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                     if (m_sandboxEjector) {
                         if (m_sandboxEjector->pdbIsRunning()) {
                             // If running, stop and reset
@@ -1998,7 +1999,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_SIMPLEFLIPMODE: {
             // Simple Flip Mode - Just handle Start button to exit
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_START) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
                     // Disable auto outputs
                     SetAutoOutputEnable(false);
                     
@@ -2661,13 +2662,13 @@ void PBEngine::sandboxNeoPixelStep() {
         
         // Clear the 3-pixel trail
         if (clearPos - 1 >= 0 && clearPos - 1 < (int)numLEDs) {
-            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos - 1, PB_LEDBLUE, 32);
+            SendNeoPixelSingleMsg(IDO_RPIOP10_NEOPIXEL0, clearPos - 1, PB_LEDBLUE, 32);
         }
         if (clearPos >= 0 && clearPos < (int)numLEDs) {
-            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos, PB_LEDBLUE, 32);
+            SendNeoPixelSingleMsg(IDO_RPIOP10_NEOPIXEL0, clearPos, PB_LEDBLUE, 32);
         }
         if (clearPos + 1 >= 0 && clearPos + 1 < (int)numLEDs) {
-            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos + 1, PB_LEDBLUE, 32);
+            SendNeoPixelSingleMsg(IDO_RPIOP10_NEOPIXEL0, clearPos + 1, PB_LEDBLUE, 32);
         }
     }
 
@@ -2693,13 +2694,13 @@ void PBEngine::sandboxNeoPixelStep() {
         int idx3 = m_sandboxNeoPixelPosition + 1;   // Right purple
         
         if (idx1 >= 0 && idx1 < (int)numLEDs) {
-            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx1, PB_LEDPURPLE, 255);  // Purple
+            SendNeoPixelSingleMsg(IDO_RPIOP10_NEOPIXEL0, idx1, PB_LEDPURPLE, 255);  // Purple
         }
         if (idx2 >= 0 && idx2 < (int)numLEDs) {
-            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx2, PB_LEDRED, 255);     // Red
+            SendNeoPixelSingleMsg(IDO_RPIOP10_NEOPIXEL0, idx2, PB_LEDRED, 255);     // Red
         }
         if (idx3 >= 0 && idx3 < (int)numLEDs) {
-            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx3, PB_LEDPURPLE, 255);  // Purple
+            SendNeoPixelSingleMsg(IDO_RPIOP10_NEOPIXEL0, idx3, PB_LEDPURPLE, 255);  // Purple
         }
     }
     
