@@ -137,8 +137,7 @@ void pbdEjector::pbdExecute() {
 
     unsigned long currentTimeMS = m_pEngine->GetTickCountGfx();
     
-    // m_inputId is now the array index - validate it directly
-    if (m_inputId >= NUM_INPUTS) return; // Invalid input ID
+    // m_inputId is the array index (pre-validated, no bounds check needed)
     int inputDefIndex = m_inputId;
     
     switch (m_state) {

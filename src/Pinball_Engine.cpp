@@ -2336,12 +2336,9 @@ void PBEngine::SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixel
 // Function to set or unset autoOutput for an input by ID
 bool PBEngine::SetAutoOutput(unsigned int id, bool autoOutputEnabled)
 {
-    // id is now the array index - validate and use directly
-    if (id < NUM_INPUTS) {
-        g_inputDef[id].autoOutput = autoOutputEnabled;
-        return true;  // Valid ID, updated
-    }
-    return false;  // Invalid ID
+    // id is the array index - no bounds check needed, arrays are pre-validated
+    g_inputDef[id].autoOutput = autoOutputEnabled;
+    return true;
 }
 //==============================================================================
 // Device Management Functions
@@ -2803,8 +2800,8 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
     unsigned int numLEDs = 0;
     int boardIndex = -1;
     
-    // Get board index directly from neoPixelId (which is now the array index)
-    if (neoPixelId < NUM_OUTPUTS && g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+    // Get board index directly from neoPixelId (array index - no bounds check needed)
+    if (g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
         boardIndex = g_outputDef[neoPixelId].boardIndex;
     }
     
@@ -2975,8 +2972,8 @@ void PBEngine::neoPixelToggle(uint8_t color1R, uint8_t color1G, uint8_t color1B,
         unsigned int numLEDs = 0;
         int boardIndex = -1;
         
-        // Get board index directly from neoPixelId (which is now the array index)
-        if (neoPixelId < NUM_OUTPUTS && g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+        // Get board index directly from neoPixelId (array index - no bounds check needed)
+        if (g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
             boardIndex = g_outputDef[neoPixelId].boardIndex;
         }
         
@@ -3018,8 +3015,8 @@ void PBEngine::neoPixelToggle(uint8_t color1R, uint8_t color1G, uint8_t color1B,
     unsigned int numLEDs = 0;
     int boardIndex = -1;
     
-    // Get board index directly from neoPixelId (which is now the array index)
-    if (neoPixelId < NUM_OUTPUTS && g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+    // Get board index directly from neoPixelId (array index - no bounds check needed)
+    if (g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
         boardIndex = g_outputDef[neoPixelId].boardIndex;
     }
     
@@ -3075,8 +3072,8 @@ void PBEngine::neoPixelSplitToggle(uint8_t startR, uint8_t startG, uint8_t start
     unsigned int numLEDs = 0;
     int boardIndex = -1;
     
-    // Get board index directly from neoPixelId (which is now the array index)
-    if (neoPixelId < NUM_OUTPUTS && g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+    // Get board index directly from neoPixelId (array index - no bounds check needed)
+    if (g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
         boardIndex = g_outputDef[neoPixelId].boardIndex;
     }
     

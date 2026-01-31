@@ -140,8 +140,14 @@ struct stOutputDef{
 #define NUM_INPUTS 11
 
 // Declare the shared variables for input / output structures.
-extern stInputDef g_inputDef[];
-extern stOutputDef g_outputDef[];
+// Arrays are initialized by InitializeInputDefs() and InitializeOutputDefs() functions
+extern stInputDef g_inputDef[NUM_INPUTS];
+extern stOutputDef g_outputDef[NUM_OUTPUTS];
+
+// Initialization functions for input/output arrays
+// These must be called before using the arrays
+void InitializeInputDefs();
+void InitializeOutputDefs();
 
 // TLC59116 Register Definitions
 #define TLC59116_MODE1      0x00
