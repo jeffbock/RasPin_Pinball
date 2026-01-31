@@ -1559,7 +1559,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 
                          // Send the message to the output queue using SendOutputMsg function
                         SendOutputMsg(g_outputDef[m_CurrentOutputItem].outputMsg, 
-                                    g_outputDef[m_CurrentOutputItem].id, 
+                                    m_CurrentOutputItem,  // Use array index as ID
                                     g_outputDef[m_CurrentOutputItem].lastState, 
                                     false);
                     }
@@ -2026,16 +2026,13 @@ bool PBEngine::pbeSetupIO()
     // Need to change this to a self test function - will need to set up Raspberry I/O and breakout boards
     for (int i = 0; i < NUM_INPUTS; i++) {
         if (i == 0) g_PBEngine.pbeSendConsole("RasPin: Total Inputs: " + std::to_string(NUM_INPUTS)); 
+        // Check that the board type and pin number are unique
         for (int j = i + 1; j < NUM_INPUTS; j++) {
-            if (g_inputDef[i].id == g_inputDef[j].id) {
-                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate input ID: " + std::to_string(g_inputDef[i].id));
-                g_PBEngine.m_PassSelfTest = false;
-            }
-            // Check that the board type and pin number are unique
             if (g_inputDef[i].boardType == g_inputDef[j].boardType && 
                 g_inputDef[i].boardIndex == g_inputDef[j].boardIndex && 
                 g_inputDef[i].pin == g_inputDef[j].pin) {
-                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate input board/board index/pin: " + std::to_string(g_inputDef[i].id));
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate input board/board index/pin for inputs " + 
+                    std::to_string(i) + " and " + std::to_string(j));
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
@@ -2044,19 +2041,15 @@ bool PBEngine::pbeSetupIO()
     // Check the output definitions and ensure no duplicates
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         if (i == 0) g_PBEngine.pbeSendConsole("RasPin: Total Outputs: " + std::to_string(NUM_OUTPUTS)); 
+        // Check that the board type, board index, and pin number are unique (all three must match)
+        // Note: Different board types (PB_LED vs PB_NEOPIXEL vs PB_RASPI) are different hardware, so same pin is OK
         for (int j = i + 1; j < NUM_OUTPUTS; j++) {
-            if (g_outputDef[i].id == g_outputDef[j].id) {
-                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output ID: " + std::to_string(g_outputDef[i].id));
-                g_PBEngine.m_PassSelfTest = false;
-            }
-            // Check that the board type, board index, and pin number are unique (all three must match)
-            // Note: Different board types (PB_LED vs PB_NEOPIXEL vs PB_RASPI) are different hardware, so same pin is OK
             if (g_outputDef[i].boardType == g_outputDef[j].boardType && 
                 g_outputDef[i].boardIndex == g_outputDef[j].boardIndex && 
                 g_outputDef[i].pin == g_outputDef[j].pin) {
                 g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output board/board index/pin: Board " + 
                     std::to_string(g_outputDef[i].boardIndex) + " Pin " + std::to_string(g_outputDef[i].pin) + 
-                    " used by ID " + std::to_string(g_outputDef[i].id) + " and ID " + std::to_string(g_outputDef[j].id));
+                    " used by outputs " + std::to_string(i) + " and " + std::to_string(j));
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
@@ -2074,7 +2067,7 @@ bool PBEngine::pbeSetupIO()
         if (g_inputDef[i].boardType == PB_RASPI){
             #ifdef EXE_MODE_RASPI
                 cDebounceInput debounceInput(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS, true, true);
-                g_PBEngine.m_inputPiMap.emplace(g_inputDef[i].id, debounceInput);
+                g_PBEngine.m_inputPiMap.emplace(i, debounceInput);  // Use array index as ID
             #endif
         }
         else if (g_inputDef[i].boardType == PB_IO) {
@@ -2343,12 +2336,10 @@ void PBEngine::SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixel
 // Function to set or unset autoOutput for an input by ID
 bool PBEngine::SetAutoOutput(unsigned int id, bool autoOutputEnabled)
 {
-    // Find the input definition array index for this id
-    for (int idx = 0; idx < NUM_INPUTS; idx++) {
-        if (g_inputDef[idx].id == id) {
-            g_inputDef[idx].autoOutput = autoOutputEnabled;
-            return true;  // Valid ID, updated
-        }
+    // id is now the array index - validate and use directly
+    if (id < NUM_INPUTS) {
+        g_inputDef[id].autoOutput = autoOutputEnabled;
+        return true;  // Valid ID, updated
     }
     return false;  // Invalid ID
 }
@@ -2808,16 +2799,13 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
     // Update last step time
     state.lastStepTimeMS = currentTimeMS;
     
-    // Get LED count - need to find the board index from the output ID
+    // Get LED count - use neoPixelId as array index to get board index
     unsigned int numLEDs = 0;
     int boardIndex = -1;
     
-    // Find the board index for this neoPixelId
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (g_outputDef[i].id == neoPixelId && g_outputDef[i].boardType == PB_NEOPIXEL) {
-            boardIndex = g_outputDef[i].boardIndex;
-            break;
-        }
+    // Get board index directly from neoPixelId (which is now the array index)
+    if (neoPixelId < NUM_OUTPUTS && g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+        boardIndex = g_outputDef[neoPixelId].boardIndex;
     }
     
     // Get LED count using board index
@@ -2987,12 +2975,9 @@ void PBEngine::neoPixelToggle(uint8_t color1R, uint8_t color1G, uint8_t color1B,
         unsigned int numLEDs = 0;
         int boardIndex = -1;
         
-        // Find the board index for this neoPixelId
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
-            if (g_outputDef[i].id == neoPixelId && g_outputDef[i].boardType == PB_NEOPIXEL) {
-                boardIndex = g_outputDef[i].boardIndex;
-                break;
-            }
+        // Get board index directly from neoPixelId (which is now the array index)
+        if (neoPixelId < NUM_OUTPUTS && g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+            boardIndex = g_outputDef[neoPixelId].boardIndex;
         }
         
         // Get LED count using board index
@@ -3033,12 +3018,9 @@ void PBEngine::neoPixelToggle(uint8_t color1R, uint8_t color1G, uint8_t color1B,
     unsigned int numLEDs = 0;
     int boardIndex = -1;
     
-    // Find the board index for this neoPixelId
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (g_outputDef[i].id == neoPixelId && g_outputDef[i].boardType == PB_NEOPIXEL) {
-            boardIndex = g_outputDef[i].boardIndex;
-            break;
-        }
+    // Get board index directly from neoPixelId (which is now the array index)
+    if (neoPixelId < NUM_OUTPUTS && g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+        boardIndex = g_outputDef[neoPixelId].boardIndex;
     }
     
     // Get LED count using board index
@@ -3089,16 +3071,13 @@ void PBEngine::neoPixelSplitToggle(uint8_t startR, uint8_t startG, uint8_t start
     // Get or create state for this neoPixelId
     SplitToggleState& state = stateMap[neoPixelId];
     
-    // Get LED count - need to find the board index from the output ID
+    // Get LED count - use neoPixelId as array index to get board index
     unsigned int numLEDs = 0;
     int boardIndex = -1;
     
-    // Find the board index for this neoPixelId
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (g_outputDef[i].id == neoPixelId && g_outputDef[i].boardType == PB_NEOPIXEL) {
-            boardIndex = g_outputDef[i].boardIndex;
-            break;
-        }
+    // Get board index directly from neoPixelId (which is now the array index)
+    if (neoPixelId < NUM_OUTPUTS && g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+        boardIndex = g_outputDef[neoPixelId].boardIndex;
     }
     
     // Get LED count using board index

@@ -60,7 +60,7 @@ struct stInputDef{
     std::string inputName; 
     std::string simMapKey;
     PBInputMsg inputMsg; 
-    unsigned int id;
+    // Note: id field removed - array index now serves as the ID (matches IDI_* defines)
     unsigned int pin;  // GPIO pin number, or the pin index for IODriver Chips
     PBBoardType boardType;
     unsigned int boardIndex;
@@ -90,7 +90,7 @@ enum PBOutputMsg {
 struct stOutputDef{
     std::string outputName; 
     PBOutputMsg outputMsg; 
-    unsigned int id;
+    // Note: id field removed - array index now serves as the ID (matches IDO_* defines)
     unsigned int pin; // GPIO pin number, or the pin index for IODriver and LED Chips
     PBBoardType boardType;
     unsigned int boardIndex;
@@ -124,7 +124,7 @@ struct stOutputDef{
 #define IDO_RIGHTSLING 16
 #define IDO_LEFTFLIP 17
 #define IDO_RIGHTFLIP 18
-#define NUM_OUTPUTS 18  
+#define NUM_OUTPUTS 19  
 
 #define IDI_LEFTFLIPPER 0
 #define IDI_RIGHTFLIPPER 1

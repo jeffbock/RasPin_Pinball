@@ -25,43 +25,75 @@ constexpr int SPI0_MOSI_PIN = 10;  // SPI0 MOSI (Physical Pin 19)
 constexpr int SPI1_MOSI_PIN = 20;  // SPI1 MOSI (Physical Pin 38)
 
 // Output definitions
-// Fields: outputName, outputMsg, id, pin, boardType, boardIndex (or Neopixel Instance), lastState, onTimeMS, offTimeMS, neoPixelIndex
+// Fields: outputName, outputMsg, pin, boardType, boardIndex (or Neopixel Instance), lastState, onTimeMS, offTimeMS, neoPixelIndex
+// NOTE: Array index corresponds to IDO_* #define values - DO NOT REORDER
 stOutputDef g_outputDef[] = {
-    {"IO0P08 LeftSling", PB_OMSG_GENERIC_IO, IDO_LEFTSLING, 8, PB_IO, 0, PB_OFF, 250, 250, 0}, 
-    {"IO0P09 RightSling", PB_OMSG_GENERIC_IO, IDO_RIGHTSLING, 9, PB_IO, 0, PB_OFF, 250, 250, 0}, 
-    {"IO0P10 LeftFlipper", PB_OMSG_GENERIC_IO, IDO_LEFTFLIP, 10, PB_IO, 0, PB_OFF, 100, 100, 0}, 
-    {"IO0P11 RightFlipper", PB_OMSG_GENERIC_IO, IDO_RIGHTFLIP, 11, PB_IO, 0, PB_OFF, 100, 100, 0}, 
-    {"IO1P08 Pop Bumper", PB_OMSG_GENERIC_IO, IDO_POPBUMPER, 8, PB_IO, 1, PB_OFF, 1000, 1000, 0},
-    {"IO2P08 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT, 8, PB_IO, 2, PB_OFF, 2000, 2000, 0},
-    {"IO0P15 Ball Eject", PB_OMSG_GENERIC_IO, IDO_BALLEJECT2, 15, PB_IO, 0, PB_OFF, 500, 500, 0},
-    {"Start LED", PB_OMSG_GENERIC_IO, IDO_LED1, 23, PB_RASPI, 0, PB_ON, 0, 0, 0},
-    {"LED0P08 LED", PB_OMSG_LED, IDO_LED2, 8, PB_LED, 0, PB_OFF, 100, 100, 0},
-    {"LED0P09 LED", PB_OMSG_LED, IDO_LED3, 9, PB_LED, 0, PB_OFF, 150, 50, 0},
-    {"LED0P10 LED", PB_OMSG_LED, IDO_LED4, 10, PB_LED, 0, PB_OFF, 200, 0, 0},
-    {"LED1P08 LED", PB_OMSG_LED, IDO_LED5, 8, PB_LED, 1, PB_OFF, 50, 0, 0},
-    {"LED1P09 LED", PB_OMSG_LED, IDO_LED6, 9, PB_LED, 1, PB_OFF, 50, 0, 0},
-    {"LED1P10 LED", PB_OMSG_LED, IDO_LED7, 10, PB_LED, 1, PB_OFF, 50, 0, 0},
-    {"LED2P08 LED", PB_OMSG_LED, IDO_LED8, 8, PB_LED, 2, PB_OFF, 500, 0, 0},
-    {"LED2P09 LED", PB_OMSG_LED, IDO_LED9, 9, PB_LED, 2, PB_OFF, 300, 0, 0},
-    {"LED2P10 LED", PB_OMSG_LED, IDO_LED10, 10, PB_LED, 2, PB_OFF, 100, 0, 0},
-    {"NeoPixel0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 10, PB_NEOPIXEL, 0, PB_OFF, 0, 0, 0}
-    // {"NeoPixel1", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL1, 12, PB_NEOPIXEL, 1, PB_OFF, 0, 0, 0}  
+    // IDO_LEFTSLING = 0
+    {"IO0P08 LeftSling", PB_OMSG_GENERIC_IO, 8, PB_IO, 0, PB_OFF, 250, 250, 0}, 
+    // IDO_POPBUMPER = 1
+    {"IO1P08 Pop Bumper", PB_OMSG_GENERIC_IO, 8, PB_IO, 1, PB_OFF, 1000, 1000, 0},
+    // IDO_LED1 = 2
+    {"Start LED", PB_OMSG_GENERIC_IO, 23, PB_RASPI, 0, PB_ON, 0, 0, 0},
+    // IDO_BALLEJECT = 3
+    {"IO2P08 Ball Eject", PB_OMSG_GENERIC_IO, 8, PB_IO, 2, PB_OFF, 2000, 2000, 0},
+    // IDO_LED2 = 4
+    {"LED0P08 LED", PB_OMSG_LED, 8, PB_LED, 0, PB_OFF, 100, 100, 0},
+    // IDO_LED3 = 5
+    {"LED0P09 LED", PB_OMSG_LED, 9, PB_LED, 0, PB_OFF, 150, 50, 0},
+    // IDO_LED4 = 6
+    {"LED0P10 LED", PB_OMSG_LED, 10, PB_LED, 0, PB_OFF, 200, 0, 0},
+    // IDO_LED5 = 7
+    {"LED1P08 LED", PB_OMSG_LED, 8, PB_LED, 1, PB_OFF, 50, 0, 0},
+    // IDO_LED6 = 8
+    {"LED1P09 LED", PB_OMSG_LED, 9, PB_LED, 1, PB_OFF, 50, 0, 0},
+    // IDO_LED7 = 9
+    {"LED1P10 LED", PB_OMSG_LED, 10, PB_LED, 1, PB_OFF, 50, 0, 0},
+    // IDO_LED8 = 10
+    {"LED2P08 LED", PB_OMSG_LED, 8, PB_LED, 2, PB_OFF, 500, 0, 0},
+    // IDO_LED9 = 11
+    {"LED2P09 LED", PB_OMSG_LED, 9, PB_LED, 2, PB_OFF, 300, 0, 0},
+    // IDO_LED10 = 12
+    {"LED2P10 LED", PB_OMSG_LED, 10, PB_LED, 2, PB_OFF, 100, 0, 0},
+    // IDO_BALLEJECT2 = 13
+    {"IO0P15 Ball Eject", PB_OMSG_GENERIC_IO, 15, PB_IO, 0, PB_OFF, 500, 500, 0},
+    // IDO_NEOPIXEL0 = 14
+    {"NeoPixel0", PB_OMSG_NEOPIXEL, 10, PB_NEOPIXEL, 0, PB_OFF, 0, 0, 0},
+    // IDO_NEOPIXEL1 = 15
+    {"NeoPixel1", PB_OMSG_NEOPIXEL, 12, PB_NEOPIXEL, 1, PB_OFF, 0, 0, 0},
+    // IDO_RIGHTSLING = 16
+    {"IO0P09 RightSling", PB_OMSG_GENERIC_IO, 9, PB_IO, 0, PB_OFF, 250, 250, 0}, 
+    // IDO_LEFTFLIP = 17
+    {"IO0P10 LeftFlipper", PB_OMSG_GENERIC_IO, 10, PB_IO, 0, PB_OFF, 100, 100, 0}, 
+    // IDO_RIGHTFLIP = 18
+    {"IO0P11 RightFlipper", PB_OMSG_GENERIC_IO, 11, PB_IO, 0, PB_OFF, 100, 100, 0}
 };
 
 // Input definitions
-// Fields: inputName, simMapKey, inputMsg, id, pin, boardType, boardIndex, lastState, lastStateTick, debounceTimeMS, autoOutput, autoOutputId, autoPinState, autoOutputUsePulse
+// Fields: inputName, simMapKey, inputMsg, pin, boardType, boardIndex, lastState, lastStateTick, debounceTimeMS, autoOutput, autoOutputId, autoPinState, autoOutputUsePulse
+// NOTE: Array index corresponds to IDI_* #define values - DO NOT REORDER
 stInputDef g_inputDef[] = {
-    {"Left Flipper", "A", PB_IMSG_BUTTON, IDI_LEFTFLIPPER, 27, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_LEFTFLIP, PB_ON, false},
-    {"Right Flipper", "D", PB_IMSG_BUTTON, IDI_RIGHTFLIPPER, 17, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_RIGHTFLIP, PB_ON, false},
-    {"Left Activate", "Q", PB_IMSG_BUTTON, IDI_LEFTACTIVATE, 5, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
-    {"Right Activate", "E", PB_IMSG_BUTTON, IDI_RIGHTACTIVATE,22, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
-    {"Start", "Z", PB_IMSG_BUTTON, IDI_START, 6, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
-    {"Reset", "C", PB_IMSG_BUTTON, IDI_RESET, 24, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
-    {"IO0P07 Eject SW2", "1", PB_IMSG_SENSOR, IDI_SENSOR1, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
-    {"IO1P07", "2", PB_IMSG_SENSOR, IDI_SENSOR2, 7, PB_IO, 1, PB_OFF, 0, 5, false, 0, PB_OFF, false},
-    {"IO2P07", "3", PB_IMSG_SENSOR, IDI_SENSOR3, 7, PB_IO, 2, PB_OFF, 0, 5, false, 0, PB_OFF, false},
-    {"IO2P06 LSLING", "4", PB_IMSG_JETBUMPER, IDI_LEFTSLING, 6, PB_IO, 2, PB_OFF, 0, 5, true, IDO_LEFTSLING, PB_ON, true},
-    {"IO2P05 RSLING", "5", PB_IMSG_JETBUMPER, IDI_RIGHTSLING, 5, PB_IO, 2, PB_OFF, 0, 5, true, IDO_RIGHTSLING, PB_ON, true}
+    // IDI_LEFTFLIPPER = 0
+    {"Left Flipper", "A", PB_IMSG_BUTTON, 27, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_LEFTFLIP, PB_ON, false},
+    // IDI_RIGHTFLIPPER = 1
+    {"Right Flipper", "D", PB_IMSG_BUTTON, 17, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_RIGHTFLIP, PB_ON, false},
+    // IDI_LEFTACTIVATE = 2
+    {"Left Activate", "Q", PB_IMSG_BUTTON, 5, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    // IDI_RIGHTACTIVATE = 3
+    {"Right Activate", "E", PB_IMSG_BUTTON, 22, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    // IDI_START = 4
+    {"Start", "Z", PB_IMSG_BUTTON, 6, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    // IDI_RESET = 5
+    {"Reset", "C", PB_IMSG_BUTTON, 24, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    // IDI_SENSOR1 = 6
+    {"IO0P07 Eject SW2", "1", PB_IMSG_SENSOR, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    // IDI_SENSOR2 = 7
+    {"IO1P07", "2", PB_IMSG_SENSOR, 7, PB_IO, 1, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    // IDI_SENSOR3 = 8
+    {"IO2P07", "3", PB_IMSG_SENSOR, 7, PB_IO, 2, PB_OFF, 0, 5, false, 0, PB_OFF, false},
+    // IDI_LEFTSLING = 9
+    {"IO2P06 LSLING", "4", PB_IMSG_JETBUMPER, 6, PB_IO, 2, PB_OFF, 0, 5, true, IDO_LEFTSLING, PB_ON, true},
+    // IDI_RIGHTSLING = 10
+    {"IO2P05 RSLING", "5", PB_IMSG_JETBUMPER, 5, PB_IO, 2, PB_OFF, 0, 5, true, IDO_RIGHTSLING, PB_ON, true}
 };
 
 // LEDDriver Class Implementation for TLC59116 LED Driver Chip

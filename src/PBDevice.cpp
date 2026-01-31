@@ -137,16 +137,9 @@ void pbdEjector::pbdExecute() {
 
     unsigned long currentTimeMS = m_pEngine->GetTickCountGfx();
     
-    // Find the input definition array index for m_inputId
-    int inputDefIndex = -1;
-    for (int idx = 0; idx < NUM_INPUTS; idx++) {
-        if (g_inputDef[idx].id == m_inputId) {
-            inputDefIndex = idx;
-            break;
-        }
-    }
-    
-    if (inputDefIndex == -1) return; // Input not found
+    // m_inputId is now the array index - validate it directly
+    if (m_inputId >= NUM_INPUTS) return; // Invalid input ID
+    int inputDefIndex = m_inputId;
     
     switch (m_state) {
         case STATE_IDLE:

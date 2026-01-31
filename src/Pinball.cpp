@@ -159,7 +159,7 @@ void PBWinSimInput(std::string character, PBPinState inputState, stInputMessage*
     for (int i = 0; i < NUM_INPUTS; i++) {
         if (g_inputDef[i].simMapKey == character) {
             inputMessage->inputMsg = g_inputDef[i].inputMsg;
-            inputMessage->inputId = g_inputDef[i].id;
+            inputMessage->inputId = i;  // Use array index as ID
             inputMessage->inputState = inputState;
             inputMessage->sentTick = g_PBEngine.GetTickCountGfx();
 
@@ -267,22 +267,16 @@ bool  PBProcessInput() {
         int currentState = input.readPin();
         inputMessage.sentTick = g_PBEngine.GetTickCountGfx();
 
-        // Find the input definition array index for this inputId
-        int inputDefIndex = -1;
-        for (int idx = 0; idx < NUM_INPUTS; idx++) {
-            if (g_inputDef[idx].id == inputId) {
-                inputDefIndex = idx;
-                break;
-            }
-        }
+        // inputId is now the array index - use it directly
+        int inputDefIndex = inputId;
         
-        if (inputDefIndex == -1) continue; // Input definition not found, skip
+        if (inputDefIndex >= NUM_INPUTS) continue; // Invalid input ID, skip
 
         // Check if the state has changed
         if (currentState != g_inputDef[inputDefIndex].lastState) {
             // Create an input message
             inputMessage.inputMsg = g_inputDef[inputDefIndex].inputMsg;
-            inputMessage.inputId = g_inputDef[inputDefIndex].id;
+            inputMessage.inputId = inputDefIndex;  // Use array index as ID
             if (currentState == 0) {
                 inputMessage.inputState = PB_ON;
                 g_inputDef[inputDefIndex].lastState = PB_ON;
@@ -296,13 +290,11 @@ bool  PBProcessInput() {
             
             // Check if autoOutput is enabled globally and for this input
             if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[inputDefIndex].autoOutput) {
-                // Find the output type for the autoOutputId
+                // Get output type for autoOutputId (which is now also an array index)
+                unsigned int autoOutputId = g_inputDef[inputDefIndex].autoOutputId;
                 PBOutputMsg outputType = PB_OMSG_LED; // Default to LED
-                for (int j = 0; j < NUM_OUTPUTS; j++) {
-                    if (g_outputDef[j].id == g_inputDef[inputDefIndex].autoOutputId) {
-                        outputType = g_outputDef[j].outputMsg;
-                        break;
-                    }
+                if (autoOutputId < NUM_OUTPUTS) {
+                    outputType = g_outputDef[autoOutputId].outputMsg;
                 }
                 
                 // Send output message with current input state (autoPinState can be used to invert if needed)
@@ -333,7 +325,7 @@ bool  PBProcessInput() {
             if (pinState != g_inputDef[i].lastState) {
                 // Create an input message
                 inputMessage.inputMsg = g_inputDef[i].inputMsg;
-                inputMessage.inputId = g_inputDef[i].id;
+                inputMessage.inputId = i;  // Use array index as ID
                 inputMessage.inputState = pinState;
                 
                 // Update the last state
@@ -344,13 +336,11 @@ bool  PBProcessInput() {
                 
                 // Check if autoOutput is enabled globally and for this input
                 if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[i].autoOutput) {
-                    // Find the output type for the autoOutputId
+                    // Get output type for autoOutputId (which is now also an array index)
+                    unsigned int autoOutputId = g_inputDef[i].autoOutputId;
                     PBOutputMsg outputType = PB_OMSG_LED; // Default to LED
-                    for (int j = 0; j < NUM_OUTPUTS; j++) {
-                        if (g_outputDef[j].id == g_inputDef[i].autoOutputId) {
-                            outputType = g_outputDef[j].outputMsg;
-                            break;
-                        }
+                    if (autoOutputId < NUM_OUTPUTS) {
+                        outputType = g_outputDef[autoOutputId].outputMsg;
                     }
                     
                     // Send output message with current input state (autoPinState can be used to invert if needed)
@@ -459,11 +449,10 @@ bool PBProcessOutput() {
 }
 
 // Helper function to find output definition index by outputId
+// Since outputId is now the array index, this is trivial
 int FindOutputDefIndex(unsigned int outputId) {
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (g_outputDef[i].id == outputId) {
-            return i;
-        }
+    if (outputId < NUM_OUTPUTS) {
+        return outputId;
     }
     return -1;
 }
@@ -533,8 +522,8 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
                             g_outputDef[i].boardIndex == chipIndex && 
                             g_outputDef[i].pin == pin) {
                             
-                            // Remove from pulse map if present
-                            auto pulseIt = g_PBEngine.m_outputPulseMap.find(g_outputDef[i].id);
+                            // Remove from pulse map if present (using array index as ID)
+                            auto pulseIt = g_PBEngine.m_outputPulseMap.find(i);
                             if (pulseIt != g_PBEngine.m_outputPulseMap.end()) {
                                 g_PBEngine.m_outputPulseMap.erase(pulseIt);
                             }
@@ -1000,14 +989,11 @@ void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& o
 // Process NeoPixel sequence start/stop messages
 void ProcessNeoPixelSequenceMessage(const stOutputMessage& message) {
     // Find the driver index from the outputId
-    // For NeoPixel sequences, we'll use the boardIndex from the first matching output def
+    // For NeoPixel sequences, get the boardIndex from the output def using outputId as index
     int driverIndex = 0;  // Default to first driver
     
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (g_outputDef[i].id == message.outputId && g_outputDef[i].boardType == PB_NEOPIXEL) {
-            driverIndex = g_outputDef[i].boardIndex;
-            break;
-        }
+    if (message.outputId < NUM_OUTPUTS && g_outputDef[message.outputId].boardType == PB_NEOPIXEL) {
+        driverIndex = g_outputDef[message.outputId].boardIndex;
     }
     
     // Check if driver exists
