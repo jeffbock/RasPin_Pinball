@@ -33,6 +33,104 @@ enum class PBTBLMainScreenState {
     MAIN_END
 };
 
+// ========================================================================
+// MODE SYSTEM - Multiple pinball game modes with independent state flows
+// ========================================================================
+
+// Mode types - represents different game modes that can be active
+enum class PBTableMode {
+    MODE_NORMAL_PLAY = 0,     // Normal play mode - main gameplay
+    MODE_MULTIBALL = 1,       // Multiball mode - triggered by specific conditions
+    MODE_END
+};
+
+// Normal play mode sub-states
+enum class PBNormalPlayState {
+    NORMAL_IDLE = 0,          // Waiting for ball to be active
+    NORMAL_ACTIVE = 1,        // Ball in play
+    NORMAL_DRAIN = 2,         // Ball drained, handling end of ball
+    NORMAL_END
+};
+
+// Multiball mode sub-states
+enum class PBMultiballState {
+    MULTIBALL_START = 0,      // Starting multiball sequence
+    MULTIBALL_ACTIVE = 1,     // Multiball gameplay active
+    MULTIBALL_ENDING = 2,     // Transitioning back to normal play
+    MULTIBALL_END
+};
+
+// Screen request priority levels
+enum class ScreenPriority {
+    PRIORITY_LOW = 0,         // Normal gameplay screens
+    PRIORITY_MEDIUM = 1,      // Mode transitions, bonus screens
+    PRIORITY_HIGH = 2,        // Important events, jackpots
+    PRIORITY_CRITICAL = 3     // Cannot be preempted (e.g., game over)
+};
+
+// Screen request structure for centralized screen management
+struct ScreenRequest {
+    int screenId;                    // ID of screen to display
+    ScreenPriority priority;         // Priority level
+    unsigned long durationMs;        // How long to display (0 = until cleared)
+    unsigned long requestTick;       // When request was made
+    bool canBePreempted;             // Can higher priority preempt this?
+    
+    ScreenRequest() {
+        screenId = -1;
+        priority = ScreenPriority::PRIORITY_LOW;
+        durationMs = 0;
+        requestTick = 0;
+        canBePreempted = true;
+    }
+};
+
+// Mode state structure - tracks state for each mode
+struct ModeState {
+    PBTableMode currentMode;              // Current active mode
+    PBTableMode previousMode;             // Previous mode (for returning)
+    
+    // Normal play mode state
+    PBNormalPlayState normalPlayState;
+    unsigned long normalPlayStateStartTick;
+    
+    // Multiball mode state
+    PBMultiballState multiballState;
+    unsigned long multiballStateStartTick;
+    int multiballCount;                   // Number of balls in multiball
+    bool multiballQualified;              // Is multiball qualified to start?
+    
+    // Mode transition tracking
+    bool modeTransitionActive;
+    unsigned long modeTransitionStartTick;
+    
+    ModeState() {
+        currentMode = PBTableMode::MODE_NORMAL_PLAY;
+        previousMode = PBTableMode::MODE_NORMAL_PLAY;
+        normalPlayState = PBNormalPlayState::NORMAL_IDLE;
+        normalPlayStateStartTick = 0;
+        multiballState = PBMultiballState::MULTIBALL_START;
+        multiballStateStartTick = 0;
+        multiballCount = 1;
+        multiballQualified = false;
+        modeTransitionActive = false;
+        modeTransitionStartTick = 0;
+    }
+    
+    void reset() {
+        currentMode = PBTableMode::MODE_NORMAL_PLAY;
+        previousMode = PBTableMode::MODE_NORMAL_PLAY;
+        normalPlayState = PBNormalPlayState::NORMAL_IDLE;
+        normalPlayStateStartTick = 0;
+        multiballState = PBMultiballState::MULTIBALL_START;
+        multiballStateStartTick = 0;
+        multiballCount = 1;
+        multiballQualified = false;
+        modeTransitionActive = false;
+        modeTransitionStartTick = 0;
+    }
+};
+
 // Secondary score slot animation state
 struct SecondaryScoreAnimState {
     unsigned long animStartTick;      // Tick when animation started
@@ -71,6 +169,9 @@ public:
     bool ballSaveEnabled;             // Ball save active flag
     bool extraBallEnabled;            // Extra ball earned flag
     
+    // Mode system state - tracks current game mode and its sub-states
+    ModeState modeState;
+    
     // Character states
     bool knightJoined;                // Knight character joined
     bool priestJoined;                // Priest character joined
@@ -103,6 +204,9 @@ public:
         currentBall = 1;
         ballSaveEnabled = false;
         extraBallEnabled = false;
+        
+        // Reset mode state
+        modeState.reset();
         
         // Reset character states
         knightJoined = false;

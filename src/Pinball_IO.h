@@ -60,7 +60,7 @@ struct stInputDef{
     std::string inputName; 
     std::string simMapKey;
     PBInputMsg inputMsg; 
-    unsigned int id;
+    // Note: id field removed - array index now serves as the ID (matches IDI_* defines)
     unsigned int pin;  // GPIO pin number, or the pin index for IODriver Chips
     PBBoardType boardType;
     unsigned int boardIndex;
@@ -70,6 +70,7 @@ struct stInputDef{
     bool autoOutput;
     unsigned int autoOutputId;
     PBPinState autoPinState;
+    bool autoOutputUsePulse;  // true = pulse output, false = track input state
 };
 
 // Output defintions
@@ -89,7 +90,7 @@ enum PBOutputMsg {
 struct stOutputDef{
     std::string outputName; 
     PBOutputMsg outputMsg; 
-    unsigned int id;
+    // Note: id field removed - array index now serves as the ID (matches IDO_* defines)
     unsigned int pin; // GPIO pin number, or the pin index for IODriver and LED Chips
     PBBoardType boardType;
     unsigned int boardIndex;
@@ -104,38 +105,41 @@ struct stOutputDef{
 
 // The actual definition of the output items - the user of the library will need to define these for the specific table
 
-#define IDO_SLINGSHOT 0
-#define IDO_POPBUMPER 1
-#define IDO_LED1 2
-#define IDO_BALLEJECT 3
-#define IDO_LED2 4
-#define IDO_LED3 5
-#define IDO_LED4 6
-#define IDO_LED5 7
-#define IDO_LED6 8
-#define IDO_LED7 9
-#define IDO_LED8 10
-#define IDO_LED9 11
-#define IDO_LED10 12
-#define IDO_BALLEJECT2 13
-#define IDO_NEOPIXEL0 14
-#define IDO_NEOPIXEL1 15
-#define NUM_OUTPUTS 15
+#define IDO_RPIOP23_StartLED 0
+#define IDO_IOD0P10_LFLIP 1
+#define IDO_IOD0P11_RFLIP 2
+#define IDO_LED0P08_LSlingLED 3
+#define IDO_LED0P09_RSlingLED 4
+#define IDO_IOD0P08_LSLING 5
+#define IDO_IOD0P09_RSLING 6
+#define IDO_IO2P08_EJECT 7
+#define IDO_LED0P10_EJECTLED 8
+#define IDO_IO1P08_POP 9
+#define IDO_RPIOP10_NEOPIXEL0 10
+#define NUM_OUTPUTS 11  
 
-#define IDI_LEFTFLIPPER 0
-#define IDI_RIGHTFLIPPER 1
-#define IDI_LEFTACTIVATE 2
-#define IDI_RIGHTACTIVATE 3
-#define IDI_START 4
-#define IDI_RESET 5
-#define IDI_SENSOR1 6
-#define IDI_SENSOR2 7
-#define IDI_SENSOR3 8
-#define NUM_INPUTS 9
+#define IDI_RPIOP27_LFLIP 0
+#define IDI_RPIOP17_RFLIP 1
+#define IDI_RPIOP05_LACTIVATE 2
+#define IDI_RPIOP22_RACTIVATE 3
+#define IDI_RPIOP06_START 4
+#define IDI_RPIOP24_RESET 5
+#define IDI_IO0P07_EJECTSW2 6
+#define IDI_IO1P07_SENSOR2 7
+#define IDI_IO2P07_SENSOR3 8
+#define IDI_IO2P06_LSLING 9
+#define IDI_IO2P05_RSLING 10
+#define NUM_INPUTS 11
 
 // Declare the shared variables for input / output structures.
-extern stInputDef g_inputDef[];
-extern stOutputDef g_outputDef[];
+// Arrays are initialized by InitializeInputDefs() and InitializeOutputDefs() functions
+extern stInputDef g_inputDef[NUM_INPUTS];
+extern stOutputDef g_outputDef[NUM_OUTPUTS];
+
+// Initialization functions for input/output arrays
+// These must be called before using the arrays
+void InitializeInputDefs();
+void InitializeOutputDefs();
 
 // TLC59116 Register Definitions
 #define TLC59116_MODE1      0x00

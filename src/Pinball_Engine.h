@@ -86,7 +86,8 @@ enum PBMainState {
     PB_CREDITS = 5,
     PB_SETTINGS = 6,
     PB_DIAGNOSTICS = 7,
-    PB_TESTSANDBOX = 8
+    PB_TESTSANDBOX = 8,
+    PB_SIMPLEFLIPMODE = 9
 };
 
 enum PBTestModeState{ 
@@ -280,6 +281,32 @@ public:
     void pbeForceUpdateState();
     PBMainState pbeGetMainState() { return m_mainState; }
 
+    // ========================================================================
+    // MODE SYSTEM FUNCTIONS
+    // ========================================================================
+    
+    // Mode management functions
+    void pbeUpdateModeState(unsigned long currentTick);
+    bool pbeCheckModeTransition(unsigned long currentTick);
+    void pbeEnterMode(PBTableMode newMode, unsigned long currentTick);
+    void pbeExitMode(PBTableMode exitingMode, unsigned long currentTick);
+    
+    // Helper function to update mode system (reduces code duplication)
+    void pbeUpdateModeSystem(stInputMessage inputMessage, unsigned long currentTick);
+    
+    // Mode-specific state update functions
+    void pbeUpdateNormalPlayMode(stInputMessage inputMessage, unsigned long currentTick);
+    void pbeUpdateMultiballMode(stInputMessage inputMessage, unsigned long currentTick);
+    
+    // Mode qualification check functions
+    bool pbeCheckMultiballQualified();
+    
+    // Screen manager functions
+    void pbeRequestScreen(int screenId, ScreenPriority priority, unsigned long durationMs, bool canBePreempted);
+    void pbeUpdateScreenManager(unsigned long currentTick);
+    void pbeClearScreenRequests();
+    int pbeGetCurrentScreen();
+
     // Save File Functions
     bool pbeLoadSaveFile(bool loadDefaults, bool resetScores);
     bool pbeSaveFile();
@@ -404,6 +431,10 @@ public:
     int m_sandboxNeoPixelMaxPosition;    // Maximum position based on LED count
     int m_sandboxNeoPixelAnimMode;       // 0=original step, 1=gradual fade, 2=sweep from ends
 
+    // Simple Flip Mode screen variables
+    bool m_RestartSimpleFlipMode;
+    bool m_OverlayWasOnBeforeSimpleFlip;  // Track if overlay was already on when entering
+
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;
     std::mutex m_inputQMutex;
@@ -505,6 +536,7 @@ private:
     bool pbeRenderSettings(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderDiagnostics(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderTestSandbox(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderSimpleFlipMode(unsigned long currentTick, unsigned long lastTick);
 
     // Generic menu rendering function
     bool pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int fontSprite, unsigned int selectedItem, 
@@ -523,6 +555,7 @@ private:
     bool pbeLoadSettings();
     bool pbeLoadDiagnostics();
     bool pbeLoadTestSandbox();
+    bool pbeLoadSimpleFlipMode();
     
     // Reload functions to reset load state
     void pbeEngineReload();  // Reset all engine screen load states
@@ -601,6 +634,15 @@ private:
     
     // Device management - vector of all registered devices
     std::vector<PBDevice*> m_devices;
+    
+    // ========================================================================
+    // MODE SYSTEM PRIVATE MEMBERS
+    // ========================================================================
+    
+    // Centralized screen manager
+    std::vector<ScreenRequest> m_screenQueue;
+    int m_currentDisplayedScreen;
+    unsigned long m_currentScreenStartTick;
 };
 
 // Global variable declaration

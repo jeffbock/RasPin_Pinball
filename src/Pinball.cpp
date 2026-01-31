@@ -159,7 +159,7 @@ void PBWinSimInput(std::string character, PBPinState inputState, stInputMessage*
     for (int i = 0; i < NUM_INPUTS; i++) {
         if (g_inputDef[i].simMapKey == character) {
             inputMessage->inputMsg = g_inputDef[i].inputMsg;
-            inputMessage->inputId = g_inputDef[i].id;
+            inputMessage->inputId = i;  // Use array index as ID
             inputMessage->inputState = inputState;
             inputMessage->sentTick = g_PBEngine.GetTickCountGfx();
 
@@ -267,35 +267,36 @@ bool  PBProcessInput() {
         int currentState = input.readPin();
         inputMessage.sentTick = g_PBEngine.GetTickCountGfx();
 
+        // inputId is the array index (pre-validated, no bounds check needed)
+        int inputDefIndex = inputId;
+
         // Check if the state has changed
-        if (currentState != g_inputDef[inputId].lastState) {
+        if (currentState != g_inputDef[inputDefIndex].lastState) {
             // Create an input message
-            inputMessage.inputMsg = g_inputDef[inputId].inputMsg;
-            inputMessage.inputId = g_inputDef[inputId].id;
+            inputMessage.inputMsg = g_inputDef[inputDefIndex].inputMsg;
+            inputMessage.inputId = inputDefIndex;  // Use array index as ID
             if (currentState == 0) {
                 inputMessage.inputState = PB_ON;
-                g_inputDef[inputId].lastState = PB_ON;
+                g_inputDef[inputDefIndex].lastState = PB_ON;
             }
             else{
                 inputMessage.inputState = PB_OFF;
-                g_inputDef[inputId].lastState = PB_OFF;
+                g_inputDef[inputDefIndex].lastState = PB_OFF;
             }
             
             g_PBEngine.m_inputQueue.push(inputMessage);
             
             // Check if autoOutput is enabled globally and for this input
-            if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[inputId].autoOutput) {
-                // Find the output type for the autoOutputId
-                PBOutputMsg outputType = PB_OMSG_LED; // Default to LED
-                for (int j = 0; j < NUM_OUTPUTS; j++) {
-                    if (g_outputDef[j].id == g_inputDef[inputId].autoOutputId) {
-                        outputType = g_outputDef[j].outputMsg;
-                        break;
-                    }
-                }
+            if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[inputDefIndex].autoOutput) {
+                // Get output type for autoOutputId (array index - no bounds check needed)
+                unsigned int autoOutputId = g_inputDef[inputDefIndex].autoOutputId;
+                PBOutputMsg outputType = g_outputDef[autoOutputId].outputMsg;
                 
-                // Send output message with the specified autoPinState
-                g_PBEngine.SendOutputMsg(outputType, g_inputDef[inputId].autoOutputId, g_inputDef[inputId].autoPinState, true);
+                // Send output message with current input state (autoPinState can be used to invert if needed)
+                PBPinState outputState = (g_inputDef[inputDefIndex].autoPinState == PB_ON) ? inputMessage.inputState : 
+                                         (inputMessage.inputState == PB_ON ? PB_OFF : PB_ON);
+                // Use pulse mode based on autoOutputUsePulse field
+                g_PBEngine.SendOutputMsg(outputType, g_inputDef[inputDefIndex].autoOutputId, outputState, g_inputDef[inputDefIndex].autoOutputUsePulse);
             }
         }
     }
@@ -319,7 +320,7 @@ bool  PBProcessInput() {
             if (pinState != g_inputDef[i].lastState) {
                 // Create an input message
                 inputMessage.inputMsg = g_inputDef[i].inputMsg;
-                inputMessage.inputId = g_inputDef[i].id;
+                inputMessage.inputId = i;  // Use array index as ID
                 inputMessage.inputState = pinState;
                 
                 // Update the last state
@@ -330,17 +331,15 @@ bool  PBProcessInput() {
                 
                 // Check if autoOutput is enabled globally and for this input
                 if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[i].autoOutput) {
-                    // Find the output type for the autoOutputId
-                    PBOutputMsg outputType = PB_OMSG_LED; // Default to LED
-                    for (int j = 0; j < NUM_OUTPUTS; j++) {
-                        if (g_outputDef[j].id == g_inputDef[i].autoOutputId) {
-                            outputType = g_outputDef[j].outputMsg;
-                            break;
-                        }
-                    }
+                    // Get output type for autoOutputId (which is now also an array index)
+                    unsigned int autoOutputId = g_inputDef[i].autoOutputId;
+                    PBOutputMsg outputType = g_outputDef[autoOutputId].outputMsg;
                     
-                    // Send output message with the specified autoPinState
-                    g_PBEngine.SendOutputMsg(outputType, g_inputDef[i].autoOutputId, g_inputDef[i].autoPinState, true);
+                    // Send output message with current input state (autoPinState can be used to invert if needed)
+                    PBPinState outputState = (g_inputDef[i].autoPinState == PB_ON) ? inputMessage.inputState : 
+                                             (inputMessage.inputState == PB_ON ? PB_OFF : PB_ON);
+                    // Use pulse mode based on autoOutputUsePulse field
+                    g_PBEngine.SendOutputMsg(outputType, g_inputDef[i].autoOutputId, outputState, g_inputDef[i].autoOutputUsePulse);
                 }
             }
         }
@@ -442,13 +441,9 @@ bool PBProcessOutput() {
 }
 
 // Helper function to find output definition index by outputId
+// Since outputId is the array index (pre-validated), this is trivial
 int FindOutputDefIndex(unsigned int outputId) {
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (g_outputDef[i].id == outputId) {
-            return i;
-        }
-    }
-    return -1;
+    return outputId;
 }
 
 // Helper function to send all staged IO outputs to hardware
@@ -516,8 +511,8 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
                             g_outputDef[i].boardIndex == chipIndex && 
                             g_outputDef[i].pin == pin) {
                             
-                            // Remove from pulse map if present
-                            auto pulseIt = g_PBEngine.m_outputPulseMap.find(g_outputDef[i].id);
+                            // Remove from pulse map if present (using array index as ID)
+                            auto pulseIt = g_PBEngine.m_outputPulseMap.find(i);
                             if (pulseIt != g_PBEngine.m_outputPulseMap.end()) {
                                 g_PBEngine.m_outputPulseMap.erase(pulseIt);
                             }
@@ -983,14 +978,11 @@ void ProcessNeoPixelOutputMessage(const stOutputMessage& message, stOutputDef& o
 // Process NeoPixel sequence start/stop messages
 void ProcessNeoPixelSequenceMessage(const stOutputMessage& message) {
     // Find the driver index from the outputId
-    // For NeoPixel sequences, we'll use the boardIndex from the first matching output def
+    // For NeoPixel sequences, get the boardIndex from the output def using outputId as index (no bounds check needed)
     int driverIndex = 0;  // Default to first driver
     
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (g_outputDef[i].id == message.outputId && g_outputDef[i].boardType == PB_NEOPIXEL) {
-            driverIndex = g_outputDef[i].boardIndex;
-            break;
-        }
+    if (g_outputDef[message.outputId].boardType == PB_NEOPIXEL) {
+        driverIndex = g_outputDef[message.outputId].boardIndex;
     }
     
     // Check if driver exists
@@ -1215,7 +1207,12 @@ int main(int argc, char const *argv[])
 
     // Setup the inputs and outputs
     g_PBEngine.pbeSendConsole("RasPin: Setting up I/O");
-     // Initialize NeoPixel array pointers
+    
+    // Initialize input and output definition arrays
+    InitializeInputDefs();
+    InitializeOutputDefs();
+    
+    // Initialize NeoPixel array pointers
     initNeoPixelArrays();
     g_PBEngine.pbeSetupIO();
     

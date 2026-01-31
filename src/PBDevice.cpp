@@ -137,10 +137,13 @@ void pbdEjector::pbdExecute() {
 
     unsigned long currentTimeMS = m_pEngine->GetTickCountGfx();
     
+    // m_inputId is the array index (pre-validated, no bounds check needed)
+    int inputDefIndex = m_inputId;
+    
     switch (m_state) {
         case STATE_IDLE:
             // Check if ball is in ejector using input state
-            if (g_inputDef[m_inputId].lastState == PB_ON) {
+            if (g_inputDef[inputDefIndex].lastState == PB_ON) {
                 m_state = STATE_BALL_DETECTED;
                 m_solenoidStartMS = currentTimeMS;
                  m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_ledOutputId, PB_OFF, true);
@@ -163,7 +166,7 @@ void pbdEjector::pbdExecute() {
 
         case STATE_SOLENOID_OFF:
             if ((currentTimeMS - m_solenoidOffMS) >= EJECTOR_OFF_MS) {
-                if (g_inputDef[m_inputId].lastState == PB_ON) {
+                if (g_inputDef[inputDefIndex].lastState == PB_ON) {
                     // Ball still there, repeat the cycle
                     m_solenoidStartMS = currentTimeMS;
                     m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_solenoidOutputId, PB_ON, false);

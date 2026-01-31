@@ -84,6 +84,10 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_sandboxNeoPixelMaxPosition = 0;
     m_sandboxNeoPixelAnimMode = 0;  // Default to original step animation
 
+    // Simple Flip Mode variables
+    m_RestartSimpleFlipMode = true;
+    m_OverlayWasOnBeforeSimpleFlip = false;
+
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
     m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false; 
@@ -151,6 +155,10 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     
     // Auto output control - default to disable since the menus launch first
     m_autoOutputEnable = false;
+    
+    // Screen manager initialization
+    m_currentDisplayedScreen = -1;
+    m_currentScreenStartTick = 0;
  }
 
  PBEngine::~PBEngine(){
@@ -294,6 +302,7 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
         case PB_SETTINGS: return pbeRenderSettings(currentTick, lastTick); break;
         case PB_DIAGNOSTICS: return pbeRenderDiagnostics(currentTick, lastTick); break;
         case PB_TESTSANDBOX: return pbeRenderTestSandbox(currentTick, lastTick); break;
+        case PB_SIMPLEFLIPMODE: return pbeRenderSimpleFlipMode(currentTick, lastTick); break;
         default:
             pbeSendConsole("ERROR: Unknown main state in pbeRenderScreen");
             return (false);
@@ -881,7 +890,7 @@ bool PBEngine::pbeLoadTestSandbox(){
     
     // Create and register sandbox ejector device if not already created
     if (!m_sandboxEjector) {
-        m_sandboxEjector = new pbdEjector(this, IDI_SENSOR1, IDO_SLINGSHOT, IDO_BALLEJECT2);
+        m_sandboxEjector = new pbdEjector(this, IDI_IO0P07_EJECTSW2, IDO_IOD0P08_LSLING, IDO_IO2P08_EJECT);
         pbeAddDevice(m_sandboxEjector);
     }
     
@@ -1146,6 +1155,58 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
     return (true);   
 }
  
+// Simple Flip Mode Screen
+
+bool PBEngine::pbeLoadSimpleFlipMode(){
+    // Simple Flip Mode uses test mode resources
+    if (!pbeLoadTestMode()) {
+        pbeSendConsole("ERROR: Failed to load test mode resources in pbeLoadSimpleFlipMode");
+        return (false);
+    }
+    
+    return (true);
+}
+
+bool PBEngine::pbeRenderSimpleFlipMode(unsigned long currentTick, unsigned long lastTick){
+    
+    if (!pbeLoadSimpleFlipMode()) {
+        pbeSendConsole("ERROR: Failed to load simple flip mode resources");
+        return (false);
+    }
+    
+    if (m_RestartSimpleFlipMode) {
+        m_RestartSimpleFlipMode = false;
+        
+        // Remember if overlay was already on before entering
+        m_OverlayWasOnBeforeSimpleFlip = m_EnableOverlay;
+        
+        // Enable overlay for this mode
+        if (!m_EnableOverlay) {
+            m_EnableOverlay = true;
+        }
+        
+        // Enable auto outputs
+        SetAutoOutputEnable(true);
+    }
+    
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    
+    // Render the default background
+    pbeRenderDefaultBackground(currentTick, lastTick);
+    
+    // Render title (matching other menu title formats)
+    gfxSetColor(m_StartMenuFontId, 255, 165, 0, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 2.0, false);
+    gfxRenderShadowString(m_StartMenuFontId, "Simple Flip Mode", (PB_SCREENWIDTH/2), 15, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 6);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.5, false);
+    
+    // Render exit instructions in lower right
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Press Start to Exit", PB_SCREENWIDTH - 200, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    
+    return (true);
+}
+
 // Benchmark Screen
 bool PBEngine::pbeLoadBenchmark(){
 
@@ -1322,18 +1383,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             // Handle button presses in BOOTUP state
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 // Only start button exits to start menu
-                if (inputMessage.inputId == IDI_START) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
                     m_mainState = PB_STARTMENU;
                     m_RestartMenu = true;
                 }
                 // Left flipper or left activate: scroll console one line earlier (up)
-                else if (inputMessage.inputId == IDI_LEFTFLIPPER || inputMessage.inputId == IDI_LEFTACTIVATE) {
+                else if (inputMessage.inputId == IDI_RPIOP27_LFLIP || inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                     if (m_consoleStartLine > 0) {
                         m_consoleStartLine--;
                     }
                 }
                 // Right flipper or right activate: scroll console one line later (down)
-                else if (inputMessage.inputId == IDI_RIGHTFLIPPER || inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                else if (inputMessage.inputId == IDI_RPIOP17_RFLIP || inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                     // Calculate the maximum start line using helper function
                     unsigned int maxLinesOnScreen = pbeGetMaxConsoleLines(CONSOLE_START_Y);
                     unsigned int totalLines = (unsigned int)m_consoleQueue.size();
@@ -1351,7 +1412,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_STARTMENU: {
             // If either left button is pressed, subtract 1 from m_currentMenuItem
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     // Get the current menu item count from g_mainMenu
                     if (m_CurrentMenuItem > 0) {
                         m_CurrentMenuItem--;
@@ -1359,7 +1420,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     }
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
-                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     int temp = g_mainMenu.size();
                     if (m_CurrentMenuItem < (temp -1)) {
                         m_CurrentMenuItem++;
@@ -1367,19 +1428,25 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     }
                 }
 
-                if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
                     // Do something based on the menu item
                     switch (m_CurrentMenuItem) {
                         case (0):  if (m_PassSelfTest) m_mainState = PB_PLAYGAME; break;
                         case (1):  m_mainState = PB_SETTINGS; m_RestartSettings = true; break;
                         case (2):  m_mainState = PB_DIAGNOSTICS; m_RestartDiagnostics = true; break;
                         case (3):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
-                        #if ENABLE_TEST_SANDBOX
+                        #if ENABLE_TEST_SANDBOX == 1
                         case (4):  
                             m_mainState = PB_TESTSANDBOX; 
                             m_RestartTestSandbox = true; 
                             // Pause background music when entering sandbox
                             m_soundSystem.pbsPauseMusic();
+                            break;
+                        #elif ENABLE_TEST_SANDBOX == 2
+                        case (4):
+                            m_mainState = PB_SIMPLEFLIPMODE;
+                            m_RestartSimpleFlipMode = true;
+                            // Don't pause music for simple flip mode
                             break;
                         #endif
                         default: break;
@@ -1391,7 +1458,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_DIAGNOSTICS: {
 
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     // Get the current menu item count from g_mainMenu
                     if (m_CurrentDiagnosticsItem > 0) {
                         m_CurrentDiagnosticsItem--;
@@ -1399,7 +1466,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     }
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
-                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     int temp = g_diagnosticsMenu.size();
                     if (m_CurrentDiagnosticsItem < (temp -1)) {
                         m_CurrentDiagnosticsItem++;
@@ -1408,23 +1475,23 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
             }
 
-            if (((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) && inputMessage.inputState == PB_ON){
+            if (((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) && inputMessage.inputState == PB_ON){
                 switch (m_CurrentDiagnosticsItem) {
                     case (0): m_mainState = PB_TESTMODE; m_RestartTestMode = true; m_EnableOverlay = false; break;
                     case (1): m_mainState = PB_BENCHMARK; m_RestartBenchmark = true; break;
-                    case (2): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                    case (2): if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
                         if (m_EnableOverlay) m_EnableOverlay = false;
                         else m_EnableOverlay = true;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                     }
                     break;
-                    case (3): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                    case (3): if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
                         if (m_ShowFPS) m_ShowFPS = false;
                         else m_ShowFPS = true;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                     }
                     break;
-                    case (4): if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                    case (4): if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
                         m_mainState = PB_BOOTUP;
                         m_RestartBootUp = true;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
@@ -1434,7 +1501,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
             }
 
-            if (inputMessage.inputId == IDI_START) {
+            if (inputMessage.inputId == IDI_RPIOP06_START) {
                 // Save the values to the settings file and exit the screen
                 m_mainState = PB_STARTMENU;
                 m_RestartMenu = true;
@@ -1446,19 +1513,19 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_TESTMODE: {
             
             // Record state of flipper and activation buttons
-            if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+            if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                 if (inputMessage.inputState == PB_ON) m_LFON = true;
                 else m_LFON = false;
             }
-            if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+            if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                 if (inputMessage.inputState == PB_ON) m_RFON = true;
                 else m_RFON = false;
             }
-            if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+            if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                 if (inputMessage.inputState == PB_ON) m_LAON = true;
                 else m_LAON = false;
             }
-            if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+            if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                 if (inputMessage.inputState == PB_ON) m_RAON = true;
                 else m_RAON = false;
             }
@@ -1467,16 +1534,16 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             if (m_TestMode == PB_TESTOUTPUT) {
                 // Send the output message to the output queue - this will be connected to HW
                 if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON && (!m_LAON && !m_RAON)) {
-                    if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                    if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                         if (m_CurrentOutputItem > 0) m_CurrentOutputItem--;
                     }
                     // If either right button is pressed, add 1 to m_currentMenuItem
-                    if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                    if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                         if (m_CurrentOutputItem < (NUM_OUTPUTS -1)) m_CurrentOutputItem++;
                     }
                 }
 
-                if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
                     // Handle NeoPixel outputs differently - initialize entire chain to black or white
                     if (g_outputDef[m_CurrentOutputItem].boardType == PB_NEOPIXEL) {
                         // Toggle state
@@ -1492,7 +1559,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 
                          // Send the message to the output queue using SendOutputMsg function
                         SendOutputMsg(g_outputDef[m_CurrentOutputItem].outputMsg, 
-                                    g_outputDef[m_CurrentOutputItem].id, 
+                                    m_CurrentOutputItem,  // Use array index as ID
                                     g_outputDef[m_CurrentOutputItem].lastState, 
                                     false);
                     }
@@ -1517,21 +1584,21 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         }
         case PB_SETTINGS: {
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     if (m_CurrentSettingsItem > 0) {
                         m_CurrentSettingsItem--;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
                     }
                 }
                 // If either right button is pressed, add 1 to m_currentMenuItem
-                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     int temp = g_settingsMenu.size();
                     if (m_CurrentSettingsItem < (temp -1)) {
                         m_CurrentSettingsItem++;
                         g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
                     }
                 }
-                if (inputMessage.inputId == IDI_START) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
                     // Save the values to the settings file and exit the screen
                     pbeSaveFile();
                     m_mainState = PB_STARTMENU;
@@ -1539,17 +1606,17 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
             }
 
-            if (((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) && inputMessage.inputState == PB_ON){
+            if (((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) && inputMessage.inputState == PB_ON){
                 switch (m_CurrentSettingsItem) {
                     case (0): {
-                        if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                             if (m_saveFileData.mainVolume < 10) {
                                 m_saveFileData.mainVolume++;
                                 m_ampDriver.SetVolume(m_saveFileData.mainVolume * 10);  // Convert 0-10 to 0-100%
                                 g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                             }
                         }
-                        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                             if (m_saveFileData.mainVolume > 0) {
                                 m_saveFileData.mainVolume--;
                                 m_ampDriver.SetVolume(m_saveFileData.mainVolume * 10);  // Convert 0-10 to 0-100%
@@ -1559,12 +1626,12 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         break;
                     }
                     case (1): {
-                        if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                             if (m_saveFileData.musicVolume < 10) m_saveFileData.musicVolume++;
                             g_PBEngine.m_soundSystem.pbsSetMusicVolume(m_saveFileData.musicVolume * 10);
                             g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                         }
-                        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                             if (m_saveFileData.musicVolume > 0) m_saveFileData.musicVolume--;
                             g_PBEngine.m_soundSystem.pbsSetMusicVolume(m_saveFileData.musicVolume * 10);
                             g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
@@ -1572,13 +1639,13 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         break;
                     }
                     case (2): {
-                        if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                             if (m_saveFileData.ballsPerGame < 9) {
                                 m_saveFileData.ballsPerGame++;
                                 g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                             }
                         }
-                        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                             if (m_saveFileData.ballsPerGame > 1) {
                                 m_saveFileData.ballsPerGame--;
                                 g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
@@ -1587,7 +1654,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         break;
                     }
                     case (3): {
-                        if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                             switch (m_saveFileData.difficulty) {
                                 case PB_EASY: m_saveFileData.difficulty = PB_NORMAL; g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);break;
                                 case PB_NORMAL: m_saveFileData.difficulty = PB_HARD; g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);break;
@@ -1595,7 +1662,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                 case PB_EPIC: m_saveFileData.difficulty = PB_EPIC; break;
                             }
                         }
-                        if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                             switch (m_saveFileData.difficulty) {
                                 case PB_EASY: m_saveFileData.difficulty = PB_EASY; break;
                                 case PB_NORMAL: m_saveFileData.difficulty = PB_EASY; g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);break;
@@ -1606,7 +1673,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         break;
                     }
                     case (4): {
-                        if ((inputMessage.inputId == IDI_RIGHTACTIVATE) || (inputMessage.inputId == IDI_LEFTACTIVATE)) {
+                        if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
                             resetHighScores();
                             g_PBEngine.m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                         }
@@ -1642,19 +1709,19 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         case PB_TESTSANDBOX: {
             // Track button states for display (only for button messages)
             if (inputMessage.inputMsg == PB_IMSG_BUTTON) {
-                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     if (inputMessage.inputState == PB_ON) m_LFON = true;
                     else m_LFON = false;
                 }
-                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     if (inputMessage.inputState == PB_ON) m_RFON = true;
                     else m_RFON = false;
                 }
-                if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                     if (inputMessage.inputState == PB_ON) m_LAON = true;
                     else m_LAON = false;
                 }
-                if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                     if (inputMessage.inputState == PB_ON) m_RAON = true;
                     else m_RAON = false;
                 }
@@ -1676,7 +1743,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         // Gradual fade: Red to Blue over 3 seconds, bidirectional loop
                         neoPixelGradualFade(255, 0, 0,  // Start: Red
                                           0, 0, 255,    // End: Blue
-                                          IDO_NEOPIXEL0, 
+                                          IDO_RPIOP10_NEOPIXEL0, 
                                           100,          // Update every 50ms
                                           3000,         // 3 second duration
                                           false,        // Don't restart (use loop instead)
@@ -1686,7 +1753,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         // Sweep from ends: Green to Purple over 4 seconds, bidirectional loop
                         neoPixelSweepFromEnds(0, 255, 0,  // Start: Green
                                             128, 0, 128,  // End: Purple
-                                            IDO_NEOPIXEL0,
+                                            IDO_RPIOP10_NEOPIXEL0,
                                             100,          // Update every 100ms
                                             4000,         // 4 second duration
                                             false,        // Don't restart (use loop instead)
@@ -1699,7 +1766,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                       0, 255, 0,       // Color 3: Green
                                       255, 0, 0,       // Color 4: Red
                                       0x0F,            // Mask: all 4 colors active (0b1111)
-                                      IDO_NEOPIXEL0,
+                                      IDO_RPIOP10_NEOPIXEL0,
                                       200,             // Shift every 200ms
                                       0,               // Duration ignored when looping
                                       true);           // Loop continuously
@@ -1708,7 +1775,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         // Split Toggle: Purple and Orange, swapping halves
                         neoPixelSplitToggle(128, 0, 128,  // Start: Purple
                                            255, 165, 0,   // End: Orange
-                                           IDO_NEOPIXEL0,
+                                           IDO_RPIOP10_NEOPIXEL0,
                                            400,           // Toggle every 400ms
                                            0,             // Duration ignored when looping
                                            true);         // Loop continuously
@@ -1716,7 +1783,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     case 5:
                         // Strobe: White light with 2000ms off time, accelerating over 20 seconds
                         neoPixelStrobe(255, 255, 255,  // White color
-                                      IDO_NEOPIXEL0,
+                                      IDO_RPIOP10_NEOPIXEL0,
                                       2000,            // 2000ms off time (5ms on is fixed)
                                       20000,           // 20 second overall duration with acceleration
                                       true);           // Loop continuously
@@ -1730,7 +1797,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 
                 // Start button exits to Start Menu
-                if (inputMessage.inputId == IDI_START) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
                     // Clean up video player before exiting
                     if (m_sandboxVideoPlayer) {
                         m_sandboxVideoPlayer->pbvpStop();
@@ -1765,18 +1832,19 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
                 
                 // Left Flipper - Test 1
-                if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     static int testCount = 0;
 
                     if (testCount % 3 == 0) {  
                         // Sending Test Messages
-                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_SLINGSHOT, PB_ON, true);
-                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_POPBUMPER, PB_ON, true);
-                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_BALLEJECT, PB_ON, true);
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_IOD0P08_LSLING, PB_ON, true);
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_IO1P08_POP, PB_ON, true);
+                        SendOutputMsg(PB_OMSG_GENERIC_IO, IDO_IO2P08_EJECT, PB_ON, true);
 
-                        SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDCYAN, PB_ON, false);
-                        SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDYELLOW, PB_ON, false);
-                        SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDPURPLE, PB_ON, false);
+                        // Note: RGB LED test code commented out - these IDs refer to non-existent hardware in current config
+                        // SendRGBMsg(IDO_LED2, IDO_LED3, IDO_LED4, PB_LEDCYAN, PB_ON, false);
+                        // SendRGBMsg(IDO_LED5, IDO_LED6, IDO_LED7, PB_LEDYELLOW, PB_ON, false);
+                        // SendRGBMsg(IDO_LED8, IDO_LED9, IDO_LED10, PB_LEDPURPLE, PB_ON, false);
                     }
                     else if (testCount % 3 == 1) {
                         // Turn on RGB color cycle sequence
@@ -1791,10 +1859,10 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
                 
                 // Reset Button - Cycle through NeoPixel animation modes
-                if (inputMessage.inputId == IDI_RESET) {
+                if (inputMessage.inputId == IDI_RPIOP24_RESET) {
                     // Stop current animation if active
                     if (m_sandboxNeoPixelAnimActive) {
-                        SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);
+                        SendNeoPixelAllMsg(IDO_RPIOP10_NEOPIXEL0, PB_LEDBLUE, 32);
                         m_sandboxNeoPixelAnimActive = false;
                         pbeTimerStop(SANDBOX_NEOPIXEL_TIMER_ID);
                     }
@@ -1804,7 +1872,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
                 
                 // Right Flipper - NeoPixel Animation Test
-                if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     if (!m_sandboxNeoPixelAnimActive) {
                         // Start animation
                         m_sandboxNeoPixelAnimActive = true;
@@ -1812,7 +1880,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         // Initialize based on mode
                         if (m_sandboxNeoPixelAnimMode == 0) {
                             // Original step animation needs initialization
-                            SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);  // Dark blue (brightness 32)
+                            SendNeoPixelAllMsg(IDO_RPIOP10_NEOPIXEL0, PB_LEDBLUE, 32);  // Dark blue (brightness 32)
                             m_sandboxNeoPixelPosition = -1;  // Start at position -1
                             m_sandboxNeoPixelMovingUp = true;
                             
@@ -1832,20 +1900,20 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             switch(m_sandboxNeoPixelAnimMode) {
                                 case 0: sandboxNeoPixelStep(); break;
                                 case 1: 
-                                    neoPixelGradualFade(255, 0, 0, 0, 0, 255, IDO_NEOPIXEL0, 50, 3000, true);
+                                    neoPixelGradualFade(255, 0, 0, 0, 0, 255, IDO_RPIOP10_NEOPIXEL0, 50, 3000, true);
                                     break;
                                 case 2:
-                                    neoPixelSweepFromEnds(0, 255, 0, 128, 0, 128, IDO_NEOPIXEL0, 50, 4000, true);
+                                    neoPixelSweepFromEnds(0, 255, 0, 128, 0, 128, IDO_RPIOP10_NEOPIXEL0, 50, 4000, true);
                                     break;
                                 case 5:
-                                    neoPixelStrobe(255, 255, 255, IDO_NEOPIXEL0, 2000, 0, true, true);
+                                    neoPixelStrobe(255, 255, 255, IDO_RPIOP10_NEOPIXEL0, 2000, 0, true, true);
                                     break;
                             }
                         } else {
                             // Timer mode: start timer for animation
                             // For strobe mode, reset state when starting
                             if (m_sandboxNeoPixelAnimMode == 5) {
-                                neoPixelStrobe(255, 255, 255, IDO_NEOPIXEL0, 2000, 20000, true, true);
+                                neoPixelStrobe(255, 255, 255, IDO_RPIOP10_NEOPIXEL0, 2000, 20000, true, true);
                             }
                             pbeSetTimer(SANDBOX_NEOPIXEL_TIMER_ID, SANDBOX_NEOPIXEL_TIMER_INTERVAL_MS);
                         }
@@ -1856,18 +1924,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             switch(m_sandboxNeoPixelAnimMode) {
                                 case 0: sandboxNeoPixelStep(); break;
                                 case 1:
-                                    neoPixelGradualFade(255, 0, 0, 0, 0, 255, IDO_NEOPIXEL0, 50, 3000, true);
+                                    neoPixelGradualFade(255, 0, 0, 0, 0, 255, IDO_RPIOP10_NEOPIXEL0, 50, 3000, true);
                                     break;
                                 case 2:
-                                    neoPixelSweepFromEnds(0, 255, 0, 128, 0, 128, IDO_NEOPIXEL0, 50, 4000, true);
+                                    neoPixelSweepFromEnds(0, 255, 0, 128, 0, 128, IDO_RPIOP10_NEOPIXEL0, 50, 4000, true);
                                     break;
                                 case 5:
-                                    neoPixelStrobe(255, 255, 255, IDO_NEOPIXEL0, 95, 0, true);
+                                    neoPixelStrobe(255, 255, 255, IDO_RPIOP10_NEOPIXEL0, 95, 0, true);
                                     break;
                             }
                         } else {
                             // Timer mode: toggle off (stop animation)
-                            SendNeoPixelAllMsg(IDO_NEOPIXEL0, PB_LEDBLUE, 32);
+                            SendNeoPixelAllMsg(IDO_RPIOP10_NEOPIXEL0, PB_LEDBLUE, 32);
                             m_sandboxNeoPixelAnimActive = false;
                             pbeTimerStop(SANDBOX_NEOPIXEL_TIMER_ID);
                         }
@@ -1875,7 +1943,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
                 
                 // Left Activate - Test 3 - Video Playback Test (Toggle fade in/out)
-                if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                     if (m_sandboxVideoLoaded && m_sandboxVideoPlayer) {
                         pbvPlaybackState videoState = m_sandboxVideoPlayer->pbvpGetPlaybackState();
                         
@@ -1912,7 +1980,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
                 
                 // Right Activate - Test 4 - Ejector Device Test
-                if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                     if (m_sandboxEjector) {
                         if (m_sandboxEjector->pdbIsRunning()) {
                             // If running, stop and reset
@@ -1927,6 +1995,27 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
             }
         break;
         }
+        
+        case PB_SIMPLEFLIPMODE: {
+            // Simple Flip Mode - Just handle Start button to exit
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
+                    // Disable auto outputs
+                    SetAutoOutputEnable(false);
+                    
+                    // Restore overlay state to what it was before entering
+                    if (!m_OverlayWasOnBeforeSimpleFlip) {
+                        m_EnableOverlay = false;
+                    }
+                    
+                    // Return to main menu
+                    m_mainState = PB_STARTMENU;
+                    m_RestartMenu = true;
+                }
+            }
+        break;
+        }
+        
         default: break;
     }
 }
@@ -1934,41 +2023,78 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 // Function checks the input / output structures for errors and if Raspberry Pi, sets up the GPIO pins
 bool PBEngine::pbeSetupIO()
 {
-    // Check the input definitions and ensure no duplicates
-    // Need to change this to a self test function - will need to set up Raspberry I/O and breakout boards
+    // Validation checks for input/output definitions
+    // These checks verify the configuration is valid after initialization
+    g_PBEngine.pbeSendConsole("RasPin: Validating I/O configuration");
+    g_PBEngine.pbeSendConsole("RasPin: Total Inputs: " + std::to_string(NUM_INPUTS));
+    g_PBEngine.pbeSendConsole("RasPin: Total Outputs: " + std::to_string(NUM_OUTPUTS));
+    
+    // Check for duplicate board/pin assignments in inputs
     for (int i = 0; i < NUM_INPUTS; i++) {
-        if (i == 0) g_PBEngine.pbeSendConsole("RasPin: Total Inputs: " + std::to_string(NUM_INPUTS)); 
         for (int j = i + 1; j < NUM_INPUTS; j++) {
-            if (g_inputDef[i].id == g_inputDef[j].id) {
-                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate input ID: " + std::to_string(g_inputDef[i].id));
-                g_PBEngine.m_PassSelfTest = false;
-            }
-            // Check that the board type and pin number are unique
             if (g_inputDef[i].boardType == g_inputDef[j].boardType && 
                 g_inputDef[i].boardIndex == g_inputDef[j].boardIndex && 
                 g_inputDef[i].pin == g_inputDef[j].pin) {
-                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate input board/board index/pin: " + std::to_string(g_inputDef[i].id));
+                std::string boardName = (g_inputDef[i].boardType == PB_RASPI) ? "RASPI" : 
+                                       (g_inputDef[i].boardType == PB_IO) ? "IO" : "UNKNOWN";
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate input pin assignment - " + 
+                    g_inputDef[i].inputName + " and " + g_inputDef[j].inputName + 
+                    " both use " + boardName + " board " + std::to_string(g_inputDef[i].boardIndex) + 
+                    " pin " + std::to_string(g_inputDef[i].pin));
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
     }
+    
+    // Check for invalid board type configurations in inputs
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        // LED boards cannot be inputs
+        if (g_inputDef[i].boardType == PB_LED) {
+            g_PBEngine.pbeSendConsole("RasPin: ERROR: Input " + g_inputDef[i].inputName + 
+                " (index " + std::to_string(i) + ") is configured as PB_LED - LED boards are output-only!");
+            g_PBEngine.m_PassSelfTest = false;
+        }
+        // NeoPixel boards cannot be inputs
+        if (g_inputDef[i].boardType == PB_NEOPIXEL) {
+            g_PBEngine.pbeSendConsole("RasPin: ERROR: Input " + g_inputDef[i].inputName + 
+                " (index " + std::to_string(i) + ") is configured as PB_NEOPIXEL - NeoPixels are output-only!");
+            g_PBEngine.m_PassSelfTest = false;
+        }
+    }
 
-    // Check the output definitions and ensure no duplicates
+    // Check for duplicate board/pin assignments in outputs
     for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (i == 0) g_PBEngine.pbeSendConsole("RasPin: Total Outputs: " + std::to_string(NUM_OUTPUTS)); 
         for (int j = i + 1; j < NUM_OUTPUTS; j++) {
-            if (g_outputDef[i].id == g_outputDef[j].id) {
-                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output ID: " + std::to_string(g_outputDef[i].id));
-                g_PBEngine.m_PassSelfTest = false;
-            }
-            // Check that the board type, board index, and pin number are unique (all three must match)
-            // Note: Different board types (PB_LED vs PB_NEOPIXEL vs PB_RASPI) are different hardware, so same pin is OK
             if (g_outputDef[i].boardType == g_outputDef[j].boardType && 
                 g_outputDef[i].boardIndex == g_outputDef[j].boardIndex && 
                 g_outputDef[i].pin == g_outputDef[j].pin) {
-                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output board/board index/pin: Board " + 
-                    std::to_string(g_outputDef[i].boardIndex) + " Pin " + std::to_string(g_outputDef[i].pin) + 
-                    " used by ID " + std::to_string(g_outputDef[i].id) + " and ID " + std::to_string(g_outputDef[j].id));
+                std::string boardName = (g_outputDef[i].boardType == PB_RASPI) ? "RASPI" : 
+                                       (g_outputDef[i].boardType == PB_IO) ? "IO" :
+                                       (g_outputDef[i].boardType == PB_LED) ? "LED" :
+                                       (g_outputDef[i].boardType == PB_NEOPIXEL) ? "NEOPIXEL" : "UNKNOWN";
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Duplicate output pin assignment - " + 
+                    g_outputDef[i].outputName + " and " + g_outputDef[j].outputName + 
+                    " both use " + boardName + " board " + std::to_string(g_outputDef[i].boardIndex) + 
+                    " pin " + std::to_string(g_outputDef[i].pin));
+                g_PBEngine.m_PassSelfTest = false;
+            }
+        }
+    }
+    
+    // Check for conflicting pin usage between inputs and outputs on same board/pin
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        for (int j = 0; j < NUM_OUTPUTS; j++) {
+            // Only check boards that support both input and output (RASPI and IO)
+            if ((g_inputDef[i].boardType == PB_RASPI || g_inputDef[i].boardType == PB_IO) &&
+                g_inputDef[i].boardType == g_outputDef[j].boardType &&
+                g_inputDef[i].boardIndex == g_outputDef[j].boardIndex &&
+                g_inputDef[i].pin == g_outputDef[j].pin) {
+                std::string boardName = (g_inputDef[i].boardType == PB_RASPI) ? "RASPI" : "IO";
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Pin conflict - Input " + g_inputDef[i].inputName + 
+                    " and output " + g_outputDef[j].outputName + " both use " + boardName + 
+                    " board " + std::to_string(g_inputDef[i].boardIndex) + 
+                    " pin " + std::to_string(g_inputDef[i].pin) + 
+                    " - a pin cannot be both input and output!");
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
@@ -1986,7 +2112,7 @@ bool PBEngine::pbeSetupIO()
         if (g_inputDef[i].boardType == PB_RASPI){
             #ifdef EXE_MODE_RASPI
                 cDebounceInput debounceInput(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS, true, true);
-                g_PBEngine.m_inputPiMap.emplace(g_inputDef[i].id, debounceInput);
+                g_PBEngine.m_inputPiMap.emplace(i, debounceInput);  // Use array index as ID
             #endif
         }
         else if (g_inputDef[i].boardType == PB_IO) {
@@ -1994,6 +2120,11 @@ bool PBEngine::pbeSetupIO()
             if (g_inputDef[i].boardIndex < NUM_IO_CHIPS) {
                 g_PBEngine.m_IOChip[g_inputDef[i].boardIndex].ConfigurePin(g_inputDef[i].pin, PB_INPUT);
                 g_PBEngine.m_IOChip[g_inputDef[i].boardIndex].SetPinDebounceTime(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS);
+            } else {
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Input " + g_inputDef[i].inputName + 
+                    " references IO board " + std::to_string(g_inputDef[i].boardIndex) + 
+                    " which exceeds NUM_IO_CHIPS (" + std::to_string(NUM_IO_CHIPS) + ")");
+                g_PBEngine.m_PassSelfTest = false;
             }
         }
     }
@@ -2017,6 +2148,11 @@ bool PBEngine::pbeSetupIO()
             if (g_outputDef[i].boardIndex < NUM_IO_CHIPS) {
                 g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].ConfigurePin(g_outputDef[i].pin, PB_OUTPUT);    
                 g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].StageOutputPin(g_outputDef[i].pin, g_outputDef[i].lastState);  // Initialize to HIGH
+            } else {
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Output " + g_outputDef[i].outputName + 
+                    " references IO board " + std::to_string(g_outputDef[i].boardIndex) + 
+                    " which exceeds NUM_IO_CHIPS (" + std::to_string(NUM_IO_CHIPS) + ")");
+                g_PBEngine.m_PassSelfTest = false;
             }
         }
         else if (g_outputDef[i].boardType == PB_LED) {
@@ -2026,6 +2162,11 @@ bool PBEngine::pbeSetupIO()
                     g_PBEngine.m_LEDChip[g_outputDef[i].boardIndex].StageLEDControl(true, g_outputDef[i].pin, LEDOn);  // Initialize to ON
                 else
                 g_PBEngine.m_LEDChip[g_outputDef[i].boardIndex].StageLEDControl(false, g_outputDef[i].pin, LEDOff);  // Initialize to OFF
+            } else {
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Output " + g_outputDef[i].outputName + 
+                    " references LED board " + std::to_string(g_outputDef[i].boardIndex) + 
+                    " which exceeds NUM_LED_CHIPS (" + std::to_string(NUM_LED_CHIPS) + ")");
+                g_PBEngine.m_PassSelfTest = false;
             }
         }
         else if (g_outputDef[i].boardType == PB_NEOPIXEL) {
@@ -2252,14 +2393,12 @@ void PBEngine::SendNeoPixelSingleMsg(unsigned int neoPixelId, unsigned int pixel
     SendNeoPixelSingleMsg(neoPixelId, pixelIndex, red, green, blue, brightness);
 }
 
-// Function to set or unset autoOutput for an input by array index
+// Function to set or unset autoOutput for an input by ID
 bool PBEngine::SetAutoOutput(unsigned int id, bool autoOutputEnabled)
 {
-    if (id < NUM_INPUTS) {
-        g_inputDef[id].autoOutput = autoOutputEnabled;
-        return true;  // Valid index, updated
-    }
-    return false;  // Invalid index
+    // id is the array index - no bounds check needed, arrays are pre-validated
+    g_inputDef[id].autoOutput = autoOutputEnabled;
+    return true;
 }
 //==============================================================================
 // Device Management Functions
@@ -2523,13 +2662,13 @@ void PBEngine::sandboxNeoPixelStep() {
         
         // Clear the 3-pixel trail
         if (clearPos - 1 >= 0 && clearPos - 1 < (int)numLEDs) {
-            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos - 1, PB_LEDBLUE, 32);
+            SendNeoPixelSingleMsg(IDO_RPIOP10_NEOPIXEL0, clearPos - 1, PB_LEDBLUE, 32);
         }
         if (clearPos >= 0 && clearPos < (int)numLEDs) {
-            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos, PB_LEDBLUE, 32);
+            SendNeoPixelSingleMsg(IDO_RPIOP10_NEOPIXEL0, clearPos, PB_LEDBLUE, 32);
         }
         if (clearPos + 1 >= 0 && clearPos + 1 < (int)numLEDs) {
-            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, clearPos + 1, PB_LEDBLUE, 32);
+            SendNeoPixelSingleMsg(IDO_RPIOP10_NEOPIXEL0, clearPos + 1, PB_LEDBLUE, 32);
         }
     }
 
@@ -2555,13 +2694,13 @@ void PBEngine::sandboxNeoPixelStep() {
         int idx3 = m_sandboxNeoPixelPosition + 1;   // Right purple
         
         if (idx1 >= 0 && idx1 < (int)numLEDs) {
-            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx1, PB_LEDPURPLE, 255);  // Purple
+            SendNeoPixelSingleMsg(IDO_RPIOP10_NEOPIXEL0, idx1, PB_LEDPURPLE, 255);  // Purple
         }
         if (idx2 >= 0 && idx2 < (int)numLEDs) {
-            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx2, PB_LEDRED, 255);     // Red
+            SendNeoPixelSingleMsg(IDO_RPIOP10_NEOPIXEL0, idx2, PB_LEDRED, 255);     // Red
         }
         if (idx3 >= 0 && idx3 < (int)numLEDs) {
-            SendNeoPixelSingleMsg(IDO_NEOPIXEL0, idx3, PB_LEDPURPLE, 255);  // Purple
+            SendNeoPixelSingleMsg(IDO_RPIOP10_NEOPIXEL0, idx3, PB_LEDPURPLE, 255);  // Purple
         }
     }
     
@@ -2717,16 +2856,13 @@ void PBEngine::neoPixelSweepFromEnds(uint8_t startR, uint8_t startG, uint8_t sta
     // Update last step time
     state.lastStepTimeMS = currentTimeMS;
     
-    // Get LED count - need to find the board index from the output ID
+    // Get LED count - use neoPixelId as array index to get board index
     unsigned int numLEDs = 0;
     int boardIndex = -1;
     
-    // Find the board index for this neoPixelId
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (g_outputDef[i].id == neoPixelId && g_outputDef[i].boardType == PB_NEOPIXEL) {
-            boardIndex = g_outputDef[i].boardIndex;
-            break;
-        }
+    // Get board index directly from neoPixelId (array index - no bounds check needed)
+    if (g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+        boardIndex = g_outputDef[neoPixelId].boardIndex;
     }
     
     // Get LED count using board index
@@ -2896,12 +3032,9 @@ void PBEngine::neoPixelToggle(uint8_t color1R, uint8_t color1G, uint8_t color1B,
         unsigned int numLEDs = 0;
         int boardIndex = -1;
         
-        // Find the board index for this neoPixelId
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
-            if (g_outputDef[i].id == neoPixelId && g_outputDef[i].boardType == PB_NEOPIXEL) {
-                boardIndex = g_outputDef[i].boardIndex;
-                break;
-            }
+        // Get board index directly from neoPixelId (array index - no bounds check needed)
+        if (g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+            boardIndex = g_outputDef[neoPixelId].boardIndex;
         }
         
         // Get LED count using board index
@@ -2942,12 +3075,9 @@ void PBEngine::neoPixelToggle(uint8_t color1R, uint8_t color1G, uint8_t color1B,
     unsigned int numLEDs = 0;
     int boardIndex = -1;
     
-    // Find the board index for this neoPixelId
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (g_outputDef[i].id == neoPixelId && g_outputDef[i].boardType == PB_NEOPIXEL) {
-            boardIndex = g_outputDef[i].boardIndex;
-            break;
-        }
+    // Get board index directly from neoPixelId (array index - no bounds check needed)
+    if (g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+        boardIndex = g_outputDef[neoPixelId].boardIndex;
     }
     
     // Get LED count using board index
@@ -2998,16 +3128,13 @@ void PBEngine::neoPixelSplitToggle(uint8_t startR, uint8_t startG, uint8_t start
     // Get or create state for this neoPixelId
     SplitToggleState& state = stateMap[neoPixelId];
     
-    // Get LED count - need to find the board index from the output ID
+    // Get LED count - use neoPixelId as array index to get board index
     unsigned int numLEDs = 0;
     int boardIndex = -1;
     
-    // Find the board index for this neoPixelId
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (g_outputDef[i].id == neoPixelId && g_outputDef[i].boardType == PB_NEOPIXEL) {
-            boardIndex = g_outputDef[i].boardIndex;
-            break;
-        }
+    // Get board index directly from neoPixelId (array index - no bounds check needed)
+    if (g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+        boardIndex = g_outputDef[neoPixelId].boardIndex;
     }
     
     // Get LED count using board index

@@ -9,8 +9,9 @@
 #include "Pinball_TableStr.h"
 #include "PBSequences.h"
 #include "PBDevice.h"
+#include <algorithm>  // For std::sort in screen manager
 
-// PBEgine Class Fucntions for the main pinball game
+// PBEgine Class Functions for the main pinball game
 
 // Main load function for the pinball game start screen
 bool PBEngine::pbeLoadGameStart(){
@@ -811,7 +812,7 @@ bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick)
 bool PBEngine::pbeTableInit(){
     
     // Initialize and register the ball ejector device (using example IDs - can be configured per table)
-    pbdEjector* ballEjector = new pbdEjector(this, IDI_SENSOR1, IDO_LED1, IDO_BALLEJECT);
+    pbdEjector* ballEjector = new pbdEjector(this, IDI_IO0P07_EJECTSW2, IDO_LED0P08_LSlingLED, IDO_IO2P08_EJECT);
     pbeAddDevice(ballEjector);
     
     // Initialize all NeoPixels to black/off when starting the pinball game
@@ -973,7 +974,7 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
     
     // Check for reset button press first, regardless of current state (unless already in reset)
     if (m_tableState != PBTableState::PBTBL_RESET) {
-        if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON && inputMessage.inputId == IDI_RESET) {
+        if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON && inputMessage.inputId == IDI_RPIOP24_RESET) {
             if (!m_ResetButtonPressed) {
                 // First time reset is pressed - save current state and enter reset mode
                 m_StateBeforeReset = m_tableState;
@@ -993,7 +994,7 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
 
             // Handle button presses during start screen
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_START) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
                     // Start button opens the doors
                     m_tableScreenState = PBTBLScreenState::START_OPENDOOR;
                 }
@@ -1014,45 +1015,49 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
         case PBTableState::PBTBL_MAINSCREEN: {
             // Handle start button press to add players
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_START) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
                     if (pbeTryAddPlayer()){
                         // Play the sword cut sound
                         m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
                     }
                 }
                 // Handle activate buttons to add score
-                else if (inputMessage.inputId == IDI_LEFTACTIVATE) {
+                else if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
                     addPlayerScore(100);
                 }
-                else if (inputMessage.inputId == IDI_RIGHTACTIVATE) {
+                else if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                     addPlayerScore(10000);
                 }
                 // Handle flipper buttons to enable/disable all characters
-                else if (inputMessage.inputId == IDI_LEFTFLIPPER) {
+                else if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     // Enable all characters
                     m_playerStates[m_currentPlayer].knightJoined = true;
                     m_playerStates[m_currentPlayer].priestJoined = true;
                     m_playerStates[m_currentPlayer].rangerJoined = true;
                 }
-                else if (inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                else if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     // Disable all characters
                     m_playerStates[m_currentPlayer].knightJoined = false;
                     m_playerStates[m_currentPlayer].priestJoined = false;
                     m_playerStates[m_currentPlayer].rangerJoined = false;
                 }
             }
+            
+            // Update mode system
+            pbeUpdateModeSystem(inputMessage, GetTickCountGfx());
+            
             break;
         }
         case PBTableState::PBTBL_STDPLAY: {
-            // Check for input messages and update the game state
-            int temp = 0;
+            // Standard play mode - delegates to mode system
+            pbeUpdateModeSystem(inputMessage, GetTickCountGfx());
 
             break;
         }
         case PBTableState::PBTBL_RESET: {
             // Handle reset state inputs
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                if (inputMessage.inputId == IDI_RESET) {
+                if (inputMessage.inputId == IDI_RPIOP24_RESET) {
                     // Reset pressed again - clean up and return to main menu
                     m_ResetButtonPressed = false;
                     m_GameStarted = false; // Reset game started flag
@@ -1068,11 +1073,11 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                     m_soundSystem.pbsStopAllEffects();
                     m_soundSystem.pbsStopMusic();
                 }
-                else if (inputMessage.inputId == IDI_START || 
-                         inputMessage.inputId == IDI_LEFTACTIVATE || 
-                         inputMessage.inputId == IDI_RIGHTACTIVATE ||
-                         inputMessage.inputId == IDI_LEFTFLIPPER ||
-                         inputMessage.inputId == IDI_RIGHTFLIPPER) {
+                else if (inputMessage.inputId == IDI_RPIOP06_START || 
+                         inputMessage.inputId == IDI_RPIOP05_LACTIVATE || 
+                         inputMessage.inputId == IDI_RPIOP22_RACTIVATE ||
+                         inputMessage.inputId == IDI_RPIOP27_LFLIP ||
+                         inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     // Any other button pressed - cancel reset and return to previous state
                     m_ResetButtonPressed = false;
                     m_tableState = m_StateBeforeReset;
@@ -1092,6 +1097,368 @@ void PBEngine::pbeTableReload() {
     m_mainScreenLoaded = false;
     m_resetLoaded = false;
     m_RestartTable = true;    
+}
+
+// ========================================================================
+// MODE SYSTEM IMPLEMENTATION
+// ========================================================================
+
+// Helper function to update mode system - reduces code duplication
+void PBEngine::pbeUpdateModeSystem(stInputMessage inputMessage, unsigned long currentTick) {
+    // Update mode system state
+    pbeUpdateModeState(currentTick);
+    
+    // Update screen manager
+    pbeUpdateScreenManager(currentTick);
+    
+    // Route input to current mode's update function
+    ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
+    switch (modeState.currentMode) {
+        case PBTableMode::MODE_NORMAL_PLAY:
+            pbeUpdateNormalPlayMode(inputMessage, currentTick);
+            break;
+        case PBTableMode::MODE_MULTIBALL:
+            pbeUpdateMultiballMode(inputMessage, currentTick);
+            break;
+        default:
+            break;
+    }
+}
+
+// Main mode state update function - called each frame to update current mode
+void PBEngine::pbeUpdateModeState(unsigned long currentTick) {
+    // Get current player's mode state
+    ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
+    
+    // Check if we should transition to a different mode
+    if (pbeCheckModeTransition(currentTick)) {
+        return; // Mode transition occurred, state will be updated next frame
+    }
+    
+    // Update the current mode's state machine
+    switch (modeState.currentMode) {
+        case PBTableMode::MODE_NORMAL_PLAY: {
+            // Update normal play mode sub-states
+            switch (modeState.normalPlayState) {
+                case PBNormalPlayState::NORMAL_IDLE:
+                    // Check if ball became active
+                    // In a real implementation, you'd check ball switches/sensors
+                    // For now, we'll just remain in idle
+                    break;
+                    
+                case PBNormalPlayState::NORMAL_ACTIVE:
+                    // Ball is in play - normal gameplay logic here
+                    // Check for mode qualification conditions
+                    if (pbeCheckMultiballQualified()) {
+                        pbeSendConsole("Multiball qualified!");
+                        modeState.multiballQualified = true;
+                    }
+                    break;
+                    
+                case PBNormalPlayState::NORMAL_DRAIN:
+                    // Ball drained - handle end of ball
+                    // Transition back to idle after a delay
+                    if (currentTick - modeState.normalPlayStateStartTick > 2000) {
+                        modeState.normalPlayState = PBNormalPlayState::NORMAL_IDLE;
+                        modeState.normalPlayStateStartTick = currentTick;
+                    }
+                    break;
+                    
+                default:
+                    break;
+            }
+            break;
+        }
+        
+        case PBTableMode::MODE_MULTIBALL: {
+            // Update multiball mode sub-states
+            switch (modeState.multiballState) {
+                case PBMultiballState::MULTIBALL_START:
+                    // Starting multiball sequence
+                    pbeSendConsole("Multiball starting...");
+                    
+                    // Transition to active after start sequence
+                    if (currentTick - modeState.multiballStateStartTick > 3000) {
+                        modeState.multiballState = PBMultiballState::MULTIBALL_ACTIVE;
+                        modeState.multiballStateStartTick = currentTick;
+                        modeState.multiballCount = 2; // Start with 2 balls
+                        
+                        // Request high-priority screen
+                        pbeRequestScreen(100, ScreenPriority::PRIORITY_HIGH, 5000, false);
+                    }
+                    break;
+                    
+                case PBMultiballState::MULTIBALL_ACTIVE:
+                    // Multiball gameplay active
+                    // In a real implementation, track balls in play
+                    // For now, we'll end multiball after 20 seconds
+                    if (currentTick - modeState.multiballStateStartTick > 20000) {
+                        modeState.multiballState = PBMultiballState::MULTIBALL_ENDING;
+                        modeState.multiballStateStartTick = currentTick;
+                        pbeSendConsole("Multiball ending...");
+                    }
+                    break;
+                    
+                case PBMultiballState::MULTIBALL_ENDING:
+                    // Transitioning back to normal play
+                    if (currentTick - modeState.multiballStateStartTick > 2000) {
+                        // Exit multiball mode and return to normal play
+                        pbeExitMode(PBTableMode::MODE_MULTIBALL, currentTick);
+                        pbeEnterMode(PBTableMode::MODE_NORMAL_PLAY, currentTick);
+                    }
+                    break;
+                    
+                default:
+                    break;
+            }
+            break;
+        }
+        
+        default:
+            break;
+    }
+}
+
+// Check if conditions are met to transition to a different mode
+bool PBEngine::pbeCheckModeTransition(unsigned long currentTick) {
+    ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
+    
+    // Check for mode transitions based on current mode
+    switch (modeState.currentMode) {
+        case PBTableMode::MODE_NORMAL_PLAY: {
+            // Check if multiball should start
+            if (modeState.multiballQualified && 
+                modeState.normalPlayState == PBNormalPlayState::NORMAL_ACTIVE) {
+                
+                // For this example, we'll trigger multiball when qualified
+                // In a real game, you might need a specific switch hit
+                pbeSendConsole("Transitioning to multiball mode!");
+                pbeExitMode(PBTableMode::MODE_NORMAL_PLAY, currentTick);
+                pbeEnterMode(PBTableMode::MODE_MULTIBALL, currentTick);
+                return true;
+            }
+            break;
+        }
+        
+        case PBTableMode::MODE_MULTIBALL: {
+            // Multiball handles its own exit in pbeUpdateModeState
+            break;
+        }
+        
+        default:
+            break;
+    }
+    
+    return false;
+}
+
+// Enter a new mode
+void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
+    ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
+    
+    pbeSendConsole("Entering mode: " + std::to_string(static_cast<int>(newMode)));
+    
+    // Save previous mode
+    modeState.previousMode = modeState.currentMode;
+    modeState.currentMode = newMode;
+    modeState.modeTransitionActive = true;
+    modeState.modeTransitionStartTick = currentTick;
+    
+    // Initialize mode-specific state
+    switch (newMode) {
+        case PBTableMode::MODE_NORMAL_PLAY:
+            modeState.normalPlayState = PBNormalPlayState::NORMAL_ACTIVE;
+            modeState.normalPlayStateStartTick = currentTick;
+            
+            // Request normal play screen
+            pbeRequestScreen(1, ScreenPriority::PRIORITY_LOW, 0, true);
+            break;
+            
+        case PBTableMode::MODE_MULTIBALL:
+            modeState.multiballState = PBMultiballState::MULTIBALL_START;
+            modeState.multiballStateStartTick = currentTick;
+            modeState.multiballCount = 1;
+            
+            // Request multiball intro screen
+            pbeRequestScreen(200, ScreenPriority::PRIORITY_HIGH, 3000, false);
+            break;
+            
+        default:
+            break;
+    }
+}
+
+// Exit a mode
+void PBEngine::pbeExitMode(PBTableMode exitingMode, unsigned long currentTick) {
+    ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
+    
+    pbeSendConsole("Exiting mode: " + std::to_string(static_cast<int>(exitingMode)));
+    
+    // Clean up mode-specific state
+    switch (exitingMode) {
+        case PBTableMode::MODE_NORMAL_PLAY:
+            // No special cleanup needed
+            break;
+            
+        case PBTableMode::MODE_MULTIBALL:
+            // Reset multiball state
+            modeState.multiballQualified = false;
+            modeState.multiballCount = 1;
+            break;
+            
+        default:
+            break;
+    }
+}
+
+// Update normal play mode with input
+void PBEngine::pbeUpdateNormalPlayMode(stInputMessage inputMessage, unsigned long currentTick) {
+    ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
+    
+    // Handle inputs specific to normal play mode
+    if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+        // Example: Left activate button changes state in normal play
+        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
+            if (modeState.normalPlayState == PBNormalPlayState::NORMAL_IDLE) {
+                modeState.normalPlayState = PBNormalPlayState::NORMAL_ACTIVE;
+                modeState.normalPlayStateStartTick = currentTick;
+                pbeSendConsole("Normal play: Ball became active");
+            }
+        }
+        // Right activate button drains ball
+        else if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
+            if (modeState.normalPlayState == PBNormalPlayState::NORMAL_ACTIVE) {
+                modeState.normalPlayState = PBNormalPlayState::NORMAL_DRAIN;
+                modeState.normalPlayStateStartTick = currentTick;
+                pbeSendConsole("Normal play: Ball drained");
+            }
+        }
+    }
+}
+
+// Update multiball mode with input
+void PBEngine::pbeUpdateMultiballMode(stInputMessage inputMessage, unsigned long currentTick) {
+    ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
+    
+    // Handle inputs specific to multiball mode
+    if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+        // Example: Add scoring in multiball
+        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
+            addPlayerScore(5000); // Higher scoring in multiball
+            pbeSendConsole("Multiball jackpot!");
+        }
+    }
+}
+
+// Check if multiball is qualified
+bool PBEngine::pbeCheckMultiballQualified() {
+    // Example qualification: Score over 50,000 points
+    // In a real game, this would check specific targets, combos, etc.
+    return (m_playerStates[m_currentPlayer].score > 50000);
+}
+
+// ========================================================================
+// SCREEN MANAGER IMPLEMENTATION
+// ========================================================================
+
+// Request a screen to be displayed
+void PBEngine::pbeRequestScreen(int screenId, ScreenPriority priority, 
+                                unsigned long durationMs, bool canBePreempted) {
+    ScreenRequest request;
+    request.screenId = screenId;
+    request.priority = priority;
+    request.durationMs = durationMs;
+    request.requestTick = GetTickCountGfx();
+    request.canBePreempted = canBePreempted;
+    
+    // Add to queue (we'll sort by priority in update function)
+    m_screenQueue.push_back(request);
+    
+    pbeSendConsole("Screen request: ID=" + std::to_string(screenId) + 
+                   " Priority=" + std::to_string(static_cast<int>(priority)));
+}
+
+// Update screen manager - determines which screen should be displayed
+void PBEngine::pbeUpdateScreenManager(unsigned long currentTick) {
+    if (m_screenQueue.empty()) {
+        return; // No screen requests
+    }
+    
+    // Sort queue by priority (highest first)
+    std::sort(m_screenQueue.begin(), m_screenQueue.end(), 
+        [](const ScreenRequest& a, const ScreenRequest& b) {
+            return static_cast<int>(a.priority) > static_cast<int>(b.priority);
+        });
+    
+    // Get highest priority request
+    ScreenRequest& topRequest = m_screenQueue.front();
+    
+    // Check if we should change the displayed screen
+    bool shouldChange = false;
+    
+    if (m_currentDisplayedScreen != topRequest.screenId) {
+        // Different screen requested
+        if (m_currentDisplayedScreen == -1) {
+            // No screen currently displayed
+            shouldChange = true;
+        } else {
+            // Check if current screen can be preempted
+            // Find current screen in queue
+            bool currentCanBePreempted = true;
+            for (const auto& req : m_screenQueue) {
+                if (req.screenId == m_currentDisplayedScreen) {
+                    currentCanBePreempted = req.canBePreempted;
+                    break;
+                }
+            }
+            
+            if (currentCanBePreempted && 
+                static_cast<int>(topRequest.priority) > 
+                static_cast<int>(ScreenPriority::PRIORITY_LOW)) {
+                shouldChange = true;
+            }
+        }
+    }
+    
+    if (shouldChange) {
+        m_currentDisplayedScreen = topRequest.screenId;
+        m_currentScreenStartTick = currentTick;
+        pbeSendConsole("Screen changed to: " + std::to_string(m_currentDisplayedScreen));
+    }
+    
+    // Remove expired screens from queue
+    auto it = m_screenQueue.begin();
+    while (it != m_screenQueue.end()) {
+        bool expired = false;
+        
+        // Check if duration has elapsed (if duration is specified)
+        if (it->durationMs > 0) {
+            if (currentTick - it->requestTick > it->durationMs) {
+                expired = true;
+            }
+        }
+        
+        if (expired) {
+            if (it->screenId == m_currentDisplayedScreen) {
+                m_currentDisplayedScreen = -1; // Clear current screen
+            }
+            it = m_screenQueue.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+// Clear all screen requests
+void PBEngine::pbeClearScreenRequests() {
+    m_screenQueue.clear();
+    m_currentDisplayedScreen = -1;
+    m_currentScreenStartTick = 0;
+}
+
+// Get the current screen that should be displayed
+int PBEngine::pbeGetCurrentScreen() {
+    return m_currentDisplayedScreen;
 }
 
 
