@@ -251,6 +251,7 @@ struct stHighScoreData {
 #define DIFFICULTY_DEFAULT PB_NORMAL
 
 struct stSaveFileData {
+    bool isWindows;  // Track which OS created this file
     unsigned int mainVolume;
     unsigned int musicVolume;
     unsigned int ballsPerGame;

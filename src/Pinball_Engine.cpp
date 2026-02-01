@@ -180,15 +180,44 @@ bool PBEngine::pbeLoadSaveFile(bool loadDefaults, bool resetScores){
     // otherwise load the defaults if not present, or if loadDefaults is true
 
     bool failed = false;
+    bool osMismatch = false;
 
     std::ifstream saveFile(SAVEFILENAME, std::ios::binary);
-    if (saveFile) {
+    if (saveFile.is_open() && saveFile.good()) {
         saveFile.read(reinterpret_cast<char*>(&m_saveFileData), sizeof(stSaveFileData));
+        if (!saveFile.good()) {
+            failed = true;
+        } else {
+            // Check if OS matches
+            #ifdef EXE_MODE_WINDOWS
+            bool currentIsWindows = true;
+            #else
+            bool currentIsWindows = false;
+            #endif
+            
+            if (m_saveFileData.isWindows != currentIsWindows) {
+                osMismatch = true;
+                failed = true;
+            }
+        }
         saveFile.close();
-    } else failed = true;
+        
+        // If OS mismatch detected, delete the file
+        if (osMismatch) {
+            std::remove(SAVEFILENAME);
+            pbeSendConsole("RasPin: WARNING: Save file created on different OS - file deleted and will be recreated");
+        }
+    } else {
+        failed = true;
+    }
         
     if ((loadDefaults) || failed){
         // Set default values for the saveData structure
+        #ifdef EXE_MODE_WINDOWS
+        m_saveFileData.isWindows = true;
+        #else
+        m_saveFileData.isWindows = false;
+        #endif
         m_saveFileData.mainVolume = MAINVOLUME_DEFAULT;
         m_saveFileData.musicVolume = MUSICVOLUME_DEFAULT;
         m_saveFileData.ballsPerGame = BALLSPERGAME_DEFAULT;
@@ -721,11 +750,11 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
                 gfxSetColor(m_defaultFontSpriteId, 255, 0, 255, 255);  // Magenta for unknown
                 break;
         }
-        gfxRenderShadowString(m_defaultFontSpriteId, stateText, x + 180, y, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+        gfxRenderShadowString(m_defaultFontSpriteId, stateText, x + 200, y, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
     }
     
     // OUTPUTS Section - Position moved 225 pixels further right total
-    int outputStartX = PB_SCREENWIDTH - 260;  // Moved 225 pixels right total (was -480, now -255)
+    int outputStartX = PB_SCREENWIDTH - 280;  // Moved 225 pixels right total (was -480, now -255)
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for outputs header
     gfxRenderShadowString(m_defaultFontSpriteId, "OUTPUTS", outputStartX, 5, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
@@ -770,7 +799,7 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
                     break;
             }
         }
-        gfxRenderShadowString(m_defaultFontSpriteId, stateText, x + 180, y, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+        gfxRenderShadowString(m_defaultFontSpriteId, stateText, x + 200, y, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
     }
     
     return (true);   
@@ -1202,7 +1231,7 @@ bool PBEngine::pbeRenderSimpleFlipMode(unsigned long currentTick, unsigned long 
     
     // Render exit instructions in lower right
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Press Start to Exit", PB_SCREENWIDTH - 200, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", PB_SCREENWIDTH - 150, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     return (true);
 }
