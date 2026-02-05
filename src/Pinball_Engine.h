@@ -627,6 +627,11 @@ private:
                         unsigned int neoPixelId, unsigned int timeOffMS,
                         unsigned int timeOverallMS = 0, bool loop = true,
                         bool resetState = false);
+    
+    void neoPixelSnake(uint8_t baseR, uint8_t baseG, uint8_t baseB,
+                       uint8_t snakeR, uint8_t snakeG, uint8_t snakeB,
+                       unsigned int snakeLength, bool wrapMode,
+                       unsigned int neoPixelId, unsigned int stepTimeMS);
 
     // Texture release functions
     void pbeReleaseMenuTextures();

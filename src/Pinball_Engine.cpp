@@ -1025,6 +1025,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
         case 3: animMode = "Toggle"; break;
         case 4: animMode = "Split Toggle"; break;
         case 5: animMode = "Strobe"; break;
+        case 6: animMode = "Snake"; break;
         default: animMode = "Unknown"; break;
     }
     std::string neoPixelInfo = neoPixelMode + " - " + animMode;
@@ -1817,6 +1818,15 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                       20000,           // 20 second overall duration with acceleration
                                       true);           // Loop continuously
                         break;
+                    case 6:
+                        // Snake: Blue base with red snake, length 10, wrap mode enabled, 100ms step time
+                        neoPixelSnake(0, 0, 64,        // Base: Dark Blue
+                                     255, 0, 0,        // Snake: Red
+                                     10,               // Snake length: 10 pixels
+                                     true,             // Wrap mode: enabled
+                                     IDO_RPIOP10_NEOPIXEL0,
+                                     100);             // Step every 100ms
+                        break;
                 }
                 
                 // Set next timer
@@ -1897,7 +1907,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     }
                     
                     // Cycle to next mode
-                    m_sandboxNeoPixelAnimMode = (m_sandboxNeoPixelAnimMode + 1) % 6;
+                    m_sandboxNeoPixelAnimMode = (m_sandboxNeoPixelAnimMode + 1) % 7;
                 }
                 
                 // Right Flipper - NeoPixel Animation Test
@@ -1937,6 +1947,9 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                 case 5:
                                     neoPixelStrobe(255, 255, 255, IDO_RPIOP10_NEOPIXEL0, 2000, 0, true, true);
                                     break;
+                                case 6:
+                                    neoPixelSnake(0, 0, 64, 255, 0, 0, 10, true, IDO_RPIOP10_NEOPIXEL0, 100);
+                                    break;
                             }
                         } else {
                             // Timer mode: start timer for animation
@@ -1960,6 +1973,9 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                     break;
                                 case 5:
                                     neoPixelStrobe(255, 255, 255, IDO_RPIOP10_NEOPIXEL0, 95, 0, true);
+                                    break;
+                                case 6:
+                                    neoPixelSnake(0, 0, 64, 255, 0, 0, 10, true, IDO_RPIOP10_NEOPIXEL0, 100);
                                     break;
                             }
                         } else {
@@ -3357,6 +3373,140 @@ void PBEngine::neoPixelStrobe(uint8_t colorR, uint8_t colorG, uint8_t colorB,
             SendNeoPixelAllMsg(neoPixelId, colorR, colorG, colorB, 255);
         } else {
             SendNeoPixelAllMsg(neoPixelId, 0, 0, 0, 255);  // Black
+        }
+    }
+}
+
+// NeoPixel Snake - A moving snake of pixels runs along the LED string
+// Parameters:
+//   baseR, baseG, baseB: Base color for non-snake pixels (RGB 0-255)
+//   snakeR, snakeG, snakeB: Snake color for the moving snake (RGB 0-255)
+//   snakeLength: Length of the snake in pixels
+//   wrapMode: If true, snake wraps around. If false, snake exits before restarting
+//   neoPixelId: Which NeoPixel output pin/chain to control
+//   stepTimeMS: Time in milliseconds between snake movements
+void PBEngine::neoPixelSnake(uint8_t baseR, uint8_t baseG, uint8_t baseB,
+                             uint8_t snakeR, uint8_t snakeG, uint8_t snakeB,
+                             unsigned int snakeLength, bool wrapMode,
+                             unsigned int neoPixelId, unsigned int stepTimeMS)
+{
+    // Structure to hold state for each neoPixelId
+    struct SnakeState {
+        bool initialized;
+        unsigned long lastStepTimeMS;
+        int headPosition;  // Current position of the snake head (-snakeLength to numLEDs-1 for no wrap, can be higher for wrap)
+    };
+    
+    // Static map to track state per neoPixelId
+    static std::map<unsigned int, SnakeState> stateMap;
+    
+    // Get current time
+    unsigned long currentTimeMS = GetTickCountGfx();
+    
+    // Get or create state for this neoPixelId
+    SnakeState& state = stateMap[neoPixelId];
+    
+    // Get LED count - use neoPixelId as array index to get board index
+    unsigned int numLEDs = 0;
+    int boardIndex = -1;
+    
+    // Get board index directly from neoPixelId (array index - no bounds check needed)
+    if (g_outputDef[neoPixelId].boardType == PB_NEOPIXEL) {
+        boardIndex = g_outputDef[neoPixelId].boardIndex;
+    }
+    
+    // Get LED count using board index
+    if (boardIndex >= 0 && m_NeoPixelDriverMap.find(boardIndex) != m_NeoPixelDriverMap.end()) {
+        numLEDs = m_NeoPixelDriverMap.at(boardIndex).GetNumLEDs();
+    }
+    
+    if (numLEDs == 0) {
+        return; // No LEDs to control
+    }
+    
+    // Initialize or reset if this is the first call
+    if (!state.initialized) {
+        state.initialized = true;
+        state.lastStepTimeMS = currentTimeMS;
+        state.headPosition = 0;  // Start snake head at position 0
+        
+        // Initialize all pixels to base color
+        SendNeoPixelAllMsg(neoPixelId, baseR, baseG, baseB, 255);
+        return;
+    }
+    
+    // Check if step time has elapsed
+    unsigned long stepElapsedMS = currentTimeMS - state.lastStepTimeMS;
+    if (stepElapsedMS < stepTimeMS) {
+        return; // Not time for next step yet
+    }
+    
+    // Update last step time
+    state.lastStepTimeMS = currentTimeMS;
+    
+    // Move the snake head forward by one position
+    state.headPosition++;
+    
+    // Handle wrap mode vs no-wrap mode
+    if (wrapMode) {
+        // Wrap mode: snake wraps around continuously
+        // If snake is longer than the string, wait until tail has moved at least one pixel past start
+        if (snakeLength > numLEDs) {
+            // Reset when the tail has moved past position 0 by at least 1 pixel
+            // tailPosition = headPosition - snakeLength + 1
+            // We want tailPosition > 0, so headPosition > snakeLength - 1
+            if (state.headPosition >= (int)snakeLength) {
+                state.headPosition = 0;  // Restart from beginning
+            }
+        } else {
+            // Normal wrap: restart when head completes the full cycle
+            if (state.headPosition >= (int)numLEDs) {
+                state.headPosition = 0;
+            }
+        }
+    } else {
+        // No-wrap mode: don't show head at first pixel again until tail exits
+        // The snake fully exits when tailPosition >= numLEDs
+        // tailPosition = headPosition - snakeLength + 1
+        // We want tailPosition >= numLEDs, so headPosition >= numLEDs + snakeLength - 1
+        if (state.headPosition >= (int)(numLEDs + snakeLength)) {
+            state.headPosition = 0;  // Restart from beginning
+        }
+    }
+    
+    // Update all pixels based on snake position
+    for (unsigned int i = 0; i < numLEDs; i++) {
+        // Calculate if this pixel is part of the snake
+        // Snake occupies positions from (headPosition - snakeLength + 1) to headPosition
+        int tailPosition = state.headPosition - (int)snakeLength + 1;
+        
+        bool isSnake = false;
+        
+        if (wrapMode) {
+            // In wrap mode, handle wrapping for both head and tail
+            for (int j = 0; j < (int)snakeLength; j++) {
+                int snakePos = state.headPosition - j;
+                // Wrap snake position to valid range [0, numLEDs-1]
+                while (snakePos < 0) snakePos += numLEDs;
+                while (snakePos >= (int)numLEDs) snakePos -= numLEDs;
+                
+                if (snakePos == (int)i) {
+                    isSnake = true;
+                    break;
+                }
+            }
+        } else {
+            // In no-wrap mode, only show snake if within valid bounds
+            if ((int)i >= tailPosition && (int)i <= state.headPosition) {
+                isSnake = true;
+            }
+        }
+        
+        // Set pixel color based on whether it's part of the snake
+        if (isSnake) {
+            SendNeoPixelSingleMsg(neoPixelId, i, snakeR, snakeG, snakeB, 255);
+        } else {
+            SendNeoPixelSingleMsg(neoPixelId, i, baseR, baseG, baseB, 255);
         }
     }
 }
