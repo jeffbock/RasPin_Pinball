@@ -3453,9 +3453,9 @@ void PBEngine::neoPixelSnake(uint8_t baseR, uint8_t baseG, uint8_t baseB,
         // If snake is longer than the string, wait until tail has moved at least one pixel past start
         if (snakeLength > numLEDs) {
             // Reset when the tail has moved past position 0 by at least 1 pixel
-            // Head position when tail is at position 0: headPosition = snakeLength - 1
-            // Head position when tail is at position 1: headPosition = snakeLength
-            if (state.headPosition >= (int)(snakeLength + numLEDs)) {
+            // tailPosition = headPosition - snakeLength + 1
+            // We want tailPosition > 0, so headPosition > snakeLength - 1
+            if (state.headPosition >= (int)snakeLength) {
                 state.headPosition = 0;  // Restart from beginning
             }
         } else {
@@ -3466,7 +3466,9 @@ void PBEngine::neoPixelSnake(uint8_t baseR, uint8_t baseG, uint8_t baseB,
         }
     } else {
         // No-wrap mode: don't show head at first pixel again until tail exits
-        // The snake fully exits when head position = numLEDs + snakeLength - 1
+        // The snake fully exits when tailPosition >= numLEDs
+        // tailPosition = headPosition - snakeLength + 1
+        // We want tailPosition >= numLEDs, so headPosition >= numLEDs + snakeLength - 1
         if (state.headPosition >= (int)(numLEDs + snakeLength)) {
             state.headPosition = 0;  // Restart from beginning
         }
