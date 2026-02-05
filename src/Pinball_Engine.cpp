@@ -1819,10 +1819,10 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                       true);           // Loop continuously
                         break;
                     case 6:
-                        // Snake: Blue base with red snake, length 5, wrap mode enabled, 100ms step time
+                        // Snake: Blue base with red snake, length 10, wrap mode enabled, 100ms step time
                         neoPixelSnake(0, 0, 64,        // Base: Dark Blue
                                      255, 0, 0,        // Snake: Red
-                                     5,                // Snake length: 5 pixels
+                                     10,               // Snake length: 10 pixels
                                      true,             // Wrap mode: enabled
                                      IDO_RPIOP10_NEOPIXEL0,
                                      100);             // Step every 100ms
@@ -1948,7 +1948,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                     neoPixelStrobe(255, 255, 255, IDO_RPIOP10_NEOPIXEL0, 2000, 0, true, true);
                                     break;
                                 case 6:
-                                    neoPixelSnake(0, 0, 64, 255, 0, 0, 5, true, IDO_RPIOP10_NEOPIXEL0, 100);
+                                    neoPixelSnake(0, 0, 64, 255, 0, 0, 10, true, IDO_RPIOP10_NEOPIXEL0, 100);
                                     break;
                             }
                         } else {
@@ -1975,7 +1975,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                                     neoPixelStrobe(255, 255, 255, IDO_RPIOP10_NEOPIXEL0, 95, 0, true);
                                     break;
                                 case 6:
-                                    neoPixelSnake(0, 0, 64, 255, 0, 0, 5, true, IDO_RPIOP10_NEOPIXEL0, 100);
+                                    neoPixelSnake(0, 0, 64, 255, 0, 0, 10, true, IDO_RPIOP10_NEOPIXEL0, 100);
                                     break;
                             }
                         } else {
