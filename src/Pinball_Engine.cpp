@@ -687,11 +687,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
         gfxRenderString(m_defaultFontSpriteId, temp, 10 + ((i / 24) * 220), 60 + ((i % 24) * 26), 1, GFX_TEXTLEFT);
         
         // Print the state of the input (and highlight in RED) if ON
-        if (m_TestMode == PB_TESTOUTPUT && g_outputDef[i].boardType == PB_NEOPIXEL) {
-            // NeoPixel outputs cannot be directly controlled in test mode
-            gfxSetColor(m_defaultFontSpriteId, 128, 128, 128, 255);
-            temp = "N/A";
-        } else if (((g_inputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTINPUT)) || 
+        if (((g_inputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTINPUT)) || 
             ((g_outputDef[i].lastState == PB_ON) && (m_TestMode == PB_TESTOUTPUT))) {
             gfxSetColor(m_defaultFontSpriteId, 255,0, 0, 255);
             temp = "ON";
@@ -1574,20 +1570,21 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
 
                 if ((inputMessage.inputId == IDI_RPIOP22_RACTIVATE) || (inputMessage.inputId == IDI_RPIOP05_LACTIVATE)) {
-                    // Handle NeoPixel outputs differently - initialize entire chain to black or white
+                    // Handle NeoPixel outputs: press = white, release = black
                     if (g_outputDef[m_CurrentOutputItem].boardType == PB_NEOPIXEL) {
-                        // Toggle state
-                        if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) {
-                            g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
-                        } else {
+                        if (inputMessage.inputState == PB_ON) {
+                            SendNeoPixelAllMsg(m_CurrentOutputItem, 255, 255, 255, 255);
                             g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
+                        } else {
+                            SendNeoPixelAllMsg(m_CurrentOutputItem, 0, 0, 0, 255);
+                            g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
                         }
-                    } else {
-                        // Regular outputs - toggle state and send message
+                    } else if (inputMessage.inputState == PB_ON) {
+                        // Regular outputs - toggle state and send message on press
                         if (g_outputDef[m_CurrentOutputItem].lastState == PB_ON) g_outputDef[m_CurrentOutputItem].lastState = PB_OFF;
                         else g_outputDef[m_CurrentOutputItem].lastState = PB_ON;
 
-                         // Send the message to the output queue using SendOutputMsg function
+                        // Send the message to the output queue using SendOutputMsg function
                         SendOutputMsg(g_outputDef[m_CurrentOutputItem].outputMsg, 
                                     m_CurrentOutputItem,  // Use array index as ID
                                     g_outputDef[m_CurrentOutputItem].lastState, 
