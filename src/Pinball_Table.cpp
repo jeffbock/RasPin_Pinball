@@ -291,6 +291,10 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                     for (int i = 0; i < 3; i++) {
                         m_secondaryScoreAnims[i].reset();
                     }
+                    
+                    // Initialize screen manager with default normal main screen (priority 0 = persistent)
+                    pbeClearScreenRequests();
+                    pbeRequestScreen(1, ScreenPriority::PRIORITY_LOW, 0, true);  // Screen ID 1 = MAIN_NORMAL
 
                     // Stop the torch sound effect
                     m_soundSystem.pbsStopEffect(torchId);
@@ -363,6 +367,111 @@ bool PBEngine::pbeLoadMainScreen(){
     return (true);
 }
 
+// Renders the base main screen elements that are always present
+// (background, player scores, status icons, status text)
+bool PBEngine::pbeRenderMainScreenBase(unsigned long currentTick, unsigned long lastTick){
+    
+    if (!pbeLoadMainScreen()) {
+        pbeSendConsole("ERROR: Failed to load main screen resources");
+        return (false);
+    }
+
+    // Clear to black background
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    
+    // Render the main screen background
+    gfxRenderSprite(m_PBTBLMainScreenBGId, ACTIVEDISPX, ACTIVEDISPY);
+    
+    // Render all player scores
+    pbeRenderPlayerScores(currentTick, lastTick);
+
+    // Render status text with fade effects
+    pbeRenderStatusText(currentTick, lastTick);
+
+    // Render status icons and values
+    pbeRenderStatus(currentTick, lastTick);
+    
+    return (true);
+}
+
+// Renders the normal main screen (score and messages)
+// This is the default screen state - formerly MAIN_SHOWSCORE
+bool PBEngine::pbeRenderMainScreenNormal(unsigned long currentTick, unsigned long lastTick){
+    // Currently, all rendering is in the base function
+    // This function exists for future expansion (e.g., special overlays)
+    return (true);
+}
+
+// Renders the extra ball award screen with video
+bool PBEngine::pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned long lastTick){
+    // Load and setup video player if not already done
+    if (!m_extraBallVideoLoaded) {
+        if (!m_extraBallVideoPlayer) {
+            m_extraBallVideoPlayer = new PBVideoPlayer(this, &m_soundSystem);
+        }
+        
+        // Load the darktown_sound video
+        m_extraBallVideoSpriteId = m_extraBallVideoPlayer->pbvpLoadVideo(
+            "src/resources/videos/darktown_sound_h264.mp4",
+            ACTIVEDISPX + 100,  // Center in active display area
+            ACTIVEDISPY + 100,
+            false  // Don't keep resident
+        );
+        
+        if (m_extraBallVideoSpriteId != NOSPRITE) {
+            m_extraBallVideoPlayer->pbvpSetScaleFactor(0.8f);
+            m_extraBallVideoPlayer->pbvpPlay();
+            m_extraBallVideoLoaded = true;
+        } else {
+            m_extraBallVideoLoaded = false;
+            pbeSendConsole("ERROR: Failed to load extra ball video");
+            return (false);
+        }
+    }
+    
+    // Update and render the video
+    if (m_extraBallVideoLoaded && m_extraBallVideoPlayer) {
+        pbvPlaybackState videoState = m_extraBallVideoPlayer->pbvpGetPlaybackState();
+        
+        if (videoState != PBV_STOPPED && videoState != PBV_ERROR) {
+            m_extraBallVideoPlayer->pbvpUpdate(currentTick);
+            m_extraBallVideoPlayer->pbvpRender();
+        }
+    }
+    
+    return (true);
+}
+
+// Main organizer for main screen rendering - now uses screen manager
+bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
+    
+    // Always render the base screen (background, scores, status)
+    if (!pbeRenderMainScreenBase(currentTick, lastTick)) {
+        return (false);
+    }
+    
+    // Render specific screen content based on screen manager
+    int currentScreen = pbeGetCurrentScreen();
+    
+    // Screen IDs for main screen substates
+    const int SCREEN_MAIN_NORMAL = 1;      // Normal gameplay screen
+    const int SCREEN_MAIN_EXTRABALL = 2;   // Extra ball award screen
+    
+    switch (currentScreen) {
+        case SCREEN_MAIN_EXTRABALL:
+            pbeRenderMainScreenExtraBall(currentTick, lastTick);
+            break;
+        case SCREEN_MAIN_NORMAL:
+        default:
+            pbeRenderMainScreenNormal(currentTick, lastTick);
+            break;
+    }
+    
+    return (true);
+}
+
+// Old implementation removed - now split into base + specific screens
+/*
 // Organizes and calls all the sub-render routines for the main screen
 bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
     
@@ -388,6 +497,7 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     
     return (true);
 }
+*/
 
 // Support render routines for the main screen
 void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick){
@@ -948,20 +1058,40 @@ bool PBEngine::pbeRenderInitScreen(unsigned long currentTick, unsigned long last
 }
 
 // Main render selection function for the pinball table
+// Now uses screen manager for MAINSCREEN state, hardcoded for others
 bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick){
     
     bool success = false;
 
+    // Update screen manager before rendering (processes queue, handles expiration)
+    pbeUpdateScreenManager(currentTick);
+
     switch (m_tableState) {
-        case PBTableState::PBTBL_INIT: success = pbeRenderInitScreen(currentTick, lastTick); break;
-        case PBTableState::PBTBL_START: success = pbeRenderGameStart(currentTick, lastTick); break;
-        case PBTableState::PBTBL_MAINSCREEN: success = pbeRenderMainScreen(currentTick, lastTick); break;
-        case PBTableState::PBTBL_RESET: success = pbeRenderReset(currentTick, lastTick); break;
-        default: success = false; break;
+        case PBTableState::PBTBL_INIT: 
+            success = pbeRenderInitScreen(currentTick, lastTick); 
+            break;
+            
+        case PBTableState::PBTBL_START: 
+            success = pbeRenderGameStart(currentTick, lastTick); 
+            break;
+            
+        case PBTableState::PBTBL_MAINSCREEN: 
+            // Main screen now uses screen manager for sub-screens
+            // pbeRenderMainScreen will query pbeGetCurrentScreen() to determine what to render
+            success = pbeRenderMainScreen(currentTick, lastTick); 
+            break;
+            
+        case PBTableState::PBTBL_RESET: 
+            success = pbeRenderReset(currentTick, lastTick); 
+            break;
+            
+        default: 
+            success = false; 
+            break;
     }
 
     // Render the backglass all the time (this will cover any other sprites and hide anything that's off the mini-screen)
-    // It's got a transparent mini screen which wil show the mini render.
+    // It's got a transparent mini screen which will show the mini render.
     gfxRenderSprite(m_PBTBLBackglassId, 0, 0);
 
     return (success);
@@ -1026,6 +1156,12 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                     addPlayerScore(100);
                 }
                 else if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
+                    // TESTING: Trigger extra ball screen for 5 seconds
+                    // This will play over the normal screen (priority 0)
+                    pbeRequestScreen(2, ScreenPriority::PRIORITY_HIGH, 5000, false);  // Screen ID 2 = MAIN_EXTRABALL, 5 seconds
+                    pbeSendConsole("Extra ball screen requested for 5 seconds");
+                    
+                    // Also add score for testing
                     addPlayerScore(10000);
                 }
                 // Handle flipper buttons to enable/disable all characters
@@ -1096,7 +1232,17 @@ void PBEngine::pbeTableReload() {
     m_gameStartLoaded = false;
     m_mainScreenLoaded = false;
     m_resetLoaded = false;
-    m_RestartTable = true;    
+    m_RestartTable = true;
+    
+    // Clean up extra ball video player
+    if (m_extraBallVideoPlayer) {
+        m_extraBallVideoPlayer->pbvpStop();
+        m_extraBallVideoPlayer->pbvpUnloadVideo();
+        delete m_extraBallVideoPlayer;
+        m_extraBallVideoPlayer = nullptr;
+        m_extraBallVideoSpriteId = NOSPRITE;
+        m_extraBallVideoLoaded = false;
+    }
 }
 
 // ========================================================================
@@ -1380,59 +1526,13 @@ void PBEngine::pbeRequestScreen(int screenId, ScreenPriority priority,
 
 // Update screen manager - determines which screen should be displayed
 void PBEngine::pbeUpdateScreenManager(unsigned long currentTick) {
-    if (m_screenQueue.empty()) {
-        return; // No screen requests
-    }
-    
-    // Sort queue by priority (highest first)
-    std::sort(m_screenQueue.begin(), m_screenQueue.end(), 
-        [](const ScreenRequest& a, const ScreenRequest& b) {
-            return static_cast<int>(a.priority) > static_cast<int>(b.priority);
-        });
-    
-    // Get highest priority request
-    ScreenRequest& topRequest = m_screenQueue.front();
-    
-    // Check if we should change the displayed screen
-    bool shouldChange = false;
-    
-    if (m_currentDisplayedScreen != topRequest.screenId) {
-        // Different screen requested
-        if (m_currentDisplayedScreen == -1) {
-            // No screen currently displayed
-            shouldChange = true;
-        } else {
-            // Check if current screen can be preempted
-            // Find current screen in queue
-            bool currentCanBePreempted = true;
-            for (const auto& req : m_screenQueue) {
-                if (req.screenId == m_currentDisplayedScreen) {
-                    currentCanBePreempted = req.canBePreempted;
-                    break;
-                }
-            }
-            
-            if (currentCanBePreempted && 
-                static_cast<int>(topRequest.priority) > 
-                static_cast<int>(ScreenPriority::PRIORITY_LOW)) {
-                shouldChange = true;
-            }
-        }
-    }
-    
-    if (shouldChange) {
-        m_currentDisplayedScreen = topRequest.screenId;
-        m_currentScreenStartTick = currentTick;
-        pbeSendConsole("Screen changed to: " + std::to_string(m_currentDisplayedScreen));
-    }
-    
-    // Remove expired screens from queue
+    // First, remove expired screens from queue (priority >0 with elapsed time)
     auto it = m_screenQueue.begin();
     while (it != m_screenQueue.end()) {
         bool expired = false;
         
-        // Check if duration has elapsed (if duration is specified)
-        if (it->durationMs > 0) {
+        // Priority >0 screens MUST have duration and expire when time is up
+        if (static_cast<int>(it->priority) > 0 && it->durationMs > 0) {
             if (currentTick - it->requestTick > it->durationMs) {
                 expired = true;
             }
@@ -1447,6 +1547,55 @@ void PBEngine::pbeUpdateScreenManager(unsigned long currentTick) {
             ++it;
         }
     }
+    
+    if (m_screenQueue.empty()) {
+        m_currentDisplayedScreen = -1;
+        return; // No screen requests
+    }
+    
+    // Sort queue by priority (highest first)
+    std::sort(m_screenQueue.begin(), m_screenQueue.end(), 
+        [](const ScreenRequest& a, const ScreenRequest& b) {
+            return static_cast<int>(a.priority) > static_cast<int>(b.priority);
+        });
+    
+    // Get highest priority request
+    ScreenRequest& topRequest = m_screenQueue.front();
+    
+    // Determine which screen should be displayed
+    int screenToDisplay = -1;
+    
+    // Priority 0 is special - it's the "background" screen
+    // Priority >0 screens display over the priority 0 screen
+    
+    // Find the highest priority >0 screen (if any)
+    ScreenRequest* highestNonZero = nullptr;
+    for (auto& req : m_screenQueue) {
+        if (static_cast<int>(req.priority) > 0) {
+            highestNonZero = &req;
+            break; // Already sorted, so first one is highest
+        }
+    }
+    
+    if (highestNonZero != nullptr) {
+        // Display the highest priority >0 screen
+        screenToDisplay = highestNonZero->screenId;
+    } else {
+        // No priority >0 screens, use priority 0 screen (if present)
+        for (auto& req : m_screenQueue) {
+            if (static_cast<int>(req.priority) == 0) {
+                screenToDisplay = req.screenId;
+                break;
+            }
+        }
+    }
+    
+    // Update displayed screen if changed
+    if (m_currentDisplayedScreen != screenToDisplay && screenToDisplay != -1) {
+        m_currentDisplayedScreen = screenToDisplay;
+        m_currentScreenStartTick = currentTick;
+        pbeSendConsole("Screen changed to: " + std::to_string(m_currentDisplayedScreen));
+    }
 }
 
 // Clear all screen requests
@@ -1454,6 +1603,22 @@ void PBEngine::pbeClearScreenRequests() {
     m_screenQueue.clear();
     m_currentDisplayedScreen = -1;
     m_currentScreenStartTick = 0;
+}
+
+// Clear only priority 0 screen (background screen)
+// This allows numbered priority queue to be followed without a background
+void PBEngine::pbeClearPriority0Screen() {
+    auto it = m_screenQueue.begin();
+    while (it != m_screenQueue.end()) {
+        if (static_cast<int>(it->priority) == 0) {
+            if (it->screenId == m_currentDisplayedScreen) {
+                m_currentDisplayedScreen = -1; // Clear if this was displaying
+            }
+            it = m_screenQueue.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 // Get the current screen that should be displayed

@@ -29,7 +29,8 @@ enum class PBTBLScreenState {
 };
 
 enum class PBTBLMainScreenState {
-    MAIN_SHOWSCORE = 0,
+    MAIN_NORMAL = 0,        // Normal score and message display (formerly MAIN_SHOWSCORE)
+    MAIN_EXTRABALL = 1,     // Extra ball award screen with video
     MAIN_END
 };
 
@@ -195,7 +196,7 @@ public:
     // Reset to initial state based on game settings
     void reset(unsigned int ballsPerGame) {
         mainGameState = PBTableState::PBTBL_MAINSCREEN;
-        screenState = PBTBLMainScreenState::MAIN_SHOWSCORE;
+        screenState = PBTBLMainScreenState::MAIN_NORMAL;
         score = 0;
         inProgressScore = 0;
         previousScore = 0;

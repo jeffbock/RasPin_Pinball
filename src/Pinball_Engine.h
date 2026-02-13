@@ -306,6 +306,7 @@ public:
     void pbeRequestScreen(int screenId, ScreenPriority priority, unsigned long durationMs, bool canBePreempted);
     void pbeUpdateScreenManager(unsigned long currentTick);
     void pbeClearScreenRequests();
+    void pbeClearPriority0Screen();  // Clear only priority 0 screen, leaving numbered priority queue
     int pbeGetCurrentScreen();
 
     // Save File Functions
@@ -457,6 +458,11 @@ public:
     unsigned int m_PBTBLMainScreenBGId;
     unsigned int m_PBTBLCharacterCircle256Id, m_PBTBLDungeon256Id, m_PBTBLShield256Id, m_PBTBLSword256Id, m_PBTBLTreasure256Id;
     unsigned int m_PBTBLArcherHeadshot256Id, m_PBTBLKnightHeadshot256Id, m_PBTBLWolfHeadshot256Id;
+    
+    // Extra ball screen variables
+    PBVideoPlayer* m_extraBallVideoPlayer;
+    unsigned int m_extraBallVideoSpriteId;
+    bool m_extraBallVideoLoaded;
 
     // Start state
     unsigned int m_PBTBLStartDoorId, m_PBTBLLeftDoorId, m_PBTBLRightDoorId, m_PBTBLFlame1Id, m_PBTBLFlame2Id, m_PBTBLFlame3Id; 
@@ -575,6 +581,9 @@ private:
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderMainScreenBase(unsigned long currentTick, unsigned long lastTick);  // Always renders: background, scores, status
+    bool pbeRenderMainScreenNormal(unsigned long currentTick, unsigned long lastTick); // Normal score/message display
+    bool pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned long lastTick); // Extra ball video display
     bool pbeRenderStatus(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
 

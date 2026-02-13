@@ -109,6 +109,11 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_PBTBLResetSpriteId=0;
     m_RestartTable = true;
     
+    // Extra ball video variables
+    m_extraBallVideoPlayer = nullptr;
+    m_extraBallVideoSpriteId = NOSPRITE;
+    m_extraBallVideoLoaded = false;
+    
     // Reset state initialization
     m_ResetButtonPressed = false;
     m_StateBeforeReset = PBTableState::PBTBL_START;
@@ -167,6 +172,12 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     if (m_sandboxVideoPlayer) {
         delete m_sandboxVideoPlayer;
         m_sandboxVideoPlayer = nullptr;
+    }
+    
+    // Clean up extra ball video player
+    if (m_extraBallVideoPlayer) {
+        delete m_extraBallVideoPlayer;
+        m_extraBallVideoPlayer = nullptr;
     }
     
     // Clean up all registered devices
