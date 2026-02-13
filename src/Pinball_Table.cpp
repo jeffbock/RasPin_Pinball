@@ -1015,7 +1015,7 @@ PBTableState& PBEngine::getPlayerGameState(){
     return m_playerStates[m_currentPlayer].mainGameState;
 }
 
-PBTBLMainScreenState& PBEngine::getPlayerScreenState(){
+PBTBLScreenState& PBEngine::getPlayerScreenState(){
     return m_playerStates[m_currentPlayer].screenState;
 }
 

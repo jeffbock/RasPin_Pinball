@@ -25,13 +25,10 @@ enum class PBTBLScreenState {
     START_INST = 1,
     START_SCORES = 2,
     START_OPENDOOR = 3,
-    START_END
-};
-
-enum class PBTBLMainScreenState {
-    MAIN_NORMAL = 0,        // Normal score and message display (formerly MAIN_SHOWSCORE)
-    MAIN_EXTRABALL = 1,     // Extra ball award screen with video
-    MAIN_END
+    START_END = 4,
+    MAIN_NORMAL = 5,        // Normal score and message display (formerly MAIN_SHOWSCORE)
+    MAIN_EXTRABALL = 6,     // Extra ball award screen with video
+    MAIN_END = 7
 };
 
 // ========================================================================
@@ -160,7 +157,7 @@ struct SecondaryScoreAnimState {
 class pbGameState {
 public:
     PBTableState mainGameState;       // Main game state for this player
-    PBTBLMainScreenState screenState; // Screen state for this player
+    PBTBLScreenState screenState;     // Screen state for this player (merged main screen states)
     unsigned long score;              // Actual Current score
     unsigned long inProgressScore;    // Score accumulated during current ball
     unsigned long previousScore;      // Previous score to detect changes during animation
@@ -196,7 +193,7 @@ public:
     // Reset to initial state based on game settings
     void reset(unsigned int ballsPerGame) {
         mainGameState = PBTableState::PBTBL_MAINSCREEN;
-        screenState = PBTBLMainScreenState::MAIN_NORMAL;
+        screenState = PBTBLScreenState::MAIN_NORMAL;
         score = 0;
         inProgressScore = 0;
         previousScore = 0;

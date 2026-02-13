@@ -750,6 +750,9 @@ std::string PBEngine::ScreenStateToString(PBTBLScreenState state) {
         case PBTBLScreenState::START_SCORES: return "START_SCORES";
         case PBTBLScreenState::START_OPENDOOR: return "START_OPENDOOR";
         case PBTBLScreenState::START_END: return "START_END";
+        case PBTBLScreenState::MAIN_NORMAL: return "MAIN_NORMAL";
+        case PBTBLScreenState::MAIN_EXTRABALL: return "MAIN_EXTRABALL";
+        case PBTBLScreenState::MAIN_END: return "MAIN_END";
         default: return "UNKNOWN";
     }
 }
