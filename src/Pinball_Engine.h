@@ -520,6 +520,7 @@ private:
     std::string MainStateToString(PBMainState state);
     std::string TableStateToString(PBTableState state);
     std::string ScreenStateToString(PBTBLScreenState state);
+    std::string MainScreenStateToString(PBTBLMainScreenState state);
 
     // Main table Variables, etc..
     bool m_PBTBLStartLoaded; 

@@ -895,12 +895,30 @@ bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick)
         return (false);
     }
     
+    // First, render the previous state as background to ensure consistent overlay behavior
+    // This prevents relying on undefined back buffer contents
+    switch (m_StateBeforeReset) {
+        case PBTableState::PBTBL_INIT:
+            pbeRenderInitScreen(currentTick, lastTick);
+            break;
+        case PBTableState::PBTBL_START:
+            pbeRenderGameStart(currentTick, lastTick);
+            break;
+        case PBTableState::PBTBL_MAINSCREEN:
+            pbeRenderMainScreen(currentTick, lastTick);
+            break;
+        default:
+            // If unknown state, clear to black as fallback
+            gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+            break;
+    }
+    
     // Center position in active area
     // fix cernter x to use full screen width
     int centerX = (PB_SCREENWIDTH / 2);
     int centerY = ACTIVEDISPY + 384; // Center of active area (768 / 2)
     
-    // Render the black background sprite centered
+    // Render the black background sprite centered (overlay)
     gfxRenderSprite(m_PBTBLResetSpriteId, centerX - 350, centerY - 80); // 770x200 sprite, so offset by half width/height
     
     // Render white text over the black sprite
