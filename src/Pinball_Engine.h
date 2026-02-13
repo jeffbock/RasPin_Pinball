@@ -510,6 +510,11 @@ private:
     // Helper function to convert PBLEDColor enum to RGB values
     void ConvertColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, uint8_t& blue);
 
+    // Helper functions to convert state enums to strings for overlay display
+    std::string MainStateToString(PBMainState state);
+    std::string TableStateToString(PBTableState state);
+    std::string ScreenStateToString(PBTBLScreenState state);
+
     // Main table Variables, etc..
     bool m_PBTBLStartLoaded; 
     

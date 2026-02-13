@@ -704,7 +704,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
 
 // Helper functions to convert enums to strings for overlay display
 
-std::string MainStateToString(PBMainState state) {
+std::string PBEngine::MainStateToString(PBMainState state) {
     switch (state) {
         case PB_BOOTUP: return "BOOTUP";
         case PB_STARTMENU: return "STARTMENU";
@@ -720,7 +720,7 @@ std::string MainStateToString(PBMainState state) {
     }
 }
 
-std::string TableStateToString(PBTableState state) {
+std::string PBEngine::TableStateToString(PBTableState state) {
     switch (state) {
         case PBTableState::PBTBL_INIT: return "INIT";
         case PBTableState::PBTBL_START: return "START";
@@ -732,7 +732,7 @@ std::string TableStateToString(PBTableState state) {
     }
 }
 
-std::string ScreenStateToString(PBTBLScreenState state) {
+std::string PBEngine::ScreenStateToString(PBTBLScreenState state) {
     switch (state) {
         case PBTBLScreenState::START_START: return "START_START";
         case PBTBLScreenState::START_INST: return "START_INST";
