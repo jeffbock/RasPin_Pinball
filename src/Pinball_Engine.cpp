@@ -109,9 +109,15 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_PBTBLResetSpriteId=0;
     m_RestartTable = true;
     
+    // Extra ball video variables
+    m_extraBallVideoPlayer = nullptr;
+    m_extraBallVideoSpriteId = NOSPRITE;
+    m_extraBallVideoLoaded = false;
+    
     // Reset state initialization
     m_ResetButtonPressed = false;
     m_StateBeforeReset = PBTableState::PBTBL_START;
+    m_ScreenBeforeReset = -1;
     
     // Multi-player game state initialization
     m_currentPlayer = 0;
@@ -167,6 +173,12 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     if (m_sandboxVideoPlayer) {
         delete m_sandboxVideoPlayer;
         m_sandboxVideoPlayer = nullptr;
+    }
+    
+    // Clean up extra ball video player
+    if (m_extraBallVideoPlayer) {
+        delete m_extraBallVideoPlayer;
+        m_extraBallVideoPlayer = nullptr;
     }
     
     // Clean up all registered devices
@@ -702,6 +714,50 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
     return (true);   
 }
 
+// Helper functions to convert enums to strings for overlay display
+
+std::string PBEngine::MainStateToString(PBMainState state) {
+    switch (state) {
+        case PB_BOOTUP: return "BOOTUP";
+        case PB_STARTMENU: return "STARTMENU";
+        case PB_PLAYGAME: return "PLAYGAME";
+        case PB_TESTMODE: return "TESTMODE";
+        case PB_BENCHMARK: return "BENCHMARK";
+        case PB_CREDITS: return "CREDITS";
+        case PB_SETTINGS: return "SETTINGS";
+        case PB_DIAGNOSTICS: return "DIAGNOSTICS";
+        case PB_TESTSANDBOX: return "TESTSANDBOX";
+        case PB_SIMPLEFLIPMODE: return "SIMPLEFLIPMODE";
+        default: return "UNKNOWN";
+    }
+}
+
+std::string PBEngine::TableStateToString(PBTableState state) {
+    switch (state) {
+        case PBTableState::PBTBL_INIT: return "INIT";
+        case PBTableState::PBTBL_START: return "START";
+        case PBTableState::PBTBL_MAINSCREEN: return "MAINSCREEN";
+        case PBTableState::PBTBL_STDPLAY: return "STDPLAY";
+        case PBTableState::PBTBL_RESET: return "RESET";
+        case PBTableState::PBTBL_END: return "END";
+        default: return "UNKNOWN";
+    }
+}
+
+std::string PBEngine::ScreenStateToString(PBTBLScreenState state) {
+    switch (state) {
+        case PBTBLScreenState::START_START: return "START_START";
+        case PBTBLScreenState::START_INST: return "START_INST";
+        case PBTBLScreenState::START_SCORES: return "START_SCORES";
+        case PBTBLScreenState::START_OPENDOOR: return "START_OPENDOOR";
+        case PBTBLScreenState::START_END: return "START_END";
+        case PBTBLScreenState::MAIN_NORMAL: return "MAIN_NORMAL";
+        case PBTBLScreenState::MAIN_EXTRABALL: return "MAIN_EXTRABALL";
+        case PBTBLScreenState::MAIN_END: return "MAIN_END";
+        default: return "UNKNOWN";
+    }
+}
+
 // I/O Overlay Rendering - Shows current state of all inputs and outputs
 
 bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTick){
@@ -715,16 +771,24 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
     // Set up transparent background for overlay
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
     
+    // STATE DISPLAY Section - Display at top of screen
+    std::string stateDisplay = "MainState: " + MainStateToString(m_mainState) + 
+                                "  GameState: " + TableStateToString(m_tableState) + 
+                                "  ScreenState: " + ScreenStateToString(m_tableScreenState);
+    
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for state display
+    gfxRenderShadowString(m_defaultFontSpriteId, stateDisplay, (PB_SCREENWIDTH / 2), 5, 0.4, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
+    
     // INPUTS Section
     gfxSetColor(m_defaultFontSpriteId, 0, 255, 255, 255);  // Cyan for inputs header
-    gfxRenderShadowString(m_defaultFontSpriteId, "INPUTS", 20, 5, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "INPUTS", 20, 25, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Render inputs in one column (48 items will fit with 40% scale)
     for (int i = 0; i < NUM_INPUTS; i++) {
         std::string temp = g_inputDef[i].inputName + ": ";
         
         int x = 20;                   // Single column
-        int y = 25 + (i * 20);        // Start below header at top of screen
+        int y = 45 + (i * 20);        // Start below header with proper spacing
         
         // Render input name
         gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
@@ -752,14 +816,14 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
     // OUTPUTS Section - Position moved 225 pixels further right total
     int outputStartX = PB_SCREENWIDTH - 280;  // Moved 225 pixels right total (was -480, now -255)
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for outputs header
-    gfxRenderShadowString(m_defaultFontSpriteId, "OUTPUTS", outputStartX, 5, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "OUTPUTS", outputStartX, 25, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Render outputs in one column (48 items will fit with 40% scale)
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         std::string temp = g_outputDef[i].outputName + ": ";
         
         int x = outputStartX;         // Single column
-        int y = 25 + (i * 20);        // Start below header at top of screen
+        int y = 45 + (i * 20);        // Start below header with proper spacing
         
         // Render output name
         gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);

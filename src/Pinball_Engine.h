@@ -306,6 +306,7 @@ public:
     void pbeRequestScreen(int screenId, ScreenPriority priority, unsigned long durationMs, bool canBePreempted);
     void pbeUpdateScreenManager(unsigned long currentTick);
     void pbeClearScreenRequests();
+    void pbeClearPriority0Screen();  // Clear only priority 0 screen, leaving numbered priority queue
     int pbeGetCurrentScreen();
 
     // Save File Functions
@@ -457,6 +458,11 @@ public:
     unsigned int m_PBTBLMainScreenBGId;
     unsigned int m_PBTBLCharacterCircle256Id, m_PBTBLDungeon256Id, m_PBTBLShield256Id, m_PBTBLSword256Id, m_PBTBLTreasure256Id;
     unsigned int m_PBTBLArcherHeadshot256Id, m_PBTBLKnightHeadshot256Id, m_PBTBLWolfHeadshot256Id;
+    
+    // Extra ball screen variables
+    PBVideoPlayer* m_extraBallVideoPlayer;
+    unsigned int m_extraBallVideoSpriteId;
+    bool m_extraBallVideoLoaded;
 
     // Start state
     unsigned int m_PBTBLStartDoorId, m_PBTBLLeftDoorId, m_PBTBLRightDoorId, m_PBTBLFlame1Id, m_PBTBLFlame2Id, m_PBTBLFlame3Id; 
@@ -471,6 +477,7 @@ public:
     // Reset state tracking
     bool m_ResetButtonPressed;         // Track if reset was pressed once
     PBTableState m_StateBeforeReset;   // State to return to if reset is cancelled
+    int m_ScreenBeforeReset;           // Screen ID to restore if reset is cancelled
     unsigned int m_PBTBLResetSpriteId; // Sprite ID for reset screen background
 
     // Multi-player game state
@@ -509,6 +516,11 @@ private:
 
     // Helper function to convert PBLEDColor enum to RGB values
     void ConvertColorToRGB(PBLEDColor color, uint8_t& red, uint8_t& green, uint8_t& blue);
+
+    // Helper functions to convert state enums to strings for overlay display
+    std::string MainStateToString(PBMainState state);
+    std::string TableStateToString(PBTableState state);
+    std::string ScreenStateToString(PBTBLScreenState state);
 
     // Main table Variables, etc..
     bool m_PBTBLStartLoaded; 
@@ -570,6 +582,9 @@ private:
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderMainScreenBase(unsigned long currentTick, unsigned long lastTick);  // Always renders: background, scores, status
+    bool pbeRenderMainScreenNormal(unsigned long currentTick, unsigned long lastTick); // Normal score/message display
+    bool pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned long lastTick); // Extra ball video display
     bool pbeRenderStatus(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
 
@@ -587,7 +602,7 @@ private:
     unsigned long getCurrentPlayerScore(); // Get current player's score
     bool isCurrentPlayerEnabled(); // Get current player's enabled state
     PBTableState& getPlayerGameState(); // Get current player's game state
-    PBTBLMainScreenState& getPlayerScreenState(); // Get current player's screen state
+    PBTBLScreenState& getPlayerScreenState(); // Get current player's screen state
     void addPlayerScore(unsigned long points); // Add score to current player
     
     // Helper functions
