@@ -96,12 +96,17 @@ private:
     bool videoAudioStreaming;            // Is stream active?
     class PBVideo* videoProvider;        // Reference to video for pulling audio
     
+    // Double-buffering for smoother audio streaming
+    Mix_Chunk* videoAudioChunkPending;   // Next chunk ready to play (prevents gaps)
+    bool pendingChunkReady;              // Flag indicating pending chunk is prepared
+    
     // Internal helper methods
     int findFreeEffectSlot();
     void updateEffectStatus();
     Mix_Chunk* loadEffect(const std::string& filePath);
     int convertVolumeToSDL(int percentage);
     Mix_Chunk* createAudioChunkFromSamples(const float* audioSamples, int numSamples, int sampleRate);
+    void preparePendingAudioChunk();     // Pre-buffer next audio chunk for seamless playback
     
     // Static callback for SDL_mixer channel finished
     static void channelFinishedCallback(int channel);
