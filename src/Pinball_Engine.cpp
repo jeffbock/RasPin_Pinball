@@ -117,6 +117,7 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     // Reset state initialization
     m_ResetButtonPressed = false;
     m_StateBeforeReset = PBTableState::PBTBL_START;
+    m_ScreenBeforeReset = -1;
     
     // Multi-player game state initialization
     m_currentPlayer = 0;

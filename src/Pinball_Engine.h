@@ -477,6 +477,7 @@ public:
     // Reset state tracking
     bool m_ResetButtonPressed;         // Track if reset was pressed once
     PBTableState m_StateBeforeReset;   // State to return to if reset is cancelled
+    int m_ScreenBeforeReset;           // Screen ID to restore if reset is cancelled
     unsigned int m_PBTBLResetSpriteId; // Sprite ID for reset screen background
 
     // Multi-player game state
