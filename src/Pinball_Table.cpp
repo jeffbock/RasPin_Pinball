@@ -453,7 +453,7 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     // Render specific screen content based on screen manager
     int currentScreen = pbeGetCurrentScreen();
     
-    // Screen IDs for main screen substates
+    // Screen IDs for main screen substates (must match pbeRenderGameScreen constants)
     const int SCREEN_MAIN_NORMAL = 1;      // Normal gameplay screen
     const int SCREEN_MAIN_EXTRABALL = 2;   // Extra ball award screen
     
@@ -1058,35 +1058,66 @@ bool PBEngine::pbeRenderInitScreen(unsigned long currentTick, unsigned long last
 }
 
 // Main render selection function for the pinball table
-// Now uses screen manager for MAINSCREEN state, hardcoded for others
+// All states now use screen manager with priority 0 for state-based screens
 bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick){
     
+    // Screen ID constants for all table states
+    const int SCREEN_INIT = 0;
+    const int SCREEN_MAIN_NORMAL = 1;
+    const int SCREEN_MAIN_EXTRABALL = 2;
+    const int SCREEN_START = 10;
+    const int SCREEN_RESET = 20;
+    
     bool success = false;
+
+    // Request appropriate priority 0 screen based on current table state
+    // The optimization in pbeRequestScreen prevents duplicate requests
+    switch (m_tableState) {
+        case PBTableState::PBTBL_INIT:
+            pbeRequestScreen(SCREEN_INIT, ScreenPriority::PRIORITY_LOW, 0, true);
+            break;
+        case PBTableState::PBTBL_START:
+            pbeRequestScreen(SCREEN_START, ScreenPriority::PRIORITY_LOW, 0, true);
+            break;
+        case PBTableState::PBTBL_MAINSCREEN:
+            // MAIN_NORMAL is already requested when entering MAINSCREEN state
+            // Additional screens (like MAIN_EXTRABALL) are requested as needed
+            break;
+        case PBTableState::PBTBL_RESET:
+            pbeRequestScreen(SCREEN_RESET, ScreenPriority::PRIORITY_LOW, 0, true);
+            break;
+        default:
+            break;
+    }
 
     // Update screen manager before rendering (processes queue, handles expiration)
     pbeUpdateScreenManager(currentTick);
 
-    switch (m_tableState) {
-        case PBTableState::PBTBL_INIT: 
-            success = pbeRenderInitScreen(currentTick, lastTick); 
+    // Render based on current screen from screen manager
+    int currentScreen = pbeGetCurrentScreen();
+    
+    switch (currentScreen) {
+        case SCREEN_INIT:
+            success = pbeRenderInitScreen(currentTick, lastTick);
             break;
             
-        case PBTableState::PBTBL_START: 
-            success = pbeRenderGameStart(currentTick, lastTick); 
+        case SCREEN_START:
+            success = pbeRenderGameStart(currentTick, lastTick);
             break;
             
-        case PBTableState::PBTBL_MAINSCREEN: 
-            // Main screen now uses screen manager for sub-screens
-            // pbeRenderMainScreen will query pbeGetCurrentScreen() to determine what to render
-            success = pbeRenderMainScreen(currentTick, lastTick); 
+        case SCREEN_MAIN_NORMAL:
+        case SCREEN_MAIN_EXTRABALL:
+            // Main screen handles both normal and extraball screens internally
+            success = pbeRenderMainScreen(currentTick, lastTick);
             break;
             
-        case PBTableState::PBTBL_RESET: 
-            success = pbeRenderReset(currentTick, lastTick); 
+        case SCREEN_RESET:
+            success = pbeRenderReset(currentTick, lastTick);
             break;
             
-        default: 
-            success = false; 
+        default:
+            // No valid screen, render nothing
+            success = false;
             break;
     }
 
@@ -1510,6 +1541,17 @@ bool PBEngine::pbeCheckMultiballQualified() {
 // Request a screen to be displayed
 void PBEngine::pbeRequestScreen(int screenId, ScreenPriority priority, 
                                 unsigned long durationMs, bool canBePreempted) {
+    // Optimization: Don't add duplicate priority 0 (background) screens
+    // This avoids adding the same persistent screen every frame
+    if (static_cast<int>(priority) == 0) {
+        for (const auto& req : m_screenQueue) {
+            if (req.screenId == screenId && static_cast<int>(req.priority) == 0) {
+                // Same priority 0 screen already in queue, skip
+                return;
+            }
+        }
+    }
+    
     ScreenRequest request;
     request.screenId = screenId;
     request.priority = priority;
