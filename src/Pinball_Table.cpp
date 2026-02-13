@@ -895,23 +895,9 @@ bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick)
         return (false);
     }
     
-    // First, render the previous state as background to ensure consistent overlay behavior
-    // This prevents relying on undefined back buffer contents
-    switch (m_StateBeforeReset) {
-        case PBTableState::PBTBL_INIT:
-            pbeRenderInitScreen(currentTick, lastTick);
-            break;
-        case PBTableState::PBTBL_START:
-            pbeRenderGameStart(currentTick, lastTick);
-            break;
-        case PBTableState::PBTBL_MAINSCREEN:
-            pbeRenderMainScreen(currentTick, lastTick);
-            break;
-        default:
-            // If unknown state, clear to black as fallback
-            gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-            break;
-    }
+    // Clear to "blue screen of death" blue color for consistent, recognizable background
+    // RGB(0, 0, 170) is classic BSOD blue (0x0000AA)
+    gfxClear(0.0f, 0.0f, 0.667f, 1.0f, false);  // Blue (170/255 = 0.667)
     
     // Center position in active area
     // fix cernter x to use full screen width
