@@ -754,15 +754,6 @@ std::string PBEngine::ScreenStateToString(PBTBLScreenState state) {
     }
 }
 
-std::string PBEngine::MainScreenStateToString(PBTBLMainScreenState state) {
-    switch (state) {
-        case PBTBLMainScreenState::MAIN_NORMAL: return "MAIN_NORMAL";
-        case PBTBLMainScreenState::MAIN_EXTRABALL: return "MAIN_EXTRABALL";
-        case PBTBLMainScreenState::MAIN_END: return "MAIN_END";
-        default: return "UNKNOWN";
-    }
-}
-
 // I/O Overlay Rendering - Shows current state of all inputs and outputs
 
 bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTick){
@@ -780,11 +771,6 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
     std::string stateDisplay = "MainState: " + MainStateToString(m_mainState) + 
                                 "  GameState: " + TableStateToString(m_tableState) + 
                                 "  ScreenState: " + ScreenStateToString(m_tableScreenState);
-    
-    // Add MainScreenState for current player if in MAINSCREEN state
-    if (m_tableState == PBTableState::PBTBL_MAINSCREEN && m_playerStates[m_currentPlayer].enabled) {
-        stateDisplay += "  MainScreenState: " + MainScreenStateToString(m_playerStates[m_currentPlayer].screenState);
-    }
     
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for state display
     gfxRenderShadowString(m_defaultFontSpriteId, stateDisplay, (PB_SCREENWIDTH / 2), 5, 0.4, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
