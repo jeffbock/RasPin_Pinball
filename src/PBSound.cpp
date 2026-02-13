@@ -45,9 +45,9 @@ bool PBSound::pbsInitialize() {
     }
     
     // Initialize SDL_mixer with optimized quality settings for reduced popping/skips
-    // 44.1kHz, 16-bit signed, stereo, 4096 byte chunks (larger buffer reduces underruns)
-    // Previous: 2048 byte chunks (~23ms) - sometimes caused audio pops
-    // New: 4096 byte chunks (~46ms) - smoother streaming with larger buffer headroom
+    // 44.1kHz, 16-bit signed, stereo, 4096 sample frame buffer
+    // Previous: 2048 sample frames (~11.6ms at 44.1kHz) - sometimes caused audio pops
+    // New: 4096 sample frames (~23.2ms at 44.1kHz) - smoother streaming with larger headroom
     if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096) < 0) {
         SDL_Quit();
         return false;
@@ -398,11 +398,11 @@ bool PBSound::pbsStartVideoAudioStream() {
     videoAudioStreaming = true;
     pendingChunkReady = false;
     
-    // Use larger chunk size for smoother streaming (4096 samples = ~93ms at 44.1kHz)
-    // This matches the SDL_mixer buffer size for better synchronization and reduces
-    // the chance of buffer underruns that cause audio pops/clicks
-    const int STREAM_CHUNK_SIZE = 4096;
-    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo
+    // Use larger chunk size for smoother streaming
+    // 4096 sample frames (stereo pairs) = ~93ms at 44.1kHz
+    // This reduces callback frequency and the chance of buffer underruns that cause pops/clicks
+    const int STREAM_CHUNK_SIZE = 4096;  // Sample frames (stereo pairs)
+    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo (L+R for each frame)
     
     int samplesRead = videoProvider->pbvGetAudioSamples(audioSamples, STREAM_CHUNK_SIZE);
     if (samplesRead > 0) {
@@ -540,10 +540,10 @@ void PBSound::handleChannelFinished(int channel) {
     }
     
     // Fallback: Pull next audio chunk from video provider directly
-    // Use 4096 sample chunks (~93ms at 44.1kHz stereo) for smooth streaming
-    // Larger chunks reduce the frequency of callbacks and minimize underrun risk
-    const int STREAM_CHUNK_SIZE = 4096;
-    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo
+    // 4096 sample frames (stereo pairs) = ~93ms at 44.1kHz
+    // Larger chunks reduce callback frequency and minimize underrun risk
+    const int STREAM_CHUNK_SIZE = 4096;  // Sample frames (stereo pairs)
+    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo (L+R for each frame)
     
     int samplesRead = videoProvider->pbvGetAudioSamples(audioSamples, STREAM_CHUNK_SIZE);
     if (samplesRead > 0) {
@@ -579,8 +579,8 @@ void PBSound::preparePendingAudioChunk() {
         return;
     }
     
-    const int STREAM_CHUNK_SIZE = 4096;
-    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo
+    const int STREAM_CHUNK_SIZE = 4096;  // Sample frames (stereo pairs)
+    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo (L+R for each frame)
     
     int samplesRead = videoProvider->pbvGetAudioSamples(audioSamples, STREAM_CHUNK_SIZE);
     if (samplesRead > 0) {
