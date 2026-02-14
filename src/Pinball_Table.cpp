@@ -458,6 +458,7 @@ bool PBEngine::pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned 
         if (lastScreenStartTick != m_currentScreenStartTick) {
             // Screen was just queued - restart video from beginning
             m_extraBallVideoPlayer->pbvpSeekTo(0.0f);
+            m_extraBallVideoPlayer->pbvpSetVolume(0);  // Set volume to 0 for silent playback
             m_extraBallVideoPlayer->pbvpPlay();
             m_extraBallVideoPlayer->pbvpUpdate(currentTick);  // Update to load frame 0
             lastScreenStartTick = m_currentScreenStartTick;

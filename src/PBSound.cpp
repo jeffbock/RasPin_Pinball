@@ -9,7 +9,7 @@
 PBSound* PBSound::instance = nullptr;
 #endif
 
-PBSound::PBSound() : initialized(false), masterVolume(100), musicVolume(100) {
+PBSound::PBSound() : initialized(false), masterVolume(100), musicVolume(100), videoVolume(100) {
 #ifdef EXE_MODE_RASPI
     currentMusic = nullptr;
     for (int i = 0; i < 4; i++) {
@@ -284,6 +284,20 @@ void PBSound::pbsSetMusicVolume(int volume) {
 #ifdef EXE_MODE_RASPI
     if (initialized) {
         Mix_VolumeMusic(convertVolumeToSDL(musicVolume));
+    }
+#endif
+}
+
+void PBSound::pbsSetVideoVolume(int volume) {
+    // Clamp volume to 0-100 range
+    if (volume < 0) volume = 0;
+    if (volume > 100) volume = 100;
+    
+    videoVolume = volume;
+    
+#ifdef EXE_MODE_RASPI
+    if (initialized) {
+        Mix_Volume(VIDEO_AUDIO_CHANNEL, convertVolumeToSDL(videoVolume));
     }
 #endif
 }

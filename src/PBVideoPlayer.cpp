@@ -232,6 +232,12 @@ void PBVideoPlayer::pbvpSetAudioEnabled(bool enabled) {
     }
 }
 
+void PBVideoPlayer::pbvpSetVolume(int volume) {
+    if (m_sound) {
+        m_sound->pbsSetVideoVolume(volume);
+    }
+}
+
 void PBVideoPlayer::pbvpSetXY(int x, int y) {
     if (videoSpriteId != NOSPRITE) {
         m_gfx->gfxSetXY(videoSpriteId, x, y, false);

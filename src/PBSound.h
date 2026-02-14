@@ -72,14 +72,19 @@ public:
     // Set music volume (0-100%)
     void pbsSetMusicVolume(int volume);
     
+    // Set video audio volume (0-100%)
+    void pbsSetVideoVolume(int volume);
+    
     // Get current volume levels
     int pbsGetMasterVolume() const { return masterVolume; }
     int pbsGetMusicVolume() const { return musicVolume; }
+    int pbsGetVideoVolume() const { return videoVolume; }
     
 private:
     bool initialized;
     int masterVolume;  // 0-100%
     int musicVolume;   // 0-100%
+    int videoVolume;   // 0-100%
     
 #ifdef EXE_MODE_RASPI
     Mix_Music* currentMusic;

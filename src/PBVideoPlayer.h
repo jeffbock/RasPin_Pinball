@@ -62,6 +62,7 @@ public:
     void pbvpSetPlaybackSpeed(float speed);
     void pbvpSetLooping(bool loop);
     void pbvpSetAudioEnabled(bool enabled);
+    void pbvpSetVolume(int volume);
     
     // Sprite manipulation (forwards to PBGfx)
     void pbvpSetXY(int x, int y);
