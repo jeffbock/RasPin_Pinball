@@ -214,10 +214,16 @@ bool PBEngine::pbeLoadSaveFile(bool loadDefaults, bool resetScores){
         }
         saveFile.close();
         
-        // If OS mismatch detected, delete the file
-        if (osMismatch) {
-            std::remove(SAVEFILENAME);
-            pbeSendConsole("RasPin: WARNING: Save file created on different OS - file deleted and will be recreated");
+        // If OS mismatch or failure detected, delete the file and reinitialize the structure
+        if (osMismatch || failed) {
+            if (osMismatch) {
+                std::remove(SAVEFILENAME);
+                pbeSendConsole("RasPin: WARNING: Save file created on different OS - file deleted and will be recreated");
+            }
+            
+            // Reinitialize m_saveFileData with a fresh structure to avoid corrupted std::string objects
+            // This is critical because std::string is not POD and binary loading corrupts internal pointers
+            m_saveFileData = stSaveFileData();
         }
     } else {
         failed = true;
@@ -238,6 +244,12 @@ bool PBEngine::pbeLoadSaveFile(bool loadDefaults, bool resetScores){
 
     // Set the stHighScoreData array scores to zero and name to "JEF"
     if ((resetScores) || failed) resetHighScores();
+    
+    // If we had to recreate the structure, save it immediately to create a valid file
+    if (failed) {
+        pbeSaveFile();
+        pbeSendConsole("RasPin: Save file recreated with default values");
+    }
     
     return (!failed);
 }
