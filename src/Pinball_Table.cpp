@@ -416,21 +416,26 @@ bool PBEngine::pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned 
             m_extraBallVideoPlayer = new PBVideoPlayer(this, &m_soundSystem);
         }
         
-        // Load the darktown_sound video (initial position, will be centered after loading)
+        // Load the extra ball video (initial position, will be centered after loading)
         m_extraBallVideoSpriteId = m_extraBallVideoPlayer->pbvpLoadVideo(
-            "src/resources/videos/darktown_sound_h264.mp4",
+            "src/resources/videos/ExtraBall.mp4",
             0, 0,
             false  // Don't keep resident
         );
         
         if (m_extraBallVideoSpriteId != NOSPRITE) {
-            // Set scale to 50%
-            m_extraBallVideoPlayer->pbvpSetScaleFactor(0.5f);
+            // Set scale to 95%
+            m_extraBallVideoPlayer->pbvpSetScaleFactor(0.95f);
             
             // Get video dimensions to calculate centered position
             stVideoInfo videoInfo = m_extraBallVideoPlayer->pbvpGetVideoInfo();
-            int scaledWidth = (int)(videoInfo.width * 0.5f);
-            int scaledHeight = (int)(videoInfo.height * 0.5f);
+            int scaledWidth = (int)(videoInfo.width * 0.95f);
+            int scaledHeight = (int)(videoInfo.height * 0.95f);
+            
+            // Log video properties for debugging
+            pbeSendConsole("Extra Ball Video - FPS: " + std::to_string(videoInfo.fps) + 
+                          ", Duration: " + std::to_string(videoInfo.durationSec) + "s" +
+                          ", Size: " + std::to_string(videoInfo.width) + "x" + std::to_string(videoInfo.height));
             
             // Center in active display area (1024x768), aligned with score text center
             // Score text is centered at ACTIVEDISPX + (1024/3) = ACTIVEDISPX + 341
@@ -1257,10 +1262,10 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                     addPlayerScore(100);
                 }
                 else if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
-                    // TESTING: Trigger extra ball screen for 5 seconds
+                    // TESTING: Trigger extra ball screen for 3.9 seconds
                     // This will play over the normal screen (priority 0)
-                    pbeRequestScreen(2, ScreenPriority::PRIORITY_HIGH, 5000, false);  // Screen ID 2 = MAIN_EXTRABALL, 5 seconds
-                    pbeSendConsole("Extra ball screen requested for 5 seconds");
+                    pbeRequestScreen(2, ScreenPriority::PRIORITY_HIGH, 3900, false);  // Screen ID 2 = MAIN_EXTRABALL, 3.9 seconds
+                    pbeSendConsole("Extra ball screen requested for 3.9 seconds");
                     
                     // Also add score for testing
                     addPlayerScore(10000);
