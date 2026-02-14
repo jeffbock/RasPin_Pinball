@@ -9,7 +9,7 @@
 PBSound* PBSound::instance = nullptr;
 #endif
 
-PBSound::PBSound() : initialized(false), masterVolume(100), musicVolume(100) {
+PBSound::PBSound() : initialized(false), masterVolume(100), musicVolume(100), videoVolume(100) {
 #ifdef EXE_MODE_RASPI
     currentMusic = nullptr;
     for (int i = 0; i < 4; i++) {
@@ -19,8 +19,10 @@ PBSound::PBSound() : initialized(false), masterVolume(100), musicVolume(100) {
         effectLoop[i] = false;
         effectFilePath[i] = "";
     }
-    // Initialize video audio streaming system
+    // Initialize video audio streaming system with double-buffering
     videoAudioChunk = nullptr;
+    videoAudioChunkPending = nullptr;
+    pendingChunkReady = false;
     videoAudioStreaming = false;
     videoProvider = nullptr;
     instance = this;  // Set singleton for callback
@@ -42,9 +44,11 @@ bool PBSound::pbsInitialize() {
         return false;
     }
     
-    // Initialize SDL_mixer with reasonable quality settings
-    // 44.1kHz, 16-bit signed, stereo, 2048 byte chunks
-    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+    // Initialize SDL_mixer with optimized quality settings for reduced popping/skips
+    // 44.1kHz, 16-bit signed, stereo, 4096 sample frame buffer
+    // Previous: 2048 sample frames (~11.6ms at 44.1kHz) - sometimes caused audio pops
+    // New: 4096 sample frames (~23.2ms at 44.1kHz) - smoother streaming with larger headroom
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096) < 0) {
         SDL_Quit();
         return false;
     }
@@ -284,6 +288,20 @@ void PBSound::pbsSetMusicVolume(int volume) {
 #endif
 }
 
+void PBSound::pbsSetVideoVolume(int volume) {
+    // Clamp volume to 0-100 range
+    if (volume < 0) volume = 0;
+    if (volume > 100) volume = 100;
+    
+    videoVolume = volume;
+    
+#ifdef EXE_MODE_RASPI
+    if (initialized) {
+        Mix_Volume(VIDEO_AUDIO_CHANNEL, convertVolumeToSDL(videoVolume));
+    }
+#endif
+}
+
 #ifdef EXE_MODE_RASPI
 int PBSound::findFreeEffectSlot() {
     for (int i = 0; i < 4; i++) {
@@ -392,10 +410,13 @@ bool PBSound::pbsStartVideoAudioStream() {
     }
     
     videoAudioStreaming = true;
+    pendingChunkReady = false;
     
-    // Queue the first chunk manually to start the stream
-    const int STREAM_CHUNK_SIZE = 2048;
-    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo
+    // Use larger chunk size for smoother streaming
+    // 4096 sample frames (stereo pairs) = ~93ms at 44.1kHz
+    // This reduces callback frequency and the chance of buffer underruns that cause pops/clicks
+    const int STREAM_CHUNK_SIZE = 4096;  // Sample frames (stereo pairs)
+    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo (L+R for each frame)
     
     int samplesRead = videoProvider->pbvGetAudioSamples(audioSamples, STREAM_CHUNK_SIZE);
     if (samplesRead > 0) {
@@ -413,7 +434,8 @@ bool PBSound::pbsStartVideoAudioStream() {
                 videoAudioStreaming = false;
                 return false;
             }
-            // Success! When this chunk finishes, the callback will queue the next one
+            // Pre-buffer the next chunk immediately to ensure seamless playback
+            preparePendingAudioChunk();
             return true;
         }
     }
@@ -433,6 +455,7 @@ void PBSound::pbsStopVideoAudio() {
     }
     
     videoAudioStreaming = false;
+    pendingChunkReady = false;
     
     // Stop channel 4
     Mix_HaltChannel(VIDEO_AUDIO_CHANNEL);
@@ -445,6 +468,15 @@ void PBSound::pbsStopVideoAudio() {
         delete videoAudioChunk;
         videoAudioChunk = nullptr;
     }
+    
+    // Clean up pending chunk if any
+    if (videoAudioChunkPending) {
+        if (videoAudioChunkPending->abuf) {
+            delete[] (Sint16*)videoAudioChunkPending->abuf;
+        }
+        delete videoAudioChunkPending;
+        videoAudioChunkPending = nullptr;
+    }
 #endif
 }
 
@@ -453,8 +485,9 @@ void PBSound::pbsRestartVideoAudioStream() {
     // Stop current stream and restart
     pbsStopVideoAudio();
     
-    // Small delay to ensure channel is fully stopped
-    SDL_Delay(5);
+    // Small delay to ensure channel is fully stopped and hardware buffer clears
+    // Increased from 5ms to 10ms for more reliable cleanup
+    SDL_Delay(10);
     
     // Restart streaming
     pbsStartVideoAudioStream();
@@ -496,10 +529,35 @@ void PBSound::handleChannelFinished(int channel) {
         videoAudioChunk = nullptr;
     }
     
-    // Pull next audio chunk from video provider
-    // Use fixed 2048 sample chunks (46ms at 44.1kHz stereo) for smooth streaming
-    const int STREAM_CHUNK_SIZE = 2048;
-    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo
+    // Double-buffering: Use pre-prepared pending chunk if available (reduces latency)
+    // This eliminates the delay of creating chunks during the callback
+    if (pendingChunkReady && videoAudioChunkPending) {
+        videoAudioChunk = videoAudioChunkPending;
+        videoAudioChunkPending = nullptr;
+        pendingChunkReady = false;
+        
+        int result = Mix_PlayChannel(VIDEO_AUDIO_CHANNEL, videoAudioChunk, 0);
+        if (result == -1) {
+            // Failed to play - clean up and stop streaming
+            if (videoAudioChunk->abuf) {
+                delete[] (Sint16*)videoAudioChunk->abuf;
+            }
+            delete videoAudioChunk;
+            videoAudioChunk = nullptr;
+            videoAudioStreaming = false;
+            return;
+        }
+        
+        // Immediately prepare the next chunk for seamless playback
+        preparePendingAudioChunk();
+        return;
+    }
+    
+    // Fallback: Pull next audio chunk from video provider directly
+    // 4096 sample frames (stereo pairs) = ~93ms at 44.1kHz
+    // Larger chunks reduce callback frequency and minimize underrun risk
+    const int STREAM_CHUNK_SIZE = 4096;  // Sample frames (stereo pairs)
+    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo (L+R for each frame)
     
     int samplesRead = videoProvider->pbvGetAudioSamples(audioSamples, STREAM_CHUNK_SIZE);
     if (samplesRead > 0) {
@@ -515,14 +573,35 @@ void PBSound::handleChannelFinished(int channel) {
                 delete videoAudioChunk;
                 videoAudioChunk = nullptr;
                 videoAudioStreaming = false;
+            } else {
+                // Successfully started playing, prepare next chunk
+                preparePendingAudioChunk();
             }
-            // Note: When this chunk finishes, this callback will be called again automatically
         } else {
             videoAudioStreaming = false;
         }
     } else {
         // No more audio available, stop streaming
         videoAudioStreaming = false;
+    }
+}
+
+void PBSound::preparePendingAudioChunk() {
+    // Pre-buffer the next audio chunk to eliminate delay during callback
+    // This double-buffering technique prevents gaps between chunks that cause pops
+    if (!videoProvider || !videoAudioStreaming || pendingChunkReady) {
+        return;
+    }
+    
+    const int STREAM_CHUNK_SIZE = 4096;  // Sample frames (stereo pairs)
+    float audioSamples[STREAM_CHUNK_SIZE * 2];  // stereo (L+R for each frame)
+    
+    int samplesRead = videoProvider->pbvGetAudioSamples(audioSamples, STREAM_CHUNK_SIZE);
+    if (samplesRead > 0) {
+        videoAudioChunkPending = createAudioChunkFromSamples(audioSamples, samplesRead * 2, 44100);
+        if (videoAudioChunkPending) {
+            pendingChunkReady = true;
+        }
     }
 }
 #endif

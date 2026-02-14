@@ -171,7 +171,9 @@ private:
     std::queue<AVPacket*> audioPacketQueue;
     
     // Audio accumulation buffer for smooth playback
-    static const int AUDIO_ACCUMULATOR_SIZE = 88200; // ~1 second at 44.1kHz stereo (increased to prevent underruns)
+    // Increased to ~1.5 seconds at 44.1kHz stereo for better buffer headroom
+    // This prevents underruns during heavy system load or video seeking
+    static const int AUDIO_ACCUMULATOR_SIZE = 132300;
     float audioAccumulator[AUDIO_ACCUMULATOR_SIZE];
     int audioAccumulatorIndex;
     

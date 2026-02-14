@@ -218,9 +218,10 @@ bool PBVideo::pbvPlay() {
         playbackState = PBV_PLAYING;
         
         // Pre-fill audio buffer for streaming to work immediately
-        // Fill to 75% to prevent initial popping
+        // Fill to 80% capacity to prevent initial popping and provide headroom
+        // for system load variations. Higher fill ensures smooth start.
         if (videoInfo.hasAudio && audioEnabled) {
-            while (audioAccumulatorIndex < AUDIO_ACCUMULATOR_SIZE * 0.75f) {
+            while (audioAccumulatorIndex < AUDIO_ACCUMULATOR_SIZE * 0.80f) {
                 if (!decodeNextAudioFrame()) {
                     break;
                 }
@@ -272,9 +273,9 @@ bool PBVideo::pbvUpdateFrame(unsigned long currentTick) {
     
     // Always try to keep audio buffer filled independently of video
     if (videoInfo.hasAudio && audioEnabled) {
-        // Keep buffer at 75% capacity for smooth streaming without gaps
-        // Higher buffer prevents popping/crackling from underruns
-        while (audioAccumulatorIndex < AUDIO_ACCUMULATOR_SIZE * 0.75f) {
+        // Keep buffer at 80% capacity for smooth streaming without gaps
+        // Higher buffer prevents popping/crackling from underruns during system load
+        while (audioAccumulatorIndex < AUDIO_ACCUMULATOR_SIZE * 0.80f) {
             if (!decodeNextAudioFrame()) {
                 break; // No more audio frames available
             }
@@ -878,12 +879,14 @@ void PBVideo::convertAudioToFloat() {
         return;
     }
     
-    // Temporary buffer for resampled audio
-    float tempBuffer[8192]; // Large enough for typical audio frame
+    // Temporary buffer for resampled audio - increased for larger frame handling
+    // 16384 samples (8192 frames stereo) provides headroom for high sample rate sources
+    float tempBuffer[16384];
     uint8_t* output = (uint8_t*)tempBuffer;
     
     // Resample audio to stereo float format at 44.1kHz
-    int outSamples = swr_convert(swrContext, &output, 4096,
+    // Increased output capacity to 8192 frames to handle larger decoded frames
+    int outSamples = swr_convert(swrContext, &output, 8192,
                                  (const uint8_t**)audioFrame->data, audioFrame->nb_samples);
     
     if (outSamples > 0) {
