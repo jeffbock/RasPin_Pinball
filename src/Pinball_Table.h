@@ -11,24 +11,28 @@
 
 #include "Pinball.h"
 
+// This enum represents the main states of the pinball table - these are used to control the overall flow of the game and 
+// the key rendering function to call when rendering the screen
 enum class PBTableState {
     PBTBL_INIT = 0,
     PBTBL_START = 1,
-    PBTBL_MAINSCREEN = 2,
-    PBTBL_STDPLAY = 3,
-    PBTBL_RESET = 4,
+    PBTBL_MAIN = 2,
+    PBTBL_RESET = 3,
     PBTBL_END
 };
 
-enum class PBTBLScreenState {
+enum class PBTBLMainScreenState {
+    MAIN_NORMAL = 0,        
+    MAIN_EXTRABALL = 1,     
+    MAIN_END = 2
+};
+
+enum class PBTBLStartScreenState {
     START_START = 0,
     START_INST = 1,
     START_SCORES = 2,
     START_OPENDOOR = 3,
-    START_END = 4,
-    MAIN_NORMAL = 5,        // Normal score and message display (formerly MAIN_SHOWSCORE)
-    MAIN_EXTRABALL = 6,     // Extra ball award screen with video
-    MAIN_END = 7
+    START_END = 4
 };
 
 // ========================================================================
@@ -68,14 +72,16 @@ enum class ScreenPriority {
 
 // Screen request structure for centralized screen management
 struct ScreenRequest {
-    int screenId;                    // ID of screen to display
+    PBTableState tableState;         // Main table state to display
+    int subScreenState;              // Subscreen enum value for the table state
     ScreenPriority priority;         // Priority level
     unsigned long durationMs;        // How long to display (0 = until cleared)
     unsigned long requestTick;       // When request was made
     bool canBePreempted;             // Can higher priority preempt this?
     
     ScreenRequest() {
-        screenId = -1;
+        tableState = PBTableState::PBTBL_END;
+        subScreenState = -1;
         priority = ScreenPriority::PRIORITY_LOW;
         durationMs = 0;
         requestTick = 0;
@@ -157,7 +163,7 @@ struct SecondaryScoreAnimState {
 class pbGameState {
 public:
     PBTableState mainGameState;       // Main game state for this player
-    PBTBLScreenState screenState;     // Screen state for this player (merged main screen states)
+    PBTBLMainScreenState mainScreenState; // Main screen substate for this player
     unsigned long score;              // Actual Current score
     unsigned long inProgressScore;    // Score accumulated during current ball
     unsigned long previousScore;      // Previous score to detect changes during animation
@@ -192,8 +198,8 @@ public:
 
     // Reset to initial state based on game settings
     void reset(unsigned int ballsPerGame) {
-        mainGameState = PBTableState::PBTBL_MAINSCREEN;
-        screenState = PBTBLScreenState::MAIN_NORMAL;
+        mainGameState = PBTableState::PBTBL_MAIN;
+        mainScreenState = PBTBLMainScreenState::MAIN_NORMAL;
         score = 0;
         inProgressScore = 0;
         previousScore = 0;

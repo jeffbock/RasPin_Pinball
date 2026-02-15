@@ -112,7 +112,6 @@ enum PBSequenceLoopMode {
 
 // Forward declarations for table enums
 enum class PBTableState;
-enum class PBTBLScreenState;
 
 // Structure forward declarations and type definitions
 struct stLEDSequence;
@@ -303,11 +302,12 @@ public:
     bool pbeCheckMultiballQualified();
     
     // Screen manager functions
-    void pbeRequestScreen(int screenId, ScreenPriority priority, unsigned long durationMs, bool canBePreempted);
+    void pbeRequestScreen(PBTableState tableState, int subScreenState, ScreenPriority priority, unsigned long durationMs, bool canBePreempted);
     void pbeUpdateScreenManager(unsigned long currentTick);
     void pbeClearScreenRequests();
     void pbeClearPriority0Screen();  // Clear only priority 0 screen, leaving numbered priority queue
-    int pbeGetCurrentScreen();
+    PBTableState pbeGetCurrentScreenState();
+    int pbeGetCurrentSubScreenState();
 
     // Save File Functions
     bool pbeLoadSaveFile(bool loadDefaults, bool resetScores);
@@ -477,7 +477,9 @@ public:
     // Reset state tracking
     bool m_ResetButtonPressed;         // Track if reset was pressed once
     PBTableState m_StateBeforeReset;   // State to return to if reset is cancelled
-    int m_ScreenBeforeReset;           // Screen ID to restore if reset is cancelled
+    PBTableState m_ScreenBeforeResetState; // Table state to restore if reset is cancelled
+    int m_ScreenBeforeResetSubState;   // Subscreen state to restore if reset is cancelled
+    bool m_hasScreenBeforeReset;       // Track if we have a saved screen to restore
     unsigned int m_PBTBLResetSpriteId; // Sprite ID for reset screen background
 
     // Multi-player game state
@@ -504,7 +506,7 @@ private:
 
     // Main Table Variables, etc..
     PBTableState m_tableState; 
-    PBTBLScreenState m_tableScreenState;
+    int m_tableSubScreenState;
 
     // Console variables
     std::vector<std::string> m_consoleQueue;
@@ -520,7 +522,7 @@ private:
     // Helper functions to convert state enums to strings for overlay display
     std::string MainStateToString(PBMainState state);
     std::string TableStateToString(PBTableState state);
-    std::string ScreenStateToString(PBTBLScreenState state);
+    std::string TableScreenStateToString(PBTableState tableState, int subScreenState);
 
     // Main table Variables, etc..
     bool m_PBTBLStartLoaded; 
@@ -581,7 +583,7 @@ private:
     // Render functions for the pinball game table
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
-    bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick, PBTBLMainScreenState subScreenState);
     bool pbeRenderMainScreenBase(unsigned long currentTick, unsigned long lastTick);  // Always renders: background, scores, status
     bool pbeRenderMainScreenNormal(unsigned long currentTick, unsigned long lastTick); // Normal score/message display
     bool pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned long lastTick); // Extra ball video display
@@ -602,7 +604,7 @@ private:
     unsigned long getCurrentPlayerScore(); // Get current player's score
     bool isCurrentPlayerEnabled(); // Get current player's enabled state
     PBTableState& getPlayerGameState(); // Get current player's game state
-    PBTBLScreenState& getPlayerScreenState(); // Get current player's screen state
+    PBTBLMainScreenState& getPlayerScreenState(); // Get current player's main screen substate
     void addPlayerScore(unsigned long points); // Add score to current player
     
     // Helper functions
@@ -662,7 +664,8 @@ private:
     
     // Centralized screen manager
     std::vector<ScreenRequest> m_screenQueue;
-    int m_currentDisplayedScreen;
+    PBTableState m_currentDisplayedTableState;
+    int m_currentDisplayedSubScreen;
     unsigned long m_currentScreenStartTick;
 };
 

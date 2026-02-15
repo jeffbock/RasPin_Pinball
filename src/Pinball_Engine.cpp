@@ -101,7 +101,7 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     // Table variables
     /////////////////////
     m_tableState = PBTableState::PBTBL_INIT; 
-    m_tableScreenState = PBTBLScreenState::START_START;
+    m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START);
 
     // Tables start screen variables
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
@@ -117,7 +117,9 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     // Reset state initialization
     m_ResetButtonPressed = false;
     m_StateBeforeReset = PBTableState::PBTBL_START;
-    m_ScreenBeforeReset = -1;
+    m_ScreenBeforeResetState = PBTableState::PBTBL_END;
+    m_ScreenBeforeResetSubState = -1;
+    m_hasScreenBeforeReset = false;
     
     // Multi-player game state initialization
     m_currentPlayer = 0;
@@ -163,7 +165,8 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_autoOutputEnable = false;
     
     // Screen manager initialization
-    m_currentDisplayedScreen = -1;
+    m_currentDisplayedTableState = PBTableState::PBTBL_END;
+    m_currentDisplayedSubScreen = -1;
     m_currentScreenStartTick = 0;
  }
 
@@ -736,25 +739,43 @@ std::string PBEngine::TableStateToString(PBTableState state) {
     switch (state) {
         case PBTableState::PBTBL_INIT: return "INIT";
         case PBTableState::PBTBL_START: return "START";
-        case PBTableState::PBTBL_MAINSCREEN: return "MAINSCREEN";
-        case PBTableState::PBTBL_STDPLAY: return "STDPLAY";
+        case PBTableState::PBTBL_MAIN: return "MAIN";
         case PBTableState::PBTBL_RESET: return "RESET";
         case PBTableState::PBTBL_END: return "END";
         default: return "UNKNOWN";
     }
 }
 
-std::string PBEngine::ScreenStateToString(PBTBLScreenState state) {
-    switch (state) {
-        case PBTBLScreenState::START_START: return "START_START";
-        case PBTBLScreenState::START_INST: return "START_INST";
-        case PBTBLScreenState::START_SCORES: return "START_SCORES";
-        case PBTBLScreenState::START_OPENDOOR: return "START_OPENDOOR";
-        case PBTBLScreenState::START_END: return "START_END";
-        case PBTBLScreenState::MAIN_NORMAL: return "MAIN_NORMAL";
-        case PBTBLScreenState::MAIN_EXTRABALL: return "MAIN_EXTRABALL";
-        case PBTBLScreenState::MAIN_END: return "MAIN_END";
-        default: return "UNKNOWN";
+std::string PBEngine::TableScreenStateToString(PBTableState tableState, int subScreenState) {
+    switch (tableState) {
+        case PBTableState::PBTBL_INIT:
+            return "INIT (No Sub States)";
+        case PBTableState::PBTBL_RESET:
+            return "RESET (No Sub States)";
+        case PBTableState::PBTBL_START: {
+            PBTBLStartScreenState startState = static_cast<PBTBLStartScreenState>(subScreenState);
+            switch (startState) {
+                case PBTBLStartScreenState::START_START: return "START_START";
+                case PBTBLStartScreenState::START_INST: return "START_INST";
+                case PBTBLStartScreenState::START_SCORES: return "START_SCORES";
+                case PBTBLStartScreenState::START_OPENDOOR: return "START_OPENDOOR";
+                case PBTBLStartScreenState::START_END: return "START_END";
+                default: return "START_UNKNOWN";
+            }
+        }
+        case PBTableState::PBTBL_MAIN: {
+            PBTBLMainScreenState mainState = static_cast<PBTBLMainScreenState>(subScreenState);
+            switch (mainState) {
+                case PBTBLMainScreenState::MAIN_NORMAL: return "MAIN_NORMAL";
+                case PBTBLMainScreenState::MAIN_EXTRABALL: return "MAIN_EXTRABALL";
+                case PBTBLMainScreenState::MAIN_END: return "MAIN_END";
+                default: return "MAIN_UNKNOWN";
+            }
+        }
+        case PBTableState::PBTBL_END:
+            return "END (No Sub States)";
+        default:
+            return "UNKNOWN";
     }
 }
 
@@ -772,9 +793,11 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
     
     // STATE DISPLAY Section - Display at top of screen
+    PBTableState overlayTableState = (m_currentDisplayedTableState != PBTableState::PBTBL_END) ? m_currentDisplayedTableState : m_tableState;
+    int overlaySubState = (m_currentDisplayedSubScreen >= 0) ? m_currentDisplayedSubScreen : m_tableSubScreenState;
     std::string stateDisplay = "MainState: " + MainStateToString(m_mainState) + 
-                                "  GameState: " + TableStateToString(m_tableState) + 
-                                "  ScreenState: " + ScreenStateToString(m_tableScreenState);
+                                "  TableState: " + TableStateToString(m_tableState) + 
+                                "  ScreenState: " + TableScreenStateToString(overlayTableState, overlaySubState);
     
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for state display
     gfxRenderShadowString(m_defaultFontSpriteId, stateDisplay, (PB_SCREENWIDTH / 2), 5, 0.4, GFX_TEXTCENTER, 0, 0, 0, 255, 2);

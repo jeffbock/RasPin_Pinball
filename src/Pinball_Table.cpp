@@ -107,7 +107,7 @@ bool PBEngine::pbeLoadGameStart(){
 bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick){
 
     static int timeoutTicks, blinkCountTicks, torchId;
-    static PBTBLScreenState lastScreenState;
+    static PBTBLStartScreenState lastScreenState;
     static bool blinkOn;
 
     if (m_RestartTable) {
@@ -117,8 +117,8 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
         blinkOn = true;
         m_PBTBLOpenDoors = false;
         m_PBTBLStartDoorsDone = false;
-        m_tableScreenState = PBTBLScreenState::START_START;
-        lastScreenState = m_tableScreenState;
+        m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START);
+        lastScreenState = static_cast<PBTBLStartScreenState>(m_tableSubScreenState);
 
         // Play torch sound loop and door theme music
         torchId = m_soundSystem.pbsPlayEffect(SOUNDTORCHES, true);
@@ -164,17 +164,19 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     gfxRenderSprite(m_PBTBLFlame2Id, ACTIVEDISPX + 852, ACTIVEDISPY + 392);
     gfxRenderSprite(m_PBTBLFlame3Id, ACTIVEDISPX + 852, ACTIVEDISPY + 392);
 
-    if (lastScreenState != m_tableScreenState) {
+    PBTBLStartScreenState currentStartState = static_cast<PBTBLStartScreenState>(m_tableSubScreenState);
+
+    if (lastScreenState != currentStartState) {
         timeoutTicks = 18000; // Reset the timeout if we change screens
-        lastScreenState = m_tableScreenState;
+        lastScreenState = currentStartState;
         gfxAnimateRestart(m_StartMenuFontId);
 
         // Return early if we've restarted the animation here, we'll catch the text on the next pass
         return (true);
     }
 
-    switch (m_tableScreenState) {
-        case PBTBLScreenState::START_START:
+    switch (currentStartState) {
+        case PBTBLStartScreenState::START_START:
             gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
             gfxAnimateSprite(m_StartMenuFontId, currentTick);
             gfxSetScaleFactor(m_StartMenuFontId, 0.9, false);
@@ -192,7 +194,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             }
             break;
 
-        case PBTBLScreenState::START_INST:
+        case PBTBLStartScreenState::START_INST:
             gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
             gfxAnimateSprite(m_StartMenuFontId, currentTick);
             gfxSetScaleFactor(m_StartMenuFontId, 0.7, false);
@@ -210,7 +212,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             }
             break;
             
-        case PBTBLScreenState::START_SCORES:
+        case PBTBLStartScreenState::START_SCORES:
             gfxAnimateSprite(m_StartMenuFontId, currentTick);
             gfxSetScaleFactor(m_StartMenuFontId, 0.8, false);
 
@@ -259,7 +261,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             }
             break;
 
-            case PBTBLScreenState::START_OPENDOOR:
+            case PBTBLStartScreenState::START_OPENDOOR:
 
                 if (!m_PBTBLOpenDoors){
                     gfxAnimateRestart(m_PBTBLLeftDoorId);
@@ -273,8 +275,8 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                 // Check if door animations are complete and transition to main screen
                 if ((!gfxAnimateActive(m_PBTBLLeftDoorId)) && (!gfxAnimateActive(m_PBTBLRightDoorId))) {
                     // Transition to main screen and enable player 1 automatically
-                    m_tableState = PBTableState::PBTBL_MAINSCREEN;
-                    m_tableScreenState = PBTBLScreenState::MAIN_NORMAL;
+                    m_tableState = PBTableState::PBTBL_MAIN;
+                    m_tableSubScreenState = static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL);
                     m_currentPlayer = 0;
                     m_playerStates[0].reset(m_saveFileData.ballsPerGame);
                     m_playerStates[0].enabled = true;
@@ -295,7 +297,8 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                     
                     // Initialize screen manager with default normal main screen (priority 0 = persistent)
                     pbeClearScreenRequests();
-                    pbeRequestScreen(1, ScreenPriority::PRIORITY_LOW, 0, true);  // Screen ID 1 = MAIN_NORMAL
+                    pbeRequestScreen(PBTableState::PBTBL_MAIN, static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL),
+                                     ScreenPriority::PRIORITY_LOW, 0, true);
 
                     // Stop the torch sound effect
                     m_soundSystem.pbsStopEffect(torchId);
@@ -303,15 +306,16 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             break;
 
         default:
-            m_tableScreenState = PBTBLScreenState::START_START;
+            m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START);
         break;
     }
 
     // If timeout happens, switch back to "Press Start"
-    if ((timeoutTicks > 0) && (m_tableScreenState != PBTBLScreenState::START_START) && (m_tableScreenState != PBTBLScreenState::START_OPENDOOR)) {
+    currentStartState = static_cast<PBTBLStartScreenState>(m_tableSubScreenState);
+    if ((timeoutTicks > 0) && (currentStartState != PBTBLStartScreenState::START_START) && (currentStartState != PBTBLStartScreenState::START_OPENDOOR)) {
         timeoutTicks -= (currentTick - lastTick);
         if (timeoutTicks <= 0) {
-            m_tableScreenState = PBTBLScreenState::START_START;
+            m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START);
         }
     }
 
@@ -379,10 +383,7 @@ bool PBEngine::pbeRenderMainScreenBase(unsigned long currentTick, unsigned long 
 
     // Clear to black background
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-    
-    // Render the main screen background
-    gfxRenderSprite(m_PBTBLMainScreenBGId, ACTIVEDISPX, ACTIVEDISPY);
-    
+     
     // Render all player scores
     pbeRenderPlayerScores(currentTick, lastTick);
 
@@ -432,11 +433,6 @@ bool PBEngine::pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned 
             int scaledWidth = (int)(videoInfo.width * 0.95f);
             int scaledHeight = (int)(videoInfo.height * 0.95f);
             
-            // Log video properties for debugging
-            pbeSendConsole("Extra Ball Video - FPS: " + std::to_string(videoInfo.fps) + 
-                          ", Duration: " + std::to_string(videoInfo.durationSec) + "s" +
-                          ", Size: " + std::to_string(videoInfo.width) + "x" + std::to_string(videoInfo.height));
-            
             // Center in active display area (1024x768), aligned with score text center
             // Score text is centered at ACTIVEDISPX + (1024/3) = ACTIVEDISPX + 341
             int centerX = ACTIVEDISPX + (1024 / 3);  // Same X as score text
@@ -444,7 +440,7 @@ bool PBEngine::pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned 
             
             // Calculate upper-left position for centered video, offset 4 pixels left
             int videoX = centerX - (scaledWidth / 2) - 4;
-            int videoY = centerY - (scaledHeight / 2);
+            int videoY = centerY - (scaledHeight / 2) + 1;
             
             m_extraBallVideoPlayer->pbvpSetXY(videoX, videoY);
             m_extraBallVideoLoaded = true;
@@ -493,30 +489,27 @@ bool PBEngine::pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned 
 }
 
 // Main organizer for main screen rendering - now uses screen manager
-bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
+bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick, PBTBLMainScreenState subScreenState){
     
     // Always render the base screen (background, scores, status)
     if (!pbeRenderMainScreenBase(currentTick, lastTick)) {
         return (false);
     }
     
-    // Render specific screen content based on screen manager
-    int currentScreen = pbeGetCurrentScreen();
-    
-    // Screen IDs for main screen substates (must match pbeRenderGameScreen constants)
-    const int SCREEN_MAIN_NORMAL = 1;      // Normal gameplay screen
-    const int SCREEN_MAIN_EXTRABALL = 2;   // Extra ball award screen
-    
-    switch (currentScreen) {
-        case SCREEN_MAIN_EXTRABALL:
+    // Render specific screen content based on main substate
+    switch (subScreenState) {
+        case PBTBLMainScreenState::MAIN_EXTRABALL:
             pbeRenderMainScreenExtraBall(currentTick, lastTick);
             break;
-        case SCREEN_MAIN_NORMAL:
+        case PBTBLMainScreenState::MAIN_NORMAL:
         default:
             pbeRenderMainScreenNormal(currentTick, lastTick);
             break;
     }
     
+    // Render the main screen divider bars, they need to be on top to overlay the video and score text properly, so we render them at the end of this function
+    gfxRenderSprite(m_PBTBLMainScreenBGId, ACTIVEDISPX, ACTIVEDISPY);
+
     return (true);
 }
 
@@ -1065,8 +1058,8 @@ PBTableState& PBEngine::getPlayerGameState(){
     return m_playerStates[m_currentPlayer].mainGameState;
 }
 
-PBTBLScreenState& PBEngine::getPlayerScreenState(){
-    return m_playerStates[m_currentPlayer].screenState;
+PBTBLMainScreenState& PBEngine::getPlayerScreenState(){
+    return m_playerStates[m_currentPlayer].mainScreenState;
 }
 
 void PBEngine::addPlayerScore(unsigned long points){
@@ -1115,31 +1108,24 @@ bool PBEngine::pbeRenderInitScreen(unsigned long currentTick, unsigned long last
 // Main render selection function for the pinball table
 // All states now use screen manager with priority 0 for state-based screens
 bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long lastTick){
-    
-    // Screen ID constants for all table states
-    const int SCREEN_INIT = 0;
-    const int SCREEN_MAIN_NORMAL = 1;
-    const int SCREEN_MAIN_EXTRABALL = 2;
-    const int SCREEN_START = 10;
-    const int SCREEN_RESET = 20;
-    
+
     bool success = false;
 
     // Request appropriate priority 0 screen based on current table state
     // The optimization in pbeRequestScreen prevents duplicate requests
     switch (m_tableState) {
         case PBTableState::PBTBL_INIT:
-            pbeRequestScreen(SCREEN_INIT, ScreenPriority::PRIORITY_LOW, 0, true);
+            pbeRequestScreen(PBTableState::PBTBL_INIT, -1, ScreenPriority::PRIORITY_LOW, 0, true);
             break;
         case PBTableState::PBTBL_START:
-            pbeRequestScreen(SCREEN_START, ScreenPriority::PRIORITY_LOW, 0, true);
+            pbeRequestScreen(PBTableState::PBTBL_START, m_tableSubScreenState, ScreenPriority::PRIORITY_LOW, 0, true);
             break;
-        case PBTableState::PBTBL_MAINSCREEN:
-            // MAIN_NORMAL is already requested when entering MAINSCREEN state
-            // Additional screens (like MAIN_EXTRABALL) are requested as needed
+        case PBTableState::PBTBL_MAIN:
+            // Maintain the base main screen as the priority-0 background
+            pbeRequestScreen(PBTableState::PBTBL_MAIN, m_tableSubScreenState, ScreenPriority::PRIORITY_LOW, 0, true);
             break;
         case PBTableState::PBTBL_RESET:
-            pbeRequestScreen(SCREEN_RESET, ScreenPriority::PRIORITY_LOW, 0, true);
+            pbeRequestScreen(PBTableState::PBTBL_RESET, -1, ScreenPriority::PRIORITY_LOW, 0, true);
             break;
         default:
             break;
@@ -1149,38 +1135,33 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
     pbeUpdateScreenManager(currentTick);
 
     // Render based on current screen from screen manager
-    int currentScreen = pbeGetCurrentScreen();
-    
-    // Update m_tableScreenState to match current screen for I/O overlay display
-    // This keeps the screen state in sync with what's actually being rendered
-    switch (currentScreen) {
-        case SCREEN_MAIN_NORMAL:
-            m_tableScreenState = PBTBLScreenState::MAIN_NORMAL;
-            break;
-        case SCREEN_MAIN_EXTRABALL:
-            m_tableScreenState = PBTBLScreenState::MAIN_EXTRABALL;
-            break;
-        // START screens and others keep their state from manual updates
-        default:
-            break;
-    }
-    
-    switch (currentScreen) {
-        case SCREEN_INIT:
+    PBTableState currentScreenState = pbeGetCurrentScreenState();
+    int currentSubScreenState = pbeGetCurrentSubScreenState();
+
+    switch (currentScreenState) {
+        case PBTableState::PBTBL_INIT:
             success = pbeRenderInitScreen(currentTick, lastTick);
             break;
-            
-        case SCREEN_START:
+
+        case PBTableState::PBTBL_START:
             success = pbeRenderGameStart(currentTick, lastTick);
             break;
-            
-        case SCREEN_MAIN_NORMAL:
-        case SCREEN_MAIN_EXTRABALL:
-            // Main screen handles both normal and extraball screens internally
-            success = pbeRenderMainScreen(currentTick, lastTick);
+
+        case PBTableState::PBTBL_MAIN: {
+            PBTBLMainScreenState mainState = static_cast<PBTBLMainScreenState>(currentSubScreenState);
+            switch (mainState) {
+                case PBTBLMainScreenState::MAIN_NORMAL:
+                case PBTBLMainScreenState::MAIN_EXTRABALL:
+                    success = pbeRenderMainScreen(currentTick, lastTick, mainState);
+                    break;
+                default:
+                    success = false;
+                    break;
+            }
             break;
-            
-        case SCREEN_RESET:
+        }
+
+        case PBTableState::PBTBL_RESET:
             success = pbeRenderReset(currentTick, lastTick);
             break;
             
@@ -1208,13 +1189,15 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
             if (!m_ResetButtonPressed) {
                 // First time reset is pressed - save current state and screen
                 m_StateBeforeReset = m_tableState;
-                m_ScreenBeforeReset = m_currentDisplayedScreen;
+                m_ScreenBeforeResetState = m_currentDisplayedTableState;
+                m_ScreenBeforeResetSubState = m_currentDisplayedSubScreen;
+                m_hasScreenBeforeReset = (m_currentDisplayedTableState != PBTableState::PBTBL_END);
                 m_ResetButtonPressed = true;
                 m_tableState = PBTableState::PBTBL_RESET;
                 
                 // Clear all pending screen requests and queue reset screen
                 pbeClearScreenRequests();
-                pbeRequestScreen(20, ScreenPriority::PRIORITY_LOW, 0, true);  // Screen ID 20 = RESET
+                pbeRequestScreen(PBTableState::PBTBL_RESET, -1, ScreenPriority::PRIORITY_LOW, 0, true);
                 
                 return; // Exit early, we're now in reset state
             }
@@ -1232,15 +1215,16 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_RPIOP06_START) {
                     // Start button opens the doors
-                    m_tableScreenState = PBTBLScreenState::START_OPENDOOR;
+                    m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_OPENDOOR);
                 }
                 else {
                     // Other buttons cycle through info screens (only when doors aren't opening)
                     if (!m_PBTBLOpenDoors) {
-                        switch (m_tableScreenState) {
-                            case PBTBLScreenState::START_START: m_tableScreenState = PBTBLScreenState::START_INST; break;
-                            case PBTBLScreenState::START_INST: m_tableScreenState = PBTBLScreenState::START_SCORES; break;
-                            case PBTBLScreenState::START_SCORES: m_tableScreenState = PBTBLScreenState::START_START; break;
+                        PBTBLStartScreenState currentStartState = static_cast<PBTBLStartScreenState>(m_tableSubScreenState);
+                        switch (currentStartState) {
+                            case PBTBLStartScreenState::START_START: m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_INST); break;
+                            case PBTBLStartScreenState::START_INST: m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_SCORES); break;
+                            case PBTBLStartScreenState::START_SCORES: m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START); break;
                             default: break;
                         }
                     }
@@ -1248,7 +1232,7 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
             }
             break;
         }
-        case PBTableState::PBTBL_MAINSCREEN: {
+        case PBTableState::PBTBL_MAIN: {
             // Handle start button press to add players
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_RPIOP06_START) {
@@ -1264,8 +1248,8 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                 else if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
                     // TESTING: Trigger extra ball screen for 3.9 seconds
                     // This will play over the normal screen (priority 0)
-                    pbeRequestScreen(2, ScreenPriority::PRIORITY_HIGH, 3900, false);  // Screen ID 2 = MAIN_EXTRABALL, 3.9 seconds
-                    pbeSendConsole("Extra ball screen requested for 3.9 seconds");
+                    pbeRequestScreen(PBTableState::PBTBL_MAIN, static_cast<int>(PBTBLMainScreenState::MAIN_EXTRABALL),
+                                     ScreenPriority::PRIORITY_HIGH, 3900, false);
                     
                     // Also add score for testing
                     addPlayerScore(10000);
@@ -1290,12 +1274,6 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
             
             break;
         }
-        case PBTableState::PBTBL_STDPLAY: {
-            // Standard play mode - delegates to mode system
-            pbeUpdateModeSystem(inputMessage, GetTickCountGfx());
-
-            break;
-        }
         case PBTableState::PBTBL_RESET: {
             // Handle reset state inputs
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
@@ -1310,6 +1288,7 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                     
                     m_mainState = PB_STARTMENU; // Return to main menu in Pinball_Engine
                     m_tableState = PBTableState::PBTBL_START; // Reset table state
+                    m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START);
                     
                     // Clear screen queue (will be repopulated when start menu state processes)
                     pbeClearScreenRequests();
@@ -1329,17 +1308,17 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
                     
                     // Clear screen queue and restore the saved screen as priority 0
                     pbeClearScreenRequests();
-                    if (m_ScreenBeforeReset != -1) {
-                        // If the saved screen was any "main" screen state (1-2), restore to SCREEN_MAIN_NORMAL
-                        const int SCREEN_MAIN_NORMAL = 1;
-                        const int SCREEN_MAIN_EXTRABALL = 2;
-                        int screenToRestore = m_ScreenBeforeReset;
-                        
-                        if (screenToRestore >= SCREEN_MAIN_NORMAL && screenToRestore <= SCREEN_MAIN_EXTRABALL) {
-                            screenToRestore = SCREEN_MAIN_NORMAL;
+                    if (m_hasScreenBeforeReset) {
+                        PBTableState tableStateToRestore = m_ScreenBeforeResetState;
+                        int subStateToRestore = m_ScreenBeforeResetSubState;
+
+                        if (tableStateToRestore == PBTableState::PBTBL_MAIN) {
+                            subStateToRestore = static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL);
                         }
-                        
-                        pbeRequestScreen(screenToRestore, ScreenPriority::PRIORITY_LOW, 0, true);
+
+                        m_tableSubScreenState = subStateToRestore;
+
+                        pbeRequestScreen(tableStateToRestore, subStateToRestore, ScreenPriority::PRIORITY_LOW, 0, true);
                     }
                     // If no saved screen, pbeRenderGameScreen will request appropriate screen based on m_tableState
                 }
@@ -1421,7 +1400,6 @@ void PBEngine::pbeUpdateModeState(unsigned long currentTick) {
                     // Ball is in play - normal gameplay logic here
                     // Check for mode qualification conditions
                     if (pbeCheckMultiballQualified()) {
-                        pbeSendConsole("Multiball qualified!");
                         modeState.multiballQualified = true;
                     }
                     break;
@@ -1446,8 +1424,6 @@ void PBEngine::pbeUpdateModeState(unsigned long currentTick) {
             switch (modeState.multiballState) {
                 case PBMultiballState::MULTIBALL_START:
                     // Starting multiball sequence
-                    pbeSendConsole("Multiball starting...");
-                    
                     // Transition to active after start sequence
                     if (currentTick - modeState.multiballStateStartTick > 3000) {
                         modeState.multiballState = PBMultiballState::MULTIBALL_ACTIVE;
@@ -1455,7 +1431,7 @@ void PBEngine::pbeUpdateModeState(unsigned long currentTick) {
                         modeState.multiballCount = 2; // Start with 2 balls
                         
                         // Request high-priority screen
-                        pbeRequestScreen(100, ScreenPriority::PRIORITY_HIGH, 5000, false);
+                        pbeRequestScreen(PBTableState::PBTBL_MAIN, 100, ScreenPriority::PRIORITY_HIGH, 5000, false);
                     }
                     break;
                     
@@ -1466,7 +1442,6 @@ void PBEngine::pbeUpdateModeState(unsigned long currentTick) {
                     if (currentTick - modeState.multiballStateStartTick > 20000) {
                         modeState.multiballState = PBMultiballState::MULTIBALL_ENDING;
                         modeState.multiballStateStartTick = currentTick;
-                        pbeSendConsole("Multiball ending...");
                     }
                     break;
                     
@@ -1503,7 +1478,6 @@ bool PBEngine::pbeCheckModeTransition(unsigned long currentTick) {
                 
                 // For this example, we'll trigger multiball when qualified
                 // In a real game, you might need a specific switch hit
-                pbeSendConsole("Transitioning to multiball mode!");
                 pbeExitMode(PBTableMode::MODE_NORMAL_PLAY, currentTick);
                 pbeEnterMode(PBTableMode::MODE_MULTIBALL, currentTick);
                 return true;
@@ -1527,8 +1501,6 @@ bool PBEngine::pbeCheckModeTransition(unsigned long currentTick) {
 void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
     ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
     
-    pbeSendConsole("Entering mode: " + std::to_string(static_cast<int>(newMode)));
-    
     // Save previous mode
     modeState.previousMode = modeState.currentMode;
     modeState.currentMode = newMode;
@@ -1542,7 +1514,8 @@ void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
             modeState.normalPlayStateStartTick = currentTick;
             
             // Request normal play screen
-            pbeRequestScreen(1, ScreenPriority::PRIORITY_LOW, 0, true);
+            pbeRequestScreen(PBTableState::PBTBL_MAIN, static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL),
+                             ScreenPriority::PRIORITY_LOW, 0, true);
             break;
             
         case PBTableMode::MODE_MULTIBALL:
@@ -1551,7 +1524,7 @@ void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
             modeState.multiballCount = 1;
             
             // Request multiball intro screen
-            pbeRequestScreen(200, ScreenPriority::PRIORITY_HIGH, 3000, false);
+            pbeRequestScreen(PBTableState::PBTBL_MAIN, 200, ScreenPriority::PRIORITY_HIGH, 3000, false);
             break;
             
         default:
@@ -1562,8 +1535,6 @@ void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
 // Exit a mode
 void PBEngine::pbeExitMode(PBTableMode exitingMode, unsigned long currentTick) {
     ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
-    
-    pbeSendConsole("Exiting mode: " + std::to_string(static_cast<int>(exitingMode)));
     
     // Clean up mode-specific state
     switch (exitingMode) {
@@ -1593,7 +1564,6 @@ void PBEngine::pbeUpdateNormalPlayMode(stInputMessage inputMessage, unsigned lon
             if (modeState.normalPlayState == PBNormalPlayState::NORMAL_IDLE) {
                 modeState.normalPlayState = PBNormalPlayState::NORMAL_ACTIVE;
                 modeState.normalPlayStateStartTick = currentTick;
-                pbeSendConsole("Normal play: Ball became active");
             }
         }
         // Right activate button drains ball
@@ -1601,7 +1571,6 @@ void PBEngine::pbeUpdateNormalPlayMode(stInputMessage inputMessage, unsigned lon
             if (modeState.normalPlayState == PBNormalPlayState::NORMAL_ACTIVE) {
                 modeState.normalPlayState = PBNormalPlayState::NORMAL_DRAIN;
                 modeState.normalPlayStateStartTick = currentTick;
-                pbeSendConsole("Normal play: Ball drained");
             }
         }
     }
@@ -1616,7 +1585,6 @@ void PBEngine::pbeUpdateMultiballMode(stInputMessage inputMessage, unsigned long
         // Example: Add scoring in multiball
         if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
             addPlayerScore(5000); // Higher scoring in multiball
-            pbeSendConsole("Multiball jackpot!");
         }
     }
 }
@@ -1633,11 +1601,11 @@ bool PBEngine::pbeCheckMultiballQualified() {
 // ========================================================================
 
 // Request a screen to be displayed
-void PBEngine::pbeRequestScreen(int screenId, ScreenPriority priority, 
+void PBEngine::pbeRequestScreen(PBTableState tableState, int subScreenState, ScreenPriority priority, 
                                 unsigned long durationMs, bool canBePreempted) {
     // Check if this screen is already in the queue (any priority)
     for (const auto& req : m_screenQueue) {
-        if (req.screenId == screenId) {
+        if (req.tableState == tableState && req.subScreenState == subScreenState) {
             // Screen already queued, skip adding it again
             return;
         }
@@ -1649,7 +1617,6 @@ void PBEngine::pbeRequestScreen(int screenId, ScreenPriority priority,
         auto it = m_screenQueue.begin();
         while (it != m_screenQueue.end()) {
             if (static_cast<int>(it->priority) == 0) {
-                pbeSendConsole("Removing old priority 0 screen: " + std::to_string(it->screenId));
                 it = m_screenQueue.erase(it);
             } else {
                 ++it;
@@ -1658,7 +1625,8 @@ void PBEngine::pbeRequestScreen(int screenId, ScreenPriority priority,
     }
     
     ScreenRequest request;
-    request.screenId = screenId;
+    request.tableState = tableState;
+    request.subScreenState = subScreenState;
     request.priority = priority;
     request.durationMs = durationMs;
     request.requestTick = GetTickCountGfx();
@@ -1666,9 +1634,6 @@ void PBEngine::pbeRequestScreen(int screenId, ScreenPriority priority,
     
     // Add to queue (we'll sort by priority in update function)
     m_screenQueue.push_back(request);
-    
-    pbeSendConsole("Screen request: ID=" + std::to_string(screenId) + 
-                   " Priority=" + std::to_string(static_cast<int>(priority)));
 }
 
 // Update screen manager - determines which screen should be displayed
@@ -1686,8 +1651,9 @@ void PBEngine::pbeUpdateScreenManager(unsigned long currentTick) {
         }
         
         if (expired) {
-            if (it->screenId == m_currentDisplayedScreen) {
-                m_currentDisplayedScreen = -1; // Clear current screen
+            if (it->tableState == m_currentDisplayedTableState && it->subScreenState == m_currentDisplayedSubScreen) {
+                m_currentDisplayedTableState = PBTableState::PBTBL_END;
+                m_currentDisplayedSubScreen = -1; // Clear current screen
             }
             it = m_screenQueue.erase(it);
         } else {
@@ -1696,7 +1662,8 @@ void PBEngine::pbeUpdateScreenManager(unsigned long currentTick) {
     }
     
     if (m_screenQueue.empty()) {
-        m_currentDisplayedScreen = -1;
+        m_currentDisplayedTableState = PBTableState::PBTBL_END;
+        m_currentDisplayedSubScreen = -1;
         return; // No screen requests
     }
     
@@ -1706,11 +1673,9 @@ void PBEngine::pbeUpdateScreenManager(unsigned long currentTick) {
             return static_cast<int>(a.priority) > static_cast<int>(b.priority);
         });
     
-    // Get highest priority request
-    ScreenRequest& topRequest = m_screenQueue.front();
-    
     // Determine which screen should be displayed
-    int screenToDisplay = -1;
+    PBTableState tableStateToDisplay = PBTableState::PBTBL_END;
+    int subScreenToDisplay = -1;
     
     // Priority 0 is special - it's the "background" screen
     // Priority >0 screens display over the priority 0 screen
@@ -1726,29 +1691,33 @@ void PBEngine::pbeUpdateScreenManager(unsigned long currentTick) {
     
     if (highestNonZero != nullptr) {
         // Display the highest priority >0 screen
-        screenToDisplay = highestNonZero->screenId;
+        tableStateToDisplay = highestNonZero->tableState;
+        subScreenToDisplay = highestNonZero->subScreenState;
     } else {
         // No priority >0 screens, use priority 0 screen (if present)
         for (auto& req : m_screenQueue) {
             if (static_cast<int>(req.priority) == 0) {
-                screenToDisplay = req.screenId;
+                tableStateToDisplay = req.tableState;
+                subScreenToDisplay = req.subScreenState;
                 break;
             }
         }
     }
     
     // Update displayed screen if changed
-    if (m_currentDisplayedScreen != screenToDisplay && screenToDisplay != -1) {
-        m_currentDisplayedScreen = screenToDisplay;
+    if ((m_currentDisplayedTableState != tableStateToDisplay || m_currentDisplayedSubScreen != subScreenToDisplay) &&
+        tableStateToDisplay != PBTableState::PBTBL_END) {
+        m_currentDisplayedTableState = tableStateToDisplay;
+        m_currentDisplayedSubScreen = subScreenToDisplay;
         m_currentScreenStartTick = currentTick;
-        pbeSendConsole("Screen changed to: " + std::to_string(m_currentDisplayedScreen));
     }
 }
 
 // Clear all screen requests
 void PBEngine::pbeClearScreenRequests() {
     m_screenQueue.clear();
-    m_currentDisplayedScreen = -1;
+    m_currentDisplayedTableState = PBTableState::PBTBL_END;
+    m_currentDisplayedSubScreen = -1;
     m_currentScreenStartTick = 0;
 }
 
@@ -1758,8 +1727,9 @@ void PBEngine::pbeClearPriority0Screen() {
     auto it = m_screenQueue.begin();
     while (it != m_screenQueue.end()) {
         if (static_cast<int>(it->priority) == 0) {
-            if (it->screenId == m_currentDisplayedScreen) {
-                m_currentDisplayedScreen = -1; // Clear if this was displaying
+            if (it->tableState == m_currentDisplayedTableState && it->subScreenState == m_currentDisplayedSubScreen) {
+                m_currentDisplayedTableState = PBTableState::PBTBL_END;
+                m_currentDisplayedSubScreen = -1; // Clear if this was displaying
             }
             it = m_screenQueue.erase(it);
         } else {
@@ -1769,8 +1739,12 @@ void PBEngine::pbeClearPriority0Screen() {
 }
 
 // Get the current screen that should be displayed
-int PBEngine::pbeGetCurrentScreen() {
-    return m_currentDisplayedScreen;
+PBTableState PBEngine::pbeGetCurrentScreenState() {
+    return m_currentDisplayedTableState;
+}
+
+int PBEngine::pbeGetCurrentSubScreenState() {
+    return m_currentDisplayedSubScreen;
 }
 
 
