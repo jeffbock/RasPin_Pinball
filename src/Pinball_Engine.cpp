@@ -791,6 +791,35 @@ std::string PBEngine::TableScreenStateToString(PBTableState tableState, int subS
     }
 }
 
+std::string PBEngine::TableModeToString(PBTableMode mode) {
+    switch (mode) {
+        case PBTableMode::MODE_NORMAL_PLAY: return "NORMAL_PLAY";
+        case PBTableMode::MODE_MULTIBALL: return "MULTIBALL";
+        case PBTableMode::MODE_END: return "MODE_END";
+        default: return "MODE_UNKNOWN";
+    }
+}
+
+std::string PBEngine::NormalPlayStateToString(PBNormalPlayState state) {
+    switch (state) {
+        case PBNormalPlayState::NORMAL_IDLE: return "IDLE";
+        case PBNormalPlayState::NORMAL_ACTIVE: return "ACTIVE";
+        case PBNormalPlayState::NORMAL_DRAIN: return "DRAIN";
+        case PBNormalPlayState::NORMAL_END: return "NORMAL_END";
+        default: return "NORMAL_UNKNOWN";
+    }
+}
+
+std::string PBEngine::MultiballStateToString(PBMultiballState state) {
+    switch (state) {
+        case PBMultiballState::MULTIBALL_START: return "START";
+        case PBMultiballState::MULTIBALL_ACTIVE: return "ACTIVE";
+        case PBMultiballState::MULTIBALL_ENDING: return "ENDING";
+        case PBMultiballState::MULTIBALL_END: return "MULTIBALL_END";
+        default: return "MULTIBALL_UNKNOWN";
+    }
+}
+
 // I/O Overlay Rendering - Shows current state of all inputs and outputs
 
 bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTick){
@@ -804,26 +833,45 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
     // Set up transparent background for overlay
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
     
-    // STATE DISPLAY Section - Display at top of screen
+    // STATE DISPLAY Section - Display at top of screen (two lines)
     PBTableState overlayTableState = (m_currentDisplayedTableState != PBTableState::PBTBL_END) ? m_currentDisplayedTableState : m_tableState;
     int overlaySubState = (m_currentDisplayedSubScreen >= 0) ? m_currentDisplayedSubScreen : m_tableSubScreenState;
-    std::string stateDisplay = "MainState: " + MainStateToString(m_mainState) + 
-                                "  TableState: " + TableStateToString(m_tableState) + 
+    
+    // Line 1: Main states
+    std::string stateDisplay1 = "MainState: " + MainStateToString(m_mainState) + 
+                                "  TableState: " + TableStateToString(m_tableState);
+    
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for state display
+    gfxRenderShadowString(m_defaultFontSpriteId, stateDisplay1, (PB_SCREENWIDTH / 2), 5, 0.4, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
+    
+    // Line 2: Mode, sub-mode, and screen states
+    ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
+    std::string subModeStr;
+    if (modeState.currentMode == PBTableMode::MODE_NORMAL_PLAY) {
+        subModeStr = "NormalPlay: " + NormalPlayStateToString(modeState.normalPlayState);
+    } else if (modeState.currentMode == PBTableMode::MODE_MULTIBALL) {
+        subModeStr = "Multiball: " + MultiballStateToString(modeState.multiballState);
+    } else {
+        subModeStr = "SubMode: N/A";
+    }
+    
+    std::string stateDisplay2 = "TableMode: " + TableModeToString(modeState.currentMode) + 
+                                "  " + subModeStr + 
                                 "  ScreenState: " + TableScreenStateToString(overlayTableState, overlaySubState);
     
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for state display
-    gfxRenderShadowString(m_defaultFontSpriteId, stateDisplay, (PB_SCREENWIDTH / 2), 5, 0.4, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, stateDisplay2, (PB_SCREENWIDTH / 2), 26, 0.4, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
     
-    // INPUTS Section
+    // INPUTS Section (moved down to accommodate second state line)
     gfxSetColor(m_defaultFontSpriteId, 0, 255, 255, 255);  // Cyan for inputs header
-    gfxRenderShadowString(m_defaultFontSpriteId, "INPUTS", 20, 25, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "INPUTS", 20, 46, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Render inputs in one column (48 items will fit with 40% scale)
     for (int i = 0; i < NUM_INPUTS; i++) {
         std::string temp = g_inputDef[i].inputName + ": ";
         
         int x = 20;                   // Single column
-        int y = 45 + (i * 20);        // Start below header with proper spacing
+        int y = 66 + (i * 20);        // Start below header with proper spacing (adjusted for second state line)
         
         // Render input name
         gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
@@ -851,14 +899,14 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
     // OUTPUTS Section - Position moved 225 pixels further right total
     int outputStartX = PB_SCREENWIDTH - 280;  // Moved 225 pixels right total (was -480, now -255)
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for outputs header
-    gfxRenderShadowString(m_defaultFontSpriteId, "OUTPUTS", outputStartX, 25, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "OUTPUTS", outputStartX, 46, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Render outputs in one column (48 items will fit with 40% scale)
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         std::string temp = g_outputDef[i].outputName + ": ";
         
         int x = outputStartX;         // Single column
-        int y = 45 + (i * 20);        // Start below header with proper spacing
+        int y = 66 + (i * 20);        // Start below header with proper spacing (adjusted for second state line)
         
         // Render output name
         gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);

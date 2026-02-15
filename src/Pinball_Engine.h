@@ -535,6 +535,9 @@ private:
     std::string MainStateToString(PBMainState state);
     std::string TableStateToString(PBTableState state);
     std::string TableScreenStateToString(PBTableState tableState, int subScreenState);
+    std::string TableModeToString(PBTableMode mode);
+    std::string NormalPlayStateToString(PBNormalPlayState state);
+    std::string MultiballStateToString(PBMultiballState state);
 
     // Main table Variables, etc..
     bool m_PBTBLStartLoaded; 

@@ -513,35 +513,6 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     return (true);
 }
 
-// Old implementation removed - now split into base + specific screens
-/*
-// Organizes and calls all the sub-render routines for the main screen
-bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick){
-    
-    if (!pbeLoadMainScreen()) {
-        pbeSendConsole("ERROR: Failed to load main screen resources");
-        return (false);
-    }
-
-    // Clear to black background
-    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-    
-    // Render the main screen background
-    gfxRenderSprite(m_PBTBLMainScreenBGId, ACTIVEDISPX, ACTIVEDISPY);
-    
-    // Render all player scores
-    pbeRenderPlayerScores(currentTick, lastTick);
-
-    // Render status text with fade effects
-    pbeRenderStatusText(currentTick, lastTick);
-
-    // Render status icons and values
-    pbeRenderStatus(currentTick, lastTick);
-    
-    return (true);
-}
-*/
-
 // Support render routines for the main screen
 void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick){
     // Calculate fade-in alpha for main score
@@ -1523,8 +1494,10 @@ void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
             modeState.multiballStateStartTick = currentTick;
             modeState.multiballCount = 1;
             
-            // Request multiball intro screen
-            pbeRequestScreen(PBTableState::PBTBL_MAIN, 200, ScreenPriority::PRIORITY_HIGH, 3000, false);
+            // Request normal main screen for multiball (no special multiball screen yet)
+            // TODO: Create MAIN_MULTIBALL screen state if multiball needs its own display
+            pbeRequestScreen(PBTableState::PBTBL_MAIN, static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL),
+                             ScreenPriority::PRIORITY_LOW, 0, true);
             break;
             
         default:
