@@ -485,7 +485,7 @@ bool PBEngine::pbeRenderBootScreen(unsigned long currentTick, unsigned long last
     pbeRenderDefaultBackground (currentTick, lastTick);
          
     gfxRenderSprite(m_BootUpTitleBarId, 0, 0);
-    gfxRenderShadowString(m_defaultFontSpriteId, "RasPin - Copyright 2025 Jeff Bock (Right/Left to scroll, Start = Exit)", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "RasPin - Copyright 2025-26 Jeff Bock (Right/Left to scroll, Start = Exit)", (PB_SCREENWIDTH / 2), 10, 1, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
 
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);   
     pbeRenderConsole(1, CONSOLE_START_Y, m_consoleStartLine);
