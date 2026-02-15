@@ -238,9 +238,16 @@ struct stNeoPixelSequenceInfo {
 };
 
 // Save file structures
+// WARNING: These structures use std::string which is NOT safe for binary serialization.
+// The std::string contains internal pointers that become invalid when loaded from disk.
+// The pbeLoadSaveFile() function must reinitialize the structure on load failures to avoid
+// accessing corrupted std::string objects which would cause exceptions.
 struct stHighScoreData {
     unsigned long highScore;
     std::string playerInitials;
+    
+    // Default constructor for safe initialization
+    stHighScoreData() : highScore(0), playerInitials("") {}
 };
 
 #define NUM_HIGHSCORES 5
@@ -255,7 +262,12 @@ struct stSaveFileData {
     unsigned int musicVolume;
     unsigned int ballsPerGame;
     PBDifficultyMode difficulty;
-    std::array<stHighScoreData, NUM_HIGHSCORES> highScores; 
+    std::array<stHighScoreData, NUM_HIGHSCORES> highScores;
+    
+    // Default constructor for safe initialization
+    stSaveFileData() : isWindows(false), mainVolume(MAINVOLUME_DEFAULT), 
+                       musicVolume(MUSICVOLUME_DEFAULT), ballsPerGame(BALLSPERGAME_DEFAULT),
+                       difficulty(PB_NORMAL) {}
 };
 
 // Make new class named PBGame that inheritis from PBOGLES with just essential functions

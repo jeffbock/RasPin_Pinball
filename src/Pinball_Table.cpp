@@ -419,7 +419,7 @@ bool PBEngine::pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned 
         
         // Load the extra ball video (initial position, will be centered after loading)
         m_extraBallVideoSpriteId = m_extraBallVideoPlayer->pbvpLoadVideo(
-            "src/resources/videos/ExtraBall.mp4",
+            "src/resources/videos/extraball.mp4",
             0, 0,
             false  // Don't keep resident
         );
