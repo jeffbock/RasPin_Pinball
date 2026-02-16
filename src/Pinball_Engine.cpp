@@ -723,7 +723,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
             gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
             temp = "OFF";
         };
-        gfxRenderString(m_defaultFontSpriteId, temp, 210 + ((i / 24) * 220), 60 + ((i % 24) * 26), 1, GFX_TEXTLEFT);
+        gfxRenderString(m_defaultFontSpriteId, temp, 230 + ((i / 24) * 220), 60 + ((i % 24) * 26), 1, GFX_TEXTLEFT);
     }
     
     return (true);   
