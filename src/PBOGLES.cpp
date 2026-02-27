@@ -77,6 +77,7 @@ bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
         EGL_BLUE_SIZE, 8,
         EGL_GREEN_SIZE, 8,
         EGL_RED_SIZE, 8,
+        EGL_DEPTH_SIZE, 24,
         EGL_NONE
     };
 
@@ -151,7 +152,7 @@ bool PBOGLES::oglClear(float red, float blue, float green, float alpha, bool doF
         glViewport(0, 0, m_width, m_height);
         glClearColor(red, green, blue, alpha);
 
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (doFlip) {
             if (oglSwap(false) == false) return (false);

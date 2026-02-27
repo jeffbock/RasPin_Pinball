@@ -62,6 +62,8 @@ protected:
                           float vertRed, float vertGreen, float vertBlue, float vertAlpha, 
                           float scale, float rotateDegrees, bool returnBoundingBox);
     void   scaleAndRotateVertices(float* x, float* y, float scale, float rotateDegrees);
+    GLuint oglCompileShader(GLenum type, const char* source);
+    GLuint oglCreateProgram(const char* vertexSource, const char* fragmentSource);
 
 private:
     long m_width;
@@ -87,8 +89,6 @@ private:
     GLint      m_useTexture;
     GLint      m_useTexAlpha;
 
-    GLuint oglCompileShader(GLenum type, const char* source);
-    GLuint oglCreateProgram(const char* vertexSource, const char* fragmentSource);
     void   oglCreateShaders();
     void   oglCleanup();
 

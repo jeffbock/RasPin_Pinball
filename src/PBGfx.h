@@ -27,7 +27,7 @@
 #include <chrono>
 #include <random>
 #include "3rdparty/json.hpp"
-#include "PBOGLES.h"
+#include "PB3D.h"
  
 #define NOSPRITE 0
 #define SYSTEMFONTSPRITE "src/resources/fonts/Ubuntu-Regular_24_256.png"
@@ -174,7 +174,7 @@ struct stAnimateData {
 };
 
 // Define a class for the OGL ES code
-class PBGfx : public PBOGLES {
+class PBGfx : public PB3D {
 
 public:
     PBGfx();
