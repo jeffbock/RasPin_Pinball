@@ -1114,7 +1114,7 @@ bool PBEngine::pbeLoadTestSandbox(){
     
     // Load 3D D20 dice model and create instances for the sandbox test
     if (!m_sandboxDiceLoaded) {
-        m_sandboxD20ModelId = pb3dLoadModel("src/resources/models/d20_dice.glb");
+        m_sandboxD20ModelId = pb3dLoadModel("src/resources/3d/diceset.glb");
         
         if (m_sandboxD20ModelId != 0) {
             // Create 4 instances

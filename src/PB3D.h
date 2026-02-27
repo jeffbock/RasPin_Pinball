@@ -15,7 +15,7 @@
 #include <string>
 
 // Path for 3D model resources
-#define PB3D_MODEL_PATH "src/resources/models/"
+#define PB3D_MODEL_PATH "src/resources/3d/"
 
 // 3D Animation Property Masks
 #define ANIM3D_POSX_MASK   0x001
