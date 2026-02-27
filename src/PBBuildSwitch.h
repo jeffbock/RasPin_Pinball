@@ -14,7 +14,7 @@
 // 0 = disabled (no menu item)
 // 1 = enabled as "Test Sandbox"
 // 2 = enabled as "Simple Flip Mode"
-#define ENABLE_TEST_SANDBOX 2
+#define ENABLE_TEST_SANDBOX 1
 
 // Enable hardware video decoding on Raspberry Pi (requires V4L2 M2M support)
 // Set to 1 to enable hardware decode, 0 for software decode

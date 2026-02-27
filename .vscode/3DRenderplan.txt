@@ -1,0 +1,720 @@
+================================================================================
+3D RENDERING INTEGRATION PLAN — RasPin Pinball Engine
+================================================================================
+Date: February 27, 2026
+Format: glTF 2.0 (.glb)
+Loader: cgltf (single-header C library)
+Math: linmath.h (single-header linear algebra)
+
+================================================================================
+OVERVIEW
+================================================================================
+
+Add a parallel 3D rendering path alongside the existing 2D sprite system using
+glTF (.glb) models loaded via the cgltf single-header library, with a simple
+diffuse+ambient lighting shader. The 3D pass uses a depth buffer, VBOs/VAOs, and
+a dedicated shader program. A new PB3D class slots between PBOGLES and PBGfx in
+the inheritance chain. The game code has explicit control over interleaving 2D
+and 3D rendering in any order. A procedural animation system mirrors the existing
+2D stAnimateData pattern for transform-based animations on 3D instances (spin,
+bob, jitter, slide, fade, etc.).
+
+No changes to existing 2D sprite rendering behavior.
+
+Class hierarchy change:
+  PBEngine -> PBGfx -> PB3D -> PBOGLES  (PB3D is new, inserted between PBGfx and PBOGLES)
+
+================================================================================
+STEP 1: ADD THIRD-PARTY HEADERS
+================================================================================
+
+Drop two single-header C libraries into src/3rdparty/:
+
+1. cgltf.h
+   - glTF 2.0 parser (~2700 lines, MIT license)
+   - Download from: https://github.com/jkuhlmann/cgltf
+   - Create a corresponding cgltf.cpp containing only:
+       #define CGLTF_IMPLEMENTATION
+       #include "cgltf.h"
+
+2. linmath.h
+   - Lightweight linear algebra (~600 lines, public domain)
+   - Download from: https://github.com/datenwolf/linmath.h
+   - Header-only, no .cpp needed
+   - Provides: mat4x4, mat4x4_mul, mat4x4_perspective, mat4x4_look_at,
+     mat4x4_translate, mat4x4_rotate, mat4x4_identity, mat4x4_invert,
+     mat4x4_transpose
+
+================================================================================
+STEP 2: ENABLE DEPTH BUFFER IN EGL CONFIG
+================================================================================
+
+File: src/PBOGLES.cpp, line 82-90 (configAttribs array)
+
+Add EGL_DEPTH_SIZE, 24 to the configAttribs array before EGL_NONE.
+
+Current:
+    EGLint configAttribs[] = {
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
+        EGL_ALPHA_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_RED_SIZE, 8,
+        EGL_NONE
+    };
+
+Change to:
+    EGLint configAttribs[] = {
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
+        EGL_ALPHA_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_RED_SIZE, 8,
+        EGL_DEPTH_SIZE, 24,
+        EGL_NONE
+    };
+
+This gives both 2D and 3D paths access to a depth buffer. The 2D path won't use
+it (depth test stays disabled for 2D), so existing behavior is unchanged.
+
+================================================================================
+STEP 3: UPDATE oglClear() TO CLEAR THE DEPTH BUFFER
+================================================================================
+
+File: src/PBOGLES.cpp, line 160
+
+Change:
+    glClear(GL_COLOR_BUFFER_BIT);
+
+To:
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+Safe even when depth test is disabled — it just clears the buffer.
+
+================================================================================
+STEP 4: CREATE THE 3D SHADER PAIR
+================================================================================
+
+Add two new inline shader source strings as private members of PB3D.
+
+Vertex shader (GLSL ES 3.0):
+  - Inputs:  in vec3 aPosition, in vec3 aNormal, in vec2 aTexCoord
+  - Uniforms: uniform mat4 uMVP (model-view-projection), uniform mat4 uModel
+  - Outputs: out vec2 vTexCoord, out vec3 vNormal, out vec3 vWorldPos
+  - Body: transform position by MVP, transform normal by model matrix, pass UVs
+
+Fragment shader (GLSL ES 3.0):
+  - Inputs:  in vec2 vTexCoord, in vec3 vNormal, in vec3 vWorldPos
+  - Uniforms: uniform sampler2D uTexture, uniform vec3 uLightDir,
+              uniform vec3 uLightColor, uniform vec3 uAmbientColor,
+              uniform float uAlpha
+  - Body: sample texture, compute diffuse = max(dot(normalize(vNormal),
+          normalize(uLightDir)), 0.0), combine finalColor = texture *
+          (ambient + diffuse * lightColor), apply alpha
+
+Use #version 300 es header since the project targets ES 3.1. This avoids
+conflicts with the existing ES 1.0 GLSL shaders (which have no version
+directive).
+
+================================================================================
+STEP 5: DEFINE 3D DATA STRUCTURES
+================================================================================
+
+Create new header: src/PB3D.h
+
+--- st3DMesh ---
+Holds GPU-side data for one renderable mesh:
+  GLuint vao                 - Vertex Array Object
+  GLuint vboVertices         - VBO for interleaved vertex data (pos+normal+uv)
+  GLuint eboIndices          - Element buffer for index data
+  unsigned int indexCount    - Number of indices
+  GLuint textureId           - GL texture for this mesh's material
+  unsigned int materialIndex - Reference to material in the model
+
+--- st3DModel ---
+A loaded glTF model:
+  std::vector<st3DMesh> meshes - All meshes in the model
+  std::string name             - Model identifier
+  bool isLoaded
+
+--- st3DInstance ---
+A placed instance of a model in the scene:
+  unsigned int modelId       - Which model this instances
+  float posX, posY, posZ     - World position
+  float rotX, rotY, rotZ     - Euler rotation (degrees)
+  float scale                - Uniform scale
+  float alpha                - Transparency
+  bool visible
+
+--- st3DCamera ---
+View parameters:
+  float eyeX, eyeY, eyeZ       - Camera position
+  float lookX, lookY, lookZ     - Look-at target
+  float upX, upY, upZ           - Up vector (default 0,1,0)
+  float fov                     - Field of view degrees (default 45)
+  float nearPlane, farPlane     - Clip planes
+
+--- st3DLight ---
+Simple directional light:
+  float dirX, dirY, dirZ        - Light direction
+  float r, g, b                 - Light color
+  float ambientR, ambientG, ambientB - Ambient color
+
+--- 3D Animation Property Masks ---
+
+  ANIM3D_POSX_MASK   0x001    X position (float, world units)
+  ANIM3D_POSY_MASK   0x002    Y position
+  ANIM3D_POSZ_MASK   0x004    Z position
+  ANIM3D_ROTX_MASK   0x008    X rotation (degrees)
+  ANIM3D_ROTY_MASK   0x010    Y rotation (degrees)
+  ANIM3D_ROTZ_MASK   0x020    Z rotation (degrees)
+  ANIM3D_SCALE_MASK  0x040    Uniform scale
+  ANIM3D_ALPHA_MASK  0x080    Alpha/transparency
+  ANIM3D_ALL_MASK    0x0FF    All properties
+
+--- st3DAnimateData ---
+
+  unsigned int animateInstanceId   - 3D instance being animated
+
+  // Start values (captured at creation)
+  float startPosX, startPosY, startPosZ
+  float startRotX, startRotY, startRotZ
+  float startScale, startAlpha
+
+  // End/target values
+  float endPosX, endPosY, endPosZ
+  float endRotX, endRotY, endRotZ
+  float endScale, endAlpha
+
+  // Timing
+  unsigned int startTick           - ms tick when started
+  float animateTimeSec             - duration (seconds)
+
+  // Control
+  unsigned int typeMask            - which properties to animate
+  gfxAnimType animType             - NORMAL, ACCL, JUMP, JUMPRANDOM (reuse existing enums)
+  gfxLoopType loop                 - NOLOOP, RESTART, REVERSE (reuse existing enums)
+  bool isActive
+
+  // Acceleration mode parameters
+  float accelX, accelY, accelZ              - units/sec^2
+  float accelRotX, accelRotY, accelRotZ     - deg/sec^2
+  float initialVelX, initialVelY, initialVelZ
+  float initialVelRotX, initialVelRotY, initialVelRotZ
+  float currentVelX, currentVelY, currentVelZ
+  float currentVelRotX, currentVelRotY, currentVelRotZ
+
+  // Jump random
+  float randomPercent
+
+  // Rotation direction flags
+  bool rotateClockwiseX, rotateClockwiseY, rotateClockwiseZ
+
+Key difference from the 2D system: Instead of requiring three separate sprite
+instances (start/end/animate), the 3D system stores start/end values directly in
+the struct. The "animate instance" is the live st3DInstance in m_3dInstanceList
+that gets modified each frame.
+
+================================================================================
+STEP 6: CREATE THE PB3D CLASS
+================================================================================
+
+Create: src/PB3D.h and src/PB3D.cpp
+
+Class hierarchy: PBGfx inherits from PB3D instead of PBOGLES.
+  PBEngine -> PBGfx -> PB3D -> PBOGLES
+
+--- Public Interface ---
+
+  bool pb3dInit()
+      Compile 3D shaders, get uniform/attrib locations, set default camera & light
+
+  unsigned int pb3dLoadModel(const char* glbFilePath)
+      Parse .glb with cgltf, upload VBOs/VAOs/textures, return model ID
+
+  bool pb3dUnloadModel(unsigned int modelId)
+      Delete GL resources for a model
+
+  unsigned int pb3dCreateInstance(unsigned int modelId)
+      Create a renderable instance, return instance ID
+
+  bool pb3dDestroyInstance(unsigned int instanceId)
+      Remove instance
+
+  void pb3dSetInstancePosition(unsigned int instanceId, float x, float y, float z)
+  void pb3dSetInstanceRotation(unsigned int instanceId, float rx, float ry, float rz)
+  void pb3dSetInstanceScale(unsigned int instanceId, float scale)
+  void pb3dSetInstanceAlpha(unsigned int instanceId, float alpha)
+  void pb3dSetInstanceVisible(unsigned int instanceId, bool visible)
+
+  void pb3dSetCamera(st3DCamera camera)
+  void pb3dSetLight(st3DLight light)
+
+  void pb3dBegin()
+      Switch GL state from 2D -> 3D mode (enable depth test, cull face, bind 3D shader)
+
+  void pb3dEnd()
+      Switch GL state from 3D -> 2D mode (disable depth test, cull face, bind 2D shader)
+
+  void pb3dRenderInstance(unsigned int instanceId)
+      Render a single 3D instance (compute MVP, bind VAO/texture, draw)
+
+  void pb3dRenderAll()
+      Convenience: calls pb3dBegin(), renders all visible instances, calls pb3dEnd()
+
+  bool pb3dCreateAnimation(st3DAnimateData anim, bool replaceExisting)
+  bool pb3dAnimateInstance(unsigned int instanceId, unsigned int currentTick)
+      Update one animation; pass 0 for instanceId to update all
+  bool pb3dAnimateActive(unsigned int instanceId)
+      Poll: is animation still running?
+  void pb3dAnimateClear(unsigned int instanceId)
+      Remove animation (0 = clear all)
+  void pb3dAnimateRestart(unsigned int instanceId)
+  void pb3dAnimateRestart(unsigned int instanceId, unsigned long startTick)
+
+--- Private Members ---
+
+  GLuint m_3dShaderProgram
+  GLint  m_3dMVPUniform, m_3dModelUniform, m_3dLightDirUniform,
+         m_3dLightColorUniform, m_3dAmbientUniform, m_3dAlphaUniform
+  GLint  m_3dPosAttrib, m_3dNormalAttrib, m_3dTexCoordAttrib
+
+  std::map<unsigned int, st3DModel>        m_3dModelList
+  std::map<unsigned int, st3DInstance>      m_3dInstanceList
+  std::map<unsigned int, st3DAnimateData>   m_3dAnimateList
+
+  st3DCamera m_camera
+  st3DLight  m_light
+
+  unsigned int m_next3dModelId, m_next3dInstanceId
+
+--- Private Animation Handlers ---
+
+  pb3dAnimateNormal(st3DAnimateData&, unsigned int currentTick, float timeSinceStart, float percentComplete)
+  pb3dAnimateAcceleration(st3DAnimateData&, unsigned int currentTick, float timeSinceStart)
+  pb3dAnimateJump(st3DAnimateData&, unsigned int currentTick, float timeSinceStart)
+  pb3dAnimateJumpRandom(st3DAnimateData&, unsigned int currentTick, float timeSinceStart)
+  pb3dSetFinalAnimationValues(const st3DAnimateData&)
+
+Interpolation math is identical to the 2D system:
+  NORMAL:     value = start + (end - start) * percentComplete
+  ACCL:       position = start + v0*t + 0.5*a*t^2, velocity = v0 + a*t
+  JUMP:       instant snap to end values after animateTimeSec elapses
+  JUMPRANDOM: random values between start/end with probability check
+
+================================================================================
+STEP 7: IMPLEMENT pb3dInit()
+================================================================================
+
+File: src/PB3D.cpp
+
+- Compile the 3D vertex + fragment shaders using the existing oglCompileShader()
+  and oglCreateProgram() methods from PBOGLES (moved to protected in Step 13)
+- Cache all uniform and attribute locations
+- Set default camera: eye=(0,5,10), lookAt=(0,0,0), FOV=45, near=0.1, far=100
+- Set default light: direction=(0.5,-1.0,-0.3), white light, gray ambient
+- Called from gfxInit() in PBGfx.cpp (line 29) after oglInit() has completed
+
+================================================================================
+STEP 8: IMPLEMENT pb3dLoadModel() — glTF PARSING AND GPU UPLOAD
+================================================================================
+
+File: src/PB3D.cpp
+
+Using cgltf:
+1. cgltf_parse_file() then cgltf_load_buffers() to parse the .glb file
+2. Iterate data->meshes -> mesh->primitives
+3. For each primitive, extract accessor data for POSITION, NORMAL, TEXCOORD_0
+4. Build interleaved vertex buffer: [posX, posY, posZ, normX, normY, normZ, u, v]
+   Stride = 8 floats
+5. Extract index data from the primitive's indices accessor
+6. Create VAO (glGenVertexArrays), VBO (glGenBuffers), EBO (glGenBuffers)
+7. Upload vertex data to VBO with glBufferData(GL_ARRAY_BUFFER, ...)
+8. Upload index data to EBO with glBufferData(GL_ELEMENT_ARRAY_BUFFER, ...)
+9. Set vertex attribute pointers inside the VAO:
+   - position  (3 floats, offset 0)
+   - normal    (3 floats, offset 3*sizeof(float))
+   - texcoord  (2 floats, offset 6*sizeof(float))
+10. For materials: extract baseColorTexture image from cgltf, decode with
+    stbi_load_from_memory() (image data embedded in .glb binary buffer),
+    upload via glTexImage2D. If no texture, create a 1x1 white pixel fallback.
+11. cgltf_free() to release parsed data (GPU buffers now own the data)
+12. Store st3DModel in m_3dModelList and return its ID
+
+================================================================================
+STEP 9: INTERLEAVED 2D/3D RENDERING
+================================================================================
+
+Instead of a single pb3dRenderAll() batch, the system supports rendering
+individual 3D instances at arbitrary points in the draw order, interleaved with
+2D sprites. This requires explicit GL state switching per render call.
+
+--- pb3dBegin() implementation ---
+1. glEnable(GL_DEPTH_TEST) + glDepthFunc(GL_LEQUAL)
+2. glEnable(GL_CULL_FACE) + glCullFace(GL_BACK)
+3. glUseProgram(m_3dShaderProgram)
+4. Set light uniforms (only if changed since last begin)
+5. Compute and cache view + projection matrices (only if camera changed)
+
+--- pb3dEnd() implementation ---
+1. glDisable(GL_DEPTH_TEST)
+2. glDisable(GL_CULL_FACE)
+3. glEnable(GL_BLEND) + glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+4. glUseProgram(m_shaderProgram) — restore 2D sprite shader
+5. Re-enable 2D vertex attrib arrays (disrupted by VAO binding)
+
+--- pb3dRenderInstance() implementation ---
+1. Look up instance in m_3dInstanceList, skip if not visible
+2. Build model matrix: identity -> translate(pos) -> rotateY(ry) -> rotateX(rx) -> rotateZ(rz) -> scale(s)
+3. Compute MVP = projection * view * model
+4. glUniformMatrix4fv(m_3dMVPUniform, 1, GL_FALSE, mvp)
+5. glUniformMatrix4fv(m_3dModelUniform, 1, GL_FALSE, model)
+6. glUniform1f(m_3dAlphaUniform, instance.alpha)
+7. For each mesh: glBindVertexArray(vao), glBindTexture(GL_TEXTURE_2D, textureId),
+   glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_SHORT, 0)
+8. glBindVertexArray(0) when done
+
+--- Transparency handling ---
+If a 3D instance has alpha < 1.0, enable blending before drawing it.
+Transparent 3D objects should be drawn last in the 3D batch for correct
+blending. Against 2D sprites, draw order handles it.
+
+--- Depth buffer interaction with 2D ---
+Existing 2D sprites write Z=0.0 into NDC but depth test is disabled during
+2D rendering, so they ignore the depth buffer entirely. 3D objects only
+depth-test against each other. Visual layering between 2D and 3D is purely
+controlled by draw order (painter's algorithm).
+
+--- Typical usage in a screen render function ---
+
+  gfxClear(0, 0, 0, 1, false);          // clear color + depth
+
+  gfxRenderSprite(backgroundId);         // 2D background
+  gfxRenderSprite(playfieldId);          // 2D playfield
+
+  pb3dBegin();                           // switch to 3D
+  pb3dRenderInstance(bumperModelId);     // 3D models
+  pb3dRenderInstance(rampModelId);
+  pb3dEnd();                             // back to 2D
+
+  gfxRenderSprite(scoreTextId);          // 2D overlay
+  gfxRenderSprite(hudId);
+
+  pb3dBegin();                           // another 3D pass if needed
+  pb3dRenderInstance(ballModelId);
+  pb3dEnd();
+
+  gfxRenderSprite(fadeOverlayId);        // 2D on top
+  gfxSwap(false);
+
+================================================================================
+STEP 10: PROCEDURAL 3D ANIMATION SYSTEM
+================================================================================
+
+Mirrors the existing 2D animation architecture from PBGfx.h but operates on
+3D instance properties (position XYZ, rotation XYZ, scale, alpha).
+
+Uses the same tick system (milliseconds via std::chrono::steady_clock), same
+loop types (GFX_NOLOOP, GFX_RESTART, GFX_REVERSE), and same interpolation
+types (GFX_ANIM_NORMAL, GFX_ANIM_ACCL, GFX_ANIM_JUMP, GFX_ANIM_JUMPRANDOM).
+
+--- Common procedural animation examples ---
+
+Continuous Y-axis spin:
+  ANIM3D_ROTY_MASK, ACCL mode, initialVelRotY=90 (deg/sec),
+  accelRotY=0, startRotY==endRotY, GFX_RESTART loop
+
+Bobbing up/down:
+  ANIM3D_POSY_MASK, NORMAL mode, startPosY=2.0, endPosY=2.5,
+  animateTimeSec=1.0, GFX_REVERSE loop
+
+Scale pulse:
+  ANIM3D_SCALE_MASK, NORMAL mode, startScale=1.0, endScale=1.2,
+  animateTimeSec=0.5, GFX_REVERSE loop
+
+Slide into position:
+  ANIM3D_POSX_MASK | ANIM3D_POSY_MASK | ANIM3D_POSZ_MASK,
+  NORMAL mode, GFX_NOLOOP
+
+Fade in:
+  ANIM3D_ALPHA_MASK, NORMAL mode, startAlpha=0.0, endAlpha=1.0, GFX_NOLOOP
+
+Physics-style deceleration:
+  ACCL mode with positive initial velocity and negative acceleration
+
+Random jitter (like 2D flame effect):
+  JUMPRANDOM mode, randomPercent=0.6, short animateTimeSec, GFX_RESTART loop
+
+--- Per-frame update ---
+
+Call pb3dAnimateInstance(0, currentTick) to update all 3D animations, typically
+at the top of the screen render function before any draw calls.
+
+--- Per-frame render flow ---
+
+  gfxClear(0, 0, 0, 1, false);
+  gfxAnimateSprite(NOSPRITE, currentTick);    // update all 2D animations
+  pb3dAnimateInstance(0, currentTick);         // update all 3D animations
+  gfxRenderSprite(backgroundId);              // 2D background
+  pb3dBegin();                                // 3D pass
+  pb3dRenderInstance(model1);
+  pb3dRenderInstance(model2);
+  pb3dEnd();
+  gfxRenderSprite(overlayId);                 // 2D overlay
+  gfxSwap(false);
+
+================================================================================
+STEP 11: SKELETAL ANIMATION SUPPORT (PHASE 2 — DEFERRED)
+================================================================================
+
+Not implemented in initial integration. Can be added later.
+
+Would add to PB3D:
+  st3DJoint      - joint index, inverse bind matrix, parent index
+  st3DSkeleton   - vector<st3DJoint>, current joint matrices
+  st3DAnimation  - name, duration, channels (translation/rotation/scale keyframes)
+
+  pb3dPlayAnimation(instanceId, animName, loop)
+  pb3dStopAnimation(instanceId)
+  pb3dUpdateAnimations(deltaTimeMs)
+
+Vertex shader would gain joint indices + weights attributes and a
+uniform mat4 uJoints[64] array for skinning.
+
+Static textured models with transform-based procedural animation are sufficient
+for the initial integration.
+
+================================================================================
+STEP 12: UPDATE BUILD SYSTEMS
+================================================================================
+
+Add src/PB3D.cpp and src/3rdparty/cgltf.cpp to all build configurations:
+
+--- Windows tasks.json ---
+Add to both debug and release build task args:
+  "${workspaceFolder}/src/PB3D.cpp"
+  "${workspaceFolder}/src/3rdparty/cgltf.cpp"
+
+--- Raspberry Pi tasks.json ---
+Same additions to Raspberry Pi build tasks.
+
+--- RasPi_CMake/CMakeLists.txt ---
+Add to PINBALL_SOURCES (line 22):
+  ../src/PB3D.cpp
+  ../src/3rdparty/cgltf.cpp
+
+================================================================================
+STEP 13: MOVE SHADER UTILITY METHODS TO PROTECTED
+================================================================================
+
+File: src/PBOGLES.h
+
+Move oglCompileShader() and oglCreateProgram() from the private: section
+(lines 93-94) to the protected: section so PB3D can call them to compile
+the 3D shaders.
+
+================================================================================
+STEP 14: CREATE RESOURCES DIRECTORY FOR 3D MODELS
+================================================================================
+
+Create: src/resources/models/
+
+Define path constant in PB3D.h:
+  #define PB3D_MODEL_PATH "src/resources/models/"
+
+================================================================================
+VERIFICATION TEST: D20 DICE IN TEST SANDBOX
+================================================================================
+
+--- Asset ---
+
+Source a textured D20 (icosahedron) .glb model with number textures (1-20) on
+each triangular face.
+
+Recommended sources:
+  - Sketchfab: search "d20 dice" — many free CC-licensed models
+  - Blender: Add > Mesh > Icosphere (subdivisions=1), UV-unwrap, number texture
+  - Kenney.nl game assets
+
+Place at: src/resources/models/d20_dice.glb
+Target: ~2K-5K triangles, single embedded PNG texture atlas with number decals.
+
+--- Layout ---
+
+The video renders at 960x540 centered at (480, 480) pixel coordinates
+(spans x=480..1440, y=480..1020). Four D20 dice instances go around the video.
+
+With camera at (0, 0, 8) looking at (0, 0, 0) with 45 degree FOV:
+
+  Instance   | 3D Position       | Screen region         | Animation mode
+  -----------|-------------------|-----------------------|---------------------------
+  Dice 1     | (-3.5, 1.0, 0.0) | Left of video, top    | NORMAL + GFX_REVERSE
+  Dice 2     | ( 3.5, 1.0, 0.0) | Right of video, top   | ACCL (free spin)
+  Dice 3     | (-3.5,-1.5, 0.0) | Left of video, bottom | JUMP + GFX_RESTART
+  Dice 4     | ( 3.5,-1.5, 0.0) | Right of video, bottom| JUMPRANDOM + GFX_RESTART
+
+--- New Member Variables in PBEngine ---
+
+Add to Pinball_Engine.h near line 438 (Test Sandbox section):
+
+  unsigned int m_sandboxD20ModelId;
+  unsigned int m_sandboxDiceInstance[4];
+  bool m_sandboxDiceLoaded;
+
+Initialize in PBEngine constructor:
+  m_sandboxD20ModelId = 0;
+  m_sandboxDiceLoaded = false;
+  m_sandboxDiceInstance[0..3] = 0;
+
+--- Changes to pbeLoadTestSandbox() ---
+
+File: src/Pinball_Engine.cpp, after line ~1105 (after video player setup)
+
+1. Load D20 model (once):
+     m_sandboxD20ModelId = pb3dLoadModel("src/resources/models/d20_dice.glb");
+
+2. Create 4 instances:
+     for (int i = 0; i < 4; i++)
+         m_sandboxDiceInstance[i] = pb3dCreateInstance(m_sandboxD20ModelId);
+
+3. Set initial positions:
+     pb3dSetInstancePosition(m_sandboxDiceInstance[0], -3.5f, 1.0f, 0.0f);
+     pb3dSetInstancePosition(m_sandboxDiceInstance[1],  3.5f, 1.0f, 0.0f);
+     pb3dSetInstancePosition(m_sandboxDiceInstance[2], -3.5f,-1.5f, 0.0f);
+     pb3dSetInstancePosition(m_sandboxDiceInstance[3],  3.5f,-1.5f, 0.0f);
+
+4. Set scale to 0.8 on all instances
+
+5. Set visibility to false initially (appear when video starts)
+
+6. Create 4 animations:
+
+   DICE 1 — NORMAL + REVERSE (smooth continuous spin):
+     typeMask       = ANIM3D_ROTY_MASK
+     animType       = GFX_ANIM_NORMAL
+     loop           = GFX_REVERSE
+     startRotY      = 0.0
+     endRotY        = 360.0
+     animateTimeSec = 3.0
+     rotateClockwiseY = true
+
+   DICE 2 — ACCL (accelerating free spin):
+     typeMask       = ANIM3D_ROTY_MASK
+     animType       = GFX_ANIM_ACCL
+     loop           = GFX_RESTART
+     startRotY      = endRotY = 0.0 (free spin, no target)
+     initialVelRotY = 30.0 (deg/sec)
+     accelRotY      = 15.0 (deg/sec^2, gets faster)
+
+   DICE 3 — JUMP + RESTART (dice roll snap):
+     typeMask       = ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK
+     animType       = GFX_ANIM_JUMP
+     loop           = GFX_RESTART
+     startRotX/Y/Z  = 0.0
+     endRotX        = 120.0
+     endRotY        = 240.0
+     endRotZ        = 60.0
+     animateTimeSec = 1.5
+     (snaps, then start/end swap on restart — shows different face each time)
+
+   DICE 4 — JUMPRANDOM + RESTART (shaking dice):
+     typeMask       = ANIM3D_POSX_MASK | ANIM3D_POSY_MASK |
+                      ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK |
+                      ANIM3D_SCALE_MASK
+     animType       = GFX_ANIM_JUMPRANDOM
+     loop           = GFX_RESTART
+     Start values   = nominal position/rotation/scale
+     End values     = small offsets (pos +/-0.15, rot +/-30 deg, scale 0.7-1.1)
+     randomPercent  = 0.5 (50% chance per cycle)
+     animateTimeSec = 0.2 (fast jitter)
+
+7. Set m_sandboxDiceLoaded = true
+
+--- Changes to pbeRenderTestSandbox() ---
+
+File: src/Pinball_Engine.cpp, line 1109
+
+Modification 1: Change label text at line 1182.
+  "Video Playback Test" -> "Video / 3D Test"
+
+Modification 2: Add 3D rendering inside the if (videoState == PBV_PLAYING) block,
+after the video sprite renders (line 1249) and before the title text renders.
+
+  1. Show dice: pb3dSetInstanceVisible(m_sandboxDiceInstance[i], true)
+  2. Update animations: pb3dAnimateInstance(0, currentTick)
+  3. Match alpha to video: pb3dSetInstanceAlpha(m_sandboxDiceInstance[i], currentVideoAlpha)
+  4. Render:
+       pb3dBegin();
+       for (int i = 0; i < 4; i++)
+           pb3dRenderInstance(m_sandboxDiceInstance[i]);
+       pb3dEnd();
+  5. Video title text renders after pb3dEnd() as 2D overlay on top
+
+Modification 3: Hide dice when video stops.
+  Where pbvpStop() is called (line 1239), also:
+    for (int i = 0; i < 4; i++)
+        pb3dSetInstanceVisible(m_sandboxDiceInstance[i], false);
+
+Modification 4: Add descriptive labels below each dice position.
+  Render small text labels with matching currentVideoAlpha:
+    "NORMAL+REVERSE"  below Dice 1 position
+    "ACCELERATE"      below Dice 2 position
+    "JUMP"            below Dice 3 position
+    "JUMPRANDOM"      below Dice 4 position
+
+--- Sandbox Restart Cleanup ---
+
+In restart block (line 1112), add:
+  pb3dAnimateClear(0)
+  Destroy all 4 instances via pb3dDestroyInstance()
+  Unload model via pb3dUnloadModel(m_sandboxD20ModelId)
+  m_sandboxDiceLoaded = false
+
+--- Sandbox Exit Cleanup ---
+
+In Start button exit handler (line ~1988), add same 3D cleanup.
+
+--- Verification Checklist ---
+
+ 1. Build both Windows and Raspberry Pi configurations
+ 2. Run -> Main Menu -> Select "Test Sandbox"
+ 3. Press Left Activate to trigger Video / 3D Test
+ 4. Verify video fades in normally (2 sec) — no regression
+ 5. Verify 4 dice appear around the video, each with labeled animation mode
+ 6. Dice 1 (NORMAL+REVERSE): Smooth Y-axis spin, reverses at each end
+ 7. Dice 2 (ACCELERATE): Starts spinning slowly, visibly speeds up
+ 8. Dice 3 (JUMP): Sits still 1.5 sec, snaps to new orientation, repeats
+ 9. Dice 4 (JUMPRANDOM): Rapid random jitter — position, rotation, scale
+10. Press Left Activate again — dice and video fade out together
+11. Press Left Activate again — everything fades back in, anims restart
+12. Press Start to exit sandbox — no crashes, clean resource cleanup
+13. Re-enter sandbox — loads fresh, no GL resource leaks
+14. FPS stays at 30 with all 4 animated dice + video playing
+
+================================================================================
+DECISIONS
+================================================================================
+
+- Format: glTF 2.0 (.glb binary) over FBX (proprietary), OBJ (no animation),
+  Collada (XML bloat)
+
+- Loader: cgltf over tinygltf (smaller, zero deps) and Assimp (overkill)
+
+- Math: linmath.h over glm (template heavy) and cglm (larger than needed)
+
+- Class placement: PB3D between PBOGLES and PBGfx in inheritance — gives direct
+  access to GL state and shader utilities, maintains separation of concerns
+
+- Render ordering: Explicit pb3dBegin/End + pb3dRenderInstance per screen —
+  full interleaved 2D/3D control, no forced batch ordering
+
+- Animation: Procedural transform animation system mirroring the 2D
+  stAnimateData pattern — same tick system, loop types, interpolation types
+
+- Skeletal animation: Deferred to Phase 2
+
+================================================================================
+END OF PLAN
+================================================================================
