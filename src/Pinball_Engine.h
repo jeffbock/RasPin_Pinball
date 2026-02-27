@@ -437,6 +437,11 @@ public:
     float m_videoFadeDurationSec;
     pbdEjector* m_sandboxEjector;
     
+    // 3D sandbox test variables
+    unsigned int m_sandboxD20ModelId;
+    unsigned int m_sandboxDiceInstance[4];
+    bool m_sandboxDiceLoaded;
+    
     // NeoPixel animation variables for sandbox test
     bool m_sandboxNeoPixelAnimActive;    // Animation is running
     bool m_sandboxNeoPixelStepMode;      // True = step mode (manual), False = timer mode (automatic)

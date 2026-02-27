@@ -76,6 +76,14 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_videoFadeDurationSec = 2.0f;
     m_sandboxEjector = nullptr;
     
+    // Initialize 3D sandbox variables
+    m_sandboxD20ModelId = 0;
+    m_sandboxDiceLoaded = false;
+    m_sandboxDiceInstance[0] = 0;
+    m_sandboxDiceInstance[1] = 0;
+    m_sandboxDiceInstance[2] = 0;
+    m_sandboxDiceInstance[3] = 0;
+    
     // Initialize NeoPixel animation variables
     m_sandboxNeoPixelAnimActive = false;
     m_sandboxNeoPixelStepMode = false;  
@@ -1104,6 +1112,99 @@ bool PBEngine::pbeLoadTestSandbox(){
     // The NeoPixel drivers are now created automatically during pbeSetupIO() based on g_outputDef
     // and use pre-allocated arrays from g_NeoPixelNodeArray to avoid dynamic memory allocation
     
+    // Load 3D D20 dice model and create instances for the sandbox test
+    if (!m_sandboxDiceLoaded) {
+        m_sandboxD20ModelId = pb3dLoadModel("src/resources/models/d20_dice.glb");
+        
+        if (m_sandboxD20ModelId != 0) {
+            // Create 4 instances
+            for (int i = 0; i < 4; i++) {
+                m_sandboxDiceInstance[i] = pb3dCreateInstance(m_sandboxD20ModelId);
+            }
+            
+            // Set initial positions (around where the video renders)
+            pb3dSetInstancePosition(m_sandboxDiceInstance[0], -3.5f,  1.0f, 0.0f);  // Left top
+            pb3dSetInstancePosition(m_sandboxDiceInstance[1],  3.5f,  1.0f, 0.0f);  // Right top
+            pb3dSetInstancePosition(m_sandboxDiceInstance[2], -3.5f, -1.5f, 0.0f);  // Left bottom
+            pb3dSetInstancePosition(m_sandboxDiceInstance[3],  3.5f, -1.5f, 0.0f);  // Right bottom
+            
+            // Set scale to 0.8
+            for (int i = 0; i < 4; i++) {
+                pb3dSetInstanceScale(m_sandboxDiceInstance[i], 0.8f);
+                pb3dSetInstanceVisible(m_sandboxDiceInstance[i], false);
+            }
+            
+            // Set camera for sandbox 3D test
+            st3DCamera cam = {0.0f, 0.0f, 8.0f,   0.0f, 0.0f, 0.0f,   0.0f, 1.0f, 0.0f,   45.0f,   0.1f, 100.0f};
+            pb3dSetCamera(cam);
+            
+            unsigned long currentTick = GetTickCountGfx();
+            
+            // DICE 1 — NORMAL + REVERSE (smooth continuous Y-axis spin)
+            st3DAnimateData anim1 = {};
+            anim1.animateInstanceId = m_sandboxDiceInstance[0];
+            anim1.typeMask = ANIM3D_ROTY_MASK;
+            anim1.animType = GFX_ANIM_NORMAL;
+            anim1.loop = GFX_REVERSE;
+            anim1.startRotY = 0.0f;
+            anim1.endRotY = 360.0f;
+            anim1.animateTimeSec = 3.0f;
+            anim1.rotateClockwiseY = true;
+            anim1.isActive = true;
+            anim1.startTick = currentTick;
+            anim1.startScale = 0.8f; anim1.endScale = 0.8f;
+            anim1.startAlpha = 1.0f; anim1.endAlpha = 1.0f;
+            pb3dCreateAnimation(anim1, true);
+            
+            // DICE 2 — ACCL (accelerating free spin)
+            st3DAnimateData anim2 = {};
+            anim2.animateInstanceId = m_sandboxDiceInstance[1];
+            anim2.typeMask = ANIM3D_ROTY_MASK;
+            anim2.animType = GFX_ANIM_ACCL;
+            anim2.loop = GFX_RESTART;
+            anim2.startRotY = 0.0f; anim2.endRotY = 0.0f;
+            anim2.initialVelRotY = 30.0f;
+            anim2.accelRotY = 15.0f;
+            anim2.animateTimeSec = 5.0f;
+            anim2.isActive = true;
+            anim2.startTick = currentTick;
+            pb3dCreateAnimation(anim2, true);
+            
+            // DICE 3 — JUMP + RESTART (dice roll snap)
+            st3DAnimateData anim3 = {};
+            anim3.animateInstanceId = m_sandboxDiceInstance[2];
+            anim3.typeMask = ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK;
+            anim3.animType = GFX_ANIM_JUMP;
+            anim3.loop = GFX_RESTART;
+            anim3.startRotX = 0.0f; anim3.startRotY = 0.0f; anim3.startRotZ = 0.0f;
+            anim3.endRotX = 120.0f; anim3.endRotY = 240.0f; anim3.endRotZ = 60.0f;
+            anim3.animateTimeSec = 1.5f;
+            anim3.isActive = true;
+            anim3.startTick = currentTick;
+            pb3dCreateAnimation(anim3, true);
+            
+            // DICE 4 — JUMPRANDOM + RESTART (shaking dice)
+            st3DAnimateData anim4 = {};
+            anim4.animateInstanceId = m_sandboxDiceInstance[3];
+            anim4.typeMask = ANIM3D_POSX_MASK | ANIM3D_POSY_MASK | ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK | ANIM3D_SCALE_MASK;
+            anim4.animType = GFX_ANIM_JUMPRANDOM;
+            anim4.loop = GFX_RESTART;
+            anim4.startPosX = 3.5f;  anim4.endPosX = 3.65f;
+            anim4.startPosY = -1.5f; anim4.endPosY = -1.35f;
+            anim4.startRotX = 0.0f;  anim4.endRotX = 30.0f;
+            anim4.startRotY = 0.0f;  anim4.endRotY = 30.0f;
+            anim4.startRotZ = 0.0f;  anim4.endRotZ = 30.0f;
+            anim4.startScale = 0.7f; anim4.endScale = 1.1f;
+            anim4.randomPercent = 0.5f;
+            anim4.animateTimeSec = 0.2f;
+            anim4.isActive = true;
+            anim4.startTick = currentTick;
+            pb3dCreateAnimation(anim4, true);
+            
+            m_sandboxDiceLoaded = true;
+        }
+    }
+    
     return (true);
 }
 
@@ -1111,6 +1212,18 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     
     if (m_RestartTestSandbox) {
         m_RestartTestSandbox = false;
+        
+        // Clean up 3D resources when restarting sandbox
+        if (m_sandboxDiceLoaded) {
+            pb3dAnimateClear(0);
+            for (int i = 0; i < 4; i++) {
+                if (m_sandboxDiceInstance[i]) pb3dDestroyInstance(m_sandboxDiceInstance[i]);
+                m_sandboxDiceInstance[i] = 0;
+            }
+            if (m_sandboxD20ModelId) pb3dUnloadModel(m_sandboxD20ModelId);
+            m_sandboxD20ModelId = 0;
+            m_sandboxDiceLoaded = false;
+        }
         
         // Clean up any existing video player when restarting sandbox
         if (m_sandboxVideoPlayer) {
@@ -1185,7 +1298,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 64, 192, 255, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Left Activate" + laState + ":", centerX - 200, startY + (2.5 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Video Playback Test", centerX + 50, startY + (2.5 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Video / 3D Test", centerX + 50, startY + (2.5 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Right Activate - Bright Cyan-Blue (like blue LED light)
     std::string raState = m_RAON ? " (ON)" : " (OFF)";
@@ -1237,6 +1350,9 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
                     gfxSetTextureAlpha(m_sandboxVideoSpriteId, currentVideoAlpha);
                     m_videoFadingOut = false;
                     m_sandboxVideoPlayer->pbvpStop();
+                    // Hide 3D dice when video stops
+                    for (int i = 0; i < 4; i++)
+                        pb3dSetInstanceVisible(m_sandboxDiceInstance[i], false);
                 } else {
                     // Fade out progress (1.0 to 0.0)
                     currentVideoAlpha = 1.0f - fadeProgress;
@@ -1246,6 +1362,35 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
             
             // Render the video sprite
             m_sandboxVideoPlayer->pbvpRender();
+            
+            // Render 3D dice around the video if loaded
+            if (m_sandboxDiceLoaded) {
+                // Show dice and match alpha to video
+                for (int i = 0; i < 4; i++) {
+                    pb3dSetInstanceVisible(m_sandboxDiceInstance[i], true);
+                    pb3dSetInstanceAlpha(m_sandboxDiceInstance[i], currentVideoAlpha);
+                }
+                
+                // Update all 3D animations
+                pb3dAnimateInstance(0, currentTick);
+                
+                // Render 3D dice
+                pb3dBegin();
+                for (int i = 0; i < 4; i++) {
+                    pb3dRenderInstance(m_sandboxDiceInstance[i]);
+                }
+                pb3dEnd();
+                
+                // Render animation mode labels below each dice position
+                gfxSetScaleFactor(m_defaultFontSpriteId, 0.8f, false);
+                unsigned int labelAlpha = (unsigned int)(currentVideoAlpha * 255.0f);
+                gfxSetColor(m_defaultFontSpriteId, 200, 200, 200, labelAlpha);
+                gfxRenderShadowString(m_defaultFontSpriteId, "NORMAL+REVERSE", 200, 620, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxRenderShadowString(m_defaultFontSpriteId, "ACCELERATE", PB_SCREENWIDTH - 200, 620, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxRenderShadowString(m_defaultFontSpriteId, "JUMP", 200, 920, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxRenderShadowString(m_defaultFontSpriteId, "JUMPRANDOM", PB_SCREENWIDTH - 200, 920, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxSetScaleFactor(m_defaultFontSpriteId, 1.0f, false);
+            }
             
             // Render video title over the video at the top, matching video alpha
             // Video is at Y=480, so position title just below that
@@ -1981,6 +2126,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 
                 // Start button exits to Start Menu
                 if (inputMessage.inputId == IDI_RPIOP06_START) {
+                    // Clean up 3D resources before exiting
+                    if (m_sandboxDiceLoaded) {
+                        pb3dAnimateClear(0);
+                        for (int i = 0; i < 4; i++) {
+                            if (m_sandboxDiceInstance[i]) pb3dDestroyInstance(m_sandboxDiceInstance[i]);
+                            m_sandboxDiceInstance[i] = 0;
+                        }
+                        if (m_sandboxD20ModelId) pb3dUnloadModel(m_sandboxD20ModelId);
+                        m_sandboxD20ModelId = 0;
+                        m_sandboxDiceLoaded = false;
+                    }
+                    
                     // Clean up video player before exiting
                     if (m_sandboxVideoPlayer) {
                         m_sandboxVideoPlayer->pbvpStop();

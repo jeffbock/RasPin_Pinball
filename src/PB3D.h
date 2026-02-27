@@ -28,9 +28,7 @@
 #define ANIM3D_ALPHA_MASK  0x080
 #define ANIM3D_ALL_MASK    0x0FF
 
-// Forward declarations for gfxAnimType and gfxLoopType (defined in PBGfx.h)
-// We re-declare the enums here to avoid circular include; they must match PBGfx.h
-#ifndef PBGfx_h
+// Animation loop and type enums (shared between 2D and 3D animation systems)
 enum gfxLoopType {
     GFX_NOLOOP = 0,
     GFX_RESTART = 1,
@@ -43,7 +41,6 @@ enum gfxAnimType {
     GFX_ANIM_JUMP = 2,
     GFX_ANIM_JUMPRANDOM = 3
 };
-#endif
 
 // --- 3D Data Structures ---
 

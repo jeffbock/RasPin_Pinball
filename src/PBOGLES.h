@@ -65,6 +65,12 @@ protected:
     GLuint oglCompileShader(GLenum type, const char* source);
     GLuint oglCreateProgram(const char* vertexSource, const char* fragmentSource);
 
+    // 2D shader variables (accessible to PB3D for state restoration)
+    GLuint     m_shaderProgram;
+    GLint      m_posAttrib;
+    GLint      m_colorAttrib; 
+    GLint      m_texCoordAttrib; 
+
 private:
     long m_width;
     long m_height;
@@ -79,12 +85,8 @@ private:
     EGLContext m_context;
     EGLSurface m_surface;
 
-    // Shader variables
-    GLuint     m_shaderProgram;
+    // Shader variables (remaining private)
     GLuint     m_texture;
-    GLint      m_posAttrib;
-    GLint      m_colorAttrib; 
-    GLint      m_texCoordAttrib; 
     GLint      m_uTexAlpha;
     GLint      m_useTexture;
     GLint      m_useTexAlpha;

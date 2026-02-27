@@ -457,12 +457,16 @@ void PB3D::pb3dEnd() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // Restore 2D sprite shader — m_shaderProgram is the 2D program from PBOGLES
-    // Access via the inherited member
-    // Note: m_shaderProgram is private in PBOGLES. We need to restore the 2D program.
-    // Since pb3dEnd is called to switch back to 2D mode, the caller (PBGfx)
-    // will re-use the 2D shader on next render call. However, we need to unbind our VAO.
+    // Unbind VAO to avoid interfering with 2D rendering
     glBindVertexArray(0);
+
+    // Restore 2D sprite shader program
+    glUseProgram(m_shaderProgram);
+
+    // Re-enable 2D vertex attrib arrays (may have been disrupted by VAO binding)
+    glEnableVertexAttribArray(m_posAttrib);
+    glEnableVertexAttribArray(m_colorAttrib);
+    glEnableVertexAttribArray(m_texCoordAttrib);
 }
 
 void PB3D::pb3dRenderInstance(unsigned int instanceId) {
