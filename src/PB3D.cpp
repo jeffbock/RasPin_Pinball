@@ -479,24 +479,8 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
     auto modelIt = m_3dModelList.find(inst.modelId);
     if (modelIt == m_3dModelList.end()) return;
 
-    // Build model matrix: identity -> translate -> rotateY -> rotateX -> rotateZ -> scale
-    mat4x4 model, temp, temp2;
-    mat4x4_identity(model);
-
-    // Translate
-    mat4x4_translate(temp, inst.posX, inst.posY, inst.posZ);
-    mat4x4_mul(model, temp, model);
-
-    // Rotate Y
-    if (inst.rotY != 0.0f) {
-        mat4x4_identity(temp);
-        mat4x4_rotate_Y(temp2, temp, inst.rotY * 3.14159265f / 180.0f);
-        mat4x4_mul(temp, model, temp);  // save current
-        mat4x4_mul(model, temp2, temp); // wrong order, fix below
-    }
-
-    // Actually let's build this more carefully using linmath.h
-    mat4x4_identity(model);
+    // Build model matrix: translate * rotY * rotX * rotZ * scale
+    mat4x4 model, identMat;
 
     // Translation
     mat4x4 translateMat;
