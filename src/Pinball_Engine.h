@@ -426,6 +426,10 @@ public:
     // Benchmark screen
     unsigned int m_TicksPerScene, m_BenchmarkStartTick, m_CountDownTicks, m_aniId;
     bool m_BenchmarkDone, m_RestartBenchmark;
+    // 3D benchmark
+    unsigned int m_bench3DModelId;
+    unsigned int m_bench3DDiceInstance[4];
+    bool m_bench3DDiceLoaded;
 
     // Test Sandbox screen variables
     bool m_RestartTestSandbox;

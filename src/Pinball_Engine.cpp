@@ -64,6 +64,9 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     // Benchmark variables
     m_TicksPerScene = 10000; m_BenchmarkStartTick = 0;  m_CountDownTicks = 4000; m_BenchmarkDone = false;
     m_RestartBenchmark = true;
+    m_bench3DModelId = 0;
+    for (int i = 0; i < 4; i++) m_bench3DDiceInstance[i] = 0;
+    m_bench3DDiceLoaded = false;
 
     // Test Sandbox variables
     m_RestartTestSandbox = true;
@@ -1544,13 +1547,53 @@ bool PBEngine::pbeLoadBenchmark(){
         pbeSendConsole("ERROR: Failed to load start menu resources in pbeLoadBenchmark");
         return (false); 
     }
+
+    // Load 3D diceset model for the 3D rendering benchmark scene
+    if (!m_bench3DDiceLoaded) {
+        m_bench3DModelId = pb3dLoadModel("src/resources/3d/diceset.glb");
+        if (m_bench3DModelId != 0) {
+            // Create 4 instances arranged in a 2x2 grid centred on screen
+            const float posX[4] = { PB_SCREENWIDTH * 0.33f, PB_SCREENWIDTH * 0.67f,
+                                    PB_SCREENWIDTH * 0.33f, PB_SCREENWIDTH * 0.67f };
+            const float posY[4] = { PB_SCREENHEIGHT * 0.40f, PB_SCREENHEIGHT * 0.40f,
+                                    PB_SCREENHEIGHT * 0.70f, PB_SCREENHEIGHT * 0.70f };
+            for (int i = 0; i < 4; i++) {
+                m_bench3DDiceInstance[i] = pb3dCreateInstance(m_bench3DModelId);
+                pb3dSetInstancePositionPx(m_bench3DDiceInstance[i], posX[i], posY[i], 0.0f);
+                pb3dSetInstanceScale(m_bench3DDiceInstance[i], 1.0f);
+            }
+
+            // Each die spins at a slightly different rate for visual variety
+            const float spinSpeeds[4] = { 2.5f, 2.0f, 3.0f, 1.5f };
+            unsigned long startTick = GetTickCountGfx();
+            for (int i = 0; i < 4; i++) {
+                st3DAnimateData anim = {};
+                anim.animateInstanceId = m_bench3DDiceInstance[i];
+                anim.typeMask         = ANIM3D_ROTY_MASK;
+                anim.animType         = GFX_ANIM_NORMAL;
+                anim.loop             = GFX_RESTART;
+                anim.startRotY        = 0.0f;
+                anim.endRotY          = 360.0f;
+                anim.animateTimeSec   = spinSpeeds[i];
+                anim.rotateClockwiseY = true;
+                anim.isActive         = true;
+                anim.startTick        = startTick;
+                pb3dCreateAnimation(anim, true);
+            }
+
+            m_bench3DDiceLoaded = true;
+        } else {
+            pbeSendConsole("WARNING: Failed to load diceset.glb for 3D benchmark scene");
+        }
+    }
+
     return (true);
 }
 
 bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick){
 
-    static unsigned int FPSSwap, smallSpriteCount, spriteTransformCount, bigSpriteCount;
-    static unsigned int msForSwapTest, msForSmallSprite, msForTransformSprite, msForBigSprite;
+    static unsigned int FPSSwap, smallSpriteCount, spriteTransformCount, bigSpriteCount, bench3DCount;
+    static unsigned int msForSwapTest, msForSmallSprite, msForTransformSprite, msForBigSprite, msFor3DRender;
     unsigned int msRender = 25;
     
     if (!pbeLoadBenchmark()) {
@@ -1562,9 +1605,20 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         m_BenchmarkStartTick =  GetTickCountGfx(); 
         m_BenchmarkDone = false;
         m_RestartBenchmark = false;
-        FPSSwap = 0; smallSpriteCount = 0; spriteTransformCount = 0; bigSpriteCount = 0;
-        msForSwapTest = 0; msForSmallSprite = 0; msForTransformSprite = 0; msForBigSprite = 0;
+        FPSSwap = 0; smallSpriteCount = 0; spriteTransformCount = 0; bigSpriteCount = 0; bench3DCount = 0;
+        msForSwapTest = 0; msForSmallSprite = 0; msForTransformSprite = 0; msForBigSprite = 0; msFor3DRender = 0;
         m_TicksPerScene = 3000; m_CountDownTicks = 4000;
+
+        // Destroy 3D resources so they are re-created with fresh animations on the next run
+        if (m_bench3DDiceLoaded) {
+            pb3dAnimateClear(0);
+            for (int i = 0; i < 4; i++) {
+                if (m_bench3DDiceInstance[i]) { pb3dDestroyInstance(m_bench3DDiceInstance[i]); m_bench3DDiceInstance[i] = 0; }
+            }
+            if (m_bench3DModelId) { pb3dUnloadModel(m_bench3DModelId); m_bench3DModelId = 0; }
+            m_bench3DDiceLoaded = false;
+        }
+
         return (true);
     }
 
@@ -1657,20 +1711,55 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         return (true);
         // Print the final results when done
     }
+
+    // 3D rendering benchmark — instances per second (inner-loop, same pattern as sprite tests)
+    // Each draw call repositions, reorients, and rescales the instance before rendering so the
+    // GPU workload is representative (no batching of identical transforms).
+    // pb3dBegin/End wraps the whole burst to avoid distorting the count with state-switch overhead.
+    if (elapsedTime < ((m_TicksPerScene * 5) + m_CountDownTicks)) {
+        gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+
+        if (m_bench3DDiceLoaded) {
+            pb3dBegin();
+            while ((GetTickCountGfx() - currentTick) < msRender) {
+                unsigned int idx = bench3DCount % 4;
+                // Random screen position + depth, matching the screen-range used by the sprite tests
+                float px    = (float)(rand() % PB_SCREENWIDTH);
+                float py    = (float)(rand() % PB_SCREENHEIGHT);
+                float pz    = -((float)(rand() % 300) / 100.0f);   // 0.0 .. -3.0 depth
+                float rx    = (float)(rand() % 360);
+                float ry    = (float)(rand() % 360);
+                float rz    = (float)(rand() % 360);
+                float scale = 0.5f + (float)(rand() % 100) / 100.0f; // 0.5 .. 1.5
+                pb3dSetInstancePositionPx(m_bench3DDiceInstance[idx], px, py, pz);
+                pb3dSetInstanceRotation  (m_bench3DDiceInstance[idx], rx, ry, rz);
+                pb3dSetInstanceScale     (m_bench3DDiceInstance[idx], scale);
+                pb3dRenderInstance(m_bench3DDiceInstance[idx]);
+                bench3DCount++;
+            }
+            pb3dEnd();
+        }
+
+        msFor3DRender += GetTickCountGfx() - currentTick;
+        gfxRenderShadowString(m_defaultFontSpriteId, "3D Rendering Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        return (true);
+    }
     
-    if (elapsedTime >= ((m_TicksPerScene *4) + m_CountDownTicks)) {
+    if (elapsedTime >= ((m_TicksPerScene * 5) + m_CountDownTicks)) {
 
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
         temp = "Benchmark Complete - Results";
         gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 180, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         temp = "Clear + Swap Rate: " + std::to_string(FPSSwap/(msForSwapTest/1000)) + " FPS";
-        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 230, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 215, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         temp = "Small Sprite Rate: " + std::to_string(smallSpriteCount/((msForSmallSprite))) + "k SPS";
-        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 255, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 240, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         temp = "Large Sprite Rate: " + std::to_string(bigSpriteCount/((msForBigSprite))) + "k SPS";
-        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 280, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 265, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         temp = "Transformed Sprite Rate: " + std::to_string(spriteTransformCount/((msForTransformSprite))) + "k SPS";
-        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 305, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 290, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        temp = "3D Render Rate: " + std::to_string(bench3DCount / msFor3DRender) + "k OPS";
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 315, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
 
         m_BenchmarkDone = true;
     }
