@@ -27,7 +27,7 @@
 #include <chrono>
 #include <random>
 #include "3rdparty/json.hpp"
-#include "PBOGLES.h"
+#include "PB3D.h"
  
 #define NOSPRITE 0
 #define SYSTEMFONTSPRITE "src/resources/fonts/Ubuntu-Regular_24_256.png"
@@ -133,18 +133,7 @@ struct stSpriteMapData {
 #define ANIMATE_ROTATE_MASK 0x80
 #define ANIMATE_ALL_MASK 0xFF
 
-enum gfxLoopType {
-    GFX_NOLOOP = 0,
-    GFX_RESTART = 1,
-    GFX_REVERSE = 2
-};
-
-enum gfxAnimType {
-    GFX_ANIM_NORMAL = 0,      // Linear interpolation, no acceleration
-    GFX_ANIM_ACCL = 1,        // Acceleration for X, Y, and Rotation
-    GFX_ANIM_JUMP = 2,        // Jump from start to end instance at time intervals
-    GFX_ANIM_JUMPRANDOM = 3   // Randomly decide to jump based on randomPercent
-};
+// Animation enums are defined in PB3D.h (included above)
 
 struct stAnimateData {
     unsigned int animateSpriteId;
@@ -174,7 +163,7 @@ struct stAnimateData {
 };
 
 // Define a class for the OGL ES code
-class PBGfx : public PBOGLES {
+class PBGfx : public PB3D {
 
 public:
     PBGfx();

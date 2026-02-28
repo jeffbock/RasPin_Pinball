@@ -77,6 +77,7 @@ bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
         EGL_BLUE_SIZE, 8,
         EGL_GREEN_SIZE, 8,
         EGL_RED_SIZE, 8,
+        EGL_DEPTH_SIZE, 24,
         EGL_NONE
     };
 
@@ -151,7 +152,7 @@ bool PBOGLES::oglClear(float red, float blue, float green, float alpha, bool doF
         glViewport(0, 0, m_width, m_height);
         glClearColor(red, green, blue, alpha);
 
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (doFlip) {
             if (oglSwap(false) == false) return (false);
@@ -200,6 +201,18 @@ GLuint PBOGLES::oglCompileShader(GLenum type, const char* source) {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, nullptr);
     glCompileShader(shader);
+    // Check for compile errors
+    GLint status = 0;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+    if (status == GL_FALSE) {
+        GLint logLen = 0;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);
+        if (logLen > 1) {
+            std::string log(logLen, '\0');
+            glGetShaderInfoLog(shader, logLen, nullptr, &log[0]);
+            std::cout << "Shader compile error (" << (type == GL_VERTEX_SHADER ? "VERT" : "FRAG") << "):\n" << log << std::endl;
+        }
+    }
     return shader;
 }
 
@@ -211,6 +224,22 @@ GLuint PBOGLES::oglCreateProgram(const char* vertexSource, const char* fragmentS
     glAttachShader(program, vertexShader);
     glAttachShader(program, fragmentShader);
     glLinkProgram(program);
+    // Check for link errors
+    GLint linkStatus = 0;
+    glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
+    if (linkStatus == GL_FALSE) {
+        GLint logLen = 0;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLen);
+        if (logLen > 1) {
+            std::string log(logLen, '\0');
+            glGetProgramInfoLog(program, logLen, nullptr, &log[0]);
+            std::cout << "Shader link error:\n" << log << std::endl;
+        }
+        glDeleteProgram(program);
+        return 0;
+    }
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
     return program;
 }
 
@@ -493,6 +522,38 @@ GLuint PBOGLES::oglCreateVideoTexture(unsigned int width, unsigned int height) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
     return texture;
+}
+
+// Restore full 2D rendering state after a 3D pass.
+// Called by PB3D::pb3dEnd() so that the 3D layer never needs to know
+// about the internal 2D shader program, attrib layout or GL state.
+void PBOGLES::oglRestore2DState() {
+    // Disable 3D-specific state
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+
+    // Re-enable standard alpha blending for 2D sprites
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Unbind VAO so 2D CPU-pointer vertex calls work correctly
+    glBindVertexArray(0);
+
+    // Restore 2D sprite shader program
+    glUseProgram(m_shaderProgram);
+
+    // Unbind VBOs: GL_ARRAY_BUFFER is global state — if left bound,
+    // oglRenderQuad's CPU vertex pointers are misread as VBO offsets.
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    // Re-enable 2D vertex attrib arrays (may have been disrupted by VAO binding)
+    glEnableVertexAttribArray(m_posAttrib);
+    glEnableVertexAttribArray(m_colorAttrib);
+    glEnableVertexAttribArray(m_texCoordAttrib);
+
+    // Reset 2D texture cache: 3D rendering binds textures outside our tracking.
+    oglResetTextureCache();
 }
 
 // Update an existing texture with new video frame data

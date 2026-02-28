@@ -62,8 +62,17 @@ protected:
                           float vertRed, float vertGreen, float vertBlue, float vertAlpha, 
                           float scale, float rotateDegrees, bool returnBoundingBox);
     void   scaleAndRotateVertices(float* x, float* y, float scale, float rotateDegrees);
+    GLuint oglCompileShader(GLenum type, const char* source);
+    GLuint oglCreateProgram(const char* vertexSource, const char* fragmentSource);
+    void   oglResetTextureCache() { m_lastTextureId = 0; }  // Call after any external glBindTexture to keep 2D cache valid
+    void   oglRestore2DState();  // Restore full 2D rendering state after 3D pass (shader, attribs, blend, VBO unbind)
 
 private:
+    // 2D shader variables
+    GLuint     m_shaderProgram;
+    GLint      m_posAttrib;
+    GLint      m_colorAttrib; 
+    GLint      m_texCoordAttrib; 
     long m_width;
     long m_height;
     float m_aspectRatio;
@@ -77,18 +86,12 @@ private:
     EGLContext m_context;
     EGLSurface m_surface;
 
-    // Shader variables
-    GLuint     m_shaderProgram;
+    // Shader variables (remaining private)
     GLuint     m_texture;
-    GLint      m_posAttrib;
-    GLint      m_colorAttrib; 
-    GLint      m_texCoordAttrib; 
     GLint      m_uTexAlpha;
     GLint      m_useTexture;
     GLint      m_useTexAlpha;
 
-    GLuint oglCompileShader(GLenum type, const char* source);
-    GLuint oglCreateProgram(const char* vertexSource, const char* fragmentSource);
     void   oglCreateShaders();
     void   oglCleanup();
 

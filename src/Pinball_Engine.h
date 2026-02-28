@@ -284,6 +284,7 @@ public:
 
     // Console functions
     void pbeSendConsole(std::string output);
+    void pb3dSendConsole(const std::string& msg) override { pbeSendConsole(msg); }
     void pbeClearConsole();
     void pbeRenderConsole(unsigned int startingX, unsigned int startingY, unsigned int startLine);
 
@@ -425,6 +426,10 @@ public:
     // Benchmark screen
     unsigned int m_TicksPerScene, m_BenchmarkStartTick, m_CountDownTicks, m_aniId;
     bool m_BenchmarkDone, m_RestartBenchmark;
+    // 3D benchmark
+    unsigned int m_bench3DModelId;
+    unsigned int m_bench3DDiceInstance[4];
+    bool m_bench3DDiceLoaded;
 
     // Test Sandbox screen variables
     bool m_RestartTestSandbox;
@@ -436,6 +441,11 @@ public:
     bool m_videoFadingOut;
     float m_videoFadeDurationSec;
     pbdEjector* m_sandboxEjector;
+    
+    // 3D sandbox test variables
+    unsigned int m_sandboxD20ModelId;
+    unsigned int m_sandboxDiceInstance[4];
+    bool m_sandboxDiceLoaded;
     
     // NeoPixel animation variables for sandbox test
     bool m_sandboxNeoPixelAnimActive;    // Animation is running
