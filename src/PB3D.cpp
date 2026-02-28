@@ -82,6 +82,8 @@ PB3D::PB3D() {
     m_next3dModelId = 1;
     m_next3dInstanceId = 1;
 
+    m_sceneDirty = true;
+
     // Default camera: eye straight back on Z axis so Z=0 maps to screen surface.
     // FOV=45, aspect handled at render time. eyeZ=8 gives a comfortable frustum size.
     m_camera = {0.0f, 0.0f, 8.0f,   0.0f, 0.0f, 0.0f,   0.0f, 1.0f, 0.0f,   45.0f,   0.1f, 100.0f};
@@ -102,7 +104,9 @@ PB3D::~PB3D() {
             if (mesh.vao) glDeleteVertexArrays(1, &mesh.vao);
             if (mesh.vboVertices) glDeleteBuffers(1, &mesh.vboVertices);
             if (mesh.eboIndices) glDeleteBuffers(1, &mesh.eboIndices);
-            if (mesh.textureId) glDeleteTextures(1, &mesh.textureId);
+        }
+        for (GLuint texId : pair.second.ownedTextures) {
+            if (texId) glDeleteTextures(1, &texId);
         }
     }
     if (m_3dShaderProgram) glDeleteProgram(m_3dShaderProgram);
@@ -186,7 +190,65 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
     model.name = glbFilePath;
     model.isLoaded = true;
 
-    // Iterate through all meshes in the glTF file
+    // --- Pass 1: compute the combined bounding box over ALL triangle primitives ---
+    // Uses accessor-level min/max when available (O(1) per accessor); falls back
+    // to scanning vertices when those fields are absent.
+    float globalMinX = 1e30f, globalMaxX = -1e30f;
+    float globalMinY = 1e30f, globalMaxY = -1e30f;
+    float globalMinZ = 1e30f, globalMaxZ = -1e30f;
+    for (cgltf_size mi = 0; mi < data->meshes_count; mi++) {
+        for (cgltf_size pi = 0; pi < data->meshes[mi].primitives_count; pi++) {
+            cgltf_primitive* prim2 = &data->meshes[mi].primitives[pi];
+            if (prim2->type != cgltf_primitive_type_triangles) continue;
+            for (cgltf_size ai = 0; ai < prim2->attributes_count; ai++) {
+                if (prim2->attributes[ai].type != cgltf_attribute_type_position) continue;
+                const cgltf_accessor* acc = prim2->attributes[ai].data;
+                if (!acc) break;
+                if (acc->has_min && acc->has_max) {
+                    if ((float)acc->min[0] < globalMinX) globalMinX = (float)acc->min[0];
+                    if ((float)acc->max[0] > globalMaxX) globalMaxX = (float)acc->max[0];
+                    if ((float)acc->min[1] < globalMinY) globalMinY = (float)acc->min[1];
+                    if ((float)acc->max[1] > globalMaxY) globalMaxY = (float)acc->max[1];
+                    if ((float)acc->min[2] < globalMinZ) globalMinZ = (float)acc->min[2];
+                    if ((float)acc->max[2] > globalMaxZ) globalMaxZ = (float)acc->max[2];
+                } else {
+                    for (cgltf_size vi = 0; vi < acc->count; vi++) {
+                        float p[3];
+                        cgltf_accessor_read_float(acc, vi, p, 3);
+                        if (p[0] < globalMinX) globalMinX = p[0];
+                        if (p[0] > globalMaxX) globalMaxX = p[0];
+                        if (p[1] < globalMinY) globalMinY = p[1];
+                        if (p[1] > globalMaxY) globalMaxY = p[1];
+                        if (p[2] < globalMinZ) globalMinZ = p[2];
+                        if (p[2] > globalMaxZ) globalMaxZ = p[2];
+                    }
+                }
+                break;  // only POSITION attribute needed per primitive
+            }
+        }
+    }
+    // Guard against empty/degenerate model
+    if (globalMinX > globalMaxX) { globalMinX = -1.0f; globalMaxX = 1.0f; }
+    if (globalMinY > globalMaxY) { globalMinY = -1.0f; globalMaxY = 1.0f; }
+    if (globalMinZ > globalMaxZ) { globalMinZ = -1.0f; globalMaxZ = 1.0f; }
+    float normCX = (globalMinX + globalMaxX) * 0.5f;
+    float normCY = (globalMinY + globalMaxY) * 0.5f;
+    float normCZ = (globalMinZ + globalMaxZ) * 0.5f;
+    float normExtX = (globalMaxX - globalMinX) * 0.5f;
+    float normExtY = (globalMaxY - globalMinY) * 0.5f;
+    float normExtZ = (globalMaxZ - globalMinZ) * 0.5f;
+    float maxGlobalExt = normExtX;
+    if (normExtY > maxGlobalExt) maxGlobalExt = normExtY;
+    if (normExtZ > maxGlobalExt) maxGlobalExt = normExtZ;
+    if (maxGlobalExt < 1e-6f) maxGlobalExt = 1.0f;
+    float normScale = 1.0f / maxGlobalExt;
+
+    // Local texture deduplication cache (cgltf_image* → GL texture ID).
+    // Keyed on image pointer for identity comparison within this load session.
+    // nullptr key is reserved for the shared 1×1 white fallback texture.
+    std::map<const cgltf_image*, GLuint> localTexCache;
+
+    // --- Pass 2: build GPU resources for each triangle primitive ---
     for (cgltf_size mi = 0; mi < data->meshes_count; mi++) {
         cgltf_mesh* mesh = &data->meshes[mi];
 
@@ -286,36 +348,12 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
                 cgltf_accessor_read_float_buffer(texAccessor, texcoords.data(), 2);
             }
 
-            // ------------------------------------------------------------------
-            // Normalize: center the model at the origin and scale its largest
-            // axis to 1.0.  After this, scale=1.0 in pb3dSetInstanceScale means
-            // "native size" = 1 world unit on the longest axis, which at depthZ=0
-            // with the default camera is ~30% of screen height.
-            // ------------------------------------------------------------------
-            float minX = positions[0], maxX = positions[0];
-            float minY = positions[1], maxY = positions[1];
-            float minZ = positions[2], maxZ = positions[2];
-            for (cgltf_size v = 1; v < vertexCount; v++) {
-                float px = positions[v*3], py = positions[v*3+1], pz = positions[v*3+2];
-                if (px < minX) minX = px; if (px > maxX) maxX = px;
-                if (py < minY) minY = py; if (py > maxY) maxY = py;
-                if (pz < minZ) minZ = pz; if (pz > maxZ) maxZ = pz;
-            }
-            float cx = (minX + maxX) * 0.5f;
-            float cy = (minY + maxY) * 0.5f;
-            float cz = (minZ + maxZ) * 0.5f;
-            float extX = (maxX - minX) * 0.5f;
-            float extY = (maxY - minY) * 0.5f;
-            float extZ = (maxZ - minZ) * 0.5f;
-            float maxExt = extX;
-            if (extY > maxExt) maxExt = extY;
-            if (extZ > maxExt) maxExt = extZ;
-            if (maxExt < 1e-6f) maxExt = 1.0f;  // guard against degenerate mesh
-            float normScale = 1.0f / maxExt;
+            // Apply global normalization: all primitives share the same center and scale
+            // so that their relative positions within the model are preserved.
             for (cgltf_size v = 0; v < vertexCount; v++) {
-                positions[v*3+0] = (positions[v*3+0] - cx) * normScale;
-                positions[v*3+1] = (positions[v*3+1] - cy) * normScale;
-                positions[v*3+2] = (positions[v*3+2] - cz) * normScale;
+                positions[v*3+0] = (positions[v*3+0] - normCX) * normScale;
+                positions[v*3+1] = (positions[v*3+1] - normCY) * normScale;
+                positions[v*3+2] = (positions[v*3+2] - normCZ) * normScale;
             }
             // Build interleaved vertex buffer: [posX, posY, posZ, normX, normY, normZ, u, v]
             std::vector<float> interleavedData(vertexCount * 8);
@@ -330,18 +368,18 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
                 interleavedData[v * 8 + 7] = texcoords[v * 2 + 1];
             }
 
-            // Read index data
-            std::vector<unsigned short> indices;
+            // Read index data (unsigned int to avoid 65535-vertex truncation)
+            std::vector<unsigned int> indices;
             if (prim->indices) {
                 indices.resize(prim->indices->count);
                 for (cgltf_size ii = 0; ii < prim->indices->count; ii++) {
-                    indices[ii] = (unsigned short)cgltf_accessor_read_index(prim->indices, ii);
+                    indices[ii] = (unsigned int)cgltf_accessor_read_index(prim->indices, ii);
                 }
             } else {
                 // Generate sequential indices if none provided
                 indices.resize(vertexCount);
                 for (cgltf_size ii = 0; ii < vertexCount; ii++) {
-                    indices[ii] = (unsigned short)ii;
+                    indices[ii] = (unsigned int)ii;
                 }
             }
 
@@ -360,7 +398,7 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
 
             // Upload index data
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gpuMesh.eboIndices);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), indices.data(), GL_STATIC_DRAW);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
             // Set vertex attribute pointers (stride = 8 floats)
             GLsizei stride = 8 * sizeof(float);
@@ -385,14 +423,19 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
 
             gpuMesh.indexCount = (unsigned int)indices.size();
 
-            // Load texture from material (if available)
+            // Load texture from material — deduplicate via localTexCache so primitives
+            // sharing the same cgltf_image get the same GL texture ID.
             gpuMesh.textureId = 0;
             if (prim->material && prim->material->has_pbr_metallic_roughness) {
                 cgltf_texture* tex = prim->material->pbr_metallic_roughness.base_color_texture.texture;
                 if (tex && tex->image) {
                     cgltf_image* img = tex->image;
-                    if (img->buffer_view && img->buffer_view->buffer) {
-                        // Embedded image in GLB binary buffer
+                    auto cacheIt = localTexCache.find(img);
+                    if (cacheIt != localTexCache.end()) {
+                        // Reuse already-uploaded texture
+                        gpuMesh.textureId = cacheIt->second;
+                    } else if (img->buffer_view && img->buffer_view->buffer) {
+                        // Embedded image in GLB binary buffer — upload once
                         const uint8_t* imgData = (const uint8_t*)img->buffer_view->buffer->data + img->buffer_view->offset;
                         int imgSize = (int)img->buffer_view->size;
                         int texW, texH, texC;
@@ -408,20 +451,29 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
                             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
                             stbi_image_free(pixels);
                             gpuMesh.textureId = texId;
+                            localTexCache[img] = texId;
+                            model.ownedTextures.insert(texId);
                         }
                     }
                 }
             }
 
-            // If no texture was loaded, create a 1x1 white fallback
+            // Fallback: shared 1×1 white texture (cached as nullptr key)
             if (gpuMesh.textureId == 0) {
-                GLuint fallbackTex;
-                glGenTextures(1, &fallbackTex);
-                glBindTexture(GL_TEXTURE_2D, fallbackTex);
-                unsigned char white[] = {255, 255, 255, 255};
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                gpuMesh.textureId = fallbackTex;
+                auto fbIt = localTexCache.find(nullptr);
+                if (fbIt != localTexCache.end()) {
+                    gpuMesh.textureId = fbIt->second;
+                } else {
+                    GLuint fallbackTex;
+                    glGenTextures(1, &fallbackTex);
+                    glBindTexture(GL_TEXTURE_2D, fallbackTex);
+                    unsigned char white[] = {255, 255, 255, 255};
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                    gpuMesh.textureId = fallbackTex;
+                    localTexCache[nullptr] = fallbackTex;
+                    model.ownedTextures.insert(fallbackTex);
+                }
             }
 
             model.meshes.push_back(gpuMesh);
@@ -459,7 +511,10 @@ bool PB3D::pb3dUnloadModel(unsigned int modelId) {
         if (mesh.vao) glDeleteVertexArrays(1, &mesh.vao);
         if (mesh.vboVertices) glDeleteBuffers(1, &mesh.vboVertices);
         if (mesh.eboIndices) glDeleteBuffers(1, &mesh.eboIndices);
-        if (mesh.textureId) glDeleteTextures(1, &mesh.textureId);
+    }
+    // Delete each unique texture exactly once (set deduplicates shared textures)
+    for (GLuint texId : it->second.ownedTextures) {
+        if (texId) glDeleteTextures(1, &texId);
     }
 
     m_3dModelList.erase(it);
@@ -493,6 +548,7 @@ bool PB3D::pb3dDestroyInstance(unsigned int instanceId) {
     auto it = m_3dInstanceList.find(instanceId);
     if (it == m_3dInstanceList.end()) return false;
     m_3dInstanceList.erase(it);
+    m_3dAnimateList.erase(instanceId);  // remove stale animation so it isn't processed next frame
     return true;
 }
 
@@ -540,37 +596,42 @@ void PB3D::pb3dSetInstancePositionPx(unsigned int instanceId, float pixelX, floa
     pb3dSetInstancePositionPxImpl(instanceId, pixelX, pixelY, depthZ);
 }
 void PB3D::pb3dSetInstancePositionPxImpl(unsigned int instanceId, float pixelX, float pixelY, float depthZ) {
+    auto it = m_3dInstanceList.find(instanceId);
+    if (it == m_3dInstanceList.end()) return;
+
     float wx, wy;
     pb3dPixelToWorld(pixelX, pixelY, depthZ, wx, wy);
-    pb3dSetInstancePosition(instanceId, wx, wy, depthZ);
+    it->second.posX = wx; it->second.posY = wy; it->second.posZ = depthZ;
+
     // Store pixel anchor: base world X/Y at Z=0 used as the reference for
     // per-frame Z-depth correction so Z animation doesn't drift laterally.
     float baseX, baseY;
     pb3dPixelToWorld(pixelX, pixelY, 0.0f, baseX, baseY);
-    auto it = m_3dInstanceList.find(instanceId);
-    if (it != m_3dInstanceList.end()) {
-        it->second.hasPixelAnchor = true;
-        it->second.anchorPixelX  = pixelX;
-        it->second.anchorPixelY  = pixelY;
-        it->second.anchorBaseX   = baseX;
-        it->second.anchorBaseY   = baseY;
-    }
+    it->second.hasPixelAnchor = true;
+    it->second.anchorPixelX  = pixelX;
+    it->second.anchorPixelY  = pixelY;
+    it->second.anchorBaseX   = baseX;
+    it->second.anchorBaseY   = baseY;
 }
 
 // --- Simplified lighting controls (public) ---
 void PB3D::pb3dSetLightDirection(float x, float y, float z) {
     m_light.dirX = x; m_light.dirY = y; m_light.dirZ = z;
+    m_sceneDirty = true;
 }
 void PB3D::pb3dSetLightColor(float r, float g, float b) {
     m_light.r = r; m_light.g = g; m_light.b = b;
+    m_sceneDirty = true;
 }
 void PB3D::pb3dSetLightAmbient(float r, float g, float b) {
     m_light.ambientR = r; m_light.ambientG = g; m_light.ambientB = b;
+    m_sceneDirty = true;
 }
 
 // --- Internal camera setter (private) ---
 void PB3D::pb3dSetCamera(st3DCamera camera) {
     m_camera = camera;
+    m_sceneDirty = true;
 }
 
 // --- Internal pixel-to-world conversion (private) ---
@@ -602,28 +663,34 @@ void PB3D::pb3dBegin() {
     glDisable(GL_CULL_FACE);
     glUseProgram(m_3dShaderProgram);
 
-    // Set light uniforms
-    glUniform3f(m_3dLightDirUniform, m_light.dirX, m_light.dirY, m_light.dirZ);
-    glUniform3f(m_3dLightColorUniform, m_light.r, m_light.g, m_light.b);
-    glUniform3f(m_3dAmbientUniform, m_light.ambientR, m_light.ambientG, m_light.ambientB);
-    glUniform3f(m_3dCameraEyeUniform, m_camera.eyeX, m_camera.eyeY, m_camera.eyeZ);
+    // Re-upload light uniforms and recompute view/projection matrices only when
+    // the scene has changed (camera or lighting).  Neither changes at runtime in
+    // normal usage, so this eliminates constant trig work every frame.
+    if (m_sceneDirty) {
+        glUniform3f(m_3dLightDirUniform, m_light.dirX, m_light.dirY, m_light.dirZ);
+        glUniform3f(m_3dLightColorUniform, m_light.r, m_light.g, m_light.b);
+        glUniform3f(m_3dAmbientUniform, m_light.ambientR, m_light.ambientG, m_light.ambientB);
+        glUniform3f(m_3dCameraEyeUniform, m_camera.eyeX, m_camera.eyeY, m_camera.eyeZ);
 
-    // Compute view matrix using linmath.h
-    vec3 eye = {m_camera.eyeX, m_camera.eyeY, m_camera.eyeZ};
-    vec3 center = {m_camera.lookX, m_camera.lookY, m_camera.lookZ};
-    vec3 up = {m_camera.upX, m_camera.upY, m_camera.upZ};
+        // Compute view matrix using linmath.h
+        vec3 eye = {m_camera.eyeX, m_camera.eyeY, m_camera.eyeZ};
+        vec3 center = {m_camera.lookX, m_camera.lookY, m_camera.lookZ};
+        vec3 up = {m_camera.upX, m_camera.upY, m_camera.upZ};
 
-    mat4x4 view;
-    mat4x4_look_at(view, eye, center, up);
-    memcpy(m_viewMatrix, view, sizeof(m_viewMatrix));
+        mat4x4 view;
+        mat4x4_look_at(view, eye, center, up);
+        memcpy(m_viewMatrix, view, sizeof(m_viewMatrix));
 
-    // Compute projection matrix
-    float aspect = (float)oglGetScreenWidth() / (float)oglGetScreenHeight();
-    float fovRad = m_camera.fov * 3.14159265f / 180.0f;
+        // Compute projection matrix
+        float aspect = (float)oglGetScreenWidth() / (float)oglGetScreenHeight();
+        float fovRad = m_camera.fov * 3.14159265f / 180.0f;
 
-    mat4x4 proj;
-    mat4x4_perspective(proj, fovRad, aspect, m_camera.nearPlane, m_camera.farPlane);
-    memcpy(m_projMatrix, proj, sizeof(m_projMatrix));
+        mat4x4 proj;
+        mat4x4_perspective(proj, fovRad, aspect, m_camera.nearPlane, m_camera.farPlane);
+        memcpy(m_projMatrix, proj, sizeof(m_projMatrix));
+
+        m_sceneDirty = false;
+    }
 }
 
 void PB3D::pb3dEnd() {
@@ -655,6 +722,7 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
 
     // Build model matrix: translate * rotY * rotX * rotZ * scale
     mat4x4 model, identMat;
+    mat4x4_identity(identMat);  // initialized once; reused for all three rotation builds
 
     // Translation
     mat4x4 translateMat;
@@ -662,17 +730,14 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
 
     // Rotation Y
     mat4x4 rotY;
-    mat4x4_identity(identMat);
     mat4x4_rotate_Y(rotY, identMat, inst.rotY * 3.14159265f / 180.0f);
 
     // Rotation X
     mat4x4 rotX;
-    mat4x4_identity(identMat);
     mat4x4_rotate_X(rotX, identMat, inst.rotX * 3.14159265f / 180.0f);
 
     // Rotation Z
     mat4x4 rotZ;
-    mat4x4_identity(identMat);
     mat4x4_rotate_Z(rotZ, identMat, inst.rotZ * 3.14159265f / 180.0f);
 
     // Scale matrix
@@ -701,8 +766,10 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
     glUniformMatrix4fv(m_3dModelUniform, 1, GL_FALSE, (const float*)model);
     glUniform1f(m_3dAlphaUniform, inst.alpha);
 
-    // Handle transparency
-    if (inst.alpha < 1.0f) {
+    // Handle transparency: enable blend before draw, restore opaque state after
+    // so consecutive instances don't inherit each other's blend state.
+    bool blendEnabled = (inst.alpha < 1.0f);
+    if (blendEnabled) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
@@ -712,10 +779,14 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
     for (auto& mesh : modelIt->second.meshes) {
         glBindVertexArray(mesh.vao);
         glBindTexture(GL_TEXTURE_2D, mesh.textureId);
-        glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_SHORT, 0);
+        glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, 0);
     }
 
     glBindVertexArray(0);
+
+    if (blendEnabled) {
+        glDisable(GL_BLEND);
+    }
 }
 
 void PB3D::pb3dRenderAll() {
@@ -735,8 +806,9 @@ void PB3D::pb3dRenderAll() {
 float PB3D::pb3dGetRandomFloat(float min, float max) {
     static std::random_device rd;
     static std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> dist(min, max);
-    return dist(gen);
+    static std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+    if (min > max) std::swap(min, max);  // guard against inverted range
+    return dist(gen) * (max - min) + min;
 }
 
 bool PB3D::pb3dCreateAnimation(st3DAnimateData anim, bool replaceExisting) {
@@ -766,11 +838,12 @@ bool PB3D::pb3dCreateAnimation(st3DAnimateData anim, bool replaceExisting) {
 
 bool PB3D::pb3dAnimateInstance(unsigned int instanceId, unsigned int currentTick) {
     if (instanceId == 0) {
-        // Update all animations
+        // Update all active animations directly from the map iterator,
+        // avoiding a second find() call per animation.
         bool anyActive = false;
         for (auto& pair : m_3dAnimateList) {
             if (pair.second.isActive) {
-                pb3dAnimateInstance(pair.first, currentTick);
+                pb3dProcessAnimation(pair.second, currentTick);
                 anyActive = true;
             }
         }
@@ -783,7 +856,15 @@ bool PB3D::pb3dAnimateInstance(unsigned int instanceId, unsigned int currentTick
     st3DAnimateData& anim = animIt->second;
     if (!anim.isActive) return false;
 
-    float timeSinceStart = (currentTick - anim.startTick) / 1000.0f;
+    pb3dProcessAnimation(anim, currentTick);
+    return true;
+}
+
+void PB3D::pb3dProcessAnimation(st3DAnimateData& anim, unsigned int currentTick) {
+    // Guard against tick underflow (e.g. startTick set in future or wrap-around)
+    float timeSinceStart = (currentTick >= anim.startTick)
+                           ? (currentTick - anim.startTick) / 1000.0f
+                           : 0.0f;
     float percentComplete = (anim.animateTimeSec > 0.0f) ? (timeSinceStart / anim.animateTimeSec) : 1.0f;
 
     // Check if animation time has elapsed
@@ -792,7 +873,7 @@ bool PB3D::pb3dAnimateInstance(unsigned int instanceId, unsigned int currentTick
         if (anim.loop == GFX_NOLOOP) {
             pb3dSetFinalAnimationValues(anim);
             anim.isActive = false;
-            return false;
+            return;
         } else if (anim.loop == GFX_RESTART) {
             if (anim.animType == GFX_ANIM_JUMP) {
                 // Snap to end values, then swap start/end so next cycle jumps back
@@ -836,8 +917,6 @@ bool PB3D::pb3dAnimateInstance(unsigned int instanceId, unsigned int currentTick
             pb3dAnimateJumpRandom(anim, currentTick, timeSinceStart);
             break;
     }
-
-    return true;
 }
 
 void PB3D::pb3dAnimateNormal(st3DAnimateData& anim, unsigned int currentTick, float timeSinceStart, float percentComplete) {
@@ -891,19 +970,53 @@ void PB3D::pb3dAnimateAcceleration(st3DAnimateData& anim, unsigned int currentTi
         anim.currentVelRotZ = anim.initialVelRotZ + anim.accelRotZ * t;
     }
 
-    // Handle restart loop for acceleration mode
-    if (anim.loop == GFX_RESTART && anim.animateTimeSec > 0.0f && timeSinceStart >= anim.animateTimeSec) {
-        anim.startTick = currentTick;
-        // Update start values to current position
-        anim.startPosX = inst.posX; anim.startPosY = inst.posY; anim.startPosZ = inst.posZ;
-        anim.startRotX = inst.rotX; anim.startRotY = inst.rotY; anim.startRotZ = inst.rotZ;
+    // Handle time elapsed — all three loop types for acceleration mode
+    if (anim.animateTimeSec > 0.0f && timeSinceStart >= anim.animateTimeSec) {
+        if (anim.loop == GFX_RESTART) {
+            anim.startTick = currentTick;
+            // Continue from current position with same velocity/acceleration
+            anim.startPosX = inst.posX; anim.startPosY = inst.posY; anim.startPosZ = inst.posZ;
+            anim.startRotX = inst.rotX; anim.startRotY = inst.rotY; anim.startRotZ = inst.rotZ;
+        } else if (anim.loop == GFX_REVERSE) {
+            // Mirror the arc: negate initial velocity (using end-of-cycle velocity)
+            // and negate acceleration so the object travels back along the same path.
+            anim.startPosX = inst.posX; anim.startPosY = inst.posY; anim.startPosZ = inst.posZ;
+            anim.startRotX = inst.rotX; anim.startRotY = inst.rotY; anim.startRotZ = inst.rotZ;
+            anim.initialVelX    = -anim.currentVelX;
+            anim.initialVelY    = -anim.currentVelY;
+            anim.initialVelZ    = -anim.currentVelZ;
+            anim.initialVelRotX = -anim.currentVelRotX;
+            anim.initialVelRotY = -anim.currentVelRotY;
+            anim.initialVelRotZ = -anim.currentVelRotZ;
+            anim.accelX    = -anim.accelX;
+            anim.accelY    = -anim.accelY;
+            anim.accelZ    = -anim.accelZ;
+            anim.accelRotX = -anim.accelRotX;
+            anim.accelRotY = -anim.accelRotY;
+            anim.accelRotZ = -anim.accelRotZ;
+            anim.startTick = currentTick;
+        } else {
+            // GFX_NOLOOP: freeze at current position
+            anim.isActive = false;
+        }
     }
 }
 
-void PB3D::pb3dAnimateJump(st3DAnimateData& anim, unsigned int currentTick, float timeSinceStart) {
-    // Jump: instant snap to end values when time elapses
-    // The actual snap happens in the loop handling at the top of pb3dAnimateInstance
-    // During the wait period, the instance stays at start values
+void PB3D::pb3dAnimateJump(st3DAnimateData& anim, unsigned int /*currentTick*/, float /*timeSinceStart*/) {
+    // Hold at start values during the wait interval.
+    // The snap to end values on loop completion is handled in pb3dProcessAnimation.
+    auto instIt = m_3dInstanceList.find(anim.animateInstanceId);
+    if (instIt == m_3dInstanceList.end()) return;
+
+    st3DInstance& inst = instIt->second;
+    if (anim.typeMask & ANIM3D_POSX_MASK)  inst.posX  = anim.startPosX;
+    if (anim.typeMask & ANIM3D_POSY_MASK)  inst.posY  = anim.startPosY;
+    if (anim.typeMask & ANIM3D_POSZ_MASK)  inst.posZ  = anim.startPosZ;
+    if (anim.typeMask & ANIM3D_ROTX_MASK)  inst.rotX  = anim.startRotX;
+    if (anim.typeMask & ANIM3D_ROTY_MASK)  inst.rotY  = anim.startRotY;
+    if (anim.typeMask & ANIM3D_ROTZ_MASK)  inst.rotZ  = anim.startRotZ;
+    if (anim.typeMask & ANIM3D_SCALE_MASK) inst.scale = anim.startScale;
+    if (anim.typeMask & ANIM3D_ALPHA_MASK) inst.alpha = anim.startAlpha;
 }
 
 void PB3D::pb3dAnimateJumpRandom(st3DAnimateData& anim, unsigned int currentTick, float timeSinceStart) {

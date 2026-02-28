@@ -11,6 +11,7 @@
 
 #include "PBOGLES.h"
 #include <map>
+#include <set>
 #include <vector>
 #include <string>
 
@@ -55,6 +56,7 @@ struct st3DMesh {
 
 struct st3DModel {
     std::vector<st3DMesh> meshes;
+    std::set<GLuint> ownedTextures;  // unique GL texture IDs owned by this model (ref-safe cleanup)
     std::string name;
     bool isLoaded;
 };
@@ -222,7 +224,11 @@ private:
     float m_viewMatrix[16];
     float m_projMatrix[16];
 
+    // Dirty flag: set whenever camera or lighting changes; cleared after upload in pb3dBegin()
+    bool m_sceneDirty;
+
     // Animation handlers
+    void pb3dProcessAnimation(st3DAnimateData& anim, unsigned int currentTick);
     void pb3dAnimateNormal(st3DAnimateData& anim, unsigned int currentTick, float timeSinceStart, float percentComplete);
     void pb3dAnimateAcceleration(st3DAnimateData& anim, unsigned int currentTick, float timeSinceStart);
     void pb3dAnimateJump(st3DAnimateData& anim, unsigned int currentTick, float timeSinceStart);
