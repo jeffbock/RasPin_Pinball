@@ -44,6 +44,7 @@ const char* PB3D::fragmentShader3DSource = R"(#version 300 es
     uniform vec3 uLightDir;
     uniform vec3 uLightColor;
     uniform vec3 uAmbientColor;
+    uniform vec3 uCameraEye;
     uniform float uAlpha;
     out vec4 fragColor;
     void main() {
@@ -51,7 +52,12 @@ const char* PB3D::fragmentShader3DSource = R"(#version 300 es
         vec3 norm = normalize(vNormal);
         vec3 lightDir = normalize(uLightDir);
         float diffuse = max(dot(norm, lightDir), 0.0);
-        vec3 finalColor = texColor.rgb * (uAmbientColor + diffuse * uLightColor);
+        // Blinn-Phong specular highlight
+        vec3 viewDir = normalize(uCameraEye - vWorldPos);
+        vec3 halfDir = normalize(lightDir + viewDir);
+        float spec = pow(max(dot(norm, halfDir), 0.0), 32.0);
+        vec3 finalColor = texColor.rgb * (uAmbientColor + diffuse * uLightColor)
+                        + spec * 0.4 * uLightColor;
         fragColor = vec4(finalColor, texColor.a * uAlpha);
     }
 )";
@@ -67,6 +73,7 @@ PB3D::PB3D() {
     m_3dLightDirUniform = -1;
     m_3dLightColorUniform = -1;
     m_3dAmbientUniform = -1;
+    m_3dCameraEyeUniform = -1;
     m_3dAlphaUniform = -1;
     m_3dPosAttrib = -1;
     m_3dNormalAttrib = -1;
@@ -75,11 +82,14 @@ PB3D::PB3D() {
     m_next3dModelId = 1;
     m_next3dInstanceId = 1;
 
-    // Default camera: eye=(0,5,10), lookAt=(0,0,0), FOV=45, near=0.1, far=100
-    m_camera = {0.0f, 5.0f, 10.0f,   0.0f, 0.0f, 0.0f,   0.0f, 1.0f, 0.0f,   45.0f,   0.1f, 100.0f};
+    // Default camera: eye straight back on Z axis so Z=0 maps to screen surface.
+    // FOV=45, aspect handled at render time. eyeZ=8 gives a comfortable frustum size.
+    m_camera = {0.0f, 0.0f, 8.0f,   0.0f, 0.0f, 0.0f,   0.0f, 1.0f, 0.0f,   45.0f,   0.1f, 100.0f};
 
-    // Default light: direction=(0.5,-1.0,-0.3), white light, gray ambient
-    m_light = {0.5f, -1.0f, -0.3f,   1.0f, 1.0f, 1.0f,   0.3f, 0.3f, 0.3f};
+    // Default light: direction from upper-right in front of camera (0.5, 1.0, 1.0)
+    // so that the front face (normal +Z) and top face (normal +Y) receive diffuse light.
+    // Slightly warm light color, slightly cool ambient for natural sky/fill contrast.
+    m_light = {0.5f, 1.0f, 1.0f,   1.0f, 0.95f, 0.85f,   0.15f, 0.15f, 0.2f};
 
     memset(m_viewMatrix, 0, sizeof(m_viewMatrix));
     memset(m_projMatrix, 0, sizeof(m_projMatrix));
@@ -99,6 +109,14 @@ PB3D::~PB3D() {
 }
 
 // ============================================================================
+// Console output
+// ============================================================================
+
+void PB3D::pb3dSendConsole(const std::string& msg) {
+    std::cout << msg << std::endl;
+}
+
+// ============================================================================
 // Initialization
 // ============================================================================
 
@@ -106,7 +124,7 @@ bool PB3D::pb3dInit() {
     // Compile the 3D shaders using the inherited PBOGLES methods
     m_3dShaderProgram = oglCreateProgram(vertexShader3DSource, fragmentShader3DSource);
     if (m_3dShaderProgram == 0) {
-        std::cout << "PB3D: Failed to create 3D shader program" << std::endl;
+        pb3dSendConsole("PB3D: Failed to create 3D shader program");
         return false;
     }
 
@@ -116,6 +134,7 @@ bool PB3D::pb3dInit() {
     m_3dLightDirUniform = glGetUniformLocation(m_3dShaderProgram, "uLightDir");
     m_3dLightColorUniform = glGetUniformLocation(m_3dShaderProgram, "uLightColor");
     m_3dAmbientUniform = glGetUniformLocation(m_3dShaderProgram, "uAmbientColor");
+    m_3dCameraEyeUniform = glGetUniformLocation(m_3dShaderProgram, "uCameraEye");
     m_3dAlphaUniform = glGetUniformLocation(m_3dShaderProgram, "uAlpha");
 
     // Cache attribute locations
@@ -123,7 +142,13 @@ bool PB3D::pb3dInit() {
     m_3dNormalAttrib = glGetAttribLocation(m_3dShaderProgram, "aNormal");
     m_3dTexCoordAttrib = glGetAttribLocation(m_3dShaderProgram, "aTexCoord");
 
-    std::cout << "PB3D: 3D rendering system initialized" << std::endl;
+    if (m_3dPosAttrib < 0) {
+        pb3dSendConsole("PB3D ERROR: aPosition attrib not found - shader likely failed to compile"
+                        " (pos=" + std::to_string(m_3dPosAttrib)
+                        + " norm=" + std::to_string(m_3dNormalAttrib)
+                        + " uv=" + std::to_string(m_3dTexCoordAttrib) + ")");
+        return false;
+    }
     return true;
 }
 
@@ -144,13 +169,15 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
 
     cgltf_result result = cgltf_parse_file(&options, glbFilePath, &data);
     if (result != cgltf_result_success) {
-        std::cout << "PB3D: Failed to parse glTF file: " << glbFilePath << std::endl;
+        pb3dSendConsole("PB3D: Failed to parse glTF file: " + std::string(glbFilePath)
+                        + " (cgltf error " + std::to_string((int)result) + ")");
         return 0;
     }
 
     result = cgltf_load_buffers(&options, data, glbFilePath);
     if (result != cgltf_result_success) {
-        std::cout << "PB3D: Failed to load glTF buffers: " << glbFilePath << std::endl;
+        pb3dSendConsole("PB3D: Failed to load glTF buffers: " + std::string(glbFilePath)
+                        + " (cgltf error " + std::to_string((int)result) + ")");
         cgltf_free(data);
         return 0;
     }
@@ -189,13 +216,67 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
             std::vector<float> positions(vertexCount * 3, 0.0f);
             cgltf_accessor_read_float_buffer(posAccessor, positions.data(), 3);
 
-            // Read normal data (or default to (0,1,0))
+            // Read normal data
             std::vector<float> normals(vertexCount * 3, 0.0f);
             if (normAccessor) {
                 cgltf_accessor_read_float_buffer(normAccessor, normals.data(), 3);
+                // Diagnostic: log a few normals to verify they vary per vertex
+
             } else {
-                for (cgltf_size v = 0; v < vertexCount; v++) {
-                    normals[v * 3 + 1] = 1.0f; // default Y-up normal
+                // No normals in the file — compute flat (face) normals from triangle geometry.
+                // Each triangle's 3 vertices get the same normal = cross(e1, e2).
+                // This is far better than a single global (0,1,0) because different faces
+                // point in different directions, giving correct per-face diffuse shading.
+                pb3dSendConsole("PB3D: WARNING - no normals in model '" + std::string(glbFilePath)
+                                + "' (mesh=" + std::to_string(mi)
+                                + " prim=" + std::to_string(pi)
+                                + "), computing flat face normals");
+                if (prim->indices && prim->indices->count >= 3) {
+                    cgltf_size triCount = prim->indices->count / 3;
+                    for (cgltf_size t = 0; t < triCount; t++) {
+                        unsigned int i0 = (unsigned int)cgltf_accessor_read_index(prim->indices, t*3+0);
+                        unsigned int i1 = (unsigned int)cgltf_accessor_read_index(prim->indices, t*3+1);
+                        unsigned int i2 = (unsigned int)cgltf_accessor_read_index(prim->indices, t*3+2);
+                        // Edge vectors
+                        float e1x = positions[i1*3+0] - positions[i0*3+0];
+                        float e1y = positions[i1*3+1] - positions[i0*3+1];
+                        float e1z = positions[i1*3+2] - positions[i0*3+2];
+                        float e2x = positions[i2*3+0] - positions[i0*3+0];
+                        float e2y = positions[i2*3+1] - positions[i0*3+1];
+                        float e2z = positions[i2*3+2] - positions[i0*3+2];
+                        // Cross product
+                        float nx = e1y*e2z - e1z*e2y;
+                        float ny = e1z*e2x - e1x*e2z;
+                        float nz = e1x*e2y - e1y*e2x;
+                        // Normalize
+                        float len = sqrtf(nx*nx + ny*ny + nz*nz);
+                        if (len > 1e-8f) { nx /= len; ny /= len; nz /= len; }
+                        // Assign to all 3 vertices (flat shading per triangle face)
+                        for (int vi = 0; vi < 3; vi++) {
+                            unsigned int idx = (vi==0)?i0:(vi==1)?i1:i2;
+                            normals[idx*3+0] = nx;
+                            normals[idx*3+1] = ny;
+                            normals[idx*3+2] = nz;
+                        }
+                    }
+                } else {
+                    // No index buffer — compute per triangle from sequential vertices
+                    for (cgltf_size v = 0; v + 2 < vertexCount; v += 3) {
+                        float e1x = positions[(v+1)*3+0] - positions[v*3+0];
+                        float e1y = positions[(v+1)*3+1] - positions[v*3+1];
+                        float e1z = positions[(v+1)*3+2] - positions[v*3+2];
+                        float e2x = positions[(v+2)*3+0] - positions[v*3+0];
+                        float e2y = positions[(v+2)*3+1] - positions[v*3+1];
+                        float e2z = positions[(v+2)*3+2] - positions[v*3+2];
+                        float nx = e1y*e2z - e1z*e2y;
+                        float ny = e1z*e2x - e1x*e2z;
+                        float nz = e1x*e2y - e1y*e2x;
+                        float len = sqrtf(nx*nx + ny*ny + nz*nz);
+                        if (len > 1e-8f) { nx /= len; ny /= len; nz /= len; }
+                        normals[v*3+0]=nx; normals[v*3+1]=ny; normals[v*3+2]=nz;
+                        normals[(v+1)*3+0]=nx; normals[(v+1)*3+1]=ny; normals[(v+1)*3+2]=nz;
+                        normals[(v+2)*3+0]=nx; normals[(v+2)*3+1]=ny; normals[(v+2)*3+2]=nz;
+                    }
                 }
             }
 
@@ -205,6 +286,37 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
                 cgltf_accessor_read_float_buffer(texAccessor, texcoords.data(), 2);
             }
 
+            // ------------------------------------------------------------------
+            // Normalize: center the model at the origin and scale its largest
+            // axis to 1.0.  After this, scale=1.0 in pb3dSetInstanceScale means
+            // "native size" = 1 world unit on the longest axis, which at depthZ=0
+            // with the default camera is ~30% of screen height.
+            // ------------------------------------------------------------------
+            float minX = positions[0], maxX = positions[0];
+            float minY = positions[1], maxY = positions[1];
+            float minZ = positions[2], maxZ = positions[2];
+            for (cgltf_size v = 1; v < vertexCount; v++) {
+                float px = positions[v*3], py = positions[v*3+1], pz = positions[v*3+2];
+                if (px < minX) minX = px; if (px > maxX) maxX = px;
+                if (py < minY) minY = py; if (py > maxY) maxY = py;
+                if (pz < minZ) minZ = pz; if (pz > maxZ) maxZ = pz;
+            }
+            float cx = (minX + maxX) * 0.5f;
+            float cy = (minY + maxY) * 0.5f;
+            float cz = (minZ + maxZ) * 0.5f;
+            float extX = (maxX - minX) * 0.5f;
+            float extY = (maxY - minY) * 0.5f;
+            float extZ = (maxZ - minZ) * 0.5f;
+            float maxExt = extX;
+            if (extY > maxExt) maxExt = extY;
+            if (extZ > maxExt) maxExt = extZ;
+            if (maxExt < 1e-6f) maxExt = 1.0f;  // guard against degenerate mesh
+            float normScale = 1.0f / maxExt;
+            for (cgltf_size v = 0; v < vertexCount; v++) {
+                positions[v*3+0] = (positions[v*3+0] - cx) * normScale;
+                positions[v*3+1] = (positions[v*3+1] - cy) * normScale;
+                positions[v*3+2] = (positions[v*3+2] - cz) * normScale;
+            }
             // Build interleaved vertex buffer: [posX, posY, posZ, normX, normY, normZ, u, v]
             std::vector<float> interleavedData(vertexCount * 8);
             for (cgltf_size v = 0; v < vertexCount; v++) {
@@ -319,15 +431,22 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
     cgltf_free(data);
 
     if (model.meshes.empty()) {
-        std::cout << "PB3D: No meshes found in: " << glbFilePath << std::endl;
+        pb3dSendConsole("PB3D: No meshes found in: " + std::string(glbFilePath));
         return 0;
     }
 
     unsigned int modelId = m_next3dModelId++;
     m_3dModelList[modelId] = model;
 
-    std::cout << "PB3D: Loaded model '" << glbFilePath << "' (ID=" << modelId 
-              << ", meshes=" << model.meshes.size() << ")" << std::endl;
+    // Unbind VBOs: GL_ARRAY_BUFFER is global state (not captured by VAOs). If left
+    // bound, oglRenderQuad's CPU vertex pointers are misread as VBO offsets in GLES 3.0.
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    // Reset 2D texture cache: glBindTexture calls during loading are outside
+    // PBOGLES's m_lastTextureId tracking, which would cause 2D sprites to
+    // silently skip their bind and render with the wrong texture.
+    oglResetTextureCache();
 
     return modelId;
 }
@@ -361,6 +480,9 @@ unsigned int PB3D::pb3dCreateInstance(unsigned int modelId) {
     instance.scale = 1.0f;
     instance.alpha = 1.0f;
     instance.visible = true;
+    instance.hasPixelAnchor = false;
+    instance.anchorPixelX = 0.0f; instance.anchorPixelY = 0.0f;
+    instance.anchorBaseX  = 0.0f; instance.anchorBaseY  = 0.0f;
 
     unsigned int instanceId = m_next3dInstanceId++;
     m_3dInstanceList[instanceId] = instance;
@@ -374,6 +496,7 @@ bool PB3D::pb3dDestroyInstance(unsigned int instanceId) {
     return true;
 }
 
+// --- Internal world-unit position setter (private, used by animation system) ---
 void PB3D::pb3dSetInstancePosition(unsigned int instanceId, float x, float y, float z) {
     auto it = m_3dInstanceList.find(instanceId);
     if (it != m_3dInstanceList.end()) {
@@ -409,12 +532,62 @@ void PB3D::pb3dSetInstanceVisible(unsigned int instanceId, bool visible) {
     }
 }
 
+// --- Public pixel-space position setter ---
+void PB3D::pb3dSetInstancePositionPx(unsigned int instanceId, float pixelX, float pixelY) {
+    pb3dSetInstancePositionPxImpl(instanceId, pixelX, pixelY, 0.0f);
+}
+void PB3D::pb3dSetInstancePositionPx(unsigned int instanceId, float pixelX, float pixelY, float depthZ) {
+    pb3dSetInstancePositionPxImpl(instanceId, pixelX, pixelY, depthZ);
+}
+void PB3D::pb3dSetInstancePositionPxImpl(unsigned int instanceId, float pixelX, float pixelY, float depthZ) {
+    float wx, wy;
+    pb3dPixelToWorld(pixelX, pixelY, depthZ, wx, wy);
+    pb3dSetInstancePosition(instanceId, wx, wy, depthZ);
+    // Store pixel anchor: base world X/Y at Z=0 used as the reference for
+    // per-frame Z-depth correction so Z animation doesn't drift laterally.
+    float baseX, baseY;
+    pb3dPixelToWorld(pixelX, pixelY, 0.0f, baseX, baseY);
+    auto it = m_3dInstanceList.find(instanceId);
+    if (it != m_3dInstanceList.end()) {
+        it->second.hasPixelAnchor = true;
+        it->second.anchorPixelX  = pixelX;
+        it->second.anchorPixelY  = pixelY;
+        it->second.anchorBaseX   = baseX;
+        it->second.anchorBaseY   = baseY;
+    }
+}
+
+// --- Simplified lighting controls (public) ---
+void PB3D::pb3dSetLightDirection(float x, float y, float z) {
+    m_light.dirX = x; m_light.dirY = y; m_light.dirZ = z;
+}
+void PB3D::pb3dSetLightColor(float r, float g, float b) {
+    m_light.r = r; m_light.g = g; m_light.b = b;
+}
+void PB3D::pb3dSetLightAmbient(float r, float g, float b) {
+    m_light.ambientR = r; m_light.ambientG = g; m_light.ambientB = b;
+}
+
+// --- Internal camera setter (private) ---
 void PB3D::pb3dSetCamera(st3DCamera camera) {
     m_camera = camera;
 }
 
-void PB3D::pb3dSetLight(st3DLight light) {
-    m_light = light;
+// --- Internal pixel-to-world conversion (private) ---
+void PB3D::pb3dPixelToWorld(float pixelX, float pixelY, float depthZ, float& outX, float& outY) {
+    // mat4x4_perspective takes a VERTICAL FOV, so tan(vfov/2) * dist gives the
+    // half-HEIGHT of the frustum at that depth plane.
+    // Half-WIDTH = half-height * aspect (wider than tall for 16:9 screen).
+    float distToPlane = m_camera.eyeZ - depthZ;
+    float aspect = (float)oglGetScreenWidth() / (float)oglGetScreenHeight();
+    float halfH  = tanf(m_camera.fov * 0.5f * 3.14159265f / 180.0f) * distToPlane;
+    float halfW  = halfH * aspect;   // horizontal half-extent
+
+    float ndcX =  pixelX / (float)oglGetScreenWidth()  * 2.0f - 1.0f;
+    float ndcY =  1.0f - pixelY / (float)oglGetScreenHeight() * 2.0f;
+
+    outX = ndcX * halfW;
+    outY = ndcY * halfH;
 }
 
 // ============================================================================
@@ -424,14 +597,16 @@ void PB3D::pb3dSetLight(st3DLight light) {
 void PB3D::pb3dBegin() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+    // Note: backface culling disabled — glTF winding-order varies by exporter.
+    // Re-enable once correct winding is confirmed.
+    glDisable(GL_CULL_FACE);
     glUseProgram(m_3dShaderProgram);
 
     // Set light uniforms
     glUniform3f(m_3dLightDirUniform, m_light.dirX, m_light.dirY, m_light.dirZ);
     glUniform3f(m_3dLightColorUniform, m_light.r, m_light.g, m_light.b);
     glUniform3f(m_3dAmbientUniform, m_light.ambientR, m_light.ambientG, m_light.ambientB);
+    glUniform3f(m_3dCameraEyeUniform, m_camera.eyeX, m_camera.eyeY, m_camera.eyeZ);
 
     // Compute view matrix using linmath.h
     vec3 eye = {m_camera.eyeX, m_camera.eyeY, m_camera.eyeZ};
@@ -463,10 +638,18 @@ void PB3D::pb3dEnd() {
     // Restore 2D sprite shader program
     glUseProgram(m_shaderProgram);
 
+    // Unbind VBOs: GL_ARRAY_BUFFER is global state — if left bound, oglRenderQuad's
+    // CPU vertex pointers are misread as VBO offsets in GLES 3.0.
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
     // Re-enable 2D vertex attrib arrays (may have been disrupted by VAO binding)
     glEnableVertexAttribArray(m_posAttrib);
     glEnableVertexAttribArray(m_colorAttrib);
     glEnableVertexAttribArray(m_texCoordAttrib);
+
+    // Reset 2D texture cache: 3D rendering binds textures outside PBOGLES tracking.
+    oglResetTextureCache();
 }
 
 void PB3D::pb3dRenderInstance(unsigned int instanceId) {
@@ -479,15 +662,28 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
     auto modelIt = m_3dModelList.find(inst.modelId);
     if (modelIt == m_3dModelList.end()) return;
 
+    // Pixel anchor: compute Z-depth perspective correction into local render
+    // position — do NOT mutate inst.posX/Y, which would compound each frame.
+    // Delta = worldXY_at_currentZ - worldXY_at_Z0 keeps the object at the same
+    // screen pixel as Z animates, while preserving any XY animation (die 4 jitter).
+    float renderX = inst.posX;
+    float renderY = inst.posY;
+    if (inst.hasPixelAnchor) {
+        float wxZ, wyZ;
+        pb3dPixelToWorld(inst.anchorPixelX, inst.anchorPixelY, inst.posZ, wxZ, wyZ);
+        renderX += (wxZ - inst.anchorBaseX);
+        renderY += (wyZ - inst.anchorBaseY);
+    }
+
     // Build model matrix: translate * rotY * rotX * rotZ * scale
     mat4x4 model, identMat;
 
     // Translation
     mat4x4 translateMat;
-    mat4x4_translate(translateMat, inst.posX, inst.posY, inst.posZ);
+    mat4x4_translate(translateMat, renderX, renderY, inst.posZ);
 
     // Rotation Y
-    mat4x4 rotY, identMat;
+    mat4x4 rotY;
     mat4x4_identity(identMat);
     mat4x4_rotate_Y(rotY, identMat, inst.rotY * 3.14159265f / 180.0f);
 
@@ -534,6 +730,7 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
     }
 
     // Render each mesh
+    glActiveTexture(GL_TEXTURE0);  // Ensure sampler unit 0 is active
     for (auto& mesh : modelIt->second.meshes) {
         glBindVertexArray(mesh.vao);
         glBindTexture(GL_TEXTURE_2D, mesh.textureId);
@@ -566,6 +763,19 @@ float PB3D::pb3dGetRandomFloat(float min, float max) {
 
 bool PB3D::pb3dCreateAnimation(st3DAnimateData anim, bool replaceExisting) {
     if (m_3dInstanceList.find(anim.animateInstanceId) == m_3dInstanceList.end()) return false;
+
+    // Convert pixel-space start/end X/Y to world units now, once, before storing
+    if (anim.usePxCoords) {
+        float wx0, wy0, wx1, wy1;
+        // Always convert at Z=0: the pixel anchor system in pb3dRenderInstance
+        // handles depth compensation at render time. Converting at posZ here
+        // would double-count the depth offset and push objects off-screen.
+        pb3dPixelToWorld(anim.startPxX, anim.startPxY, 0.0f, wx0, wy0);
+        pb3dPixelToWorld(anim.endPxX,   anim.endPxY,   0.0f, wx1, wy1);
+        anim.startPosX = wx0;  anim.startPosY = wy0;
+        anim.endPosX   = wx1;  anim.endPosY   = wy1;
+        anim.usePxCoords = false;  // now stored as world units
+    }
 
     auto existingIt = m_3dAnimateList.find(anim.animateInstanceId);
     if (existingIt != m_3dAnimateList.end()) {
@@ -606,6 +816,18 @@ bool PB3D::pb3dAnimateInstance(unsigned int instanceId, unsigned int currentTick
             anim.isActive = false;
             return false;
         } else if (anim.loop == GFX_RESTART) {
+            if (anim.animType == GFX_ANIM_JUMP) {
+                // Snap to end values, then swap start/end so next cycle jumps back
+                pb3dSetFinalAnimationValues(anim);
+                std::swap(anim.startPosX,  anim.endPosX);
+                std::swap(anim.startPosY,  anim.endPosY);
+                std::swap(anim.startPosZ,  anim.endPosZ);
+                std::swap(anim.startRotX,  anim.endRotX);
+                std::swap(anim.startRotY,  anim.endRotY);
+                std::swap(anim.startRotZ,  anim.endRotZ);
+                std::swap(anim.startScale, anim.endScale);
+                std::swap(anim.startAlpha, anim.endAlpha);
+            }
             anim.startTick = currentTick;
             timeSinceStart = 0.0f;
             percentComplete = 0.0f;

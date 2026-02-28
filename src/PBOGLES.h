@@ -64,6 +64,7 @@ protected:
     void   scaleAndRotateVertices(float* x, float* y, float scale, float rotateDegrees);
     GLuint oglCompileShader(GLenum type, const char* source);
     GLuint oglCreateProgram(const char* vertexSource, const char* fragmentSource);
+    void   oglResetTextureCache() { m_lastTextureId = 0; }  // Call after any external glBindTexture to keep 2D cache valid
 
     // 2D shader variables (accessible to PB3D for state restoration)
     GLuint     m_shaderProgram;

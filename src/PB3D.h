@@ -66,6 +66,12 @@ struct st3DInstance {
     float scale;
     float alpha;
     bool visible;
+    // Pixel-space anchor: when set, a Z-depth perspective correction is applied
+    // each frame as an additive delta so the object doesn't drift toward center
+    // as Z changes. XY animation (e.g. JUMPRANDOM jitter) is preserved.
+    bool  hasPixelAnchor;
+    float anchorPixelX, anchorPixelY;   // screen pixels — the intended screen position
+    float anchorBaseX,  anchorBaseY;    // world X/Y computed at Z=0 (reference frame)
 };
 
 struct st3DCamera {
@@ -85,7 +91,13 @@ struct st3DLight {
 struct st3DAnimateData {
     unsigned int animateInstanceId;
 
-    // Start values
+    // Start values — world units.  If usePxCoords=true, startPxX/Y / endPxX/Y
+    // are used instead for X and Y (converted to world units at pb3dCreateAnimation time).
+    // Z, rotation, scale, alpha always use world-unit / degree / 0-1 values.
+    bool usePxCoords;           // When true, startPxX/Y and endPxX/Y are in screen pixels
+    float startPxX, startPxY;   // Pixel-space start position (X/Y only)
+    float endPxX,   endPxY;     // Pixel-space end   position (X/Y only)
+
     float startPosX, startPosY, startPosZ;
     float startRotX, startRotY, startRotZ;
     float startScale, startAlpha;
@@ -128,35 +140,53 @@ public:
     PB3D();
     ~PB3D();
 
-    // Initialization
+    // Initialization (called once from gfxInit)
     bool pb3dInit();
 
+    // -----------------------------------------------------------------------
     // Model loading
+    // -----------------------------------------------------------------------
     unsigned int pb3dLoadModel(const char* glbFilePath);
-    bool pb3dUnloadModel(unsigned int modelId);
+    bool         pb3dUnloadModel(unsigned int modelId);
 
+    // -----------------------------------------------------------------------
     // Instance management
+    // -----------------------------------------------------------------------
     unsigned int pb3dCreateInstance(unsigned int modelId);
-    bool pb3dDestroyInstance(unsigned int instanceId);
+    bool         pb3dDestroyInstance(unsigned int instanceId);
 
-    // Instance property setters
-    void pb3dSetInstancePosition(unsigned int instanceId, float x, float y, float z);
-    void pb3dSetInstanceRotation(unsigned int instanceId, float rx, float ry, float rz);
-    void pb3dSetInstanceScale(unsigned int instanceId, float scale);
-    void pb3dSetInstanceAlpha(unsigned int instanceId, float alpha);
+    // -----------------------------------------------------------------------
+    // Instance properties  — all positions are in SCREEN PIXELS.
+    // depthZ is a relative depth offset from the screen plane:
+    //   0.0  = at the screen surface (default)
+    //  >0.0  = closer to the viewer (in front)
+    //  <0.0  = further away (behind)
+    // -----------------------------------------------------------------------
+    void pb3dSetInstancePositionPx(unsigned int instanceId, float pixelX, float pixelY);                    // Z = 0
+    void pb3dSetInstancePositionPx(unsigned int instanceId, float pixelX, float pixelY, float depthZ);      // Z = offset
+    void pb3dSetInstanceRotation(unsigned int instanceId, float rx, float ry, float rz);  // degrees
+    void pb3dSetInstanceScale(unsigned int instanceId, float scale);   // 1.0 = native size
+    void pb3dSetInstanceAlpha(unsigned int instanceId, float alpha);   // 0.0 – 1.0
     void pb3dSetInstanceVisible(unsigned int instanceId, bool visible);
 
-    // Camera and light
-    void pb3dSetCamera(st3DCamera camera);
-    void pb3dSetLight(st3DLight light);
+    // -----------------------------------------------------------------------
+    // Lighting  (direction is in normalised world-space, colors are 0.0–1.0)
+    // -----------------------------------------------------------------------
+    void pb3dSetLightDirection(float x, float y, float z);
+    void pb3dSetLightColor(float r, float g, float b);
+    void pb3dSetLightAmbient(float r, float g, float b);
 
+    // -----------------------------------------------------------------------
     // Rendering
+    // -----------------------------------------------------------------------
     void pb3dBegin();
     void pb3dEnd();
     void pb3dRenderInstance(unsigned int instanceId);
     void pb3dRenderAll();
 
+    // -----------------------------------------------------------------------
     // Animation
+    // -----------------------------------------------------------------------
     bool pb3dCreateAnimation(st3DAnimateData anim, bool replaceExisting);
     bool pb3dAnimateInstance(unsigned int instanceId, unsigned int currentTick);
     bool pb3dAnimateActive(unsigned int instanceId);
@@ -164,11 +194,15 @@ public:
     void pb3dAnimateRestart(unsigned int instanceId);
     void pb3dAnimateRestart(unsigned int instanceId, unsigned long startTick);
 
+protected:
+    // Console output — default uses stdout; overridden in PBEngine to route to the on-screen console
+    virtual void pb3dSendConsole(const std::string& msg);
+
 private:
     // 3D Shader program and uniform/attrib locations
     GLuint m_3dShaderProgram;
     GLint  m_3dMVPUniform, m_3dModelUniform, m_3dLightDirUniform;
-    GLint  m_3dLightColorUniform, m_3dAmbientUniform, m_3dAlphaUniform;
+    GLint  m_3dLightColorUniform, m_3dAmbientUniform, m_3dCameraEyeUniform, m_3dAlphaUniform;
     GLint  m_3dPosAttrib, m_3dNormalAttrib, m_3dTexCoordAttrib;
 
     // Data storage
@@ -194,6 +228,12 @@ private:
     void pb3dAnimateJump(st3DAnimateData& anim, unsigned int currentTick, float timeSinceStart);
     void pb3dAnimateJumpRandom(st3DAnimateData& anim, unsigned int currentTick, float timeSinceStart);
     void pb3dSetFinalAnimationValues(const st3DAnimateData& anim);
+
+    // Internal position setters
+    void pb3dSetInstancePosition(unsigned int instanceId, float x, float y, float z);  // world units — internal only
+    void pb3dSetInstancePositionPxImpl(unsigned int instanceId, float pixelX, float pixelY, float depthZ);
+    void pb3dPixelToWorld(float pixelX, float pixelY, float depthZ, float& outX, float& outY);
+    void pb3dSetCamera(st3DCamera camera);  // internal — camera is managed automatically
 
     // Random number generation for animation
     float pb3dGetRandomFloat(float min, float max);

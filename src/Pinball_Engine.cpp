@@ -1123,31 +1123,33 @@ bool PBEngine::pbeLoadTestSandbox(){
             }
             
             // Set initial positions (around where the video renders)
-            pb3dSetInstancePosition(m_sandboxDiceInstance[0], -3.5f,  1.0f, 0.0f);  // Left top
-            pb3dSetInstancePosition(m_sandboxDiceInstance[1],  3.5f,  1.0f, 0.0f);  // Right top
-            pb3dSetInstancePosition(m_sandboxDiceInstance[2], -3.5f, -1.5f, 0.0f);  // Left bottom
-            pb3dSetInstancePosition(m_sandboxDiceInstance[3],  3.5f, -1.5f, 0.0f);  // Right bottom
+            // Position dice in pixel space around the video.
+            // Camera is set automatically by PB3D (eye=0,0,8, FOV=45).
+            // Video: 960x540 at pixel (480,480) -> occupies X[480,1440] Y[480,1020].
+            // Left column centre ~px 120, right column centre ~px 1800.
+            // Row 1 (above video centre): py 350  |  Row 2 (mid-video): py 820.
+            pb3dSetInstancePositionPx(m_sandboxDiceInstance[0],  170.0f, 290.0f, 0.0f);  // Left top    (above label y=440)
+            pb3dSetInstancePositionPx(m_sandboxDiceInstance[1], 1750.0f, 290.0f, 0.0f);  // Right top
+            pb3dSetInstancePositionPx(m_sandboxDiceInstance[2],  170.0f, 760.0f, 0.0f);  // Left bottom  (above label y=910)
+            pb3dSetInstancePositionPx(m_sandboxDiceInstance[3], 1750.0f, 760.0f, 0.0f);  // Right bottom
             
-            // Set scale to 0.8
+            // Set scale to 0.75 (half of previous 1.5)
             for (int i = 0; i < 4; i++) {
-                pb3dSetInstanceScale(m_sandboxDiceInstance[i], 0.8f);
+                pb3dSetInstanceScale(m_sandboxDiceInstance[i], 0.75f);
                 pb3dSetInstanceVisible(m_sandboxDiceInstance[i], false);
             }
             
-            // Set camera for sandbox 3D test
-            st3DCamera cam = {0.0f, 0.0f, 8.0f,   0.0f, 0.0f, 0.0f,   0.0f, 1.0f, 0.0f,   45.0f,   0.1f, 100.0f};
-            pb3dSetCamera(cam);
-            
             unsigned long currentTick = GetTickCountGfx();
-            
-            // DICE 1 — NORMAL + REVERSE (smooth continuous Y-axis spin)
+
+            // DICE 1 — NORMAL + REVERSE (smooth continuous Y-axis spin + Z pulse in/out)
             st3DAnimateData anim1 = {};
             anim1.animateInstanceId = m_sandboxDiceInstance[0];
-            anim1.typeMask = ANIM3D_ROTY_MASK;
+            anim1.typeMask = ANIM3D_ROTY_MASK | ANIM3D_POSZ_MASK;
             anim1.animType = GFX_ANIM_NORMAL;
             anim1.loop = GFX_REVERSE;
             anim1.startRotY = 0.0f;
             anim1.endRotY = 360.0f;
+            anim1.startPosZ = 0.0f;   anim1.endPosZ = -4.5f;   // drift back 4.5 world units then reverse
             anim1.animateTimeSec = 3.0f;
             anim1.rotateClockwiseY = true;
             anim1.isActive = true;
@@ -1156,41 +1158,48 @@ bool PBEngine::pbeLoadTestSandbox(){
             anim1.startAlpha = 1.0f; anim1.endAlpha = 1.0f;
             pb3dCreateAnimation(anim1, true);
             
-            // DICE 2 — ACCL (accelerating free spin)
+            // DICE 2 — ACCL (accelerating free spin + Z arc: drifts back then returns to 0 at cycle end)
             st3DAnimateData anim2 = {};
             anim2.animateInstanceId = m_sandboxDiceInstance[1];
-            anim2.typeMask = ANIM3D_ROTY_MASK;
+            anim2.typeMask = ANIM3D_ROTY_MASK | ANIM3D_POSZ_MASK;
             anim2.animType = GFX_ANIM_ACCL;
             anim2.loop = GFX_RESTART;
             anim2.startRotY = 0.0f; anim2.endRotY = 0.0f;
             anim2.initialVelRotY = 30.0f;
             anim2.accelRotY = 15.0f;
+            anim2.startPosZ = 0.0f;
+            anim2.initialVelZ = -1.5f;   // drift back at start
+            anim2.accelZ     =  0.6f;    // decelerate back: z = -1.5t + 0.3t^2 = 0 at t=5s
             anim2.animateTimeSec = 5.0f;
             anim2.isActive = true;
             anim2.startTick = currentTick;
             pb3dCreateAnimation(anim2, true);
             
-            // DICE 3 — JUMP + RESTART (dice roll snap)
+            // DICE 3 — JUMP + RESTART (dice roll snap + Z alternates between 0 and -1.5 on each jump)
             st3DAnimateData anim3 = {};
             anim3.animateInstanceId = m_sandboxDiceInstance[2];
-            anim3.typeMask = ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK;
+            anim3.typeMask = ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK | ANIM3D_POSZ_MASK;
             anim3.animType = GFX_ANIM_JUMP;
             anim3.loop = GFX_RESTART;
             anim3.startRotX = 0.0f; anim3.startRotY = 0.0f; anim3.startRotZ = 0.0f;
             anim3.endRotX = 120.0f; anim3.endRotY = 240.0f; anim3.endRotZ = 60.0f;
+            anim3.startPosZ = 0.0f; anim3.endPosZ = -4.5f;  // snaps to -4.5, then swaps back each cycle
             anim3.animateTimeSec = 1.5f;
             anim3.isActive = true;
             anim3.startTick = currentTick;
             pb3dCreateAnimation(anim3, true);
             
-            // DICE 4 — JUMPRANDOM + RESTART (shaking dice)
+            // DICE 4 — JUMPRANDOM + RESTART (shaking dice + random Z jitter)
+            // Uses pixel-space start/end so the jitter offset is in pixels (±15px)
             st3DAnimateData anim4 = {};
             anim4.animateInstanceId = m_sandboxDiceInstance[3];
-            anim4.typeMask = ANIM3D_POSX_MASK | ANIM3D_POSY_MASK | ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK | ANIM3D_SCALE_MASK;
+            anim4.typeMask = ANIM3D_POSX_MASK | ANIM3D_POSY_MASK | ANIM3D_POSZ_MASK | ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK | ANIM3D_SCALE_MASK;
             anim4.animType = GFX_ANIM_JUMPRANDOM;
             anim4.loop = GFX_RESTART;
-            anim4.startPosX = 3.5f;  anim4.endPosX = 3.65f;
-            anim4.startPosY = -1.5f; anim4.endPosY = -1.35f;
+            anim4.usePxCoords = true;
+            anim4.startPxX = 1750.0f;  anim4.endPxX = 1765.0f;   // 15px jitter
+            anim4.startPxY =  760.0f;  anim4.endPxY =  745.0f;
+            anim4.startPosZ = 0.0f;    anim4.endPosZ = -4.5f;     // random Z between 0 and -4.5
             anim4.startRotX = 0.0f;  anim4.endRotX = 30.0f;
             anim4.startRotY = 0.0f;  anim4.endRotY = 30.0f;
             anim4.startRotZ = 0.0f;  anim4.endRotZ = 30.0f;
@@ -1365,10 +1374,10 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
             
             // Render 3D dice around the video if loaded
             if (m_sandboxDiceLoaded) {
-                // Show dice and match alpha to video
+                // Show dice at full opacity while video plays
                 for (int i = 0; i < 4; i++) {
                     pb3dSetInstanceVisible(m_sandboxDiceInstance[i], true);
-                    pb3dSetInstanceAlpha(m_sandboxDiceInstance[i], currentVideoAlpha);
+                    pb3dSetInstanceAlpha(m_sandboxDiceInstance[i], 1.0f);
                 }
                 
                 // Update all 3D animations
@@ -1385,11 +1394,11 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
                 gfxSetScaleFactor(m_defaultFontSpriteId, 0.8f, false);
                 unsigned int labelAlpha = (unsigned int)(currentVideoAlpha * 255.0f);
                 gfxSetColor(m_defaultFontSpriteId, 200, 200, 200, labelAlpha);
-                gfxRenderShadowString(m_defaultFontSpriteId, "NORMAL+REVERSE", 200, 620, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
-                gfxRenderShadowString(m_defaultFontSpriteId, "ACCELERATE", PB_SCREENWIDTH - 200, 620, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
-                gfxRenderShadowString(m_defaultFontSpriteId, "JUMP", 200, 920, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
-                gfxRenderShadowString(m_defaultFontSpriteId, "JUMPRANDOM", PB_SCREENWIDTH - 200, 920, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
-                gfxSetScaleFactor(m_defaultFontSpriteId, 1.0f, false);
+                // Labels sit just below each die (dice centers at py 210 and 680)
+                gfxRenderShadowString(m_defaultFontSpriteId, "NORMAL+REVERSE",  195,  440, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxRenderShadowString(m_defaultFontSpriteId, "ACCELERATE",      1725, 440, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxRenderShadowString(m_defaultFontSpriteId, "JUMP",             195,  910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxRenderShadowString(m_defaultFontSpriteId, "JUMPRANDOM",      1725, 910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
             }
             
             // Render video title over the video at the top, matching video alpha
@@ -1459,14 +1468,16 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
         gfxRenderShadowString(m_defaultFontSpriteId, " ", tempX, m_CreditsScrollY + (8*spacing), 1, GFX_TEXTCENTER, 0,0,0,0,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Using the these excellent open source libraries", tempX, m_CreditsScrollY + (9*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "STB Single Header: http://nothings.org/stb", tempX, m_CreditsScrollY + (10*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "JSON.hpp https://github.com/nlohmann/json", tempX, m_CreditsScrollY + (11*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "WiringPi https://github.com/WiringPi/WiringPi", tempX, m_CreditsScrollY + (12*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "FFmpeg https://github.com/BtbN/FFmpeg-Builds", tempX, m_CreditsScrollY + (13*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "SDL https://github.com/libsdl-org/SDL", tempX, m_CreditsScrollY + (14*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "SDL Mixer https://github.com/libsdl-org/SDL_mixer", tempX, m_CreditsScrollY + (15*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Characters developed at https://www.heroforge.com/", tempX, m_CreditsScrollY + (16*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Various images, sounds and music from https://pixabay.com/", tempX, m_CreditsScrollY + (17*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Microsoft Copilot AI tools utilized with art and code ", tempX, m_CreditsScrollY + (18*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "cgltf https://github.com/jkuhlmann/cgltf", tempX, m_CreditsScrollY + (11*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "linmath.h https://github.com/datenwolf/linmath.h", tempX, m_CreditsScrollY + (12*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "JSON.hpp https://github.com/nlohmann/json", tempX, m_CreditsScrollY + (13*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "WiringPi https://github.com/WiringPi/WiringPi", tempX, m_CreditsScrollY + (14*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "FFmpeg https://github.com/BtbN/FFmpeg-Builds", tempX, m_CreditsScrollY + (15*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "SDL https://github.com/libsdl-org/SDL", tempX, m_CreditsScrollY + (16*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "SDL Mixer https://github.com/libsdl-org/SDL_mixer", tempX, m_CreditsScrollY + (17*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Characters developed at https://www.heroforge.com/", tempX, m_CreditsScrollY + (18*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Various images, sounds and music from https://pixabay.com/", tempX, m_CreditsScrollY + (19*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Microsoft Copilot AI tools utilized with art and code ", tempX, m_CreditsScrollY + (20*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
     }
 

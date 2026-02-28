@@ -284,6 +284,7 @@ public:
 
     // Console functions
     void pbeSendConsole(std::string output);
+    void pb3dSendConsole(const std::string& msg) override { pbeSendConsole(msg); }
     void pbeClearConsole();
     void pbeRenderConsole(unsigned int startingX, unsigned int startingY, unsigned int startLine);
 

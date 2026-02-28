@@ -201,6 +201,18 @@ GLuint PBOGLES::oglCompileShader(GLenum type, const char* source) {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, nullptr);
     glCompileShader(shader);
+    // Check for compile errors
+    GLint status = 0;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+    if (status == GL_FALSE) {
+        GLint logLen = 0;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);
+        if (logLen > 1) {
+            std::string log(logLen, '\0');
+            glGetShaderInfoLog(shader, logLen, nullptr, &log[0]);
+            std::cout << "Shader compile error (" << (type == GL_VERTEX_SHADER ? "VERT" : "FRAG") << "):\n" << log << std::endl;
+        }
+    }
     return shader;
 }
 
@@ -212,6 +224,22 @@ GLuint PBOGLES::oglCreateProgram(const char* vertexSource, const char* fragmentS
     glAttachShader(program, vertexShader);
     glAttachShader(program, fragmentShader);
     glLinkProgram(program);
+    // Check for link errors
+    GLint linkStatus = 0;
+    glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
+    if (linkStatus == GL_FALSE) {
+        GLint logLen = 0;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLen);
+        if (logLen > 1) {
+            std::string log(logLen, '\0');
+            glGetProgramInfoLog(program, logLen, nullptr, &log[0]);
+            std::cout << "Shader link error:\n" << log << std::endl;
+        }
+        glDeleteProgram(program);
+        return 0;
+    }
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
     return program;
 }
 
