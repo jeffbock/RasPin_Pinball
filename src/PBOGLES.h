@@ -65,14 +65,14 @@ protected:
     GLuint oglCompileShader(GLenum type, const char* source);
     GLuint oglCreateProgram(const char* vertexSource, const char* fragmentSource);
     void   oglResetTextureCache() { m_lastTextureId = 0; }  // Call after any external glBindTexture to keep 2D cache valid
+    void   oglRestore2DState();  // Restore full 2D rendering state after 3D pass (shader, attribs, blend, VBO unbind)
 
-    // 2D shader variables (accessible to PB3D for state restoration)
+private:
+    // 2D shader variables
     GLuint     m_shaderProgram;
     GLint      m_posAttrib;
     GLint      m_colorAttrib; 
     GLint      m_texCoordAttrib; 
-
-private:
     long m_width;
     long m_height;
     float m_aspectRatio;

@@ -524,6 +524,38 @@ GLuint PBOGLES::oglCreateVideoTexture(unsigned int width, unsigned int height) {
     return texture;
 }
 
+// Restore full 2D rendering state after a 3D pass.
+// Called by PB3D::pb3dEnd() so that the 3D layer never needs to know
+// about the internal 2D shader program, attrib layout or GL state.
+void PBOGLES::oglRestore2DState() {
+    // Disable 3D-specific state
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+
+    // Re-enable standard alpha blending for 2D sprites
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Unbind VAO so 2D CPU-pointer vertex calls work correctly
+    glBindVertexArray(0);
+
+    // Restore 2D sprite shader program
+    glUseProgram(m_shaderProgram);
+
+    // Unbind VBOs: GL_ARRAY_BUFFER is global state — if left bound,
+    // oglRenderQuad's CPU vertex pointers are misread as VBO offsets.
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    // Re-enable 2D vertex attrib arrays (may have been disrupted by VAO binding)
+    glEnableVertexAttribArray(m_posAttrib);
+    glEnableVertexAttribArray(m_colorAttrib);
+    glEnableVertexAttribArray(m_texCoordAttrib);
+
+    // Reset 2D texture cache: 3D rendering binds textures outside our tracking.
+    oglResetTextureCache();
+}
+
 // Update an existing texture with new video frame data
 bool PBOGLES::oglUpdateTexture(GLuint textureId, const uint8_t* data, unsigned int width, unsigned int height) {
     if (textureId == 0 || data == nullptr) {

@@ -276,7 +276,7 @@ void pb3dBegin();
 
 ### pb3dEnd()
 
-Restores 2D rendering state (disables depth test, rebinds 2D shader).
+Restores full 2D rendering state after the 3D pass by delegating to `PBOGLES::oglRestore2DState()`.  Specifically: disables depth test and face culling, re-enables alpha blending, unbinds the VAO, rebinds the 2D sprite shader program, unbinds VBOs (so 2D CPU vertex pointers are not misread as VBO offsets), re-enables the 2D vertex attrib arrays, and resets the PBOGLES texture cache.
 
 ```cpp
 void pb3dEnd();

@@ -31,4 +31,4 @@ Expand 3D models to support skeleton / animation
 Actually checkout the CMAKE flow - I don't use it a lot right now
 
 ** Maybe future stuff
-None
+The way 3D was integrated breaks some of the architectural goals, may not be worth fixing for a theoretical back end change at some point.
