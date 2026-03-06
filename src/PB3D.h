@@ -46,17 +46,17 @@ enum gfxAnimType {
 // --- 3D Data Structures ---
 
 struct st3DMesh {
-    GLuint vao;
-    GLuint vboVertices;
-    GLuint eboIndices;
+    unsigned int vao;
+    unsigned int vboVertices;
+    unsigned int eboIndices;
     unsigned int indexCount;
-    GLuint textureId;
+    unsigned int textureId;
     unsigned int materialIndex;
 };
 
 struct st3DModel {
     std::vector<st3DMesh> meshes;
-    std::set<GLuint> ownedTextures;  // unique GL texture IDs owned by this model (ref-safe cleanup)
+    std::set<unsigned int> ownedTextures;  // unique GPU texture handles owned by this model (ref-safe cleanup)
     std::string name;
     bool isLoaded;
 };
@@ -201,12 +201,6 @@ protected:
     virtual void pb3dSendConsole(const std::string& msg);
 
 private:
-    // 3D Shader program and uniform/attrib locations
-    GLuint m_3dShaderProgram;
-    GLint  m_3dMVPUniform, m_3dModelUniform, m_3dLightDirUniform;
-    GLint  m_3dLightColorUniform, m_3dAmbientUniform, m_3dCameraEyeUniform, m_3dAlphaUniform;
-    GLint  m_3dPosAttrib, m_3dNormalAttrib, m_3dTexCoordAttrib;
-
     // Data storage
     std::map<unsigned int, st3DModel>        m_3dModelList;
     std::map<unsigned int, st3DInstance>      m_3dInstanceList;

@@ -67,18 +67,6 @@ const char* PB3D::fragmentShader3DSource = R"(#version 300 es
 // ============================================================================
 
 PB3D::PB3D() {
-    m_3dShaderProgram = 0;
-    m_3dMVPUniform = -1;
-    m_3dModelUniform = -1;
-    m_3dLightDirUniform = -1;
-    m_3dLightColorUniform = -1;
-    m_3dAmbientUniform = -1;
-    m_3dCameraEyeUniform = -1;
-    m_3dAlphaUniform = -1;
-    m_3dPosAttrib = -1;
-    m_3dNormalAttrib = -1;
-    m_3dTexCoordAttrib = -1;
-
     m_next3dModelId = 1;
     m_next3dInstanceId = 1;
 
@@ -98,18 +86,16 @@ PB3D::PB3D() {
 }
 
 PB3D::~PB3D() {
-    // Clean up all 3D models (delete GL resources)
+    // Clean up all 3D models (release GPU resources via PBOGLES)
     for (auto& pair : m_3dModelList) {
         for (auto& mesh : pair.second.meshes) {
-            if (mesh.vao) glDeleteVertexArrays(1, &mesh.vao);
-            if (mesh.vboVertices) glDeleteBuffers(1, &mesh.vboVertices);
-            if (mesh.eboIndices) glDeleteBuffers(1, &mesh.eboIndices);
+            ogl3dDestroyMesh(mesh.vao, mesh.vboVertices, mesh.eboIndices);
         }
-        for (GLuint texId : pair.second.ownedTextures) {
-            if (texId) glDeleteTextures(1, &texId);
+        for (unsigned int texId : pair.second.ownedTextures) {
+            ogl3dDestroyTexture(texId);
         }
     }
-    if (m_3dShaderProgram) glDeleteProgram(m_3dShaderProgram);
+    ogl3dDestroyShader();
 }
 
 // ============================================================================
@@ -125,32 +111,9 @@ void PB3D::pb3dSendConsole(const std::string& msg) {
 // ============================================================================
 
 bool PB3D::pb3dInit() {
-    // Compile the 3D shaders using the inherited PBOGLES methods
-    m_3dShaderProgram = oglCreateProgram(vertexShader3DSource, fragmentShader3DSource);
-    if (m_3dShaderProgram == 0) {
+    // Compile and link the 3D shader via PBOGLES; also caches uniform/attrib locations
+    if (!ogl3dInitShader(vertexShader3DSource, fragmentShader3DSource)) {
         pb3dSendConsole("PB3D: Failed to create 3D shader program");
-        return false;
-    }
-
-    // Cache uniform locations
-    m_3dMVPUniform = glGetUniformLocation(m_3dShaderProgram, "uMVP");
-    m_3dModelUniform = glGetUniformLocation(m_3dShaderProgram, "uModel");
-    m_3dLightDirUniform = glGetUniformLocation(m_3dShaderProgram, "uLightDir");
-    m_3dLightColorUniform = glGetUniformLocation(m_3dShaderProgram, "uLightColor");
-    m_3dAmbientUniform = glGetUniformLocation(m_3dShaderProgram, "uAmbientColor");
-    m_3dCameraEyeUniform = glGetUniformLocation(m_3dShaderProgram, "uCameraEye");
-    m_3dAlphaUniform = glGetUniformLocation(m_3dShaderProgram, "uAlpha");
-
-    // Cache attribute locations
-    m_3dPosAttrib = glGetAttribLocation(m_3dShaderProgram, "aPosition");
-    m_3dNormalAttrib = glGetAttribLocation(m_3dShaderProgram, "aNormal");
-    m_3dTexCoordAttrib = glGetAttribLocation(m_3dShaderProgram, "aTexCoord");
-
-    if (m_3dPosAttrib < 0) {
-        pb3dSendConsole("PB3D ERROR: aPosition attrib not found - shader likely failed to compile"
-                        " (pos=" + std::to_string(m_3dPosAttrib)
-                        + " norm=" + std::to_string(m_3dNormalAttrib)
-                        + " uv=" + std::to_string(m_3dTexCoordAttrib) + ")");
         return false;
     }
     return true;
@@ -243,10 +206,10 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
     if (maxGlobalExt < 1e-6f) maxGlobalExt = 1.0f;
     float normScale = 1.0f / maxGlobalExt;
 
-    // Local texture deduplication cache (cgltf_image* → GL texture ID).
+    // Local texture deduplication cache (cgltf_image* → GPU texture handle).
     // Keyed on image pointer for identity comparison within this load session.
     // nullptr key is reserved for the shared 1×1 white fallback texture.
-    std::map<const cgltf_image*, GLuint> localTexCache;
+    std::map<const cgltf_image*, unsigned int> localTexCache;
 
     // --- Pass 2: build GPU resources for each triangle primitive ---
     for (cgltf_size mi = 0; mi < data->meshes_count; mi++) {
@@ -383,48 +346,17 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
                 }
             }
 
-            // Create GPU resources
+            // Create GPU resources via PBOGLES (no direct GL calls in PB3D)
             st3DMesh gpuMesh = {};
 
-            glGenVertexArrays(1, &gpuMesh.vao);
-            glGenBuffers(1, &gpuMesh.vboVertices);
-            glGenBuffers(1, &gpuMesh.eboIndices);
-
-            glBindVertexArray(gpuMesh.vao);
-
-            // Upload vertex data
-            glBindBuffer(GL_ARRAY_BUFFER, gpuMesh.vboVertices);
-            glBufferData(GL_ARRAY_BUFFER, interleavedData.size() * sizeof(float), interleavedData.data(), GL_STATIC_DRAW);
-
-            // Upload index data
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gpuMesh.eboIndices);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-            // Set vertex attribute pointers (stride = 8 floats)
-            GLsizei stride = 8 * sizeof(float);
-
-            // Position (3 floats, offset 0)
-            if (m_3dPosAttrib >= 0) {
-                glEnableVertexAttribArray(m_3dPosAttrib);
-                glVertexAttribPointer(m_3dPosAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-            }
-            // Normal (3 floats, offset 3*sizeof(float))
-            if (m_3dNormalAttrib >= 0) {
-                glEnableVertexAttribArray(m_3dNormalAttrib);
-                glVertexAttribPointer(m_3dNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
-            }
-            // TexCoord (2 floats, offset 6*sizeof(float))
-            if (m_3dTexCoordAttrib >= 0) {
-                glEnableVertexAttribArray(m_3dTexCoordAttrib);
-                glVertexAttribPointer(m_3dTexCoordAttrib, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
-            }
-
-            glBindVertexArray(0);
+            ogl3dCreateMesh(interleavedData.data(), interleavedData.size(),
+                            indices.data(), indices.size(),
+                            gpuMesh.vao, gpuMesh.vboVertices, gpuMesh.eboIndices);
 
             gpuMesh.indexCount = (unsigned int)indices.size();
 
             // Load texture from material — deduplicate via localTexCache so primitives
-            // sharing the same cgltf_image get the same GL texture ID.
+            // sharing the same cgltf_image get the same GPU texture handle.
             gpuMesh.textureId = 0;
             if (prim->material && prim->material->has_pbr_metallic_roughness) {
                 cgltf_texture* tex = prim->material->pbr_metallic_roughness.base_color_texture.texture;
@@ -441,14 +373,7 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
                         int texW, texH, texC;
                         unsigned char* pixels = stbi_load_from_memory(imgData, imgSize, &texW, &texH, &texC, STBI_rgb_alpha);
                         if (pixels) {
-                            GLuint texId;
-                            glGenTextures(1, &texId);
-                            glBindTexture(GL_TEXTURE_2D, texId);
-                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texW, texH, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+                            unsigned int texId = ogl3dCreateTexture(pixels, texW, texH);
                             stbi_image_free(pixels);
                             gpuMesh.textureId = texId;
                             localTexCache[img] = texId;
@@ -464,12 +389,7 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
                 if (fbIt != localTexCache.end()) {
                     gpuMesh.textureId = fbIt->second;
                 } else {
-                    GLuint fallbackTex;
-                    glGenTextures(1, &fallbackTex);
-                    glBindTexture(GL_TEXTURE_2D, fallbackTex);
-                    unsigned char white[] = {255, 255, 255, 255};
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                    unsigned int fallbackTex = ogl3dCreateFallbackTexture();
                     gpuMesh.textureId = fallbackTex;
                     localTexCache[nullptr] = fallbackTex;
                     model.ownedTextures.insert(fallbackTex);
@@ -490,12 +410,7 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
     unsigned int modelId = m_next3dModelId++;
     m_3dModelList[modelId] = model;
 
-    // Unbind VBOs: GL_ARRAY_BUFFER is global state (not captured by VAOs). If left
-    // bound, oglRenderQuad's CPU vertex pointers are misread as VBO offsets in GLES 3.0.
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    // Reset 2D texture cache: glBindTexture calls during loading are outside
+    // Reset 2D texture cache: texture uploads during loading are outside
     // PBOGLES's m_lastTextureId tracking, which would cause 2D sprites to
     // silently skip their bind and render with the wrong texture.
     oglResetTextureCache();
@@ -508,13 +423,11 @@ bool PB3D::pb3dUnloadModel(unsigned int modelId) {
     if (it == m_3dModelList.end()) return false;
 
     for (auto& mesh : it->second.meshes) {
-        if (mesh.vao) glDeleteVertexArrays(1, &mesh.vao);
-        if (mesh.vboVertices) glDeleteBuffers(1, &mesh.vboVertices);
-        if (mesh.eboIndices) glDeleteBuffers(1, &mesh.eboIndices);
+        ogl3dDestroyMesh(mesh.vao, mesh.vboVertices, mesh.eboIndices);
     }
     // Delete each unique texture exactly once (set deduplicates shared textures)
-    for (GLuint texId : it->second.ownedTextures) {
-        if (texId) glDeleteTextures(1, &texId);
+    for (unsigned int texId : it->second.ownedTextures) {
+        ogl3dDestroyTexture(texId);
     }
 
     m_3dModelList.erase(it);
@@ -656,21 +569,17 @@ void PB3D::pb3dPixelToWorld(float pixelX, float pixelY, float depthZ, float& out
 // ============================================================================
 
 void PB3D::pb3dBegin() {
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
-    // Note: backface culling disabled — glTF winding-order varies by exporter.
-    // Re-enable once correct winding is confirmed.
-    glDisable(GL_CULL_FACE);
-    glUseProgram(m_3dShaderProgram);
+    ogl3dBeginPass();
 
     // Re-upload light uniforms and recompute view/projection matrices only when
     // the scene has changed (camera or lighting).  Neither changes at runtime in
     // normal usage, so this eliminates constant trig work every frame.
     if (m_sceneDirty) {
-        glUniform3f(m_3dLightDirUniform, m_light.dirX, m_light.dirY, m_light.dirZ);
-        glUniform3f(m_3dLightColorUniform, m_light.r, m_light.g, m_light.b);
-        glUniform3f(m_3dAmbientUniform, m_light.ambientR, m_light.ambientG, m_light.ambientB);
-        glUniform3f(m_3dCameraEyeUniform, m_camera.eyeX, m_camera.eyeY, m_camera.eyeZ);
+        ogl3dSetSceneUniforms(
+            m_light.dirX,     m_light.dirY,     m_light.dirZ,
+            m_light.r,        m_light.g,        m_light.b,
+            m_light.ambientR, m_light.ambientG, m_light.ambientB,
+            m_camera.eyeX,    m_camera.eyeY,    m_camera.eyeZ);
 
         // Compute view matrix using linmath.h
         vec3 eye = {m_camera.eyeX, m_camera.eyeY, m_camera.eyeZ};
@@ -761,31 +670,21 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
     mat4x4_mul(viewModel, view, model);
     mat4x4_mul(mvp, proj, viewModel);
 
-    // Set uniforms
-    glUniformMatrix4fv(m_3dMVPUniform, 1, GL_FALSE, (const float*)mvp);
-    glUniformMatrix4fv(m_3dModelUniform, 1, GL_FALSE, (const float*)model);
-    glUniform1f(m_3dAlphaUniform, inst.alpha);
+    // Set per-instance uniforms and transparency blend state
+    ogl3dSetInstanceUniforms((const float*)mvp, (const float*)model, inst.alpha);
 
     // Handle transparency: enable blend before draw, restore opaque state after
     // so consecutive instances don't inherit each other's blend state.
     bool blendEnabled = (inst.alpha < 1.0f);
-    if (blendEnabled) {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    }
+    ogl3dSetBlend(blendEnabled);
 
-    // Render each mesh
-    glActiveTexture(GL_TEXTURE0);  // Ensure sampler unit 0 is active
+    // Render each mesh primitive via PBOGLES
     for (auto& mesh : modelIt->second.meshes) {
-        glBindVertexArray(mesh.vao);
-        glBindTexture(GL_TEXTURE_2D, mesh.textureId);
-        glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, 0);
+        ogl3dDrawMeshPrimitive(mesh.vao, mesh.textureId, mesh.indexCount);
     }
 
-    glBindVertexArray(0);
-
     if (blendEnabled) {
-        glDisable(GL_BLEND);
+        ogl3dSetBlend(false);
     }
 }
 

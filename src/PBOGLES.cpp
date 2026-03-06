@@ -28,6 +28,19 @@ PBOGLES::PBOGLES() {
     m_uTexAlpha = 0;
     m_useTexture = 0;
     m_useTexAlpha = 0;
+
+    // 3D shader state
+    m_3dShaderProgram    = 0;
+    m_3dMVPUniform       = -1;
+    m_3dModelUniform     = -1;
+    m_3dLightDirUniform  = -1;
+    m_3dLightColorUniform= -1;
+    m_3dAmbientUniform   = -1;
+    m_3dCameraEyeUniform = -1;
+    m_3dAlphaUniform     = -1;
+    m_3dPosAttrib        = -1;
+    m_3dNormalAttrib     = -1;
+    m_3dTexCoordAttrib   = -1;
 }
 
 PBOGLES::~PBOGLES() {
@@ -568,4 +581,184 @@ bool PBOGLES::oglUpdateTexture(GLuint textureId, const uint8_t* data, unsigned i
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
     
     return true;
+}
+
+// ============================================================================
+// 3D rendering backend — all OpenGL ES calls for the 3D pass live here.
+// PB3D delegates every GL operation to these methods; PB3D itself makes no
+// direct gl*() calls so that the OGL layer remains self-contained in PBOGLES.
+// ============================================================================
+
+// Compile the 3D shader and cache all uniform / attribute locations.
+// Returns true if the shader compiled and the position attribute was found.
+bool PBOGLES::ogl3dInitShader(const char* vertSrc, const char* fragSrc) {
+    m_3dShaderProgram = oglCreateProgram(vertSrc, fragSrc);
+    if (m_3dShaderProgram == 0) return false;
+
+    m_3dMVPUniform        = glGetUniformLocation(m_3dShaderProgram, "uMVP");
+    m_3dModelUniform      = glGetUniformLocation(m_3dShaderProgram, "uModel");
+    m_3dLightDirUniform   = glGetUniformLocation(m_3dShaderProgram, "uLightDir");
+    m_3dLightColorUniform = glGetUniformLocation(m_3dShaderProgram, "uLightColor");
+    m_3dAmbientUniform    = glGetUniformLocation(m_3dShaderProgram, "uAmbientColor");
+    m_3dCameraEyeUniform  = glGetUniformLocation(m_3dShaderProgram, "uCameraEye");
+    m_3dAlphaUniform      = glGetUniformLocation(m_3dShaderProgram, "uAlpha");
+
+    m_3dPosAttrib      = glGetAttribLocation(m_3dShaderProgram, "aPosition");
+    m_3dNormalAttrib   = glGetAttribLocation(m_3dShaderProgram, "aNormal");
+    m_3dTexCoordAttrib = glGetAttribLocation(m_3dShaderProgram, "aTexCoord");
+
+    return (m_3dPosAttrib >= 0);
+}
+
+// Delete the 3D shader program and reset cached locations.
+void PBOGLES::ogl3dDestroyShader() {
+    if (m_3dShaderProgram) {
+        glDeleteProgram(m_3dShaderProgram);
+        m_3dShaderProgram    = 0;
+        m_3dMVPUniform       = -1;
+        m_3dModelUniform     = -1;
+        m_3dLightDirUniform  = -1;
+        m_3dLightColorUniform= -1;
+        m_3dAmbientUniform   = -1;
+        m_3dCameraEyeUniform = -1;
+        m_3dAlphaUniform     = -1;
+        m_3dPosAttrib        = -1;
+        m_3dNormalAttrib     = -1;
+        m_3dTexCoordAttrib   = -1;
+    }
+}
+
+// Upload interleaved vertex + index data to the GPU and return opaque handles.
+// Vertex layout (stride = 8 floats): [posX posY posZ normX normY normZ u v]
+// The caller owns the CPU buffers and may free them after this call returns.
+bool PBOGLES::ogl3dCreateMesh(const float* vertData, size_t vertFloatCount,
+                               const unsigned int* idxData, size_t idxCount,
+                               unsigned int& outVao, unsigned int& outVbo, unsigned int& outEbo) {
+    GLuint vao = 0, vbo = 0, ebo = 0;
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+
+    glBindVertexArray(vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(vertFloatCount * sizeof(float)), vertData, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(idxCount * sizeof(unsigned int)), idxData, GL_STATIC_DRAW);
+
+    GLsizei stride = 8 * sizeof(float);
+    if (m_3dPosAttrib >= 0) {
+        glEnableVertexAttribArray(m_3dPosAttrib);
+        glVertexAttribPointer(m_3dPosAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+    }
+    if (m_3dNormalAttrib >= 0) {
+        glEnableVertexAttribArray(m_3dNormalAttrib);
+        glVertexAttribPointer(m_3dNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+    }
+    if (m_3dTexCoordAttrib >= 0) {
+        glEnableVertexAttribArray(m_3dTexCoordAttrib);
+        glVertexAttribPointer(m_3dTexCoordAttrib, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
+    }
+
+    glBindVertexArray(0);
+    // Unbind VBOs: GL_ARRAY_BUFFER is global state — if left bound,
+    // oglRenderQuad's CPU vertex pointers are misread as VBO offsets.
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    outVao = (unsigned int)vao;
+    outVbo = (unsigned int)vbo;
+    outEbo = (unsigned int)ebo;
+    return true;
+}
+
+// Release GPU resources for a mesh.
+void PBOGLES::ogl3dDestroyMesh(unsigned int vao, unsigned int vbo, unsigned int ebo) {
+    GLuint glVao = (GLuint)vao;
+    GLuint glVbo = (GLuint)vbo;
+    GLuint glEbo = (GLuint)ebo;
+    if (glVao) glDeleteVertexArrays(1, &glVao);
+    if (glVbo) glDeleteBuffers(1, &glVbo);
+    if (glEbo) glDeleteBuffers(1, &glEbo);
+}
+
+// Upload an RGBA pixel buffer as a GL texture and return its opaque handle.
+unsigned int PBOGLES::ogl3dCreateTexture(const unsigned char* pixels, int width, int height) {
+    GLuint texId;
+    glGenTextures(1, &texId);
+    glBindTexture(GL_TEXTURE_2D, texId);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    return (unsigned int)texId;
+}
+
+// Create a 1×1 opaque-white fallback texture used when a model has no material.
+unsigned int PBOGLES::ogl3dCreateFallbackTexture() {
+    GLuint texId;
+    glGenTextures(1, &texId);
+    glBindTexture(GL_TEXTURE_2D, texId);
+    const unsigned char white[] = {255, 255, 255, 255};
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    return (unsigned int)texId;
+}
+
+// Delete a 3D texture by its opaque handle.
+void PBOGLES::ogl3dDestroyTexture(unsigned int texId) {
+    GLuint glTex = (GLuint)texId;
+    if (glTex) glDeleteTextures(1, &glTex);
+}
+
+// Begin the 3D rendering pass: enable depth testing and bind the 3D shader.
+void PBOGLES::ogl3dBeginPass() {
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    // Backface culling disabled — glTF winding-order varies by exporter.
+    glDisable(GL_CULL_FACE);
+    glUseProgram(m_3dShaderProgram);
+}
+
+// Upload scene-level uniforms: light direction/colour/ambient and camera eye.
+// Call once per frame after ogl3dBeginPass(), before drawing any instances.
+void PBOGLES::ogl3dSetSceneUniforms(float lightDirX, float lightDirY, float lightDirZ,
+                                     float lightColR, float lightColG, float lightColB,
+                                     float ambR,      float ambG,      float ambB,
+                                     float eyeX,      float eyeY,      float eyeZ) {
+    glUniform3f(m_3dLightDirUniform,   lightDirX, lightDirY, lightDirZ);
+    glUniform3f(m_3dLightColorUniform, lightColR, lightColG, lightColB);
+    glUniform3f(m_3dAmbientUniform,    ambR,      ambG,      ambB);
+    glUniform3f(m_3dCameraEyeUniform,  eyeX,      eyeY,      eyeZ);
+}
+
+// Upload per-instance uniforms: MVP matrix, model matrix, and alpha.
+// Call once per instance before drawing its meshes.
+void PBOGLES::ogl3dSetInstanceUniforms(const float mvp[16], const float modelMat[16], float alpha) {
+    glUniformMatrix4fv(m_3dMVPUniform,   1, GL_FALSE, mvp);
+    glUniformMatrix4fv(m_3dModelUniform, 1, GL_FALSE, modelMat);
+    glUniform1f(m_3dAlphaUniform, alpha);
+}
+
+// Enable or disable alpha blending for transparent 3D instances.
+void PBOGLES::ogl3dSetBlend(bool enable) {
+    if (enable) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    } else {
+        glDisable(GL_BLEND);
+    }
+}
+
+// Draw one mesh primitive using its VAO and texture handle.
+// ogl3dSetInstanceUniforms() must be called before the first mesh of each instance.
+void PBOGLES::ogl3dDrawMeshPrimitive(unsigned int vao, unsigned int textureId, unsigned int indexCount) {
+    glActiveTexture(GL_TEXTURE0);
+    glBindVertexArray((GLuint)vao);
+    glBindTexture(GL_TEXTURE_2D, (GLuint)textureId);
+    glDrawElements(GL_TRIANGLES, (GLsizei)indexCount, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
 }

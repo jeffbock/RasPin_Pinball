@@ -67,6 +67,44 @@ protected:
     void   oglResetTextureCache() { m_lastTextureId = 0; }  // Call after any external glBindTexture to keep 2D cache valid
     void   oglRestore2DState();  // Restore full 2D rendering state after 3D pass (shader, attribs, blend, VBO unbind)
 
+    // -----------------------------------------------------------------------
+    // 3D rendering backend — all OpenGL ES calls for the 3D pass live here.
+    // Called only from PB3D; PB3D itself makes no direct gl*() calls.
+    // -----------------------------------------------------------------------
+
+    // Shader lifecycle
+    bool         ogl3dInitShader(const char* vertSrc, const char* fragSrc);
+    void         ogl3dDestroyShader();
+
+    // Mesh GPU resource management (interleaved layout: pos3 + norm3 + uv2 = 8 floats/vertex)
+    bool         ogl3dCreateMesh(const float* vertData, size_t vertFloatCount,
+                                 const unsigned int* idxData, size_t idxCount,
+                                 unsigned int& outVao, unsigned int& outVbo, unsigned int& outEbo);
+    void         ogl3dDestroyMesh(unsigned int vao, unsigned int vbo, unsigned int ebo);
+
+    // Texture GPU resource management
+    unsigned int ogl3dCreateTexture(const unsigned char* pixels, int width, int height);
+    unsigned int ogl3dCreateFallbackTexture();
+    void         ogl3dDestroyTexture(unsigned int texId);
+
+    // Frame pass control
+    void         ogl3dBeginPass();   // enable depth test, bind 3D shader
+
+    // Scene-level uniform upload (light direction/colour/ambient, camera eye)
+    void         ogl3dSetSceneUniforms(float lightDirX, float lightDirY, float lightDirZ,
+                                       float lightColR, float lightColG, float lightColB,
+                                       float ambR,      float ambG,      float ambB,
+                                       float eyeX,      float eyeY,      float eyeZ);
+
+    // Per-instance uniform upload (MVP + model matrix + alpha)
+    void         ogl3dSetInstanceUniforms(const float mvp[16], const float modelMat[16], float alpha);
+
+    // Blend state helper
+    void         ogl3dSetBlend(bool enable);
+
+    // Draw one mesh primitive (VAO + texture already bound by caller)
+    void         ogl3dDrawMeshPrimitive(unsigned int vao, unsigned int textureId, unsigned int indexCount);
+
 private:
     // 2D shader variables
     GLuint     m_shaderProgram;
@@ -94,6 +132,12 @@ private:
 
     void   oglCreateShaders();
     void   oglCleanup();
+
+    // 3D shader program and cached uniform / attribute locations
+    GLuint m_3dShaderProgram;
+    GLint  m_3dMVPUniform,       m_3dModelUniform,      m_3dLightDirUniform;
+    GLint  m_3dLightColorUniform, m_3dAmbientUniform,   m_3dCameraEyeUniform, m_3dAlphaUniform;
+    GLint  m_3dPosAttrib,         m_3dNormalAttrib,      m_3dTexCoordAttrib;
 
     // Shaders used for sprite rendering.  All sprites are quads, with textures and an overall alpha control value
     // Vertex shader source code
