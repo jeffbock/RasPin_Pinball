@@ -9,7 +9,6 @@
 
 #include "Pinball_Engine.h"
 #include "Pinball_Table.h"
-#include "PBSequences.h"
 
 // ========================================================================
 // PBTBL_MAIN: Load Function
