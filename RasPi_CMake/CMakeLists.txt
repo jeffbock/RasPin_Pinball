@@ -29,6 +29,10 @@ set(PINBALL_SOURCES
     ../src/PBDevice.cpp
     ../src/Pinball_IO.cpp
     ../src/Pinball_Table.cpp
+    ../src/tablemodes/Pinball_Table_ModeInit.cpp
+    ../src/tablemodes/Pinball_Table_ModeStart.cpp
+    ../src/tablemodes/Pinball_Table_ModeMain.cpp
+    ../src/tablemodes/Pinball_Table_ModeReset.cpp
     ../src/PBSound.cpp
     ../src/PBVideo.cpp
     ../src/PBVideoPlayer.cpp
@@ -46,6 +50,7 @@ add_dependencies(Pinball update_version)
 
 # Include directories
 target_include_directories(Pinball PRIVATE
+    ../src
     ../src/include_ogl_raspi
     ../src/3rdparty
     /usr/include/EGL

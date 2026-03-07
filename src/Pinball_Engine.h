@@ -603,7 +603,14 @@ private:
 
     ///////////////////////////////
     // Specfic Game Table Functions
+    // Each mode's load/render/update functions are in src/tablemodes/Pinball_Table_ModeX.cpp
     ///////////////////////////////
+    
+    // Per-mode state update functions (called from pbeUpdateGameState)
+    void pbeUpdateStateInit(stInputMessage inputMessage);     // tablemodes/Pinball_Table_ModeInit.cpp
+    void pbeUpdateStateStart(stInputMessage inputMessage);    // tablemodes/Pinball_Table_ModeStart.cpp
+    void pbeUpdateStateMain(stInputMessage inputMessage);     // tablemodes/Pinball_Table_ModeMain.cpp
+    void pbeUpdateStateReset(stInputMessage inputMessage);    // tablemodes/Pinball_Table_ModeReset.cpp
     
     // Render functions for the pinball game table
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
