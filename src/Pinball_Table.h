@@ -1,6 +1,18 @@
 // Pinball_Table.h:  Header file for the specific functions needed for the pinball table.  
 //                   This includes further PBEngine Class functions and any support functions unique to the table
 //                   These need to be defined by the user for the specific table
+//
+// Table Mode Architecture:
+//   Each PBTableState has its own implementation in src/tablemodes/Pinball_Table_ModeX.h/.cpp
+//   Each mode provides three functions: Load, Render, and UpdateState
+//   To add a new mode:
+//     1. Add a state to PBTableState enum below
+//     2. Create Pinball_Table_ModeX.h with any mode-specific enums
+//     3. Create Pinball_Table_ModeX.cpp with load, render, and update functions
+//     4. Include the new header below
+//     5. Add declarations for the three functions in Pinball_Engine.h
+//     6. Add dispatch cases in pbeRenderGameScreen() and pbeUpdateGameState()
+//     7. Add the new .cpp file to CMakeLists.txt
 
 // Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
@@ -21,46 +33,13 @@ enum class PBTableState {
     PBTBL_END
 };
 
-enum class PBTBLMainScreenState {
-    MAIN_NORMAL = 0,        
-    MAIN_EXTRABALL = 1,     
-    MAIN_END = 2
-};
-
-enum class PBTBLStartScreenState {
-    START_START = 0,
-    START_INST = 1,
-    START_SCORES = 2,
-    START_OPENDOOR = 3,
-    START_END = 4
-};
-
 // ========================================================================
-// MODE SYSTEM - Multiple pinball game modes with independent state flows
+// MODE HEADERS - Each mode defines its own sub-states and enums
 // ========================================================================
-
-// Mode types - represents different game modes that can be active
-enum class PBTableMode {
-    MODE_NORMAL_PLAY = 0,     // Normal play mode - main gameplay
-    MODE_MULTIBALL = 1,       // Multiball mode - triggered by specific conditions
-    MODE_END
-};
-
-// Normal play mode sub-states
-enum class PBNormalPlayState {
-    NORMAL_IDLE = 0,          // Waiting for ball to be active
-    NORMAL_ACTIVE = 1,        // Ball in play
-    NORMAL_DRAIN = 2,         // Ball drained, handling end of ball
-    NORMAL_END
-};
-
-// Multiball mode sub-states
-enum class PBMultiballState {
-    MULTIBALL_START = 0,      // Starting multiball sequence
-    MULTIBALL_ACTIVE = 1,     // Multiball gameplay active
-    MULTIBALL_ENDING = 2,     // Transitioning back to normal play
-    MULTIBALL_END
-};
+#include "tablemodes/Pinball_Table_ModeInit.h"
+#include "tablemodes/Pinball_Table_ModeStart.h"
+#include "tablemodes/Pinball_Table_ModeMain.h"
+#include "tablemodes/Pinball_Table_ModeReset.h"
 
 // Screen request priority levels
 enum class ScreenPriority {
