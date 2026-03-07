@@ -90,7 +90,7 @@ clean: CMakeFiles/build_release.dir/clean
 CMakeFiles/update_version.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/update_version.dir/build.make CMakeFiles/update_version.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/update_version.dir/build.make CMakeFiles/update_version.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=18 "Built target update_version"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=20 "Built target update_version"
 .PHONY : CMakeFiles/update_version.dir/all
 
 # Build rule for subdir invocation for target.
@@ -107,7 +107,7 @@ update_version: CMakeFiles/update_version.dir/rule
 # codegen rule for target.
 CMakeFiles/update_version.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/update_version.dir/build.make CMakeFiles/update_version.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=18 "Finished codegen for target update_version"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=20 "Finished codegen for target update_version"
 .PHONY : CMakeFiles/update_version.dir/codegen
 
 # clean rule for target.
@@ -122,12 +122,12 @@ CMakeFiles/update_version.dir/clean:
 CMakeFiles/Pinball.dir/all: CMakeFiles/update_version.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Pinball.dir/build.make CMakeFiles/Pinball.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Pinball.dir/build.make CMakeFiles/Pinball.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16 "Built target Pinball"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18 "Built target Pinball"
 .PHONY : CMakeFiles/Pinball.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/Pinball.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles 17
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/Pinball.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles 0
 .PHONY : CMakeFiles/Pinball.dir/rule
@@ -139,7 +139,7 @@ Pinball: CMakeFiles/Pinball.dir/rule
 # codegen rule for target.
 CMakeFiles/Pinball.dir/codegen: CMakeFiles/update_version.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Pinball.dir/build.make CMakeFiles/Pinball.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16 "Finished codegen for target Pinball"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18 "Finished codegen for target Pinball"
 .PHONY : CMakeFiles/Pinball.dir/codegen
 
 # clean rule for target.
@@ -154,12 +154,12 @@ CMakeFiles/Pinball.dir/clean:
 CMakeFiles/build_release.dir/all: CMakeFiles/Pinball.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_release.dir/build.make CMakeFiles/build_release.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_release.dir/build.make CMakeFiles/build_release.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=17 "Built target build_release"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=19 "Built target build_release"
 .PHONY : CMakeFiles/build_release.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/build_release.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles 20
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/build_release.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles 0
 .PHONY : CMakeFiles/build_release.dir/rule
@@ -171,7 +171,7 @@ build_release: CMakeFiles/build_release.dir/rule
 # codegen rule for target.
 CMakeFiles/build_release.dir/codegen: CMakeFiles/Pinball.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_release.dir/build.make CMakeFiles/build_release.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=17 "Finished codegen for target build_release"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=19 "Finished codegen for target build_release"
 .PHONY : CMakeFiles/build_release.dir/codegen
 
 # clean rule for target.

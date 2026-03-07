@@ -20,7 +20,9 @@ add_custom_target(update_version
 # Define source files
 set(PINBALL_SOURCES
     ../src/3rdparty/stb_image.cpp
+    ../src/3rdparty/cgltf.cpp
     ../src/PBOGLES.cpp
+    ../src/PB3D.cpp
     ../src/PBGfx.cpp
     ../src/PBRaspPiRender.cpp
     ../src/PBDebounce.cpp

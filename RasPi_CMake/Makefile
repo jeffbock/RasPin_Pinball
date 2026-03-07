@@ -158,6 +158,30 @@ build_release/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/build_release.dir/build.make CMakeFiles/build_release.dir/build
 .PHONY : build_release/fast
 
+home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.o: home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.cpp.o
+.PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.o
+
+# target to build an object file
+home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Pinball.dir/build.make CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.cpp.o
+.PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.cpp.o
+
+home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.i: home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.cpp.i
+.PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.i
+
+# target to preprocess a source file
+home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Pinball.dir/build.make CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.cpp.i
+.PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.cpp.i
+
+home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.s: home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.cpp.s
+.PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.s
+
+# target to generate assembly for a file
+home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Pinball.dir/build.make CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.cpp.s
+.PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.cpp.s
+
 home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/stb_image.o: home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/stb_image.cpp.o
 .PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/stb_image.o
 
@@ -181,6 +205,30 @@ home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/stb_image.s: home/ru
 home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/stb_image.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Pinball.dir/build.make CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/stb_image.cpp.s
 .PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/stb_image.cpp.s
+
+home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.o: home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.cpp.o
+.PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.o
+
+# target to build an object file
+home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Pinball.dir/build.make CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.cpp.o
+.PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.cpp.o
+
+home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.i: home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.cpp.i
+.PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.i
+
+# target to preprocess a source file
+home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Pinball.dir/build.make CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.cpp.i
+.PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.cpp.i
+
+home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.s: home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.cpp.s
+.PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.s
+
+# target to generate assembly for a file
+home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Pinball.dir/build.make CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.cpp.s
+.PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.cpp.s
 
 home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBDebounce.o: home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBDebounce.cpp.o
 .PHONY : home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBDebounce.o
@@ -529,9 +577,15 @@ help:
 	@echo "... build_release"
 	@echo "... update_version"
 	@echo "... Pinball"
+	@echo "... home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.o"
+	@echo "... home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.i"
+	@echo "... home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/cgltf.s"
 	@echo "... home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/stb_image.o"
 	@echo "... home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/stb_image.i"
 	@echo "... home/runner/work/RasPin_Pinball/RasPin_Pinball/src/3rdparty/stb_image.s"
+	@echo "... home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.o"
+	@echo "... home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.i"
+	@echo "... home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PB3D.s"
 	@echo "... home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBDebounce.o"
 	@echo "... home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBDebounce.i"
 	@echo "... home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBDebounce.s"

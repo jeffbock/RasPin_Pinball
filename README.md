@@ -14,7 +14,7 @@ Prototype hardware shown, full machine in development.
 - Intended to be a hobby level, low cost system for creating full feature, half scale pinball machines with Raspberry Pi hardware
 - Cross platform VS Code environment for Raspberry Pi (full HW) and Windows (simulation / fast development)
 - Supports a primary Pinball HDMI screen, plus 2nd monitor support for ease of debug / development
-- Built on OpenGL ES for graphics rendering, with sprite, animation and text rendering support
+- Built on OpenGL ES for graphics rendering, with sprite, 3D (glTF/GLB), animation and text rendering support all in simple screen space.
 - Video playback through FFMPEG integrated into sprite / rendering system
 - Simplified HW architecture for easy debug, understanding and implemention
 - Message based input and output processing utilizing Raspberry Pi, and TI I2C IO and LED expanders optimized to decrease latency and minimize HW traffic
@@ -23,6 +23,7 @@ Prototype hardware shown, full machine in development.
 - NeoPixel (SK6812/WS2812B) RGB LED strip support with multiple timing methods (clock_gettime, NOP, SPI, PWM), sequence animation, and full color control
 - Easy to use music and sound effect system with multiple channels
 - Full setup / control and diagnostics menus and capability, along with straight-forward ability to add / expand for your own personalize machine.
+- Mode and gameplay framework with a multi-mode state machine, mode sub-states, screen display priority management with and a structured game flow skeleton ready for building full pinball table rules
 - TODO: Prototype HW (mechanics, flippers, slings, etc..), build a cabinet and implement a full game (currently only game test screens).
 - TODO: Develop schematics for the custom expander boards based on TI
 
@@ -38,7 +39,8 @@ Prototype hardware shown, full machine in development.
   - **[NeoPixel Instrumentation](documentation/NeoPixel_Instrumentation.md)** - Diagnostic tools for NeoPixel timing verification
   - **[PBDevice API](documentation/PBDevice_API.md)** - Device management framework for complex pinball mechanisms
   - **[Platform Init API](documentation/Platform_Init_API.md)** - Platform initialization, main loop, and configuration
-  - **[Game Creation API](documentation/Game_Creation_API.md)** - Graphics (PBGfx), sound (PBSound), video playback (PBVideoPlayer), sprites, animations, and screen management 
+  - **[Game Creation API](documentation/Game_Creation_API.md)** - Graphics (PBGfx), sound (PBSound), video playback (PBVideoPlayer), sprites, animations, and screen management
+  - **[3D Rendering API](documentation/PB3D_API.md)** - 3D model loading (glTF/GLB), instance management, lighting, perspective animation, and coordinate system
 
 - **[Utilities Guide](documentation/Utilities_Guide.md)** - Complete guide for all RasPin utilities:
   - **FontGen** (Windows & Raspberry Pi) - Converts TrueType fonts to texture atlases for text rendering

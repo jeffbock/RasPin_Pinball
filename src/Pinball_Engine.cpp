@@ -64,6 +64,9 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     // Benchmark variables
     m_TicksPerScene = 10000; m_BenchmarkStartTick = 0;  m_CountDownTicks = 4000; m_BenchmarkDone = false;
     m_RestartBenchmark = true;
+    m_bench3DModelId = 0;
+    for (int i = 0; i < 4; i++) m_bench3DDiceInstance[i] = 0;
+    m_bench3DDiceLoaded = false;
 
     // Test Sandbox variables
     m_RestartTestSandbox = true;
@@ -75,6 +78,14 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_videoFadingOut = false;
     m_videoFadeDurationSec = 2.0f;
     m_sandboxEjector = nullptr;
+    
+    // Initialize 3D sandbox variables
+    m_sandboxD20ModelId = 0;
+    m_sandboxDiceLoaded = false;
+    m_sandboxDiceInstance[0] = 0;
+    m_sandboxDiceInstance[1] = 0;
+    m_sandboxDiceInstance[2] = 0;
+    m_sandboxDiceInstance[3] = 0;
     
     // Initialize NeoPixel animation variables
     m_sandboxNeoPixelAnimActive = false;
@@ -1104,6 +1115,108 @@ bool PBEngine::pbeLoadTestSandbox(){
     // The NeoPixel drivers are now created automatically during pbeSetupIO() based on g_outputDef
     // and use pre-allocated arrays from g_NeoPixelNodeArray to avoid dynamic memory allocation
     
+    // Load 3D D20 dice model and create instances for the sandbox test
+    if (!m_sandboxDiceLoaded) {
+        m_sandboxD20ModelId = pb3dLoadModel("src/resources/3d/diceset.glb");
+        
+        if (m_sandboxD20ModelId != 0) {
+            // Create 4 instances
+            for (int i = 0; i < 4; i++) {
+                m_sandboxDiceInstance[i] = pb3dCreateInstance(m_sandboxD20ModelId);
+            }
+            
+            // Set initial positions (around where the video renders)
+            // Position dice in pixel space around the video.
+            // Camera is set automatically by PB3D (eye=0,0,8, FOV=45).
+            // Video: 960x540 at pixel (480,480) -> occupies X[480,1440] Y[480,1020].
+            // Left column centre ~px 120, right column centre ~px 1800.
+            // Row 1 (above video centre): py 350  |  Row 2 (mid-video): py 820.
+            pb3dSetInstancePositionPx(m_sandboxDiceInstance[0],  170.0f, 290.0f, 0.0f);  // Left top    (above label y=440)
+            pb3dSetInstancePositionPx(m_sandboxDiceInstance[1], 1750.0f, 290.0f, 0.0f);  // Right top
+            pb3dSetInstancePositionPx(m_sandboxDiceInstance[2],  170.0f, 760.0f, 0.0f);  // Left bottom  (above label y=910)
+            pb3dSetInstancePositionPx(m_sandboxDiceInstance[3], 1750.0f, 760.0f, 0.0f);  // Right bottom
+            
+            // Set scale to 0.75 (half of previous 1.5)
+            for (int i = 0; i < 4; i++) {
+                pb3dSetInstanceScale(m_sandboxDiceInstance[i], 0.75f);
+                pb3dSetInstanceVisible(m_sandboxDiceInstance[i], false);
+            }
+            
+            unsigned long currentTick = GetTickCountGfx();
+
+            // DICE 1 — NORMAL + REVERSE (smooth continuous Y-axis spin + Z pulse in/out)
+            st3DAnimateData anim1 = {};
+            anim1.animateInstanceId = m_sandboxDiceInstance[0];
+            anim1.typeMask = ANIM3D_ROTY_MASK | ANIM3D_POSZ_MASK;
+            anim1.animType = GFX_ANIM_NORMAL;
+            anim1.loop = GFX_REVERSE;
+            anim1.startRotY = 0.0f;
+            anim1.endRotY = 360.0f;
+            anim1.startPosZ = 0.0f;   anim1.endPosZ = -4.5f;   // drift back 4.5 world units then reverse
+            anim1.animateTimeSec = 3.0f;
+            anim1.rotateClockwiseY = true;
+            anim1.isActive = true;
+            anim1.startTick = currentTick;
+            anim1.startScale = 0.8f; anim1.endScale = 0.8f;
+            anim1.startAlpha = 1.0f; anim1.endAlpha = 1.0f;
+            pb3dCreateAnimation(anim1, true);
+            
+            // DICE 2 — ACCL (accelerating free spin + Z arc: drifts back then returns to 0 at cycle end)
+            st3DAnimateData anim2 = {};
+            anim2.animateInstanceId = m_sandboxDiceInstance[1];
+            anim2.typeMask = ANIM3D_ROTY_MASK | ANIM3D_POSZ_MASK;
+            anim2.animType = GFX_ANIM_ACCL;
+            anim2.loop = GFX_RESTART;
+            anim2.startRotY = 0.0f; anim2.endRotY = 0.0f;
+            anim2.initialVelRotY = 30.0f;
+            anim2.accelRotY = 15.0f;
+            anim2.startPosZ = 0.0f;
+            anim2.initialVelZ = -1.5f;   // drift back at start
+            anim2.accelZ     =  0.6f;    // decelerate back: z = -1.5t + 0.3t^2 = 0 at t=5s
+            anim2.animateTimeSec = 5.0f;
+            anim2.isActive = true;
+            anim2.startTick = currentTick;
+            pb3dCreateAnimation(anim2, true);
+            
+            // DICE 3 — JUMP + RESTART (dice roll snap + Z alternates between 0 and -1.5 on each jump)
+            st3DAnimateData anim3 = {};
+            anim3.animateInstanceId = m_sandboxDiceInstance[2];
+            anim3.typeMask = ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK | ANIM3D_POSZ_MASK;
+            anim3.animType = GFX_ANIM_JUMP;
+            anim3.loop = GFX_RESTART;
+            anim3.startRotX = 0.0f; anim3.startRotY = 0.0f; anim3.startRotZ = 0.0f;
+            anim3.endRotX = 120.0f; anim3.endRotY = 240.0f; anim3.endRotZ = 60.0f;
+            anim3.startPosZ = 0.0f; anim3.endPosZ = -4.5f;  // snaps to -4.5, then swaps back each cycle
+            anim3.animateTimeSec = 1.5f;
+            anim3.isActive = true;
+            anim3.startTick = currentTick;
+            pb3dCreateAnimation(anim3, true);
+            
+            // DICE 4 — JUMPRANDOM + RESTART (shaking dice + random Z jitter)
+            // Uses pixel-space start/end so the jitter offset is in pixels (±15px)
+            st3DAnimateData anim4 = {};
+            anim4.animateInstanceId = m_sandboxDiceInstance[3];
+            anim4.typeMask = ANIM3D_POSX_MASK | ANIM3D_POSY_MASK | ANIM3D_POSZ_MASK | ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK | ANIM3D_SCALE_MASK;
+            anim4.animType = GFX_ANIM_JUMPRANDOM;
+            anim4.loop = GFX_RESTART;
+            anim4.usePxCoords = true;
+            anim4.startPxX = 1750.0f;  anim4.endPxX = 1765.0f;   // 15px jitter
+            anim4.startPxY =  760.0f;  anim4.endPxY =  745.0f;
+            anim4.startPosZ = 0.0f;    anim4.endPosZ = -4.5f;     // random Z between 0 and -4.5
+            anim4.startRotX = 0.0f;  anim4.endRotX = 30.0f;
+            anim4.startRotY = 0.0f;  anim4.endRotY = 30.0f;
+            anim4.startRotZ = 0.0f;  anim4.endRotZ = 30.0f;
+            anim4.startScale = 0.7f; anim4.endScale = 1.1f;
+            anim4.randomPercent = 0.5f;
+            anim4.animateTimeSec = 0.2f;
+            anim4.isActive = true;
+            anim4.startTick = currentTick;
+            pb3dCreateAnimation(anim4, true);
+            
+            m_sandboxDiceLoaded = true;
+        }
+    }
+    
     return (true);
 }
 
@@ -1111,6 +1224,18 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     
     if (m_RestartTestSandbox) {
         m_RestartTestSandbox = false;
+        
+        // Clean up 3D resources when restarting sandbox
+        if (m_sandboxDiceLoaded) {
+            pb3dAnimateClear(0);
+            for (int i = 0; i < 4; i++) {
+                if (m_sandboxDiceInstance[i]) pb3dDestroyInstance(m_sandboxDiceInstance[i]);
+                m_sandboxDiceInstance[i] = 0;
+            }
+            if (m_sandboxD20ModelId) pb3dUnloadModel(m_sandboxD20ModelId);
+            m_sandboxD20ModelId = 0;
+            m_sandboxDiceLoaded = false;
+        }
         
         // Clean up any existing video player when restarting sandbox
         if (m_sandboxVideoPlayer) {
@@ -1185,7 +1310,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 64, 192, 255, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Left Activate" + laState + ":", centerX - 200, startY + (2.5 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, "Video Playback Test", centerX + 50, startY + (2.5 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Video / 3D Test", centerX + 50, startY + (2.5 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     
     // Right Activate - Bright Cyan-Blue (like blue LED light)
     std::string raState = m_RAON ? " (ON)" : " (OFF)";
@@ -1237,6 +1362,9 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
                     gfxSetTextureAlpha(m_sandboxVideoSpriteId, currentVideoAlpha);
                     m_videoFadingOut = false;
                     m_sandboxVideoPlayer->pbvpStop();
+                    // Hide 3D dice when video stops
+                    for (int i = 0; i < 4; i++)
+                        pb3dSetInstanceVisible(m_sandboxDiceInstance[i], false);
                 } else {
                     // Fade out progress (1.0 to 0.0)
                     currentVideoAlpha = 1.0f - fadeProgress;
@@ -1246,6 +1374,35 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
             
             // Render the video sprite
             m_sandboxVideoPlayer->pbvpRender();
+            
+            // Render 3D dice around the video if loaded
+            if (m_sandboxDiceLoaded) {
+                // Show dice at full opacity while video plays
+                for (int i = 0; i < 4; i++) {
+                    pb3dSetInstanceVisible(m_sandboxDiceInstance[i], true);
+                    pb3dSetInstanceAlpha(m_sandboxDiceInstance[i], 1.0f);
+                }
+                
+                // Update all 3D animations
+                pb3dAnimateInstance(0, currentTick);
+                
+                // Render 3D dice
+                pb3dBegin();
+                for (int i = 0; i < 4; i++) {
+                    pb3dRenderInstance(m_sandboxDiceInstance[i]);
+                }
+                pb3dEnd();
+                
+                // Render animation mode labels below each dice position
+                gfxSetScaleFactor(m_defaultFontSpriteId, 0.8f, false);
+                unsigned int labelAlpha = (unsigned int)(currentVideoAlpha * 255.0f);
+                gfxSetColor(m_defaultFontSpriteId, 200, 200, 200, labelAlpha);
+                // Labels sit just below each die (dice centers at py 210 and 680)
+                gfxRenderShadowString(m_defaultFontSpriteId, "NORMAL+REVERSE",  195,  440, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxRenderShadowString(m_defaultFontSpriteId, "ACCELERATE",      1725, 440, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxRenderShadowString(m_defaultFontSpriteId, "JUMP",             195,  910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxRenderShadowString(m_defaultFontSpriteId, "JUMPRANDOM",      1725, 910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+            }
             
             // Render video title over the video at the top, matching video alpha
             // Video is at Y=480, so position title just below that
@@ -1314,14 +1471,16 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
         gfxRenderShadowString(m_defaultFontSpriteId, " ", tempX, m_CreditsScrollY + (8*spacing), 1, GFX_TEXTCENTER, 0,0,0,0,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Using the these excellent open source libraries", tempX, m_CreditsScrollY + (9*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "STB Single Header: http://nothings.org/stb", tempX, m_CreditsScrollY + (10*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "JSON.hpp https://github.com/nlohmann/json", tempX, m_CreditsScrollY + (11*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "WiringPi https://github.com/WiringPi/WiringPi", tempX, m_CreditsScrollY + (12*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "FFmpeg https://github.com/BtbN/FFmpeg-Builds", tempX, m_CreditsScrollY + (13*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "SDL https://github.com/libsdl-org/SDL", tempX, m_CreditsScrollY + (14*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "SDL Mixer https://github.com/libsdl-org/SDL_mixer", tempX, m_CreditsScrollY + (15*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Characters developed at https://www.heroforge.com/", tempX, m_CreditsScrollY + (16*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Various images, sounds and music from https://pixabay.com/", tempX, m_CreditsScrollY + (17*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Microsoft Copilot AI tools utilized with art and code ", tempX, m_CreditsScrollY + (18*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "cgltf https://github.com/jkuhlmann/cgltf", tempX, m_CreditsScrollY + (11*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "linmath.h https://github.com/datenwolf/linmath.h", tempX, m_CreditsScrollY + (12*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "JSON.hpp https://github.com/nlohmann/json", tempX, m_CreditsScrollY + (13*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "WiringPi https://github.com/WiringPi/WiringPi", tempX, m_CreditsScrollY + (14*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "FFmpeg https://github.com/BtbN/FFmpeg-Builds", tempX, m_CreditsScrollY + (15*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "SDL https://github.com/libsdl-org/SDL", tempX, m_CreditsScrollY + (16*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "SDL Mixer https://github.com/libsdl-org/SDL_mixer", tempX, m_CreditsScrollY + (17*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Characters developed at https://www.heroforge.com/", tempX, m_CreditsScrollY + (18*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Various images, sounds and music from https://pixabay.com/", tempX, m_CreditsScrollY + (19*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Microsoft Copilot AI tools utilized with art and code ", tempX, m_CreditsScrollY + (20*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
     }
 
@@ -1388,13 +1547,53 @@ bool PBEngine::pbeLoadBenchmark(){
         pbeSendConsole("ERROR: Failed to load start menu resources in pbeLoadBenchmark");
         return (false); 
     }
+
+    // Load 3D diceset model for the 3D rendering benchmark scene
+    if (!m_bench3DDiceLoaded) {
+        m_bench3DModelId = pb3dLoadModel("src/resources/3d/diceset.glb");
+        if (m_bench3DModelId != 0) {
+            // Create 4 instances arranged in a 2x2 grid centred on screen
+            const float posX[4] = { PB_SCREENWIDTH * 0.33f, PB_SCREENWIDTH * 0.67f,
+                                    PB_SCREENWIDTH * 0.33f, PB_SCREENWIDTH * 0.67f };
+            const float posY[4] = { PB_SCREENHEIGHT * 0.40f, PB_SCREENHEIGHT * 0.40f,
+                                    PB_SCREENHEIGHT * 0.70f, PB_SCREENHEIGHT * 0.70f };
+            for (int i = 0; i < 4; i++) {
+                m_bench3DDiceInstance[i] = pb3dCreateInstance(m_bench3DModelId);
+                pb3dSetInstancePositionPx(m_bench3DDiceInstance[i], posX[i], posY[i], 0.0f);
+                pb3dSetInstanceScale(m_bench3DDiceInstance[i], 1.0f);
+            }
+
+            // Each die spins at a slightly different rate for visual variety
+            const float spinSpeeds[4] = { 2.5f, 2.0f, 3.0f, 1.5f };
+            unsigned long startTick = GetTickCountGfx();
+            for (int i = 0; i < 4; i++) {
+                st3DAnimateData anim = {};
+                anim.animateInstanceId = m_bench3DDiceInstance[i];
+                anim.typeMask         = ANIM3D_ROTY_MASK;
+                anim.animType         = GFX_ANIM_NORMAL;
+                anim.loop             = GFX_RESTART;
+                anim.startRotY        = 0.0f;
+                anim.endRotY          = 360.0f;
+                anim.animateTimeSec   = spinSpeeds[i];
+                anim.rotateClockwiseY = true;
+                anim.isActive         = true;
+                anim.startTick        = startTick;
+                pb3dCreateAnimation(anim, true);
+            }
+
+            m_bench3DDiceLoaded = true;
+        } else {
+            pbeSendConsole("WARNING: Failed to load diceset.glb for 3D benchmark scene");
+        }
+    }
+
     return (true);
 }
 
 bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastTick){
 
-    static unsigned int FPSSwap, smallSpriteCount, spriteTransformCount, bigSpriteCount;
-    static unsigned int msForSwapTest, msForSmallSprite, msForTransformSprite, msForBigSprite;
+    static unsigned int FPSSwap, smallSpriteCount, spriteTransformCount, bigSpriteCount, bench3DCount;
+    static unsigned int msForSwapTest, msForSmallSprite, msForTransformSprite, msForBigSprite, msFor3DRender;
     unsigned int msRender = 25;
     
     if (!pbeLoadBenchmark()) {
@@ -1406,9 +1605,20 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         m_BenchmarkStartTick =  GetTickCountGfx(); 
         m_BenchmarkDone = false;
         m_RestartBenchmark = false;
-        FPSSwap = 0; smallSpriteCount = 0; spriteTransformCount = 0; bigSpriteCount = 0;
-        msForSwapTest = 0; msForSmallSprite = 0; msForTransformSprite = 0; msForBigSprite = 0;
+        FPSSwap = 0; smallSpriteCount = 0; spriteTransformCount = 0; bigSpriteCount = 0; bench3DCount = 0;
+        msForSwapTest = 0; msForSmallSprite = 0; msForTransformSprite = 0; msForBigSprite = 0; msFor3DRender = 0;
         m_TicksPerScene = 3000; m_CountDownTicks = 4000;
+
+        // Destroy 3D resources so they are re-created with fresh animations on the next run
+        if (m_bench3DDiceLoaded) {
+            pb3dAnimateClear(0);
+            for (int i = 0; i < 4; i++) {
+                if (m_bench3DDiceInstance[i]) { pb3dDestroyInstance(m_bench3DDiceInstance[i]); m_bench3DDiceInstance[i] = 0; }
+            }
+            if (m_bench3DModelId) { pb3dUnloadModel(m_bench3DModelId); m_bench3DModelId = 0; }
+            m_bench3DDiceLoaded = false;
+        }
+
         return (true);
     }
 
@@ -1501,20 +1711,55 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         return (true);
         // Print the final results when done
     }
+
+    // 3D rendering benchmark — instances per second (inner-loop, same pattern as sprite tests)
+    // Each draw call repositions, reorients, and rescales the instance before rendering so the
+    // GPU workload is representative (no batching of identical transforms).
+    // pb3dBegin/End wraps the whole burst to avoid distorting the count with state-switch overhead.
+    if (elapsedTime < ((m_TicksPerScene * 5) + m_CountDownTicks)) {
+        gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+
+        if (m_bench3DDiceLoaded) {
+            pb3dBegin();
+            while ((GetTickCountGfx() - currentTick) < msRender) {
+                unsigned int idx = bench3DCount % 4;
+                // Random screen position + depth, matching the screen-range used by the sprite tests
+                float px    = (float)(rand() % PB_SCREENWIDTH);
+                float py    = (float)(rand() % PB_SCREENHEIGHT);
+                float pz    = -((float)(rand() % 300) / 100.0f);   // 0.0 .. -3.0 depth
+                float rx    = (float)(rand() % 360);
+                float ry    = (float)(rand() % 360);
+                float rz    = (float)(rand() % 360);
+                float scale = 0.5f + (float)(rand() % 100) / 100.0f; // 0.5 .. 1.5
+                pb3dSetInstancePositionPx(m_bench3DDiceInstance[idx], px, py, pz);
+                pb3dSetInstanceRotation  (m_bench3DDiceInstance[idx], rx, ry, rz);
+                pb3dSetInstanceScale     (m_bench3DDiceInstance[idx], scale);
+                pb3dRenderInstance(m_bench3DDiceInstance[idx]);
+                bench3DCount++;
+            }
+            pb3dEnd();
+        }
+
+        msFor3DRender += GetTickCountGfx() - currentTick;
+        gfxRenderShadowString(m_defaultFontSpriteId, "3D Rendering Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        return (true);
+    }
     
-    if (elapsedTime >= ((m_TicksPerScene *4) + m_CountDownTicks)) {
+    if (elapsedTime >= ((m_TicksPerScene * 5) + m_CountDownTicks)) {
 
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
         temp = "Benchmark Complete - Results";
         gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 180, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         temp = "Clear + Swap Rate: " + std::to_string(FPSSwap/(msForSwapTest/1000)) + " FPS";
-        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 230, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 215, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         temp = "Small Sprite Rate: " + std::to_string(smallSpriteCount/((msForSmallSprite))) + "k SPS";
-        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 255, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 240, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         temp = "Large Sprite Rate: " + std::to_string(bigSpriteCount/((msForBigSprite))) + "k SPS";
-        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 280, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 265, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         temp = "Transformed Sprite Rate: " + std::to_string(spriteTransformCount/((msForTransformSprite))) + "k SPS";
-        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 305, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 290, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
+        temp = "3D Render Rate: " + std::to_string(bench3DCount / msFor3DRender) + "k OPS";
+        gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 315, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
 
         m_BenchmarkDone = true;
     }
@@ -1981,6 +2226,18 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 
                 // Start button exits to Start Menu
                 if (inputMessage.inputId == IDI_RPIOP06_START) {
+                    // Clean up 3D resources before exiting
+                    if (m_sandboxDiceLoaded) {
+                        pb3dAnimateClear(0);
+                        for (int i = 0; i < 4; i++) {
+                            if (m_sandboxDiceInstance[i]) pb3dDestroyInstance(m_sandboxDiceInstance[i]);
+                            m_sandboxDiceInstance[i] = 0;
+                        }
+                        if (m_sandboxD20ModelId) pb3dUnloadModel(m_sandboxD20ModelId);
+                        m_sandboxD20ModelId = 0;
+                        m_sandboxDiceLoaded = false;
+                    }
+                    
                     // Clean up video player before exiting
                     if (m_sandboxVideoPlayer) {
                         m_sandboxVideoPlayer->pbvpStop();

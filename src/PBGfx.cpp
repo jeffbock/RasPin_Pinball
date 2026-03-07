@@ -28,6 +28,12 @@ unsigned long PBGfx::GetTickCountGfx() {
 // Any Gfx specific initialization code
 bool PBGfx::gfxInit(){
 
+    // Initialize the 3D rendering system (PB3D layer)
+    if (!pb3dInit()) {
+        std::cout << "Warning: 3D rendering system failed to initialize" << std::endl;
+        // Continue anyway - 2D rendering should still work
+    }
+
     // Create the system font sprite
     m_systemFontSpriteId = gfxSysLoadSprite({"System Font", SYSTEMFONTSPRITE, GFX_PNG, GFX_TEXTMAP, GFX_UPPERLEFT, true, true}, true);
 
