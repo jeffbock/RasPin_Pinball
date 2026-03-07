@@ -259,7 +259,7 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
                 // Left flipper: cycle active letter DOWN (B->A, A wraps to Z)
                 if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
                     char& letter = qualifier.initials[m_gameEndActiveLetterPos];
-                    if (letter <= 'A') {
+                    if (letter == 'A') {
                         letter = 'Z';
                     } else {
                         letter--;
@@ -269,7 +269,7 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
                 // Right flipper: cycle active letter UP (A->B, Z wraps to A)
                 else if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     char& letter = qualifier.initials[m_gameEndActiveLetterPos];
-                    if (letter >= 'Z') {
+                    if (letter == 'Z') {
                         letter = 'A';
                     } else {
                         letter++;
@@ -314,7 +314,7 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
                             for (size_t i = 0; i < m_gameEndQualifiers.size(); i++) {
                                 stHighScoreData entry;
                                 entry.highScore = m_gameEndQualifiers[i].score;
-                                entry.playerInitials = std::string(m_gameEndQualifiers[i].initials, 3);
+                                entry.playerInitials = std::string(&m_gameEndQualifiers[i].initials[0], &m_gameEndQualifiers[i].initials[3]);
                                 newScores.push_back(entry);
                             }
                             
