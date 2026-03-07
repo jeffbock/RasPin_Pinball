@@ -190,6 +190,9 @@ struct stTimerEntry {
 #define SANDBOX_NEOPIXEL_TIMER_ID 100
 #define SANDBOX_NEOPIXEL_TIMER_INTERVAL_MS 100
 
+// Timer ID for game-end "Game Over" display (3-second auto-return to start)
+#define GAMEEND_COMPLETE_TIMER_ID 200
+
 // Maximum number of active timers allowed
 #define MAX_TIMERS 10
 
@@ -651,7 +654,7 @@ private:
     
     // Helper functions
     std::string formatScoreWithCommas(unsigned long score); // Format score with thousand separators
-    void pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick); // Render all player scores
+    void pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick, bool renderMainScore = true); // Render all player scores
     void pbeRenderStatusText(unsigned long currentTick, unsigned long lastTick); // Render status text with fade effects
     void pbeSetStatusText(int index, const std::string& text); // Set status text by index (0 or 1)
     

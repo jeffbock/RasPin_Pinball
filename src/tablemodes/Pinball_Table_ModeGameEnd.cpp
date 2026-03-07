@@ -141,9 +141,10 @@ bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTic
         
         // Transition to appropriate sub-state
         if (m_gameEndQualifiers.empty()) {
-            // No players qualified - go straight to complete
+            // No players qualified - show "Game Over" for 3 seconds then return to start
             m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_COMPLETE);
             currentState = PBTBLGameEndState::GAMEEND_COMPLETE;
+            pbeSetTimer(GAMEEND_COMPLETE_TIMER_ID, 3000);
         } else {
             // Set current player to first qualifier for proper score display
             m_currentPlayer = m_gameEndQualifiers[0].playerIndex;
@@ -152,9 +153,11 @@ bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTic
         }
     }
     
-    // Render the base main screen (background, player scores, status text, status icons)
-    // These remain static since the game is over
-    pbeRenderMainScreenBase(currentTick, lastTick);
+    // Clear to black and render right-panel status icons and other player scores at the bottom.
+    // Ball indicator and status message text are suppressed since the game is over.
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    pbeRenderPlayerScores(currentTick, lastTick, false);
+    pbeRenderStatus(currentTick, lastTick);
     
     // Render mode-specific content in the center area
     switch (currentState) {
@@ -207,19 +210,12 @@ bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTic
                     gfxRenderShadowString(m_StartMenuFontId, letter, letterX, initialsY, 5, GFX_TEXTCENTER,
                         0, 0, 0, 255, 2);
                 }
-                
-                // Render small up/down arrows hint for active letter
-                gfxSetColor(m_StartMenuFontId, 150, 150, 150, 180);
-                gfxSetScaleFactor(m_StartMenuFontId, 0.3, false);
-                int activeX = initialsBaseX + ((m_gameEndActiveLetterPos - 1) * letterSpacing);
-                gfxRenderString(m_StartMenuFontId, "^", activeX, initialsY - 60, 3, GFX_TEXTCENTER);
-                gfxRenderString(m_StartMenuFontId, "v", activeX, initialsY + 60, 3, GFX_TEXTCENTER);
             }
             break;
         }
         
         case PBTBLGameEndState::GAMEEND_COMPLETE: {
-            // Brief "Game Over" display before transitioning back to start
+            // Render "Game Over" text - transition is driven by GAMEEND_COMPLETE_TIMER_ID in pbeUpdateStateGameEnd
             gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
             gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
             gfxRenderShadowString(m_StartMenuFontId, "Game Over", 
@@ -332,8 +328,19 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
                             // Save to file
                             pbeSaveFile();
                             
-                            // Transition to complete state
-                            m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_COMPLETE);
+                            // All initials entered - transition directly to start screen
+                            m_gameEndInitialized = false;
+                            m_gameEndQualifiers.clear();
+                            for (int i = 0; i < 4; i++) {
+                                m_playerStates[i].reset(m_saveFileData.ballsPerGame);
+                                m_playerStates[i].enabled = false;
+                            }
+                            m_tableState = PBTableState::PBTBL_START;
+                            m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START);
+                            m_RestartTable = true;
+                            pbeClearScreenRequests();
+                            m_soundSystem.pbsStopAllEffects();
+                            m_soundSystem.pbsStopMusic();
                         }
                     }
                 }
@@ -342,27 +349,20 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
         }
         
         case PBTBLGameEndState::GAMEEND_COMPLETE: {
-            // Any button press returns to the start screen
-            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                // Clean up game end state
+            // 3-second timer fires PB_IMSG_TIMER with GAMEEND_COMPLETE_TIMER_ID
+            if (inputMessage.inputMsg == PB_IMSG_TIMER &&
+                inputMessage.inputId == GAMEEND_COMPLETE_TIMER_ID) {
+                // Clean up and return to start screen
                 m_gameEndInitialized = false;
                 m_gameEndQualifiers.clear();
-                
-                // Reset all player states
                 for (int i = 0; i < 4; i++) {
                     m_playerStates[i].reset(m_saveFileData.ballsPerGame);
                     m_playerStates[i].enabled = false;
                 }
-                
-                // Return to start screen
                 m_tableState = PBTableState::PBTBL_START;
                 m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START);
                 m_RestartTable = true;
-                
-                // Clear screen queue
                 pbeClearScreenRequests();
-                
-                // Stop any playing music/effects and start attract music
                 m_soundSystem.pbsStopAllEffects();
                 m_soundSystem.pbsStopMusic();
             }

@@ -212,7 +212,8 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
 // PBTBL_MAIN: Supporting Render Functions
 // ========================================================================
 
-void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick){
+void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick, bool renderMainScore){
+    if (renderMainScore) {
     // Calculate fade-in alpha for main score
     
     unsigned int mainAlpha = 255;
@@ -295,6 +296,7 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     std::string scoreText = formatScoreWithCommas(displayScore);
     gfxSetScaleFactor(m_StartMenuFontId, 1.2, false);
     gfxRenderString(m_StartMenuFontId, scoreText, (ACTIVEDISPX+(1024/3)), ACTIVEDISPY + 350, 5, GFX_TEXTCENTER);
+    } // if (renderMainScore)
     
     // Render other player scores at the bottom (small grey text)
     gfxSetColor(m_StartMenuFontId, 128, 128, 128, 255); // Light grey color for visibility
