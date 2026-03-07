@@ -37,6 +37,9 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
         case PBTableState::PBTBL_RESET:
             pbeRequestScreen(PBTableState::PBTBL_RESET, -1, ScreenPriority::PRIORITY_LOW, 0, true);
             break;
+        case PBTableState::PBTBL_GAMEEND:
+            pbeRequestScreen(PBTableState::PBTBL_GAMEEND, m_tableSubScreenState, ScreenPriority::PRIORITY_LOW, 0, true);
+            break;
         default:
             break;
     }
@@ -73,6 +76,10 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
 
         case PBTableState::PBTBL_RESET:
             success = pbeRenderReset(currentTick, lastTick);
+            break;
+
+        case PBTableState::PBTBL_GAMEEND:
+            success = pbeRenderGameEnd(currentTick, lastTick);
             break;
             
         default:
@@ -132,6 +139,9 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
         case PBTableState::PBTBL_RESET:
             pbeUpdateStateReset(inputMessage);
             break;
+        case PBTableState::PBTBL_GAMEEND:
+            pbeUpdateStateGameEnd(inputMessage);
+            break;
         default:
             break;
     }
@@ -147,6 +157,7 @@ void PBEngine::pbeTableReload() {
     m_gameStartLoaded = false;
     m_mainScreenLoaded = false;
     m_resetLoaded = false;
+    m_gameEndLoaded = false;
     m_RestartTable = true;
     
     // Clean up extra ball video player

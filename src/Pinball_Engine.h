@@ -190,6 +190,9 @@ struct stTimerEntry {
 #define SANDBOX_NEOPIXEL_TIMER_ID 100
 #define SANDBOX_NEOPIXEL_TIMER_INTERVAL_MS 100
 
+// Timer ID for game-end "Game Over" display (3-second auto-return to start)
+#define GAMEEND_COMPLETE_TIMER_ID 200
+
 // Maximum number of active timers allowed
 #define MAX_TIMERS 10
 
@@ -565,6 +568,13 @@ private:
     bool m_gameStartLoaded;
     bool m_mainScreenLoaded;
     bool m_resetLoaded; 
+    bool m_gameEndLoaded;
+
+    // Game End mode state tracking
+    bool m_gameEndInitialized;                           // Whether high score qualifiers have been determined
+    std::vector<GameEndQualifier> m_gameEndQualifiers;   // Players that qualify for high score board (P1-P4 order)
+    int m_gameEndCurrentQualifierIdx;                    // Index into m_gameEndQualifiers for current player
+    int m_gameEndActiveLetterPos;                        // Active letter position being edited (0-2)
 
     // Private functions for rendering main state screens
     bool pbeRenderDefaultBackground (unsigned long currentTick, unsigned long lastTick);
@@ -611,6 +621,7 @@ private:
     void pbeUpdateStateStart(stInputMessage inputMessage);    // tablemodes/Pinball_Table_ModeStart.cpp
     void pbeUpdateStateMain(stInputMessage inputMessage);     // tablemodes/Pinball_Table_ModeMain.cpp
     void pbeUpdateStateReset(stInputMessage inputMessage);    // tablemodes/Pinball_Table_ModeReset.cpp
+    void pbeUpdateStateGameEnd(stInputMessage inputMessage);  // tablemodes/Pinball_Table_ModeGameEnd.cpp
     
     // Render functions for the pinball game table
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
@@ -621,12 +632,14 @@ private:
     bool pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned long lastTick); // Extra ball video display
     bool pbeRenderStatus(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick);
 
     // Load functions for the pinball game table
     bool pbeLoadInitScreen(); // Load the init screen for the pinball game
     bool pbeLoadGameStart(); // Load the start screen for the pinball game
     bool pbeLoadMainScreen(); // Load the main screen for the pinball game
     bool pbeLoadReset(); // Load the reset screen
+    bool pbeLoadGameEnd(); // Load the game end screen
     
     // Table initialization
     bool pbeTableInit(); // Initialize table devices and state
@@ -641,7 +654,7 @@ private:
     
     // Helper functions
     std::string formatScoreWithCommas(unsigned long score); // Format score with thousand separators
-    void pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick); // Render all player scores
+    void pbeRenderPlayerScores(unsigned long currentTick, unsigned long lastTick, bool renderMainScore = true); // Render all player scores
     void pbeRenderStatusText(unsigned long currentTick, unsigned long lastTick); // Render status text with fade effects
     void pbeSetStatusText(int index, const std::string& text); // Set status text by index (0 or 1)
     

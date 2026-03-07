@@ -30,6 +30,7 @@ enum class PBTableState {
     PBTBL_START = 1,
     PBTBL_MAIN = 2,
     PBTBL_RESET = 3,
+    PBTBL_GAMEEND = 4,
     PBTBL_END
 };
 
@@ -40,6 +41,7 @@ enum class PBTableState {
 #include "tablemodes/Pinball_Table_ModeStart.h"
 #include "tablemodes/Pinball_Table_ModeMain.h"
 #include "tablemodes/Pinball_Table_ModeReset.h"
+#include "tablemodes/Pinball_Table_ModeGameEnd.h"
 
 // Screen request priority levels
 enum class ScreenPriority {
