@@ -33,6 +33,7 @@ set(PINBALL_SOURCES
     ../src/tablemodes/Pinball_Table_ModeStart.cpp
     ../src/tablemodes/Pinball_Table_ModeMain.cpp
     ../src/tablemodes/Pinball_Table_ModeReset.cpp
+    ../src/tablemodes/Pinball_Table_ModeGameEnd.cpp
     ../src/PBSound.cpp
     ../src/PBVideo.cpp
     ../src/PBVideoPlayer.cpp

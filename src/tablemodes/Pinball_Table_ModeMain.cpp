@@ -623,6 +623,18 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
     
     // Update mode system
     pbeUpdateModeSystem(inputMessage, GetTickCountGfx());
+    
+    // TESTING ONLY: Transition to game end state when player 1 score exceeds 100,000
+    // This threshold is for development testing and should be replaced with proper
+    // end-of-game logic (e.g., last ball drained for last player) in production.
+    if (m_playerStates[0].score > 100000) {
+        m_tableState = PBTableState::PBTBL_GAMEEND;
+        m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_INIT);
+        m_gameEndInitialized = false;
+        pbeClearScreenRequests();
+        pbeRequestScreen(PBTableState::PBTBL_GAMEEND, static_cast<int>(PBTBLGameEndState::GAMEEND_INIT),
+                         ScreenPriority::PRIORITY_LOW, 0, true);
+    }
 }
 
 // ========================================================================

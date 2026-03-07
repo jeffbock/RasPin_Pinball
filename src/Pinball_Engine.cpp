@@ -171,6 +171,12 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_gameStartLoaded = false;
     m_mainScreenLoaded = false;
     m_resetLoaded = false;
+    m_gameEndLoaded = false;
+    
+    // Game End mode state initialization
+    m_gameEndInitialized = false;
+    m_gameEndCurrentQualifierIdx = 0;
+    m_gameEndActiveLetterPos = 0;
     
     // Auto output control - default to disable since the menus launch first
     m_autoOutputEnable = false;
@@ -764,6 +770,7 @@ std::string PBEngine::TableStateToString(PBTableState state) {
         case PBTableState::PBTBL_START: return "START";
         case PBTableState::PBTBL_MAIN: return "MAIN";
         case PBTableState::PBTBL_RESET: return "RESET";
+        case PBTableState::PBTBL_GAMEEND: return "GAMEEND";
         case PBTableState::PBTBL_END: return "END";
         default: return "UNKNOWN";
     }
@@ -793,6 +800,16 @@ std::string PBEngine::TableScreenStateToString(PBTableState tableState, int subS
                 case PBTBLMainScreenState::MAIN_EXTRABALL: return "MAIN_EXTRABALL";
                 case PBTBLMainScreenState::MAIN_END: return "MAIN_END";
                 default: return "MAIN_UNKNOWN";
+            }
+        }
+        case PBTableState::PBTBL_GAMEEND: {
+            PBTBLGameEndState gameEndState = static_cast<PBTBLGameEndState>(subScreenState);
+            switch (gameEndState) {
+                case PBTBLGameEndState::GAMEEND_INIT: return "GAMEEND_INIT";
+                case PBTBLGameEndState::GAMEEND_ENTERINITIALS: return "GAMEEND_ENTERINITIALS";
+                case PBTBLGameEndState::GAMEEND_COMPLETE: return "GAMEEND_COMPLETE";
+                case PBTBLGameEndState::GAMEEND_END: return "GAMEEND_END";
+                default: return "GAMEEND_UNKNOWN";
             }
         }
         case PBTableState::PBTBL_END:
