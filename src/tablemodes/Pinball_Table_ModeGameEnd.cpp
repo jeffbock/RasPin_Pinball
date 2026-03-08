@@ -188,10 +188,13 @@ bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTic
                     (ACTIVEDISPX + (1024/3)), ACTIVEDISPY + 420, 3, GFX_TEXTCENTER);
                 
                 // Render three large initials with spacing
-                // Active letter is red, others are gold
+                // Active letter blinks red (1s on, 0.5s off); inactive letters are gold
                 int initialsBaseX = ACTIVEDISPX + (1024/3);
                 int initialsY = ACTIVEDISPY + 490;
                 int letterSpacing = 100; // Pixels between letter centers
+                
+                // Blink cycle: 1500ms total (1000ms on, 500ms off)
+                bool activeLetterVisible = (currentTick % 1500) < 1000;
                 
                 gfxSetScaleFactor(m_StartMenuFontId, 1.5, false);
                 
@@ -199,10 +202,11 @@ bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTic
                     int letterX = initialsBaseX + ((i - 1) * letterSpacing);
                     
                     if (i == m_gameEndActiveLetterPos) {
-                        // Active letter - red
+                        // Active letter - red, blinking
+                        if (!activeLetterVisible) continue;
                         gfxSetColor(m_StartMenuFontId, 255, 40, 40, 255);
                     } else {
-                        // Inactive letter - gold
+                        // Inactive letter - gold, always visible
                         gfxSetColor(m_StartMenuFontId, 235, 176, 20, 255);
                     }
                     
