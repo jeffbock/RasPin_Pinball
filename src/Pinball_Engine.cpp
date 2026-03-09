@@ -1593,25 +1593,25 @@ bool PBEngine::pbeRenderHighScores(unsigned long currentTick, unsigned long last
 
     // Render screen title "High Scores" in orange at the top
     gfxSetColor(m_StartMenuFontId, 255, 165, 0, 255);
-    gfxSetScaleFactor(m_StartMenuFontId, 2.0, false);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.25, false);
     gfxRenderShadowString(m_StartMenuFontId, "High Scores", centerX, 15, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 6);
 
-    // Grand Champion section (first high score) in gold
-    gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
+    // Grand Champion section (first high score) - same orange as title
+    gfxSetColor(m_StartMenuFontId, 255, 165, 0, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
-    gfxRenderShadowString(m_StartMenuFontId, "Grand Champion", centerX, 120, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+    gfxRenderShadowString(m_StartMenuFontId, "Grand Champion", centerX, 145, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
 
-    gfxSetScaleFactor(m_StartMenuFontId, 1.5, false);
-    gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, centerX, 195, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, centerX, 230, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
 
     gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
     std::string gcScoreText = std::to_string(m_saveFileData.highScores[0].highScore);
-    gfxRenderShadowString(m_StartMenuFontId, gcScoreText, centerX, 270, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+    gfxRenderShadowString(m_StartMenuFontId, gcScoreText, centerX, 315, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
 
     // Render remaining high scores (2-10) in white
     gfxSetScaleFactor(m_StartMenuFontId, 0.75, false);
-    int scoreStartY = 345;
-    int scoreSpacing = 78;
+    int scoreStartY = 435;
+    int scoreSpacing = 69;
     for (int i = 1; i < NUM_HIGHSCORES; i++) {
         std::string rankText = std::to_string(i + 1) + ":";
         std::string initialsText = m_saveFileData.highScores[i].playerInitials;
