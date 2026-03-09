@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/../src/include_ogl_raspi -I/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/../src/3rdparty -I/usr/include/EGL -I/usr/include/GLES3 -I/usr/include/KHR -I/usr/include/X11 -I/usr/include/X11/extensions
+CXX_INCLUDES = -I/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/../src -I/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/../src/include_ogl_raspi -I/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/../src/3rdparty -I/usr/include/EGL -I/usr/include/GLES3 -I/usr/include/KHR -I/usr/include/X11 -I/usr/include/X11/extensions
 
-CXX_FLAGS = -O3 -DNDEBUG -std=gnu++11 -flto=auto -fno-fat-lto-objects -O3 -march=native -mtune=native -flto -ffast-math -funroll-loops -DNDEBUG
+CXX_FLAGS = -g -std=gnu++11 -g -O0
 

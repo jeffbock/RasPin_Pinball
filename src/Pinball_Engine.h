@@ -253,7 +253,7 @@ struct stHighScoreData {
     stHighScoreData() : highScore(0), playerInitials("") {}
 };
 
-#define NUM_HIGHSCORES 5
+#define NUM_HIGHSCORES 10
 #define MAINVOLUME_DEFAULT 10
 #define MUSICVOLUME_DEFAULT 10
 #define BALLSPERGAME_DEFAULT 3
