@@ -36,6 +36,16 @@ file(REMOVE_RECURSE
   "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_IO.cpp.o.d"
   "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Table.cpp.o"
   "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Table.cpp.o.d"
+  "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.o"
+  "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.o.d"
+  "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.o"
+  "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.o.d"
+  "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.o"
+  "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.o.d"
+  "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.o"
+  "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.o.d"
+  "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.o"
+  "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.o.d"
 )
 
 # Per-language clean rules from dependency scanning.

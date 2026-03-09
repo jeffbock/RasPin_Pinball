@@ -215,10 +215,80 @@ CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinbal
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Table.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Table.cpp -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Table.cpp.s
 
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.o: CMakeFiles/Pinball.dir/flags.make
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.o: /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.o: CMakeFiles/Pinball.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.o -MF CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.o.d -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.o -c /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp > CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.i
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.s
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.o: CMakeFiles/Pinball.dir/flags.make
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.o: /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.o: CMakeFiles/Pinball.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.o -MF CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.o.d -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.o -c /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp > CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.i
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.s
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.o: CMakeFiles/Pinball.dir/flags.make
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.o: /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.o: CMakeFiles/Pinball.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.o -MF CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.o.d -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.o -c /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp > CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.i
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.s
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.o: CMakeFiles/Pinball.dir/flags.make
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.o: /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.o: CMakeFiles/Pinball.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.o -MF CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.o.d -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.o -c /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp > CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.i
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.s
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.o: CMakeFiles/Pinball.dir/flags.make
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.o: /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.o: CMakeFiles/Pinball.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.o -MF CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.o.d -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.o -c /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp > CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.i
+
+CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.s
+
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp.o: CMakeFiles/Pinball.dir/flags.make
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp.o: /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp.o: CMakeFiles/Pinball.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp.o -MF CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp.o.d -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp.o -c /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp
 
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp.i: cmake_force
@@ -232,7 +302,7 @@ CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSoun
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp.o: CMakeFiles/Pinball.dir/flags.make
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp.o: /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp.o: CMakeFiles/Pinball.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp.o -MF CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp.o.d -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp.o -c /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp
 
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp.i: cmake_force
@@ -246,7 +316,7 @@ CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVide
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp.o: CMakeFiles/Pinball.dir/flags.make
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp.o: /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp.o: CMakeFiles/Pinball.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp.o -MF CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp.o.d -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp.o -c /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp
 
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp.i: cmake_force
@@ -260,7 +330,7 @@ CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVide
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PinballMenus.cpp.o: CMakeFiles/Pinball.dir/flags.make
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PinballMenus.cpp.o: /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PinballMenus.cpp
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PinballMenus.cpp.o: CMakeFiles/Pinball.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PinballMenus.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PinballMenus.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PinballMenus.cpp.o -MF CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PinballMenus.cpp.o.d -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PinballMenus.cpp.o -c /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PinballMenus.cpp
 
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PinballMenus.cpp.i: cmake_force
@@ -274,7 +344,7 @@ CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinbal
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSequences.cpp.o: CMakeFiles/Pinball.dir/flags.make
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSequences.cpp.o: /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSequences.cpp
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSequences.cpp.o: CMakeFiles/Pinball.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSequences.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSequences.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSequences.cpp.o -MF CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSequences.cpp.o.d -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSequences.cpp.o -c /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSequences.cpp
 
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSequences.cpp.i: cmake_force
@@ -288,7 +358,7 @@ CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSequ
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.cpp.o: CMakeFiles/Pinball.dir/flags.make
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.cpp.o: /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.cpp
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.cpp.o: CMakeFiles/Pinball.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.cpp.o -MF CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.cpp.o.d -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.cpp.o -c /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.cpp
 
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Engine.cpp.i: cmake_force
@@ -302,7 +372,7 @@ CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinbal
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp.o: CMakeFiles/Pinball.dir/flags.make
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp.o: /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp.o: CMakeFiles/Pinball.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building CXX object CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp.o -MF CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp.o.d -o CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp.o -c /home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp
 
 CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball.cpp.i: cmake_force
@@ -325,6 +395,11 @@ Pinball_OBJECTS = \
 "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBDevice.cpp.o" \
 "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_IO.cpp.o" \
 "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Table.cpp.o" \
+"CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.o" \
+"CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.o" \
+"CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.o" \
+"CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.o" \
+"CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.o" \
 "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp.o" \
 "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp.o" \
 "CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp.o" \
@@ -346,6 +421,11 @@ Pinball_EXTERNAL_OBJECTS =
 /home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBDevice.cpp.o
 /home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_IO.cpp.o
 /home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/Pinball_Table.cpp.o
+/home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeInit.cpp.o
+/home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeStart.cpp.o
+/home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeMain.cpp.o
+/home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeReset.cpp.o
+/home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/tablemodes/Pinball_Table_ModeGameEnd.cpp.o
 /home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBSound.cpp.o
 /home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideo.cpp.o
 /home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/home/runner/work/RasPin_Pinball/RasPin_Pinball/src/PBVideoPlayer.cpp.o
@@ -356,7 +436,7 @@ Pinball_EXTERNAL_OBJECTS =
 /home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/build.make
 /home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/compiler_depend.ts
 /home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball: CMakeFiles/Pinball.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Linking CXX executable /home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/runner/work/RasPin_Pinball/RasPin_Pinball/RasPi_CMake/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Linking CXX executable /home/runner/work/RasPin_Pinball/RasPin_Pinball/raspibuild/release/Pinball"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/Pinball.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

@@ -247,11 +247,12 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                 }
             }
 
-            // Render remaining high scores (2-5) with numbered format - more space after Grand Champion
+            // Render remaining high scores (2-10) with numbered format - reduced size to fit all entries
+            gfxSetScaleFactor(m_StartMenuFontId, 0.55, false);
             for (int i = 1; i < NUM_HIGHSCORES; i++) {
                 std::string scoreText = std::to_string(m_saveFileData.highScores[i].highScore);
                 std::string numberedInitials = std::to_string(i + 1) + ": " + m_saveFileData.highScores[i].playerInitials;
-                int yPos = ACTIVEDISPY + 325 + ((i - 1) * 70);
+                int yPos = ACTIVEDISPY + 280 + ((i - 1) * 50);
 
                 if (gfxAnimateActive(m_StartMenuFontId)) {
                     gfxRenderString(m_StartMenuFontId, numberedInitials, (PB_SCREENWIDTH/2) - 220, yPos, 10, GFX_TEXTLEFT);
