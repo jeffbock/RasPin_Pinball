@@ -87,7 +87,8 @@ enum PBMainState {
     PB_SETTINGS = 6,
     PB_DIAGNOSTICS = 7,
     PB_TESTSANDBOX = 8,
-    PB_SIMPLEFLIPMODE = 9
+    PB_SIMPLEFLIPMODE = 9,
+    PB_HIGHSCORES = 10
 };
 
 enum PBTestModeState{ 
@@ -462,6 +463,9 @@ public:
     bool m_RestartSimpleFlipMode;
     bool m_OverlayWasOnBeforeSimpleFlip;  // Track if overlay was already on when entering
 
+    // High Scores screen variables
+    bool m_RestartHighScores;
+
     // Message queue variables
     std::queue<stInputMessage> m_inputQueue;
     std::mutex m_inputQMutex;
@@ -587,6 +591,7 @@ private:
     bool pbeRenderDiagnostics(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderTestSandbox(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderSimpleFlipMode(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderHighScores(unsigned long currentTick, unsigned long lastTick);
 
     // Generic menu rendering function
     bool pbeRenderGenericMenu(unsigned int cursorSprite, unsigned int fontSprite, unsigned int selectedItem, 
@@ -606,6 +611,7 @@ private:
     bool pbeLoadDiagnostics();
     bool pbeLoadTestSandbox();
     bool pbeLoadSimpleFlipMode();
+    bool pbeLoadHighScores();
     
     // Reload functions to reset load state
     void pbeEngineReload();  // Reset all engine screen load states

@@ -99,6 +99,9 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_RestartSimpleFlipMode = true;
     m_OverlayWasOnBeforeSimpleFlip = false;
 
+    // High Scores screen variables
+    m_RestartHighScores = true;
+
     // Test Mode variables
     m_TestMode = PB_TESTINPUT;
     m_LFON = false; m_RFON=false; m_LAON =false; m_RAON = false; 
@@ -376,6 +379,7 @@ bool PBEngine::pbeRenderScreen(unsigned long currentTick, unsigned long lastTick
         case PB_DIAGNOSTICS: return pbeRenderDiagnostics(currentTick, lastTick); break;
         case PB_TESTSANDBOX: return pbeRenderTestSandbox(currentTick, lastTick); break;
         case PB_SIMPLEFLIPMODE: return pbeRenderSimpleFlipMode(currentTick, lastTick); break;
+        case PB_HIGHSCORES: return pbeRenderHighScores(currentTick, lastTick); break;
         default:
             pbeSendConsole("ERROR: Unknown main state in pbeRenderScreen");
             return (false);
@@ -760,6 +764,7 @@ std::string PBEngine::MainStateToString(PBMainState state) {
         case PB_DIAGNOSTICS: return "DIAGNOSTICS";
         case PB_TESTSANDBOX: return "TESTSANDBOX";
         case PB_SIMPLEFLIPMODE: return "SIMPLEFLIPMODE";
+        case PB_HIGHSCORES: return "HIGHSCORES";
         default: return "UNKNOWN";
     }
 }
@@ -1556,6 +1561,78 @@ bool PBEngine::pbeRenderSimpleFlipMode(unsigned long currentTick, unsigned long 
     return (true);
 }
 
+// High Scores Screen
+
+bool PBEngine::pbeLoadHighScores(){
+    // High Scores screen uses start menu resources (font + background)
+    if (!pbeLoadStartMenu()) {
+        pbeSendConsole("ERROR: Failed to load start menu resources in pbeLoadHighScores");
+        return (false);
+    }
+    return (true);
+}
+
+bool PBEngine::pbeRenderHighScores(unsigned long currentTick, unsigned long lastTick){
+
+    if (!pbeLoadHighScores()) {
+        pbeSendConsole("ERROR: Failed to load high scores screen resources");
+        return (false);
+    }
+
+    if (m_RestartHighScores) {
+        m_RestartHighScores = false;
+        // No per-restart initialization required; resources are loaded via pbeLoadStartMenu()
+    }
+
+    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+
+    // Render the default background
+    pbeRenderDefaultBackground(currentTick, lastTick);
+
+    int centerX = PB_SCREENWIDTH / 2;
+
+    // Render screen title "High Scores" in orange at the top
+    gfxSetColor(m_StartMenuFontId, 255, 165, 0, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 2.0, false);
+    gfxRenderShadowString(m_StartMenuFontId, "High Scores", centerX, 15, 2, GFX_TEXTCENTER, 0, 0, 0, 255, 6);
+
+    // Grand Champion section (first high score) in gold
+    gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    gfxRenderShadowString(m_StartMenuFontId, "Grand Champion", centerX, 120, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+
+    gfxSetScaleFactor(m_StartMenuFontId, 1.5, false);
+    gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, centerX, 195, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    std::string gcScoreText = std::to_string(m_saveFileData.highScores[0].highScore);
+    gfxRenderShadowString(m_StartMenuFontId, gcScoreText, centerX, 270, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+
+    // Render remaining high scores (2-10) in white
+    gfxSetScaleFactor(m_StartMenuFontId, 0.75, false);
+    int scoreStartY = 345;
+    int scoreSpacing = 78;
+    for (int i = 1; i < NUM_HIGHSCORES; i++) {
+        std::string rankText = std::to_string(i + 1) + ":";
+        std::string initialsText = m_saveFileData.highScores[i].playerInitials;
+        std::string scoreText = std::to_string(m_saveFileData.highScores[i].highScore);
+        int yPos = scoreStartY + ((i - 1) * scoreSpacing);
+
+        gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+        gfxRenderShadowString(m_StartMenuFontId, rankText, centerX - 280, yPos, 10, GFX_TEXTRIGHT, 0, 0, 0, 255, 3);
+        gfxRenderShadowString(m_StartMenuFontId, initialsText, centerX - 255, yPos, 10, GFX_TEXTLEFT, 0, 0, 0, 255, 3);
+        gfxRenderShadowString(m_StartMenuFontId, scoreText, centerX + 310, yPos, 3, GFX_TEXTRIGHT, 0, 0, 0, 255, 3);
+    }
+
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+
+    // Render exit instructions in lower right
+    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Start = exit", PB_SCREENWIDTH - 150, PB_SCREENHEIGHT - 25, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+
+    return (true);
+}
+
 // Benchmark Screen
 bool PBEngine::pbeLoadBenchmark(){
 
@@ -1882,6 +1959,11 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             m_mainState = PB_SIMPLEFLIPMODE;
                             m_RestartSimpleFlipMode = true;
                             // Don't pause music for simple flip mode
+                            break;
+                        #else
+                        case (4):
+                            m_mainState = PB_HIGHSCORES;
+                            m_RestartHighScores = true;
                             break;
                         #endif
                         default: break;
@@ -2479,6 +2561,16 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         break;
         }
         
+        case PB_HIGHSCORES: {
+            if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+                if (inputMessage.inputId == IDI_RPIOP06_START) {
+                    m_mainState = PB_STARTMENU;
+                    m_RestartMenu = true;
+                }
+            }
+        break;
+        }
+
         default: break;
     }
 }

@@ -17,6 +17,8 @@ std::map<unsigned int, std::string> g_mainMenu = {
     {4, "Test Sandbox"}
     #elif ENABLE_TEST_SANDBOX == 2
     {4, "Simple Flip Mode"}
+    #else
+    {4, "High Scores"}
     #endif
 };
 
