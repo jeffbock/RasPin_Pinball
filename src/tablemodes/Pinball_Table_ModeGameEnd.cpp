@@ -210,7 +210,9 @@ bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTic
                         gfxSetColor(m_StartMenuFontId, 235, 176, 20, 255);
                     }
                     
-                    std::string letter(1, qualifier.initials[i]);
+                    // Display space as '_' so the user can see it
+                    char displayChar = (qualifier.initials[i] == ' ') ? '_' : qualifier.initials[i];
+                    std::string letter(1, displayChar);
                     gfxRenderShadowString(m_StartMenuFontId, letter, letterX, initialsY, 5, GFX_TEXTCENTER,
                         0, 0, 0, 255, 2);
                 }
@@ -255,24 +257,23 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
             
             GameEndQualifier& qualifier = m_gameEndQualifiers[m_gameEndCurrentQualifierIdx];
             
+            // Valid characters for initials: space, A-Z, 0-9
+            static const char INITIALS_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            static const int INITIALS_CHARS_COUNT = sizeof(INITIALS_CHARS) - 1;
+            
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-                // Left flipper: cycle active letter DOWN (B->A, A wraps to Z)
-                if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
+                // Left/right flipper: cycle the active letter through the character set
+                if (inputMessage.inputId == IDI_RPIOP27_LFLIP || inputMessage.inputId == IDI_RPIOP17_RFLIP) {
                     char& letter = qualifier.initials[m_gameEndActiveLetterPos];
-                    if (letter == 'A') {
-                        letter = 'Z';
-                    } else {
-                        letter--;
+                    int idx = 1; // default to 'A' if current char not found
+                    for (int c = 0; c < INITIALS_CHARS_COUNT; c++) {
+                        if (INITIALS_CHARS[c] == letter) { idx = c; break; }
                     }
-                    m_soundSystem.pbsPlayEffect(SOUNDCLICK);
-                }
-                // Right flipper: cycle active letter UP (A->B, Z wraps to A)
-                else if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
-                    char& letter = qualifier.initials[m_gameEndActiveLetterPos];
-                    if (letter == 'Z') {
-                        letter = 'A';
+                    // Left flipper: cycle DOWN (space wraps to 9); right flipper: cycle UP (9 wraps to space)
+                    if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
+                        letter = INITIALS_CHARS[(idx - 1 + INITIALS_CHARS_COUNT) % INITIALS_CHARS_COUNT];
                     } else {
-                        letter++;
+                        letter = INITIALS_CHARS[(idx + 1) % INITIALS_CHARS_COUNT];
                     }
                     m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                 }
