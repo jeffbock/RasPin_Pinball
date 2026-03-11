@@ -1,6 +1,7 @@
 # Ignore the build directory and Angle libs, don't want to commmit it
 winbuild/
 raspibuild/
+debianbuild/
 RasPi_CMake/build/
 RasPi_CMake/_codeql_build_dir/
 RasPi_CMake/RasPi_CMake

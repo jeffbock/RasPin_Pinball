@@ -719,7 +719,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
     else gfxRenderShadowString(m_defaultFontSpriteId, "OUTPUTS", 10, 30, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);  
     
     for (int i = 0; i < limit; i++) {
-        #ifdef EXE_MODE_WINDOWS
+        #if defined(EXE_MODE_WINDOWS) || defined(EXE_MODE_DEBIAN)
             if (m_TestMode == PB_TESTINPUT)  temp = g_inputDef[i].inputName + "(" + g_inputDef[i].simMapKey + "): ";
             else temp = g_outputDef[i].outputName + ": ";
         #endif

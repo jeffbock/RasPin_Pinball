@@ -7,6 +7,8 @@
 #ifndef PBRasPiRender_h
 #define PBRasPiRender_h
 
+#include "PBBuildSwitch.h"
+
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/extensions/Xrandr.h>
@@ -15,5 +17,10 @@
 #include <iostream>
 
 EGLNativeWindowType PBInitPiRender (long width, long height);
+
+#ifdef EXE_MODE_DEBIAN
+Display* PBGetPiDisplay();
+Window PBGetPiWindow();
+#endif
 
 #endif // PBRasPiRender_h
