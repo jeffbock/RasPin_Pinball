@@ -6,8 +6,13 @@
 #ifndef PBDebounce_h
 #define PBDebounce_h
 
+#include "PBBuildSwitch.h"
+
+#ifdef EXE_MODE_RASPI
 #include "wiringPi.h"
 #include "wiringPiI2C.h"
+#endif
+
 #include "Pinball_IO.h"
 #include <chrono>
 

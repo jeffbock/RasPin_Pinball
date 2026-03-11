@@ -53,14 +53,13 @@
 //#include <thread>
 //#include <mutex>
 //#include <condition_variable>
-#include "PBDebounce.h"
 #include "PinballMenus.h"
 #include "Pinball_Engine.h"
 
 // Version Information
 #define PB_VERSION_MAJOR 0
 #define PB_VERSION_MINOR 5  
-#define PB_VERSION_BUILD 813
+#define PB_VERSION_BUILD 821
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 1920
@@ -101,6 +100,10 @@ struct stOutputDef;
 // Windows-specific simulator input function
 #ifdef EXE_MODE_WINDOWS
 void PBWinSimInput(std::string character, PBPinState inputState, stInputMessage* inputMessage);
+#endif
+
+#ifdef EXE_MODE_DEBIAN
+bool PBDebianSimInput(const std::string& character, PBPinState inputState, stInputMessage* inputMessage);
 #endif
 
 // Platform-specific I/O processing functions - these change depending on the EXE_MODE

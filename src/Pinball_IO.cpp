@@ -412,7 +412,7 @@ void LEDDriver::SendStagedLED() {
         }
     }
 #endif
-#ifdef EXE_MODE_WINDOWS
+#if defined(EXE_MODE_WINDOWS) || defined(EXE_MODE_DEBIAN)
     // Windows mode simulation - update tracking and clear flags without hardware writes
         for (int i = 0; i < 16; i++) {
             if (m_pwmStaged[i]) {
@@ -813,7 +813,7 @@ bool AmpDriver::IsConnected() const {
     // Device is connected if read succeeds and doesn't return 0xFF (typical I2C error value)
     return (result >= 0 && readValue != 0xFF);
 #else
-    return true;  // Always return true for Windows builds
+    return true;  // Always return true for simulator builds
 #endif
 }
 
@@ -1186,7 +1186,7 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     // Clear the changes flag
     m_hasChanges = false;
 
-#ifdef EXE_MODE_WINDOWS
+#if defined(EXE_MODE_WINDOWS) || defined(EXE_MODE_DEBIAN)
     // Windows mode simulation - just update tracking
     // Changes flag already cleared above
 #endif

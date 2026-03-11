@@ -18,7 +18,7 @@ To use PBSound on Raspberry Pi, you need to install SDL2 and SDL_mixer:
 #include "PBBuildSwitch.h"
 #include <string>
 
-#ifdef EXE_MODE_RASPI
+#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
 #include <map>
@@ -86,7 +86,7 @@ private:
     int musicVolume;   // 0-100%
     int videoVolume;   // 0-100%
     
-#ifdef EXE_MODE_RASPI
+#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
     Mix_Music* currentMusic;
     Mix_Chunk* effectSlots[4];  // Up to 4 simultaneous effects
     int effectChannels[4];      // Channel assignments for effects

@@ -6,12 +6,21 @@
 
 #include "PBRasPiRender.h"
 
+#ifdef EXE_MODE_DEBIAN
+static Display* g_PiDisplay = nullptr;
+static Window g_PiWindow = 0;
+#endif
+
 EGLNativeWindowType PBInitPiRender (long width, long height) {
+
+    #ifdef EXE_MODE_DEBIAN
+    // Disable XIM so compose/dead-key UI does not intercept simulator control keys.
+    XSetLocaleModifiers("@im=none");
+    #endif
 
     // Open X11 display
     Display* display = XOpenDisplay(nullptr);
     if (!display) {
-        std::cerr << "Failed to open X11 display" << std::endl;
         return (0);
     }
 
@@ -22,7 +31,6 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
      // Query RandR for monitor information
     XRRScreenResources* screenResources = XRRGetScreenResources(display, root);
     if (!screenResources) {
-        std::cerr << "Failed to get RandR screen resources" << std::endl;
         XCloseDisplay(display);
         return (0);
     }
@@ -54,7 +62,6 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
     // Couldn't find the right size monitor
     if (useMonitor == -1)
     {
-        std::cerr << "No monitor found with desired resolution" << std::endl;
         XRRFreeScreenResources(screenResources);
         XCloseDisplay(display);
         return (0);
@@ -69,7 +76,6 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
 
     if(!window)
     {
-        std::cerr << "Failed to create base X11 Window" << std::endl;
         XRRFreeScreenResources(screenResources);
         XCloseDisplay(display);
         return (0);
@@ -81,9 +87,25 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
     XChangeProperty(display, window, wmState, XA_ATOM, 32,
                     PropModeReplace, (unsigned char*)&wmStateFullscreen, 1);
 
+    #ifdef EXE_MODE_DEBIAN
+    XSelectInput(display, window, KeyPressMask | KeyReleaseMask | StructureNotifyMask);
+    g_PiDisplay = display;
+    g_PiWindow = window;
+    #endif
+
     // Map (show) the window
     XMapWindow(display, window);
     XFlush(display);
     
     return (window);
 }
+
+#ifdef EXE_MODE_DEBIAN
+Display* PBGetPiDisplay() {
+    return g_PiDisplay;
+}
+
+Window PBGetPiWindow() {
+    return g_PiWindow;
+}
+#endif

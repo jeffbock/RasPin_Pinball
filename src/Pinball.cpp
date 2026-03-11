@@ -31,6 +31,7 @@
 #include <string.h>
 #include <limits.h>
 #include <errno.h>
+#include <array>
 
 #ifdef EXE_MODE_WINDOWS
 #include <direct.h>
@@ -43,7 +44,7 @@
 #endif
 #endif
 
-#ifdef EXE_MODE_RASPI
+#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
 #include <unistd.h>
 // PATH_MAX should be defined in limits.h on POSIX systems, but provide fallback
 #ifndef PATH_MAX
@@ -64,23 +65,40 @@ bool AdjustWorkingDirectory(const char* exePath) {
         return false;
     }
     
+    std::string exeDir;
+
+    #ifdef EXE_MODE_DEBIAN
+    // Debian: resolve from /proc/self/exe so launches via PATH still find project root.
+    char exeResolvedPath[PATH_MAX];
+    ssize_t exeLen = readlink("/proc/self/exe", exeResolvedPath, sizeof(exeResolvedPath) - 1);
+    if (exeLen > 0) {
+        exeResolvedPath[exeLen] = '\0';
+        std::string exePathStr(exeResolvedPath);
+        size_t lastSlash = exePathStr.find_last_of("/\\");
+        exeDir = (lastSlash != std::string::npos) ? exePathStr.substr(0, lastSlash) : ".";
+    } else {
+        // Fallback to argv[0] behavior if /proc/self/exe is unavailable.
+        std::string exePathStr(exePath);
+        size_t lastSlash = exePathStr.find_last_of("/\\");
+        exeDir = (lastSlash != std::string::npos) ? exePathStr.substr(0, lastSlash) : ".";
+    }
+    #else
     // Extract the directory path from the executable path
     std::string exePathStr(exePath);
     size_t lastSlash = exePathStr.find_last_of("/\\");
-    std::string exeDir;
-    
     if (lastSlash != std::string::npos) {
         exeDir = exePathStr.substr(0, lastSlash);
     } else {
         exeDir = ".";
     }
+    #endif
     
     // Get absolute path of exe directory
     char absExeDir[PATH_MAX];
     #ifdef EXE_MODE_WINDOWS
     if (_fullpath(absExeDir, exeDir.c_str(), PATH_MAX) == NULL) {
     #endif
-    #ifdef EXE_MODE_RASPI
+    #if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
     if (realpath(exeDir.c_str(), absExeDir) == NULL) {
     #endif
         std::cerr << "ERROR: Failed to resolve executable directory path: " << strerror(errno) << std::endl;
@@ -191,6 +209,11 @@ bool PBProcessInput() {
             // Get the virtual key code
             WPARAM key = msg.wParam;
 
+            // ESC or OEM_3 (`/~) exits simulator immediately.
+            if ((key == VK_ESCAPE || key == VK_OEM_3) && msg.message == WM_KEYDOWN) {
+                return false;
+            }
+
             // Convert the virtual key code to a string
             char character = MapVirtualKey(key, MAPVK_VK_TO_CHAR);
             std::string temp = "";
@@ -218,12 +241,139 @@ bool PBProcessOutput() {
 }
 
 bool PBProcessIO() {
-
-    PBProcessInput();
+    if (!PBProcessInput()) return false;
     PBProcessOutput();
-    return (true);
+    return true;
 }
 
+#endif
+
+// Debian startup and render code
+#ifdef EXE_MODE_DEBIAN
+#include "PBRasPiRender.h"
+#include <X11/keysym.h>
+
+EGLNativeWindowType g_DebianWindow;
+
+bool PBInitRender(long width, long height) {
+    g_DebianWindow = PBInitPiRender(width, height);
+    if (g_DebianWindow == 0) return false;
+
+    if (!g_PBEngine.oglInit(width, height, g_DebianWindow)) return false;
+    if (!g_PBEngine.gfxInit()) return false;
+
+    // Debian simulator uses SDL audio like RasPi, unlike Windows simulator.
+    g_PBEngine.m_soundSystem.pbsInitialize();
+    return true;
+}
+
+static bool PBDebianKeyToSimChar(const XKeyEvent& keyEvent, std::string& outCharacter) {
+    KeySym keySym = XLookupKeysym(const_cast<XKeyEvent*>(&keyEvent), 0);
+
+    if (keySym >= XK_a && keySym <= XK_z) {
+        outCharacter.assign(1, static_cast<char>('A' + (keySym - XK_a)));
+        return true;
+    }
+
+    if ((keySym >= XK_A && keySym <= XK_Z) || (keySym >= XK_0 && keySym <= XK_9)) {
+        outCharacter.assign(1, static_cast<char>(keySym));
+        return true;
+    }
+
+    return false;
+}
+
+static bool PBDebianIsExitKey(const XKeyEvent& keyEvent) {
+    KeySym keySym = XLookupKeysym(const_cast<XKeyEvent*>(&keyEvent), 0);
+
+    return (keySym == XK_Escape ||
+            keySym == XK_asciitilde ||
+            keySym == XK_grave ||
+            keySym == XK_dead_tilde ||
+            keySym == XK_F12);
+}
+
+bool PBDebianSimInput(const std::string& character, PBPinState inputState, stInputMessage* inputMessage) {
+    for (int i = 0; i < NUM_INPUTS; i++) {
+        if (g_inputDef[i].simMapKey == character) {
+            inputMessage->inputMsg = g_inputDef[i].inputMsg;
+            inputMessage->inputId = i;
+            inputMessage->inputState = inputState;
+            inputMessage->sentTick = g_PBEngine.GetTickCountGfx();
+
+            g_inputDef[i].lastState = inputState;
+            g_inputDef[i].lastStateTick = inputMessage->sentTick;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool PBProcessInput() {
+    Display* display = PBGetPiDisplay();
+    if (display == nullptr) return true;
+
+    static std::array<bool, 256> pressedKeys = {};
+    XEvent event;
+
+    while (XPending(display) > 0) {
+        XNextEvent(display, &event);
+
+        if (event.type == DestroyNotify) return false;
+
+        if (event.type != KeyPress && event.type != KeyRelease) continue;
+
+        if (event.type == KeyPress) {
+            if (PBDebianIsExitKey(event.xkey)) {
+                return false;
+            }
+        }
+
+        const int keyCode = static_cast<int>(event.xkey.keycode);
+        if (keyCode < 0 || keyCode >= static_cast<int>(pressedKeys.size())) continue;
+
+        if (event.type == KeyRelease) {
+            bool isAutoRepeat = false;
+            if (XPending(display) > 0) {
+                XEvent nextEvent;
+                XPeekEvent(display, &nextEvent);
+                if (nextEvent.type == KeyPress &&
+                    nextEvent.xkey.keycode == event.xkey.keycode &&
+                    nextEvent.xkey.time == event.xkey.time) {
+                    isAutoRepeat = true;
+                }
+            }
+
+            if (isAutoRepeat || !pressedKeys[keyCode]) continue;
+            pressedKeys[keyCode] = false;
+        } else {
+            if (pressedKeys[keyCode]) continue;
+            pressedKeys[keyCode] = true;
+        }
+
+        std::string mappedCharacter;
+        if (!PBDebianKeyToSimChar(event.xkey, mappedCharacter)) continue;
+
+        stInputMessage inputMessage;
+        PBPinState state = (event.type == KeyPress) ? PB_ON : PB_OFF;
+        if (PBDebianSimInput(mappedCharacter, state, &inputMessage)) {
+            g_PBEngine.m_inputQueue.push(inputMessage);
+        }
+    }
+
+    return true;
+}
+
+bool PBProcessOutput() {
+    return true;
+}
+
+bool PBProcessIO() {
+    if (!PBProcessInput()) return false;
+    PBProcessOutput();
+    return true;
+}
 #endif
 
 // Raspeberry Pi startup and render code
@@ -1263,7 +1413,9 @@ int main(int argc, char const *argv[])
             // Process timers and generate timer expiration input messages
             g_PBEngine.pbeProcessTimers();
 
-            PBProcessIO();
+            if (!PBProcessIO()) {
+                break;
+            }
             // Process all the input message queue and update the game state
             if (!g_PBEngine.m_inputQueue.empty()){
                 inputMessage = g_PBEngine.m_inputQueue.front();

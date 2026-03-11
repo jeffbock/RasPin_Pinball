@@ -213,7 +213,6 @@
                 "-lm",
                 "-lX11",
                 "-lXrandr",
-                "-lwiringPi",
                 "-lSDL2",
                 "-lSDL2_mixer",
                 "-lavcodec",
@@ -233,6 +232,72 @@
                 "isDefault": false
             },
             "detail": "Raspberry Pi: Full Pinball Build"
+        },
+
+        // DebianOS: Full Build
+        {
+            "type": "cppbuild",
+            "label": "DebianOS: Full Pinball Build",
+            "command": "/usr/bin/g++",
+            "dependsOn": "Update Version",
+            "args": [
+                "-g",
+                "-o",
+                "${workspaceFolder}/debianbuild/Pinball_DebianOS",
+                "${workspaceFolder}/src/3rdparty/stb_image.cpp",
+                "${workspaceFolder}/src/3rdparty/cgltf.cpp",
+                "${workspaceFolder}/src/PBOGLES.cpp",
+                "${workspaceFolder}/src/PB3D.cpp",
+                "${workspaceFolder}/src/PBGfx.cpp",
+                "${workspaceFolder}/src/PBRaspPiRender.cpp",
+                "${workspaceFolder}/src/PBDebounce.cpp",
+                "${workspaceFolder}/src/PBDevice.cpp",
+                "${workspaceFolder}/src/Pinball_IO.cpp",
+                "${workspaceFolder}/src/Pinball_Table.cpp",
+                "${workspaceFolder}/src/tablemodes/Pinball_Table_ModeInit.cpp",
+                "${workspaceFolder}/src/tablemodes/Pinball_Table_ModeStart.cpp",
+                "${workspaceFolder}/src/tablemodes/Pinball_Table_ModeMain.cpp",
+                "${workspaceFolder}/src/tablemodes/Pinball_Table_ModeReset.cpp",
+                "${workspaceFolder}/src/tablemodes/Pinball_Table_ModeGameEnd.cpp",
+                "${workspaceFolder}/src/PBSound.cpp",
+                "${workspaceFolder}/src/PBVideo.cpp",
+                "${workspaceFolder}/src/PBVideoPlayer.cpp",
+                "${workspaceFolder}/src/PinballMenus.cpp",
+                "${workspaceFolder}/src/PBSequences.cpp",
+                "${workspaceFolder}/src/Pinball_Engine.cpp",
+                "${workspaceFolder}/src/Pinball.cpp",
+                "-I${workspaceFolder}/src",
+                "-I${workspaceFolder}/src/include_ogl_raspi",
+                "-I/usr/include/EGL",
+                "-I/usr/include/GLES3",
+                "-I/usr/include/KHR",
+                "-I/usr/include/X11",
+                "-I/usr/include/X11/extensions",
+                "-lEGL",
+                "-lGLESv2",
+                "-lpthread",
+                "-lm",
+                "-lX11",
+                "-lXrandr",
+                "-lSDL2",
+                "-lSDL2_mixer",
+                "-lavcodec",
+                "-lavformat",
+                "-lavutil",
+                "-lswscale",
+                "-lswresample"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "DebianOS: Full Pinball Build"
         },
 
         // FontGen Windows Build
