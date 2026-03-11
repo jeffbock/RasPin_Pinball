@@ -28,7 +28,7 @@ enum class PBTBLGameEndState {
 struct GameEndQualifier {
     int playerIndex;           // Player index (0-3)
     unsigned long score;       // Player's final score
-    char initials[3];          // Initials entered by player ('A'-'Z')
+    char initials[3];          // Initials entered by player (' ', 'A'-'Z', '0'-'9')
     
     GameEndQualifier() : playerIndex(-1), score(0) {
         initials[0] = 'A';
