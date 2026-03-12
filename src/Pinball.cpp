@@ -322,6 +322,16 @@ bool PBProcessInput() {
 
         if (event.type == DestroyNotify) return false;
 
+        // If the window loses keyboard focus (e.g. an IM or screensaver steals it),
+        // immediately reclaim it.  This is intentional for a fullscreen simulator:
+        // the pinball window covers the entire display (override_redirect) and must
+        // own keyboard input at all times while the game is running.
+        if (event.type == FocusOut) {
+            XSetInputFocus(display, PBGetPiWindow(), RevertToPointerRoot, CurrentTime);
+            XFlush(display);
+            continue;
+        }
+
         if (event.type != KeyPress && event.type != KeyRelease) continue;
 
         if (event.type == KeyPress) {
