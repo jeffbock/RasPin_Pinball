@@ -322,13 +322,12 @@ bool PBProcessInput() {
 
         if (event.type == DestroyNotify) return false;
 
-        // If the window loses keyboard focus (e.g. an IM or screensaver steals it),
-        // immediately reclaim it.  This is intentional for a fullscreen simulator:
-        // the pinball window covers the entire display (override_redirect) and must
-        // own keyboard input at all times while the game is running.
-        if (event.type == FocusOut) {
-            XSetInputFocus(display, PBGetPiWindow(), RevertToPointerRoot, CurrentTime);
-            XFlush(display);
+        // Handle the close button: the WM delivers WM_DELETE_WINDOW as a ClientMessage
+        // when the user clicks the X on the title bar.
+        if (event.type == ClientMessage) {
+            if ((Atom)event.xclient.data.l[0] == PBGetPiWMDeleteWindow()) {
+                return false;
+            }
             continue;
         }
 

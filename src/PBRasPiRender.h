@@ -11,6 +11,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <X11/Xutil.h>
 #include <X11/extensions/Xrandr.h>
 #include <EGL/egl.h>
 #include <GLES3/gl31.h>
@@ -21,6 +22,7 @@ EGLNativeWindowType PBInitPiRender (long width, long height);
 #ifdef EXE_MODE_DEBIAN
 Display* PBGetPiDisplay();
 Window PBGetPiWindow();
+Atom PBGetPiWMDeleteWindow();
 #endif
 
 #endif // PBRasPiRender_h
