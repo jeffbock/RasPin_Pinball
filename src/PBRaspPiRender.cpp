@@ -7,6 +7,7 @@
 #include "PBRasPiRender.h"
 
 #ifdef EXE_MODE_DEBIAN
+#include <unistd.h>
 static Display* g_PiDisplay = nullptr;
 static Window g_PiWindow = 0;
 #endif
@@ -88,7 +89,7 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
                     PropModeReplace, (unsigned char*)&wmStateFullscreen, 1);
 
     #ifdef EXE_MODE_DEBIAN
-    XSelectInput(display, window, KeyPressMask | KeyReleaseMask | StructureNotifyMask);
+    XSelectInput(display, window, KeyPressMask | KeyReleaseMask | StructureNotifyMask | FocusChangeMask);
     g_PiDisplay = display;
     g_PiWindow = window;
     #endif
@@ -96,7 +97,28 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
     // Map (show) the window
     XMapWindow(display, window);
     XFlush(display);
-    
+
+    #ifdef EXE_MODE_DEBIAN
+    {
+        // Wait for the window to be fully mapped before requesting keyboard focus.
+        // Without this, key events go to whichever window already has focus and
+        // the desktop input-method dialog appears instead of our key handlers firing.
+        // Use a non-blocking poll with a 5-second timeout so a slow display server
+        // cannot hang the application indefinitely at startup.
+        XEvent mapEv;
+        bool mapped = false;
+        for (int i = 0; i < 5000 && !mapped; i++) {
+            if (XCheckWindowEvent(display, window, StructureNotifyMask, &mapEv)) {
+                if (mapEv.type == MapNotify) mapped = true;
+            } else {
+                usleep(1000); // 1 ms
+            }
+        }
+        XSetInputFocus(display, window, RevertToPointerRoot, CurrentTime);
+        XFlush(display);
+    }
+    #endif
+
     return (window);
 }
 
