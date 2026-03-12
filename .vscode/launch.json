@@ -15,7 +15,7 @@
             "environment": [
                 {
                     "name": "DISPLAY",
-                    "value": ":0"
+                    "value": "${env:DISPLAY}"
                 },
                 {
                     "name": "XMODIFIERS",
