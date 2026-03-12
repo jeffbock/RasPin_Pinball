@@ -7,6 +7,12 @@
 #include "PBRasPiRender.h"
 
 #ifdef EXE_MODE_DEBIAN
+#include <array>
+#include <cstdlib>
+#include <cstring>
+#endif
+
+#ifdef EXE_MODE_DEBIAN
 static Display* g_PiDisplay = nullptr;
 static Window g_PiWindow = 0;
 static Atom g_wmDeleteWindow = 0;
@@ -19,8 +25,34 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
     XSetLocaleModifiers("@im=none");
     #endif
 
-    // Open X11 display
+    // Open X11 display.
+    // In some Debian debug/task launches DISPLAY may be unset or point to a
+    // non-existent server. Fall back to common local X displays.
     Display* display = XOpenDisplay(nullptr);
+#ifdef EXE_MODE_DEBIAN
+    if (!display) {
+        const char* envDisplay = std::getenv("DISPLAY");
+        if (envDisplay != nullptr && std::strlen(envDisplay) > 0) {
+            display = XOpenDisplay(envDisplay);
+        }
+
+        if (!display) {
+            constexpr std::array<const char*, 12> kDisplayFallbacks = {
+                ":0", ":0.0", ":1", ":1.0", ":10", ":10.0", ":11", ":11.0", ":12", ":12.0", ":13", ":13.0"
+            };
+            for (const char* fallbackDisplay : kDisplayFallbacks) {
+                if (envDisplay != nullptr && std::strcmp(envDisplay, fallbackDisplay) == 0) {
+                    continue;
+                }
+
+                display = XOpenDisplay(fallbackDisplay);
+                if (display != nullptr) {
+                    break;
+                }
+            }
+        }
+    }
+#endif
     if (!display) {
         return (0);
     }
