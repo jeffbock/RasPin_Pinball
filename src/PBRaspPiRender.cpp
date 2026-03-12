@@ -7,9 +7,9 @@
 #include "PBRasPiRender.h"
 
 #ifdef EXE_MODE_DEBIAN
-#include <unistd.h>
 static Display* g_PiDisplay = nullptr;
 static Window g_PiWindow = 0;
+static Atom g_wmDeleteWindow = 0;
 #endif
 
 EGLNativeWindowType PBInitPiRender (long width, long height) {
@@ -28,8 +28,11 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
     // Get the default screen
     int screen = DefaultScreen(display);
     Window root = RootWindow(display, screen);
+    Window window = 0;
 
-     // Query RandR for monitor information
+    #ifdef EXE_MODE_RASPI
+    // Query RandR for monitor information to place the fullscreen window on
+    // the display that matches the requested pinball dimensions.
     XRRScreenResources* screenResources = XRRGetScreenResources(display, root);
     if (!screenResources) {
         XCloseDisplay(display);
@@ -68,14 +71,14 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
         return (0);
     }
 
-    // Create a full-screen X11 window
+    // Create a full-screen X11 window for Raspberry Pi hardware display
     XSetWindowAttributes attributes;
     attributes.override_redirect = True;
-    Window window = XCreateWindow(display, root, xPos, yPos, width, height,0,
-                                  CopyFromParent, InputOutput, CopyFromParent, 
-                                  CWOverrideRedirect, &attributes);
+    window = XCreateWindow(display, root, xPos, yPos, width, height, 0,
+                           CopyFromParent, InputOutput, CopyFromParent,
+                           CWOverrideRedirect, &attributes);
 
-    if(!window)
+    if (!window)
     {
         XRRFreeScreenResources(screenResources);
         XCloseDisplay(display);
@@ -88,36 +91,48 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
     XChangeProperty(display, window, wmState, XA_ATOM, 32,
                     PropModeReplace, (unsigned char*)&wmStateFullscreen, 1);
 
+    XRRFreeScreenResources(screenResources);
+    #endif // EXE_MODE_RASPI
+
     #ifdef EXE_MODE_DEBIAN
-    XSelectInput(display, window, KeyPressMask | KeyReleaseMask | StructureNotifyMask | FocusChangeMask);
+    // Create a bordered, non-resizable simulator window, matching the Windows simulator style:
+    // title bar with a close button, no resize, fixed to the pinball display dimensions.
+    window = XCreateSimpleWindow(display, root, 0, 0,
+                                 (unsigned int)width, (unsigned int)height, 0,
+                                 BlackPixel(display, screen), BlackPixel(display, screen));
+
+    if (!window)
+    {
+        XCloseDisplay(display);
+        return (0);
+    }
+
+    // Set the window title
+    XStoreName(display, window, "Pinball Simulator");
+
+    // Prevent the user from resizing the window by locking min and max size to
+    // the exact game dimensions, mirroring the WS_OVERLAPPED | WS_SYSMENU style
+    // used by the Windows simulator (no WS_THICKFRAME / WS_MAXIMIZEBOX).
+    XSizeHints sizeHints;
+    sizeHints.flags     = PMinSize | PMaxSize;
+    sizeHints.min_width  = sizeHints.max_width  = (int)width;
+    sizeHints.min_height = sizeHints.max_height = (int)height;
+    XSetWMNormalHints(display, window, &sizeHints);
+
+    // Register WM_DELETE_WINDOW so clicking the close button delivers a
+    // ClientMessage instead of killing the process immediately.
+    g_wmDeleteWindow = XInternAtom(display, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(display, window, &g_wmDeleteWindow, 1);
+
+    // Select keyboard and structure events; focus is handled by the WM normally.
+    XSelectInput(display, window, KeyPressMask | KeyReleaseMask | StructureNotifyMask);
     g_PiDisplay = display;
-    g_PiWindow = window;
-    #endif
+    g_PiWindow  = window;
+    #endif // EXE_MODE_DEBIAN
 
     // Map (show) the window
     XMapWindow(display, window);
     XFlush(display);
-
-    #ifdef EXE_MODE_DEBIAN
-    {
-        // Wait for the window to be fully mapped before requesting keyboard focus.
-        // Without this, key events go to whichever window already has focus and
-        // the desktop input-method dialog appears instead of our key handlers firing.
-        // Use a non-blocking poll with a 5-second timeout so a slow display server
-        // cannot hang the application indefinitely at startup.
-        XEvent mapEv;
-        bool mapped = false;
-        for (int i = 0; i < 5000 && !mapped; i++) {
-            if (XCheckWindowEvent(display, window, StructureNotifyMask, &mapEv)) {
-                if (mapEv.type == MapNotify) mapped = true;
-            } else {
-                usleep(1000); // 1 ms
-            }
-        }
-        XSetInputFocus(display, window, RevertToPointerRoot, CurrentTime);
-        XFlush(display);
-    }
-    #endif
 
     return (window);
 }
@@ -129,5 +144,9 @@ Display* PBGetPiDisplay() {
 
 Window PBGetPiWindow() {
     return g_PiWindow;
+}
+
+Atom PBGetPiWMDeleteWindow() {
+    return g_wmDeleteWindow;
 }
 #endif
