@@ -15,6 +15,10 @@ PBOGLES::PBOGLES() {
     m_aspectRatio = 0.0f;
     m_lastTextureId = 0;
     m_started = false;
+#ifdef SIMULATOR_SMALL_WINDOW
+    m_surfaceWidth  = 0;
+    m_surfaceHeight = 0;
+#endif
 
     // OGL ES variables
     m_display = EGL_NO_DISPLAY;
@@ -155,6 +159,14 @@ bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
     m_width = width;
     m_height = height;
     m_aspectRatio = (float)height / (float)width;
+
+#ifdef SIMULATOR_SMALL_WINDOW
+    // Set the physical surface dimensions used by glViewport and scissor scaling.
+    // The simulator window is half width/height so the full NDC scene maps correctly.
+    m_surfaceWidth  = width  / 2;
+    m_surfaceHeight = height / 2;
+#endif
+
     m_started = true;
     return true;
 }
@@ -162,7 +174,11 @@ bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
 // Clear the back buffere with option to flip
 bool PBOGLES::oglClear(float red, float blue, float green, float alpha, bool doFlip) {
 
+#ifdef SIMULATOR_SMALL_WINDOW
+        glViewport(0, 0, m_surfaceWidth, m_surfaceHeight);
+#else
         glViewport(0, 0, m_width, m_height);
+#endif
         glClearColor(red, green, blue, alpha);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -196,11 +212,22 @@ void PBOGLES::oglSetScissor(bool enable, int x1, int y1, int x2, int y2) {
         // OpenGL scissor uses bottom-left origin, so we need to convert Y coordinate
         // x1, y1 = upper left corner in screen space
         // x2, y2 = lower right corner in screen space
+#ifdef SIMULATOR_SMALL_WINDOW
+        // Scale scissor coordinates from virtual resolution to the smaller physical
+        // surface so the clipping region matches the down-scaled simulator window.
+        float scaleX = (float)m_surfaceWidth  / (float)m_width;
+        float scaleY = (float)m_surfaceHeight / (float)m_height;
+        int x      = (int)(x1       * scaleX);
+        int y      = (int)(m_surfaceHeight - y2 * scaleY);  // flip to bottom-left origin
+        int width  = (int)((x2 - x1) * scaleX);
+        int height = (int)((y2 - y1) * scaleY);
+#else
         int x = x1;
         int y = m_height - y2;  // Convert from top-left to bottom-left origin
         int width = x2 - x1;
         int height = y2 - y1;
-        
+#endif
+
         // Set the scissor rectangle
         glScissor(x, y, width, height);
     } else {
