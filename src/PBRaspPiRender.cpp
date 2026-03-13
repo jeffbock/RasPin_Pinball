@@ -127,10 +127,18 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
     #endif // EXE_MODE_RASPI
 
     #ifdef EXE_MODE_DEBIAN
-    // Create a bordered, non-resizable simulator window, matching the Windows simulator style:
-    // title bar with a close button, no resize, fixed to the pinball display dimensions.
+    // Create the simulator window.  With SIMULATOR_SMALL_WINDOW the window is 1/4 the virtual
+    // screen area (half width, half height) for improved RDP performance; without it the
+    // window uses the full virtual resolution.  Game rendering coordinates are unchanged.
+    #ifdef SIMULATOR_SMALL_WINDOW
+    const long winWidth  = width  / 2;
+    const long winHeight = height / 2;
+    #else
+    const long winWidth  = width;
+    const long winHeight = height;
+    #endif
     window = XCreateSimpleWindow(display, root, 0, 0,
-                                 (unsigned int)width, (unsigned int)height, 0,
+                                 (unsigned int)winWidth, (unsigned int)winHeight, 0,
                                  BlackPixel(display, screen), BlackPixel(display, screen));
 
     if (!window)
@@ -142,13 +150,13 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
     // Set the window title
     XStoreName(display, window, "Pinball Simulator");
 
-    // Prevent the user from resizing the window by locking min and max size to
-    // the exact game dimensions, mirroring the WS_OVERLAPPED | WS_SYSMENU style
-    // used by the Windows simulator (no WS_THICKFRAME / WS_MAXIMIZEBOX).
+    // Prevent user from resizing the window by locking min/max to the (reduced) window
+    // dimensions, mirroring the WS_OVERLAPPED | WS_SYSMENU style used by the Windows
+    // simulator (no WS_THICKFRAME / WS_MAXIMIZEBOX).
     XSizeHints sizeHints;
     sizeHints.flags     = PMinSize | PMaxSize;
-    sizeHints.min_width  = sizeHints.max_width  = (int)width;
-    sizeHints.min_height = sizeHints.max_height = (int)height;
+    sizeHints.min_width  = sizeHints.max_width  = (int)winWidth;
+    sizeHints.min_height = sizeHints.max_height = (int)winHeight;
     XSetWMNormalHints(display, window, &sizeHints);
 
     // Register WM_DELETE_WINDOW so clicking the close button delivers a

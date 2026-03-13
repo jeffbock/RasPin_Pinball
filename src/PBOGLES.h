@@ -7,6 +7,8 @@
 #ifndef PBOGLES_h
 #define PBOGLES_h
 
+#include "PBBuildSwitch.h"
+
 // Define WIN32_LEAN_AND_MEAN before including EGL headers to avoid redefinition warnings
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -114,6 +116,12 @@ private:
     long m_width;
     long m_height;
     float m_aspectRatio;
+#ifdef SIMULATOR_SMALL_WINDOW
+    // Actual surface dimensions (may differ from m_width/m_height when the
+    // simulator window is smaller than the virtual game resolution).
+    long m_surfaceWidth;
+    long m_surfaceHeight;
+#endif
     unsigned int m_lastTextureId;
     bool m_started;
     float m_quadRed, m_quadGreen, m_quadBlue, m_quadAlpha;
