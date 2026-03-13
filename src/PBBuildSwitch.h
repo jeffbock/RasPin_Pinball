@@ -7,8 +7,8 @@
 
 // This header file only serves as the build switch between Windows and PiOS.  Uncomment the appropriate linefor the desired platform.
 
-// #define EXE_MODE_WINDOWS
-#define EXE_MODE_DEBIAN
+#define EXE_MODE_WINDOWS
+// #define EXE_MODE_DEBIAN
 // #define EXE_MODE_RASPI
 
 #if (defined(EXE_MODE_WINDOWS) + defined(EXE_MODE_DEBIAN) + defined(EXE_MODE_RASPI)) != 1
