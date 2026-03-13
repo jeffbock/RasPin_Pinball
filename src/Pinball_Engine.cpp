@@ -1844,15 +1844,15 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
         temp = "Benchmark Complete - Results";
         gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 180, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-        temp = "Clear + Swap Rate: " + std::to_string(FPSSwap/(msForSwapTest/1000)) + " FPS";
+        temp = "Clear + Swap Rate: " + std::to_string(msForSwapTest > 0 ? FPSSwap * 1000 / msForSwapTest : 0) + " FPS";
         gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 215, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-        temp = "Small Sprite Rate: " + std::to_string(smallSpriteCount/((msForSmallSprite))) + "k SPS";
+        temp = "Small Sprite Rate: " + std::to_string(msForSmallSprite > 0 ? smallSpriteCount / msForSmallSprite : 0) + "k SPS";
         gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 240, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-        temp = "Large Sprite Rate: " + std::to_string(bigSpriteCount/((msForBigSprite))) + "k SPS";
+        temp = "Large Sprite Rate: " + std::to_string(msForBigSprite > 0 ? bigSpriteCount / msForBigSprite : 0) + "k SPS";
         gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 265, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-        temp = "Transformed Sprite Rate: " + std::to_string(spriteTransformCount/((msForTransformSprite))) + "k SPS";
+        temp = "Transformed Sprite Rate: " + std::to_string(msForTransformSprite > 0 ? spriteTransformCount / msForTransformSprite : 0) + "k SPS";
         gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 290, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-        temp = "3D Render Rate: " + std::to_string(bench3DCount / msFor3DRender) + "k OPS";
+        temp = "3D Render Rate: " + std::to_string(msFor3DRender > 0 ? bench3DCount / msFor3DRender : 0) + "k OPS";
         gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 315, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
 
         m_BenchmarkDone = true;
