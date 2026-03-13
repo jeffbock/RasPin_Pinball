@@ -16,17 +16,7 @@ HWND PBInitWinRender (long width, long height) {
     wc.lpszClassName = TEXT("PBWinClass");
     RegisterClass(&wc);
 
-    // With SIMULATOR_SMALL_WINDOW the physical window is 1/4 the virtual area
-    // (half width, half height); the game NDC coordinates are unchanged.
-#ifdef SIMULATOR_SMALL_WINDOW
-    const long winWidth  = width  / 2;
-    const long winHeight = height / 2;
-#else
-    const long winWidth  = width;
-    const long winHeight = height;
-#endif
-
-    RECT rect = { 0, 0, winWidth, winHeight };
+    RECT rect = { 0, 0, width, height };
     AdjustWindowRect( &rect, WS_OVERLAPPEDWINDOW, FALSE);
 
     hwnd = CreateWindow(

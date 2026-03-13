@@ -24,7 +24,7 @@ set(PINBALL_SOURCES
     ../src/PBOGLES.cpp
     ../src/PB3D.cpp
     ../src/PBGfx.cpp
-    ../src/PBRaspPiRender.cpp
+    ../src/PBLinuxRender.cpp
     ../src/PBDebounce.cpp
     ../src/PBDevice.cpp
     ../src/Pinball_IO.cpp

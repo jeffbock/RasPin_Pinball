@@ -1,10 +1,10 @@
 
-// Window and render code for Rasbery Pi
-/// Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
+// Window and render code for Linux (Raspberry Pi and Debian)
+// Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
 // Additional details can also be found in the license file in the root of the project.
 
-#include "PBRasPiRender.h"
+#include "PBLinuxRender.h"
 
 #ifdef EXE_MODE_DEBIAN
 #include <array>
@@ -18,7 +18,7 @@ static Window g_PiWindow = 0;
 static Atom g_wmDeleteWindow = 0;
 #endif
 
-EGLNativeWindowType PBInitPiRender (long width, long height) {
+EGLNativeWindowType PBInitLinuxRender (long width, long height) {
 
     #ifdef EXE_MODE_DEBIAN
     // Disable XIM so compose/dead-key UI does not intercept simulator control keys.
@@ -168,15 +168,15 @@ EGLNativeWindowType PBInitPiRender (long width, long height) {
 }
 
 #ifdef EXE_MODE_DEBIAN
-Display* PBGetPiDisplay() {
+Display* PBGetLinuxDisplay() {
     return g_PiDisplay;
 }
 
-Window PBGetPiWindow() {
+Window PBGetLinuxWindow() {
     return g_PiWindow;
 }
 
-Atom PBGetPiWMDeleteWindow() {
+Atom PBGetLinuxWMDeleteWindow() {
     return g_wmDeleteWindow;
 }
 #endif

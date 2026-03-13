@@ -156,7 +156,14 @@ HWND g_WHND = NULL;
 // Init the render system for Windows
 bool PBInitRender (long width, long height) {
 
-g_WHND = PBInitWinRender (width, height);
+#ifdef SIMULATOR_SMALL_WINDOW
+    const long winWidth  = width  / 2;
+    const long winHeight = height / 2;
+#else
+    const long winWidth  = width;
+    const long winHeight = height;
+#endif
+g_WHND = PBInitWinRender (winWidth, winHeight);
 if (g_WHND == NULL) return (false);
 
 // For windows, OGLNativeWindows type is HWND
@@ -250,13 +257,20 @@ bool PBProcessIO() {
 
 // Debian startup and render code
 #ifdef EXE_MODE_DEBIAN
-#include "PBRasPiRender.h"
+#include "PBLinuxRender.h"
 #include <X11/keysym.h>
 
 EGLNativeWindowType g_DebianWindow;
 
 bool PBInitRender(long width, long height) {
-    g_DebianWindow = PBInitPiRender(width, height);
+#ifdef SIMULATOR_SMALL_WINDOW
+    const long winWidth  = width  / 2;
+    const long winHeight = height / 2;
+#else
+    const long winWidth  = width;
+    const long winHeight = height;
+#endif
+    g_DebianWindow = PBInitLinuxRender(winWidth, winHeight);
     if (g_DebianWindow == 0) return false;
 
     if (!g_PBEngine.oglInit(width, height, g_DebianWindow)) return false;
@@ -311,7 +325,7 @@ bool PBDebianSimInput(const std::string& character, PBPinState inputState, stInp
 }
 
 bool PBProcessInput() {
-    Display* display = PBGetPiDisplay();
+    Display* display = PBGetLinuxDisplay();
     if (display == nullptr) return true;
 
     static std::array<bool, 256> pressedKeys = {};
@@ -325,7 +339,7 @@ bool PBProcessInput() {
         // Handle the close button: the WM delivers WM_DELETE_WINDOW as a ClientMessage
         // when the user clicks the X on the title bar.
         if (event.type == ClientMessage) {
-            if ((Atom)event.xclient.data.l[0] == PBGetPiWMDeleteWindow()) {
+            if ((Atom)event.xclient.data.l[0] == PBGetLinuxWMDeleteWindow()) {
                 return false;
             }
             continue;
@@ -387,13 +401,13 @@ bool PBProcessIO() {
 
 // Raspeberry Pi startup and render code
 #ifdef EXE_MODE_RASPI
-#include "PBRasPiRender.h"
+#include "PBLinuxRender.h"
 
 EGLNativeWindowType g_PiWindow;
 
 bool PBInitRender (long width, long height) {
 
-g_PiWindow = PBInitPiRender (width, height);
+g_PiWindow = PBInitLinuxRender (width, height);
 if (g_PiWindow == 0) return (false);
 
 // For Rasberry Pi, OGLNativeWindows type is TBD
