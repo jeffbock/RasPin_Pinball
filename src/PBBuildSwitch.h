@@ -25,4 +25,11 @@
 // Set to 1 to enable hardware decode, 0 for software decode
 #define ENABLE_HW_VIDEO_DECODE 0
 
+#if defined(EXE_MODE_DEBIAN) || defined(EXE_MODE_WINDOWS)
+// Uncomment to run the simulator window at 1/4 the virtual screen area
+// (half width, half height).  Useful for RDP / remote-desktop performance.
+// Comment out to use full native resolution.  Has no effect on Raspberry Pi.
+#define SIMULATOR_SMALL_WINDOW
+#endif
+
 #endif

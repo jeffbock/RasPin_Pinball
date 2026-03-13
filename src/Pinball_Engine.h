@@ -245,7 +245,7 @@ struct stNeoPixelSequenceInfo {
 // WARNING: These structures use std::string which is NOT safe for binary serialization.
 // The std::string contains internal pointers that become invalid when loaded from disk.
 // The pbeLoadSaveFile() function must reinitialize the structure on load failures to avoid
-// accessing corrupted std::string objects which would cause exceptions.
+// accessing corrupted std::string objects which would cause exceptions. Use explicit serialization.
 struct stHighScoreData {
     unsigned long highScore;
     std::string playerInitials;
