@@ -242,16 +242,15 @@ struct stNeoPixelSequenceInfo {
 };
 
 // Save file structures
-// WARNING: These structures use std::string which is NOT safe for binary serialization.
-// The std::string contains internal pointers that become invalid when loaded from disk.
-// The pbeLoadSaveFile() function must reinitialize the structure on load failures to avoid
-// accessing corrupted std::string objects which would cause exceptions. Use explicit serialization.
+// NOTE: All members must be POD-safe types for binary serialization.
+// std::string is NOT safe - it contains internal heap pointers that become invalid
+// when loaded from disk. Use fixed char arrays instead.
 struct stHighScoreData {
     unsigned long highScore;
-    std::string playerInitials;
+    char playerInitials[4];  // Fixed-size null-terminated array; POD-safe for binary serialization
     
     // Default constructor for safe initialization
-    stHighScoreData() : highScore(0), playerInitials("") {}
+    stHighScoreData() : highScore(0), playerInitials{} {}
 };
 
 #define NUM_HIGHSCORES 10
@@ -260,8 +259,13 @@ struct stHighScoreData {
 #define BALLSPERGAME_DEFAULT 3
 #define DIFFICULTY_DEFAULT PB_NORMAL
 
+// Platform identifiers stored in save file - must detect all three build modes
+#define SAVEPLATFORM_WINDOWS 0
+#define SAVEPLATFORM_DEBIAN  1
+#define SAVEPLATFORM_RASPI   2
+
 struct stSaveFileData {
-    bool isWindows;  // Track which OS created this file
+    uint8_t osPlatform;  // Which OS/platform created this file (SAVEPLATFORM_*)
     unsigned int mainVolume;
     unsigned int musicVolume;
     unsigned int ballsPerGame;
@@ -269,7 +273,7 @@ struct stSaveFileData {
     std::array<stHighScoreData, NUM_HIGHSCORES> highScores;
     
     // Default constructor for safe initialization
-    stSaveFileData() : isWindows(false), mainVolume(MAINVOLUME_DEFAULT), 
+    stSaveFileData() : osPlatform(SAVEPLATFORM_DEBIAN), mainVolume(MAINVOLUME_DEFAULT), 
                        musicVolume(MUSICVOLUME_DEFAULT), ballsPerGame(BALLSPERGAME_DEFAULT),
                        difficulty(PB_NORMAL) {}
 };

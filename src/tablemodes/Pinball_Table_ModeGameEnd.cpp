@@ -315,7 +315,8 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
                             for (size_t i = 0; i < m_gameEndQualifiers.size(); i++) {
                                 stHighScoreData entry;
                                 entry.highScore = m_gameEndQualifiers[i].score;
-                                entry.playerInitials = std::string(&m_gameEndQualifiers[i].initials[0], &m_gameEndQualifiers[i].initials[3]);
+                                strncpy(entry.playerInitials, m_gameEndQualifiers[i].initials, 3);
+                                entry.playerInitials[3] = '\0';
                                 newScores.push_back(entry);
                             }
                             

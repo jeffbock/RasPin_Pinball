@@ -217,35 +217,45 @@ bool PBEngine::pbeLoadSaveFile(bool loadDefaults, bool resetScores){
     bool failed = false;
     bool osMismatch = false;
 
+    // Determine this build's platform identifier
+    #if defined(EXE_MODE_WINDOWS)
+    constexpr uint8_t currentPlatform = SAVEPLATFORM_WINDOWS;
+    #elif defined(EXE_MODE_RASPI)
+    constexpr uint8_t currentPlatform = SAVEPLATFORM_RASPI;
+    #else
+    constexpr uint8_t currentPlatform = SAVEPLATFORM_DEBIAN;
+    #endif
+
     std::ifstream saveFile(SAVEFILENAME, std::ios::binary);
     if (saveFile.is_open() && saveFile.good()) {
-        saveFile.read(reinterpret_cast<char*>(&m_saveFileData), sizeof(stSaveFileData));
-        if (!saveFile.good()) {
+        // Validate file size before reading to guard against struct layout changes
+        saveFile.seekg(0, std::ios::end);
+        std::streampos fileSize = saveFile.tellg();
+        saveFile.seekg(0, std::ios::beg);
+
+        if (fileSize != static_cast<std::streampos>(sizeof(stSaveFileData))) {
             failed = true;
+            pbeSendConsole("RasPin: WARNING: Save file size mismatch - file will be recreated");
         } else {
-            // Check if OS matches
-            #ifdef EXE_MODE_WINDOWS
-            bool currentIsWindows = true;
-            #else
-            bool currentIsWindows = false;
-            #endif
-            
-            if (m_saveFileData.isWindows != currentIsWindows) {
-                osMismatch = true;
+            saveFile.read(reinterpret_cast<char*>(&m_saveFileData), sizeof(stSaveFileData));
+            if (!saveFile.good()) {
                 failed = true;
+            } else {
+                // Check platform - detects Windows/Debian/RasPi cross-load
+                if (m_saveFileData.osPlatform != currentPlatform) {
+                    osMismatch = true;
+                    failed = true;
+                }
             }
         }
         saveFile.close();
         
-        // If OS mismatch or failure detected, delete the file and reinitialize the structure
+        // If platform mismatch or failure detected, delete the file and reinitialize the structure
         if (osMismatch || failed) {
             if (osMismatch) {
                 std::remove(SAVEFILENAME);
-                pbeSendConsole("RasPin: WARNING: Save file created on different OS - file deleted and will be recreated");
+                pbeSendConsole("RasPin: WARNING: Save file created on different platform - file deleted and will be recreated");
             }
-            
-            // Reinitialize m_saveFileData with a fresh structure to avoid corrupted std::string objects
-            // This is critical because std::string is not POD and binary loading corrupts internal pointers
             m_saveFileData = stSaveFileData();
         }
     } else {
@@ -254,11 +264,7 @@ bool PBEngine::pbeLoadSaveFile(bool loadDefaults, bool resetScores){
         
     if ((loadDefaults) || failed){
         // Set default values for the saveData structure
-        #ifdef EXE_MODE_WINDOWS
-        m_saveFileData.isWindows = true;
-        #else
-        m_saveFileData.isWindows = false;
-        #endif
+        m_saveFileData.osPlatform = currentPlatform;
         m_saveFileData.mainVolume = MAINVOLUME_DEFAULT;
         m_saveFileData.musicVolume = MUSICVOLUME_DEFAULT;
         m_saveFileData.ballsPerGame = BALLSPERGAME_DEFAULT;
@@ -281,7 +287,8 @@ void PBEngine::resetHighScores(){
     // Reset the high scores to zero and initials to "JEF"
     for (int i = 0; i < NUM_HIGHSCORES; i++) {
         m_saveFileData.highScores[i].highScore = 0;
-        m_saveFileData.highScores[i].playerInitials = "JEF";
+        strncpy(m_saveFileData.highScores[i].playerInitials, "JEF", 3);
+        m_saveFileData.highScores[i].playerInitials[3] = '\0';
     }
 }
 
