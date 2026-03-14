@@ -101,6 +101,7 @@
             "dependsOn": "Update Version",
             "args": [
                 "/Zi",
+                "/DEXE_MODE_WINDOWS",
                 "/EHsc",
                 "/nologo",
                 "/Fo${workspaceFolder}/winbuild/",
@@ -176,6 +177,7 @@
             "dependsOn": "Update Version",
             "args": [
                 "-g",
+                "-DEXE_MODE_RASPI",
                 "-o",
                 "${workspaceFolder}/raspibuild/Pinball",
                 "${workspaceFolder}/src/3rdparty/stb_image.cpp",
@@ -213,6 +215,7 @@
                 "-lm",
                 "-lX11",
                 "-lXrandr",
+                "-lwiringPi",
                 "-lSDL2",
                 "-lSDL2_mixer",
                 "-lavcodec",
@@ -242,6 +245,7 @@
             "dependsOn": "Update Version",
             "args": [
                 "-g",
+                "-DEXE_MODE_DEBIAN",
                 "-o",
                 "${workspaceFolder}/debianbuild/Pinball_DebianOS",
                 "${workspaceFolder}/src/3rdparty/stb_image.cpp",
@@ -478,6 +482,7 @@
                 "/Oy",                    // Omit frame pointers
                 "/GL",                    // Whole program optimization
                 "/DNDEBUG",               // Define NDEBUG for release
+                "/DEXE_MODE_WINDOWS",
                 "/EHsc",
                 "/nologo",
                 "/Fo${workspaceFolder}/winbuild/release/",
@@ -561,6 +566,7 @@
                 "-ffast-math",            // Fast math optimizations
                 "-funroll-loops",         // Unroll loops
                 "-DNDEBUG",               // Define NDEBUG for release
+                "-DEXE_MODE_RASPI",
                 "-o",
                 "${workspaceFolder}/raspibuild/release/Pinball",
                 "${workspaceFolder}/src/3rdparty/stb_image.cpp",

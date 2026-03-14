@@ -88,6 +88,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     )
 endif()
 
+# Platform define
+target_compile_definitions(Pinball PRIVATE EXE_MODE_RASPI)
+
 # Link libraries
 target_link_libraries(Pinball
     EGL

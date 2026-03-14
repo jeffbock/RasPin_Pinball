@@ -5,11 +5,16 @@
 #ifndef PBBuildSwitch_h
 #define PBBuildSwitch_h
 
-// This header file only serves as the build switch between Windows and PiOS.  Uncomment the appropriate linefor the desired platform.
+// This header file only serves as the build switch between Windows and PiOS.
+// Build tasks in tasks.json pass -DEXE_MODE_* (GCC/Clang) or /DEXE_MODE_* (MSVC) which
+// take priority over the manual selection below.
+// Only change the manual selection when building outside of VS Code tasks.
 
-#define EXE_MODE_WINDOWS
+#if !defined(EXE_MODE_WINDOWS) && !defined(EXE_MODE_DEBIAN) && !defined(EXE_MODE_RASPI)
+// #define EXE_MODE_WINDOWS
 // #define EXE_MODE_DEBIAN
-// #define EXE_MODE_RASPI
+#define EXE_MODE_RASPI
+#endif
 
 #if (defined(EXE_MODE_WINDOWS) + defined(EXE_MODE_DEBIAN) + defined(EXE_MODE_RASPI)) != 1
 #error "Exactly one EXE_MODE_* define must be enabled"
