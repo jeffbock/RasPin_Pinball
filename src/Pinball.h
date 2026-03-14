@@ -27,8 +27,8 @@
 #include "PBWinRender.h"
 #endif
 
-#ifdef EXE_MODE_RASPI
-// Rasberry PI specific includes
+#ifdef ENABLE_PINBALL_HARDWARE
+// Raspberry Pi hardware-specific includes (wiringPi GPIO/I2C)
 #include "wiringPi.h"
 #include "wiringPiI2C.h"
 #include "PBDebounce.h"
@@ -59,7 +59,7 @@
 // Version Information
 #define PB_VERSION_MAJOR 0
 #define PB_VERSION_MINOR 5  
-#define PB_VERSION_BUILD 840
+#define PB_VERSION_BUILD 842
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 1920
@@ -102,8 +102,8 @@ struct stOutputDef;
 void PBWinSimInput(std::string character, PBPinState inputState, stInputMessage* inputMessage);
 #endif
 
-#ifdef EXE_MODE_DEBIAN
-bool PBDebianSimInput(const std::string& character, PBPinState inputState, stInputMessage* inputMessage);
+#if defined(EXE_MODE_DEBIAN) || (defined(EXE_MODE_RASPI) && !defined(ENABLE_PINBALL_HARDWARE))
+bool PBLinuxSimInput(const std::string& character, PBPinState inputState, stInputMessage* inputMessage);
 #endif
 
 // Platform-specific I/O processing functions - these change depending on the EXE_MODE
@@ -111,8 +111,8 @@ bool PBProcessInput();
 bool PBProcessOutput();
 bool PBProcessIO();
 
-#ifdef EXE_MODE_RASPI
-// Output processing utility functions - Used only in Raspberry Pi Mode
+#ifdef ENABLE_PINBALL_HARDWARE
+// Output processing utility functions - Used only in hardware mode
 int FindOutputDefIndex(unsigned int outputId);
 void SendAllStagedIO();
 void SendAllStagedLED();

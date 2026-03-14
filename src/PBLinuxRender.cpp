@@ -6,13 +6,13 @@
 
 #include "PBLinuxRender.h"
 
-#ifdef EXE_MODE_DEBIAN
+#ifndef ENABLE_PINBALL_HARDWARE
 #include <array>
 #include <cstdlib>
 #include <cstring>
 #endif
 
-#ifdef EXE_MODE_DEBIAN
+#ifndef ENABLE_PINBALL_HARDWARE
 static Display* g_PiDisplay = nullptr;
 static Window g_PiWindow = 0;
 static Atom g_wmDeleteWindow = 0;
@@ -20,7 +20,7 @@ static Atom g_wmDeleteWindow = 0;
 
 EGLNativeWindowType PBInitLinuxRender (long width, long height) {
 
-    #ifdef EXE_MODE_DEBIAN
+    #ifndef ENABLE_PINBALL_HARDWARE
     // Disable XIM so compose/dead-key UI does not intercept simulator control keys.
     XSetLocaleModifiers("@im=none");
     #endif
@@ -29,7 +29,7 @@ EGLNativeWindowType PBInitLinuxRender (long width, long height) {
     // In some Debian debug/task launches DISPLAY may be unset or point to a
     // non-existent server. Fall back to common local X displays.
     Display* display = XOpenDisplay(nullptr);
-#ifdef EXE_MODE_DEBIAN
+#ifndef ENABLE_PINBALL_HARDWARE
     if (!display) {
         const char* envDisplay = std::getenv("DISPLAY");
         if (envDisplay != nullptr && std::strlen(envDisplay) > 0) {
@@ -62,7 +62,7 @@ EGLNativeWindowType PBInitLinuxRender (long width, long height) {
     Window root = RootWindow(display, screen);
     Window window = 0;
 
-    #ifdef EXE_MODE_RASPI
+    #ifdef ENABLE_PINBALL_HARDWARE
     // Query RandR for monitor information to place the fullscreen window on
     // the display that matches the requested pinball dimensions.
     XRRScreenResources* screenResources = XRRGetScreenResources(display, root);
@@ -124,9 +124,9 @@ EGLNativeWindowType PBInitLinuxRender (long width, long height) {
                     PropModeReplace, (unsigned char*)&wmStateFullscreen, 1);
 
     XRRFreeScreenResources(screenResources);
-    #endif // EXE_MODE_RASPI
+    #endif // ENABLE_PINBALL_HARDWARE
 
-    #ifdef EXE_MODE_DEBIAN
+    #ifndef ENABLE_PINBALL_HARDWARE
     window = XCreateSimpleWindow(display, root, 0, 0,
                                  (unsigned int)width, (unsigned int)height, 0,
                                  BlackPixel(display, screen), BlackPixel(display, screen));
@@ -158,7 +158,7 @@ EGLNativeWindowType PBInitLinuxRender (long width, long height) {
     XSelectInput(display, window, KeyPressMask | KeyReleaseMask | StructureNotifyMask);
     g_PiDisplay = display;
     g_PiWindow  = window;
-    #endif // EXE_MODE_DEBIAN
+    #endif // !ENABLE_PINBALL_HARDWARE
 
     // Map (show) the window
     XMapWindow(display, window);
@@ -167,7 +167,7 @@ EGLNativeWindowType PBInitLinuxRender (long width, long height) {
     return (window);
 }
 
-#ifdef EXE_MODE_DEBIAN
+#ifndef ENABLE_PINBALL_HARDWARE
 Display* PBGetLinuxDisplay() {
     return g_PiDisplay;
 }

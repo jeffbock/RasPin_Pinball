@@ -608,12 +608,23 @@ if (inputMessage.inputMsg == PB_IMSG_TIMER) {
 
 Platform selection via `PBBuildSwitch.h`:
 ```
-Windows Build:
+Windows Build (simulator only):
     #define EXE_MODE_WINDOWS
-    
-Raspberry Pi Build:
+
+Raspberry Pi Hardware Build (physical pinball hardware):
     #define EXE_MODE_RASPI
+    #define ENABLE_PINBALL_HARDWARE
+
+Raspberry Pi Simulator Build (no hardware required, uses X11 window + keyboard):
+    #define EXE_MODE_RASPI
+
+Debian/Linux Build (simulator only):
+    #define EXE_MODE_DEBIAN
 ```
+
+`ENABLE_PINBALL_HARDWARE` is only valid with `EXE_MODE_RASPI`. When omitted, any platform
+runs in simulator mode — presenting a windowed display and accepting keyboard input.
+This lets you develop and test on a Raspberry Pi without any physical hardware attached.
 
 **Documentation:** [Platform_Init_API.md](Platform_Init_API.md)
 

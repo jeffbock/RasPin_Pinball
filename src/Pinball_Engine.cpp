@@ -719,11 +719,11 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
     else gfxRenderShadowString(m_defaultFontSpriteId, "OUTPUTS", 10, 30, 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);  
     
     for (int i = 0; i < limit; i++) {
-        #if defined(EXE_MODE_WINDOWS) || defined(EXE_MODE_DEBIAN)
+        #ifndef ENABLE_PINBALL_HARDWARE
             if (m_TestMode == PB_TESTINPUT)  temp = g_inputDef[i].inputName + "(" + g_inputDef[i].simMapKey + "): ";
             else temp = g_outputDef[i].outputName + ": ";
         #endif
-        #ifdef EXE_MODE_RASPI
+        #ifdef ENABLE_PINBALL_HARDWARE
             if (m_TestMode == PB_TESTINPUT) temp = g_inputDef[i].inputName + ": ";
             else temp = g_outputDef[i].outputName + ": ";
         #endif
@@ -1166,7 +1166,7 @@ bool PBEngine::pbeLoadTestSandbox(){
             
             unsigned long currentTick = GetTickCountGfx();
 
-            // DICE 1 — NORMAL + REVERSE (smooth continuous Y-axis spin + Z pulse in/out)
+            // DICE 1 â€” NORMAL + REVERSE (smooth continuous Y-axis spin + Z pulse in/out)
             st3DAnimateData anim1 = {};
             anim1.animateInstanceId = m_sandboxDiceInstance[0];
             anim1.typeMask = ANIM3D_ROTY_MASK | ANIM3D_POSZ_MASK;
@@ -1183,7 +1183,7 @@ bool PBEngine::pbeLoadTestSandbox(){
             anim1.startAlpha = 1.0f; anim1.endAlpha = 1.0f;
             pb3dCreateAnimation(anim1, true);
             
-            // DICE 2 — ACCL (accelerating free spin + Z arc: drifts back then returns to 0 at cycle end)
+            // DICE 2 â€” ACCL (accelerating free spin + Z arc: drifts back then returns to 0 at cycle end)
             st3DAnimateData anim2 = {};
             anim2.animateInstanceId = m_sandboxDiceInstance[1];
             anim2.typeMask = ANIM3D_ROTY_MASK | ANIM3D_POSZ_MASK;
@@ -1200,7 +1200,7 @@ bool PBEngine::pbeLoadTestSandbox(){
             anim2.startTick = currentTick;
             pb3dCreateAnimation(anim2, true);
             
-            // DICE 3 — JUMP + RESTART (dice roll snap + Z alternates between 0 and -1.5 on each jump)
+            // DICE 3 â€” JUMP + RESTART (dice roll snap + Z alternates between 0 and -1.5 on each jump)
             st3DAnimateData anim3 = {};
             anim3.animateInstanceId = m_sandboxDiceInstance[2];
             anim3.typeMask = ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK | ANIM3D_POSZ_MASK;
@@ -1214,8 +1214,8 @@ bool PBEngine::pbeLoadTestSandbox(){
             anim3.startTick = currentTick;
             pb3dCreateAnimation(anim3, true);
             
-            // DICE 4 — JUMPRANDOM + RESTART (shaking dice + random Z jitter)
-            // Uses pixel-space start/end so the jitter offset is in pixels (±15px)
+            // DICE 4 â€” JUMPRANDOM + RESTART (shaking dice + random Z jitter)
+            // Uses pixel-space start/end so the jitter offset is in pixels (Â±15px)
             st3DAnimateData anim4 = {};
             anim4.animateInstanceId = m_sandboxDiceInstance[3];
             anim4.typeMask = ANIM3D_POSX_MASK | ANIM3D_POSY_MASK | ANIM3D_POSZ_MASK | ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK | ANIM3D_SCALE_MASK;
@@ -1806,7 +1806,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         // Print the final results when done
     }
 
-    // 3D rendering benchmark — instances per second (inner-loop, same pattern as sprite tests)
+    // 3D rendering benchmark â€” instances per second (inner-loop, same pattern as sprite tests)
     // Each draw call repositions, reorients, and rescales the instance before rendering so the
     // GPU workload is representative (no batching of identical transforms).
     // pb3dBegin/End wraps the whole burst to avoid distorting the count with state-switch overhead.
@@ -1947,14 +1947,14 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         case (1):  m_mainState = PB_SETTINGS; m_RestartSettings = true; break;
                         case (2):  m_mainState = PB_DIAGNOSTICS; m_RestartDiagnostics = true; break;
                         case (3):  m_mainState = PB_CREDITS; m_RestartCredits = true; break;
-                        #if ENABLE_TEST_SANDBOX == 1
+                        #if MAIN_MENU_OPTION == 1
                         case (4):  
                             m_mainState = PB_TESTSANDBOX; 
                             m_RestartTestSandbox = true; 
                             // Pause background music when entering sandbox
                             m_soundSystem.pbsPauseMusic();
                             break;
-                        #elif ENABLE_TEST_SANDBOX == 2
+                        #elif MAIN_MENU_OPTION == 2
                         case (4):
                             m_mainState = PB_SIMPLEFLIPMODE;
                             m_RestartSimpleFlipMode = true;
@@ -2658,14 +2658,14 @@ bool PBEngine::pbeSetupIO()
     // Loop through each of the inputs and program the GPIOs and setup the debounce class for each input
      g_PBEngine.pbeSendConsole("RasPin: Intializing Inputs");
 
-    #ifdef EXE_MODE_RASPI
+    #ifdef ENABLE_PINBALL_HARDWARE
     wiringPiSetupPinType(WPI_PIN_BCM);
-    #endif // EXE_MODE_RASPI
+    #endif // ENABLE_PINBALL_HARDWARE
 
     // Set up inputs
     for (int i = 0; i < NUM_INPUTS; i++) {
         if (g_inputDef[i].boardType == PB_RASPI){
-            #ifdef EXE_MODE_RASPI
+            #ifdef ENABLE_PINBALL_HARDWARE
                 cDebounceInput debounceInput(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS, true, true);
                 g_PBEngine.m_inputPiMap.emplace(i, debounceInput);  // Use array index as ID
             #endif
@@ -2689,7 +2689,7 @@ bool PBEngine::pbeSetupIO()
 
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         if (g_outputDef[i].boardType == PB_RASPI){
-            #ifdef EXE_MODE_RASPI
+            #ifdef ENABLE_PINBALL_HARDWARE
                 pinMode(g_outputDef[i].pin, OUTPUT);
                 if (g_outputDef[i].lastState == PB_ON) {
                     digitalWrite(g_outputDef[i].pin,LOW);
@@ -2733,7 +2733,7 @@ bool PBEngine::pbeSetupIO()
                     std::forward_as_tuple(boardIndex),
                     std::forward_as_tuple(boardIndex, g_NeoPixelSPIBufferArray[boardIndex]));
                 
-                #ifdef EXE_MODE_RASPI
+                #ifdef ENABLE_PINBALL_HARDWARE
                 // Initialize GPIO for this NeoPixel driver
                 g_PBEngine.m_NeoPixelDriverMap.at(boardIndex).InitializeGPIO();
                 // Stage initial black (off) state for all LEDs
@@ -2746,7 +2746,7 @@ bool PBEngine::pbeSetupIO()
     // Send all staged changes to IO and LED chips
     g_PBEngine.pbeSendConsole("RasPin: Sending programmed outputs to pins (LED and IO)");
 
-    #ifdef EXE_MODE_RASPI
+    #ifdef ENABLE_PINBALL_HARDWARE
         SendAllStagedIO();
         SendAllStagedLED();
         SendAllStagedNeoPixels();
@@ -2754,7 +2754,7 @@ bool PBEngine::pbeSetupIO()
 
     // Hardware validation checks (only do this for actual Raspberry Pi HW)
 
-    #ifdef EXE_MODE_RASPI
+    #ifdef ENABLE_PINBALL_HARDWARE
     g_PBEngine.pbeSendConsole("RasPin: Verifying HW LED and IO Setup");
     
     // Check LEDDriver MODE1 registers - bit 4 should be 0 (normal operation)
@@ -2776,7 +2776,7 @@ bool PBEngine::pbeSetupIO()
             g_PBEngine.m_PassSelfTest = false;
         }
     }
-    #endif // EXE_MODE_RASPI
+    #endif // ENABLE_PINBALL_HARDWARE
 
     // Setup and verify the amplifier
     g_PBEngine.pbeSendConsole("RasPin: Initializing amplifier");

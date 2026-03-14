@@ -8,7 +8,7 @@
 
 cDebounceInput::cDebounceInput(int pin, int debounceTimeMS, bool usePullUpDown, bool pullUpOn){
       
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
   pinMode(pin, INPUT);
 #endif
   m_lastPinState = pinHigh;
@@ -18,7 +18,7 @@ cDebounceInput::cDebounceInput(int pin, int debounceTimeMS, bool usePullUpDown, 
   m_timeInStateMS = 0;
   m_firstRead = true;
 
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
   if (usePullUpDown)
   {
     if (pullUpOn) {
@@ -47,10 +47,10 @@ int cDebounceInput::readPin (){
     m_firstRead = false;
   }
 
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
   tempPinState = digitalRead(m_pin);
 #else
-  tempPinState = 1;  // Default to high for Windows builds
+  tempPinState = 1;  // Default to high for simulator builds
 #endif
 
   if (tempPinState == 0) currentPinState = pinLow;

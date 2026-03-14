@@ -363,7 +363,7 @@ public:
     void pbeTimerStop(unsigned int timerId);
     void pbeTimerStopAll(bool stopWatchdog = false);
     
-    #ifdef EXE_MODE_RASPI
+    #ifdef ENABLE_PINBALL_HARDWARE
         // This map is used for whatever arbitrary Raspberry Pi inputs are used (from the main board)
         // Note: IO expansion chips are not included in the structure
         std::map<int, cDebounceInput> m_inputPiMap;

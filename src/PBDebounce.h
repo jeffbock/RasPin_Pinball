@@ -8,7 +8,7 @@
 
 #include "PBBuildSwitch.h"
 
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
 #include "wiringPi.h"
 #include "wiringPiI2C.h"
 #endif

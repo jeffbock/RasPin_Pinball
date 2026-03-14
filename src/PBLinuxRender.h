@@ -19,7 +19,7 @@
 
 EGLNativeWindowType PBInitLinuxRender (long width, long height);
 
-#ifdef EXE_MODE_DEBIAN
+#ifndef ENABLE_PINBALL_HARDWARE
 Display* PBGetLinuxDisplay();
 Window PBGetLinuxWindow();
 Atom PBGetLinuxWMDeleteWindow();

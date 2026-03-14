@@ -13,7 +13,7 @@
 #include "PBBuildSwitch.h"
 #include <cstring>  // For memset in SPI buffer operations
 
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
 #include "wiringPi.h"
 #include "wiringPiI2C.h"
 #include "wiringPiSPI.h"
@@ -187,7 +187,7 @@ LEDDriver::LEDDriver(uint8_t address) : m_address(address), m_i2cFd(-1), m_group
         m_currentControl[i] = 0x00;  // Initialize current state tracking (hardware starts at 0)
     }
 
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // Initialize the TLC59116 chip
     m_i2cFd = wiringPiI2CSetup(m_address);
     if (m_i2cFd >= 0) {
@@ -211,7 +211,7 @@ LEDDriver::LEDDriver(uint8_t address) : m_address(address), m_i2cFd(-1), m_group
 }
 
 LEDDriver::~LEDDriver() {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // Clean up I2C connection
     if (m_i2cFd >= 0) {
         // Turn off all LEDs before closing
@@ -231,7 +231,7 @@ void LEDDriver::SetGroupMode(LEDGroupMode groupMode, unsigned int brightness, un
     // Set the group mode based on the parameter
     m_groupMode = groupMode;
 
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0) {
         
         uint8_t groupBrightness = (brightness > 255) ? 255 : (uint8_t)brightness;
@@ -383,7 +383,7 @@ void LEDDriver::StageLEDBrightness(bool setAll, unsigned int LEDIndex, uint8_t b
 }
 
 void LEDDriver::SendStagedLED() {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0) {
         // Send only staged PWM brightness values
         for (int i = 0; i < 16; i++) {
@@ -412,8 +412,8 @@ void LEDDriver::SendStagedLED() {
         }
     }
 #endif
-#if defined(EXE_MODE_WINDOWS) || defined(EXE_MODE_DEBIAN)
-    // Windows mode simulation - update tracking and clear flags without hardware writes
+#ifndef ENABLE_PINBALL_HARDWARE
+    // Simulator mode - update tracking and clear flags without hardware writes
         for (int i = 0; i < 16; i++) {
             if (m_pwmStaged[i]) {
                 m_currentBrightness[i] = m_ledBrightness[i];
@@ -458,7 +458,7 @@ bool LEDDriver::HasStagedChanges() const {
 
 uint8_t LEDDriver::ReadModeRegister(uint8_t modeRegister) const {
     uint8_t value = 0;
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0) {
         if (modeRegister == 1 || modeRegister == 2) {
             value = wiringPiI2CReadReg8(m_i2cFd, TLC59116_MODE1 + (modeRegister - 1));
@@ -470,7 +470,7 @@ uint8_t LEDDriver::ReadModeRegister(uint8_t modeRegister) const {
 
 uint8_t LEDDriver::ReadPWMRegister(uint8_t pwmIndex) const {
     uint8_t value = 0;
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0 && pwmIndex < 16) {
         value = wiringPiI2CReadReg8(m_i2cFd, TLC59116_PWM0 + pwmIndex);
     }
@@ -480,7 +480,7 @@ uint8_t LEDDriver::ReadPWMRegister(uint8_t pwmIndex) const {
 
 uint8_t LEDDriver::ReadLEDOutRegister(uint8_t ledOutIndex) const {
     uint8_t value = 0;
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0 && ledOutIndex < 4) {
         value = wiringPiI2CReadReg8(m_i2cFd, TLC59116_LEDOUT0 + ledOutIndex);
     }
@@ -490,7 +490,7 @@ uint8_t LEDDriver::ReadLEDOutRegister(uint8_t ledOutIndex) const {
 
 uint8_t LEDDriver::ReadGroupPWM() const {
     uint8_t value = 0;
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0) {
         value = wiringPiI2CReadReg8(m_i2cFd, TLC59116_GRPPWM);
     }
@@ -500,7 +500,7 @@ uint8_t LEDDriver::ReadGroupPWM() const {
 
 uint8_t LEDDriver::ReadGroupFreq() const {
     uint8_t value = 0;
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0) {
         value = wiringPiI2CReadReg8(m_i2cFd, TLC59116_GRPFREQ);
     }
@@ -550,7 +550,7 @@ IODriver::IODriver(uint8_t address, uint16_t inputMask) : m_address(address), m_
         m_currentOutputValues[i] = 0x00;  // Initialize current state tracking (hardware starts at 0)
     }
 
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // Initialize the TCA9555 chip
     m_i2cFd = wiringPiI2CSetup(m_address);
     if (m_i2cFd >= 0) {
@@ -575,7 +575,7 @@ IODriver::IODriver(uint8_t address, uint16_t inputMask) : m_address(address), m_
 }
 
 IODriver::~IODriver() {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // Clean up I2C connection
     if (m_i2cFd >= 0) {
         // Set all outputs to low before closing
@@ -628,7 +628,7 @@ void IODriver::StageOutputPin(uint8_t pinIndex, PBPinState value) {
 }
 
 void IODriver::SendStagedOutput() {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0) {
         // Send only staged output values
         for (int i = 0; i < 2; i++) {
@@ -645,7 +645,7 @@ void IODriver::SendStagedOutput() {
 uint16_t IODriver::ReadInputs() {
     uint16_t inputValue = 0;
     
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0) {
         // Read both input ports
         uint8_t port0 = wiringPiI2CReadReg8(m_i2cFd, TCA9555_INPUT_PORT0);
@@ -679,7 +679,7 @@ void IODriver::ConfigurePin(uint8_t pinIndex, PBPinDirection direction) {
         return;  // Invalid pin index
     }
 
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0) {
         uint8_t port = pinIndex / 8;      // Which port (0 or 1)
         uint8_t bitPos = pinIndex % 8;    // Bit position within port (0-7)
@@ -710,7 +710,7 @@ void IODriver::ConfigurePin(uint8_t pinIndex, PBPinDirection direction) {
 
 uint8_t IODriver::ReadOutputPort(uint8_t portIndex) const {
     uint8_t value = 0;
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0 && portIndex < 2) {
         value = wiringPiI2CReadReg8(m_i2cFd, TCA9555_OUTPUT_PORT0 + portIndex);
     }
@@ -720,7 +720,7 @@ uint8_t IODriver::ReadOutputPort(uint8_t portIndex) const {
 
 uint8_t IODriver::ReadPolarityPort(uint8_t portIndex) const {
     uint8_t value = 0;
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0 && portIndex < 2) {
         value = wiringPiI2CReadReg8(m_i2cFd, TCA9555_POLARITY_PORT0 + portIndex);
     }
@@ -730,7 +730,7 @@ uint8_t IODriver::ReadPolarityPort(uint8_t portIndex) const {
 
 uint8_t IODriver::ReadConfigPort(uint8_t portIndex) const {
     uint8_t value = 0;
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0 && portIndex < 2) {
         value = wiringPiI2CReadReg8(m_i2cFd, TCA9555_CONFIG_PORT0 + portIndex);
     }
@@ -758,7 +758,7 @@ uint8_t IODriver::ReadOutputValues(LEDHardwareState hwState, uint8_t portIndex) 
 //==============================================================================
 
 AmpDriver::AmpDriver(uint8_t address) : m_address(address), m_i2cFd(-1), m_currentVolume(0) {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // Initialize the MAX9744 amplifier chip
     m_i2cFd = wiringPiI2CSetup(m_address);
     if (m_i2cFd >= 0) {
@@ -769,7 +769,7 @@ AmpDriver::AmpDriver(uint8_t address) : m_address(address), m_i2cFd(-1), m_curre
 }
 
 AmpDriver::~AmpDriver() {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // Mute the amplifier before cleanup
     if (m_i2cFd >= 0) {
         SetVolume(0);
@@ -788,7 +788,7 @@ void AmpDriver::SetVolume(uint8_t volumePercent) {
     
     m_currentVolume = volumePercent;
     
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd >= 0) {
         uint8_t registerValue = PercentToRegisterValue(volumePercent);
         wiringPiI2CRawWrite(m_i2cFd, &registerValue, 1);
@@ -801,7 +801,7 @@ uint8_t AmpDriver::GetAddress() const {
 }
 
 bool AmpDriver::IsConnected() const {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_i2cFd < 0) {
         return false;  // I2C setup failed
     }
@@ -915,7 +915,7 @@ NeoPixelDriver::NeoPixelDriver(unsigned int driverIndex, unsigned char* spiBuffe
     InitializeInstrumentationData();
 }
 
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
 // Initialize GPIO pins - must be called after wiringPiSetup()
 void NeoPixelDriver::InitializeGPIO() {
     // Initialize based on the timing method
@@ -950,7 +950,7 @@ void NeoPixelDriver::InitializeGPIO() {
     m_gpioInitialized = true;
 }
 #else
-// Windows/non-RasPi version - no GPIO initialization needed
+// Simulator/non-hardware version - no GPIO initialization needed
 void NeoPixelDriver::InitializeGPIO() {
     // No-op on non-Raspberry Pi platforms
     m_gpioInitialized = true;
@@ -958,7 +958,7 @@ void NeoPixelDriver::InitializeGPIO() {
 #endif
 
 NeoPixelDriver::~NeoPixelDriver() {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // Turn off all LEDs before cleanup
     for (unsigned int i = 0; i < m_numLEDs; i++) {
         m_nodes[i].stagedRed = 0;
@@ -1129,7 +1129,7 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     }
 
     
-    #ifdef EXE_MODE_RASPI
+    #ifdef ENABLE_PINBALL_HARDWARE
     #if NEOPIXEL_USE_RT_PRIORITY
     // Temporarily elevate to real-time priority for deterministic timing
     // Requires sudo privileges: sudo ./Pinball
@@ -1173,7 +1173,7 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     // Restore original scheduling policy
     pthread_setschedparam(pthread_self(), oldPolicy, &oldParam);
     #endif
-    #endif // EXE_MODE_RASPI
+    #endif // ENABLE_PINBALL_HARDWARE
 
     // Update current values to match staged values
     for (unsigned int i = 0; i < m_numLEDs; i++) {
@@ -1186,8 +1186,8 @@ void NeoPixelDriver::SendStagedNeoPixels() {
     // Clear the changes flag
     m_hasChanges = false;
 
-#if defined(EXE_MODE_WINDOWS) || defined(EXE_MODE_DEBIAN)
-    // Windows mode simulation - just update tracking
+#ifndef ENABLE_PINBALL_HARDWARE
+    // Simulator mode - just update tracking
     // Changes flag already cleared above
 #endif
 }
@@ -1205,7 +1205,7 @@ void NeoPixelDriver::SetTimingMethod(NeoPixelTimingMethod method) {
 }
 
 void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // If disabled, do nothing
     if (method == NEOPIXEL_TIMING_DISABLED) {
         return;
@@ -1234,7 +1234,7 @@ void NeoPixelDriver::SendByte(uint8_t byte, NeoPixelTimingMethod method) {
 }
 
 void NeoPixelDriver::SendByteClockGetTime(uint8_t byte) {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
         // Option 1: Use clock_gettime() for timing (original implementation)
         // Pros: Portable, no CPU frequency dependency
         // Cons: Syscall overhead, can be affected by scheduling
@@ -1357,7 +1357,7 @@ void NeoPixelDriver::SendByteClockGetTime(uint8_t byte) {
 }
 
 void NeoPixelDriver::SendByteNOP(uint8_t byte) {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // Option 2: Use assembly NOP instructions (deterministic timing)
     // Pros: More deterministic, no syscall overhead
     // Cons: CPU frequency dependent (calibration required)
@@ -1464,7 +1464,7 @@ bool NeoPixelDriver::CheckBitTimingSpec(uint32_t highTimeNs, uint32_t lowTimeNs,
 //==============================================================================
 
 void NeoPixelDriver::InitializeSPI() {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // Validate that the output pin is SPI-capable
     if (m_spiChannel < 0) {
         // Pin is not SPI-capable - disable NeoPixels
@@ -1477,7 +1477,7 @@ void NeoPixelDriver::InitializeSPI() {
     }
     
     // Initialize SPI with appropriate speed for SK6812
-    // SK6812 timing: Each bit is 1.2μs (~833kHz)
+    // SK6812 timing: Each bit is 1.2Î¼s (~833kHz)
     //   Bit 1: 600ns HIGH, 600ns LOW
     //   Bit 0: 300ns HIGH, 900ns LOW
     // 
@@ -1500,7 +1500,7 @@ void NeoPixelDriver::InitializeSPI() {
 }
 
 void NeoPixelDriver::SendByteSPI(uint8_t byte) {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // Ensure SPI is initialized
     if (m_spiFd < 0) {
         InitializeSPI();
@@ -1535,7 +1535,7 @@ void NeoPixelDriver::SendByteSPI(uint8_t byte) {
 }
 
 void NeoPixelDriver::CloseSPI() {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     if (m_spiFd >= 0) {
         // wiringPi doesn't provide explicit SPI close, just mark as closed
         m_spiFd = -1;
@@ -1544,7 +1544,7 @@ void NeoPixelDriver::CloseSPI() {
 }
 
 void NeoPixelDriver::SendAllPixelsSPI() {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // Ensure SPI is initialized
     if (m_spiFd < 0) {
         InitializeSPI();
@@ -1610,7 +1610,7 @@ void NeoPixelDriver::SendAllPixelsSPI() {
 //==============================================================================
 
 void NeoPixelDriver::SendReset() {
-#ifdef EXE_MODE_RASPI
+#ifdef ENABLE_PINBALL_HARDWARE
     // SK6812 requires >80us low signal to latch the data
     
     switch (m_timingMethod) {

@@ -44,7 +44,7 @@
 #endif
 #endif
 
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#ifndef EXE_MODE_WINDOWS
 #include <unistd.h>
 // PATH_MAX should be defined in limits.h on POSIX systems, but provide fallback
 #ifndef PATH_MAX
@@ -67,8 +67,8 @@ bool AdjustWorkingDirectory(const char* exePath) {
     
     std::string exeDir;
 
-    #ifdef EXE_MODE_DEBIAN
-    // Debian: resolve from /proc/self/exe so launches via PATH still find project root.
+    #ifndef EXE_MODE_WINDOWS
+    // Non-Windows: resolve from /proc/self/exe so launches via PATH still find project root.
     char exeResolvedPath[PATH_MAX];
     ssize_t exeLen = readlink("/proc/self/exe", exeResolvedPath, sizeof(exeResolvedPath) - 1);
     if (exeLen > 0) {
@@ -98,7 +98,7 @@ bool AdjustWorkingDirectory(const char* exePath) {
     #ifdef EXE_MODE_WINDOWS
     if (_fullpath(absExeDir, exeDir.c_str(), PATH_MAX) == NULL) {
     #endif
-    #if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+    #ifndef EXE_MODE_WINDOWS
     if (realpath(exeDir.c_str(), absExeDir) == NULL) {
     #endif
         std::cerr << "ERROR: Failed to resolve executable directory path: " << strerror(errno) << std::endl;
@@ -255,12 +255,12 @@ bool PBProcessIO() {
 
 #endif
 
-// Debian startup and render code
-#ifdef EXE_MODE_DEBIAN
+// Linux simulator startup and render code
+#if defined(EXE_MODE_DEBIAN) || (defined(EXE_MODE_RASPI) && !defined(ENABLE_PINBALL_HARDWARE))
 #include "PBLinuxRender.h"
 #include <X11/keysym.h>
 
-EGLNativeWindowType g_DebianWindow;
+EGLNativeWindowType g_LinuxWindow;
 
 bool PBInitRender(long width, long height) {
 #ifdef SIMULATOR_SMALL_WINDOW
@@ -270,18 +270,18 @@ bool PBInitRender(long width, long height) {
     const long winWidth  = width;
     const long winHeight = height;
 #endif
-    g_DebianWindow = PBInitLinuxRender(winWidth, winHeight);
-    if (g_DebianWindow == 0) return false;
+    g_LinuxWindow = PBInitLinuxRender(winWidth, winHeight);
+    if (g_LinuxWindow == 0) return false;
 
-    if (!g_PBEngine.oglInit(width, height, g_DebianWindow)) return false;
+    if (!g_PBEngine.oglInit(width, height, g_LinuxWindow)) return false;
     if (!g_PBEngine.gfxInit()) return false;
 
-    // Debian simulator uses SDL audio like RasPi, unlike Windows simulator.
+    // Linux simulator uses SDL audio, unlike Windows simulator.
     g_PBEngine.m_soundSystem.pbsInitialize();
     return true;
 }
 
-static bool PBDebianKeyToSimChar(const XKeyEvent& keyEvent, std::string& outCharacter) {
+static bool PBLinuxKeyToSimChar(const XKeyEvent& keyEvent, std::string& outCharacter) {
     KeySym keySym = XLookupKeysym(const_cast<XKeyEvent*>(&keyEvent), 0);
 
     if (keySym >= XK_a && keySym <= XK_z) {
@@ -297,7 +297,7 @@ static bool PBDebianKeyToSimChar(const XKeyEvent& keyEvent, std::string& outChar
     return false;
 }
 
-static bool PBDebianIsExitKey(const XKeyEvent& keyEvent) {
+static bool PBLinuxIsExitKey(const XKeyEvent& keyEvent) {
     KeySym keySym = XLookupKeysym(const_cast<XKeyEvent*>(&keyEvent), 0);
 
     return (keySym == XK_Escape ||
@@ -307,7 +307,7 @@ static bool PBDebianIsExitKey(const XKeyEvent& keyEvent) {
             keySym == XK_F12);
 }
 
-bool PBDebianSimInput(const std::string& character, PBPinState inputState, stInputMessage* inputMessage) {
+bool PBLinuxSimInput(const std::string& character, PBPinState inputState, stInputMessage* inputMessage) {
     for (int i = 0; i < NUM_INPUTS; i++) {
         if (g_inputDef[i].simMapKey == character) {
             inputMessage->inputMsg = g_inputDef[i].inputMsg;
@@ -348,7 +348,7 @@ bool PBProcessInput() {
         if (event.type != KeyPress && event.type != KeyRelease) continue;
 
         if (event.type == KeyPress) {
-            if (PBDebianIsExitKey(event.xkey)) {
+            if (PBLinuxIsExitKey(event.xkey)) {
                 return false;
             }
         }
@@ -376,11 +376,11 @@ bool PBProcessInput() {
         }
 
         std::string mappedCharacter;
-        if (!PBDebianKeyToSimChar(event.xkey, mappedCharacter)) continue;
+        if (!PBLinuxKeyToSimChar(event.xkey, mappedCharacter)) continue;
 
         stInputMessage inputMessage;
         PBPinState state = (event.type == KeyPress) ? PB_ON : PB_OFF;
-        if (PBDebianSimInput(mappedCharacter, state, &inputMessage)) {
+        if (PBLinuxSimInput(mappedCharacter, state, &inputMessage)) {
             g_PBEngine.m_inputQueue.push(inputMessage);
         }
     }
@@ -399,8 +399,8 @@ bool PBProcessIO() {
 }
 #endif
 
-// Raspeberry Pi startup and render code
-#ifdef EXE_MODE_RASPI
+// Raspberry Pi hardware startup and render code
+#if defined(EXE_MODE_RASPI) && defined(ENABLE_PINBALL_HARDWARE)
 #include "PBLinuxRender.h"
 
 EGLNativeWindowType g_PiWindow;

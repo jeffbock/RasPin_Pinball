@@ -13,9 +13,9 @@ std::map<unsigned int, std::string> g_mainMenu = {
     {1, "Settings"},
     {2, "Diagnostics"},
     {3, "Credits"},
-    #if ENABLE_TEST_SANDBOX == 1
+    #if MAIN_MENU_OPTION == 1
     {4, "Test Sandbox"}
-    #elif ENABLE_TEST_SANDBOX == 2
+    #elif MAIN_MENU_OPTION == 2
     {4, "Simple Flip Mode"}
     #else
     {4, "High Scores"}

@@ -18,11 +18,21 @@ The GIT repo uses LFS, make sure to install: Windows: winget install -e --id Git
 **Important Note**:  You must change the #define in PBBuildSwitch.h depending on which build you want. For example,
 
 ```
-// #define EXE_MODE_WINDOWS
+// For Windows development/simulation:
+#define EXE_MODE_WINDOWS
+
+// For Raspberry Pi hardware build (with physical pinball hardware):
 #define EXE_MODE_RASPI
+#define ENABLE_PINBALL_HARDWARE
+
+// For Raspberry Pi in simulator mode (no hardware required):
+#define EXE_MODE_RASPI
+
+// For Debian/Linux development/simulation:
+#define EXE_MODE_DEBIAN
 ```
 
-Would be the setting when bulding on a Raspberry Pi.
+See `PBBuildSwitch.h` for full details including `SIMULATOR_SMALL_WINDOW`, `MAIN_MENU_OPTION`, and `ENABLE_HW_VIDEO_DECODE` switches.
 
 # Building for Windows
 Windows development assumes VS Code and Visual Studio 2022 are already installed installed. VS 2022 is required to get the MSVC compiler tool chain (cl.exe).  
@@ -99,7 +109,7 @@ FFMPEG - Video Playback: `sudo apt install libavcodec-dev libavformat-dev libavu
 
 PInball is currently designed to run along with X11 and XRandR, and assumes that it will find an 800x480 display to utilize as a full screen display.  The current tested configuration is a 800x480 display on the HDMI1 port, while a larger monitor is used on HDMI2 for running VS Code and full screen debugging.
 
-Of course, to control PInball on PiOS, it is assumed that you also have at least a basic breakout box containing left/right flipper, left/right activate and a start button wired up to the Raspberry Pi GPIOs per the design.  The PiOS code does not currently support the simple keyboard simulator used on Windows.
+Of course, to control PInball on PiOS, it is assumed that you also have at least a basic breakout box containing left/right flipper, left/right activate and a start button wired up to the Raspberry Pi GPIOs per the design when `ENABLE_PINBALL_HARDWARE` is defined. Without `ENABLE_PINBALL_HARDWARE`, the Raspberry Pi build runs in **simulator mode** — it opens an X11 window and accepts keyboard input, identical to the Debian simulator, with no physical hardware required.
 
 Use the task menu, ctrl-shift-P, to run the build tasks as described at the top of the document.
 
