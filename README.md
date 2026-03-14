@@ -12,8 +12,8 @@ Prototype hardware shown, full machine in development.
 
 # Current Features - This is changing constantly as work continues...
 - Intended to be a hobby level, low cost system for creating full feature, half scale pinball machines with Raspberry Pi hardware
-- Cross platform VS Code environment for Raspberry Pi (full HW) and Windows (simulation / fast development)
-- Supports a primary Pinball HDMI screen, plus 2nd monitor support for ease of debug / development
+- Cross platform VS Code environment for Linux (Linux via Debian / Raspberry Pi) and Windows - All OSes support simulator mode, while Raspberry Pi supports full pinball hardware.
+- Pinball HW mode supports a primary Pinball HDMI screen, plus 2nd monitor support for ease of debug / development
 - Built on OpenGL ES for graphics rendering, with sprite, 3D (glTF/GLB), animation and text rendering support all in simple screen space.
 - Video playback through FFMPEG integrated into sprite / rendering system
 - Simplified HW architecture for easy debug, understanding and implemention
