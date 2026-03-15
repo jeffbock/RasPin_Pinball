@@ -22,16 +22,33 @@ Select the target platform by defining the appropriate mode.
 **Windows Build:**
 ```cpp
 #define EXE_MODE_WINDOWS
+// #define EXE_MODE_DEBIAN
 // #define EXE_MODE_RASPI
 ```
 
-**Raspberry Pi Build:**
+**Debian/Linux Simulator Build:**
 ```cpp
 // #define EXE_MODE_WINDOWS
+#define EXE_MODE_DEBIAN
+// #define EXE_MODE_RASPI
+```
+
+**Raspberry Pi Build (simulator mode, no hardware):**
+```cpp
+// #define EXE_MODE_WINDOWS
+// #define EXE_MODE_DEBIAN
 #define EXE_MODE_RASPI
 ```
 
-**Note:** Only one mode should be defined at a time.
+**Raspberry Pi Build (full hardware):**
+```cpp
+// #define EXE_MODE_WINDOWS
+// #define EXE_MODE_DEBIAN
+#define EXE_MODE_RASPI
+#define ENABLE_PINBALL_HARDWARE
+```
+
+**Note:** Exactly one `EXE_MODE_*` must be defined. `ENABLE_PINBALL_HARDWARE` requires `EXE_MODE_RASPI`; defining it with any other mode causes a compile error. When `ENABLE_PINBALL_HARDWARE` is not defined, all three platforms run in simulator mode (X11/Win32 window + keyboard input).
 
 ---
 

@@ -12,7 +12,7 @@ Prototype hardware shown, full machine in development.
 
 # Current Features - This is changing constantly as work continues...
 - Intended to be a hobby level, low cost system for creating full feature, half scale pinball machines with Raspberry Pi hardware
-- Cross platform VS Code environment for Linux (Linux via Debian / Raspberry Pi) and Windows - All OSes support simulator mode, while Raspberry Pi supports full pinball hardware.
+- Cross platform VS Code environment for Linux (Linux via Debian / Raspberry Pi) and Windows - All OSes support simulator mode, while Raspberry Pi supports full pinball hardware.  Other Linux versions would likely work as well, but not tested.
 - Pinball HW mode supports a primary Pinball HDMI screen, plus 2nd monitor support for ease of debug / development
 - Built on OpenGL ES for graphics rendering, with sprite, 3D (glTF/GLB), animation and text rendering support all in simple screen space.
 - Video playback through FFMPEG integrated into sprite / rendering system
@@ -24,8 +24,13 @@ Prototype hardware shown, full machine in development.
 - Easy to use music and sound effect system with multiple channels
 - Full setup / control and diagnostics menus and capability, along with straight-forward ability to add / expand for your own personalize machine.
 - Mode and gameplay framework with a multi-mode state machine, mode sub-states, screen display priority management with and a structured game flow skeleton ready for building full pinball table rules
-- TODO: Prototype HW (mechanics, flippers, slings, etc..), build a cabinet and implement a full game (currently only game test screens).
-- TODO: Develop schematics for the custom expander boards based on TI
+
+# Currently working on... (WIP)
+- Prototype Cabinet and lower 1/3 playfield (flipps, slings, lanes).  Cabinet done in 1/4 foamboard, dimensions in HW directory of repo.  Prototyping lanes and flippers via 3D printing, flipper solinoid drivers.  Will be mounted on 1/2 ply.
+- FUTURE: Prototype HW (Balleject, targets, pop bumpers, lane / ramp detect, etc..)
+- FUTURE: Develop full version 1 whitewood
+- FUTURE: Full gameplay / code with version 1 whitewood
+- FUTURE: Develop schematics for the custom expander boards based on TI
 
 # Documentation
 - **[RasPin Overview](documentation/RasPin_Overview.md)** - **START HERE** - High-level architecture overview with diagrams and introduction to all documentation
@@ -49,7 +54,7 @@ Prototype hardware shown, full machine in development.
 
 # Design and Development guidelines
 -  Actual machine based on Raspberry Pi 5 and PiOS for ease of development and debug.  Full power of Linux OS.  
--  Cross platform support via VS Code: Shared code between PiOS and Windows - using Windows for high power development / simulation.
+-  Cross platform support via VS Code: Shared code between Linux/PiOS and Windows - using Windows for high power development / simulation, although could do this with a full Linux PC as well.
 -  Keep the structure and coding straightfoward so that intermediate level coders and utilize the system and build new tables.
 -  Modular / HAL based graphics engine - allow for easy upgrade to other APIs if desired (currently OGL 3.1, but maybe Vulkan later?)
 -  All IO (sensor/button inputs, lighting and solenoid outputs) routed through Pi controller.

@@ -47,11 +47,11 @@ Windows development assumes VS Code and Visual Studio 2022 are already installed
 
 - Clone the PInball repo from GitHub: [PInblall](https://github.com/jeffbock/PInball)
 
-- Copy your desired ANGLE OGL ES (debug or release) libraries into the PInball structure from where you built ANGLE (angle/out/debug or angle/out/release).  The following libraries shoudl be copied to these locations.
-    - PInball/src/lib_ogl/libEGL.dll.lib
-    - PInball/src/lib_ogl/libGLESv2.dll.lib
+- Copy your desired ANGLE OGL ES (debug or release) libraries into the PInball structure from where you built ANGLE (angle/out/debug or angle/out/release).  The following libraries should be copied to these locations.
+    - PInball/src/lib_ogl_win/libEGL.dll.lib
+    - PInball/src/lib_ogl_win/libGLESv2.dll.lib
  
--  Imporant NOTE: You must also likely replace the header files in PInball/src/include_ogl with the same files from Angle/include.  These header files must usually be aligned with what was built on the system.
+-  Important NOTE: You must also likely replace the header files in PInball/src/include_ogl_win with the same files from Angle/include.  These header files must usually be aligned with what was built on the system.
 
 - In the windows search bar, look for "x64 Native Tools Command Prompt for VS2022" and run it.
     - Type "code" and hit enter to launch VS Code.
@@ -90,6 +90,24 @@ For Windows the libs and DLLs are already included in the source code, but can b
    - `avutil-*.dll`
    - `swscale-*.dll`
    - `swresample-*.dll`
+
+ # Build Natively on Debian/Ubuntu (Simulator)
+
+The Debian/Ubuntu build provides a simulator mode identical to Windows: it opens an X11 window, accepts keyboard input, and requires no physical pinball hardware.  Use this on any Debian-based Linux desktop or laptop for development and testing.
+
+Required Installations:
+
+XRandR - Multi-monitor support:  `sudo apt-get install x11-xserver-utils libxrandr-dev`
+
+OpenGL ES - EGL/GLES headers:  `sudo apt install libgles2-mesa-dev libegl1-mesa-dev`
+
+SDL_Mixer - Sound Library: `sudo apt install libsdl2-dev libsdl2-mixer-dev`
+
+FFMPEG - Video Playback: `sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev`
+
+Set `EXE_MODE_DEBIAN` in `PBBuildSwitch.h` (or pass `/DEXE_MODE_DEBIAN` at build time), then use the **DebianOS: Full Pinball Build** task in VS Code.  The resulting binary opens an X11 window and can be used for all simulation and debugging without any hardware.
+
+**Note:** `SIMULATOR_SMALL_WINDOW` also applies to the Debian build — uncomment it in `PBBuildSwitch.h` for a half-size window useful when developing over RDP.
 
  # Build Natively on Raspberry Pi 5
 

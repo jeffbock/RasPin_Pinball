@@ -7,7 +7,7 @@ The RasPin Pinball Framework is a complete software and hardware solution for bu
 ### Framework Goals
 
 - **Hobby-Friendly**: Low cost, easy to source components, designed for intermediate-level programmers
-- **Cross-Platform**: Develop on Windows, deploy to Raspberry Pi hardware
+- **Cross-Platform**: Develop on Windows or Debian/Linux, deploy to Raspberry Pi hardware
 - **Flexible**: Message-based architecture allows custom game logic without modifying core engine
 - **Complete**: Graphics, sound, I/O, LED control, and game state management in one framework
 - **Efficient**: Optimized for Raspberry Pi performance with smart hardware management
@@ -190,8 +190,8 @@ Load Sprite → Create Instances → Configure Properties → Animate → Render
 - Plays videos like animated sprites
 - Supports seeking, looping, speed control
 - Automatic frame synchronization
-- Standard sprite transformations work on video
-- Audio playback (Raspberry Pi only)
+- Standard sprite transformations (scale, rotation, position, alpha)
+- Audio playback (Raspberry Pi and Debian simulator)
 
 **Use Cases:**
 - Attract mode loops
@@ -199,42 +199,6 @@ Load Sprite → Create Instances → Configure Properties → Animate → Render
 - Cutscenes and story elements
 - Animated backgrounds
 - Dynamic content displays
-
-**Basic Usage:**
-```cpp
-// Initialize video player
-PBVideoPlayer videoPlayer(&gfx, &sound);
-
-// Load and play video
-unsigned int sprite = videoPlayer.pbvpLoadVideo(
-    "src/resources/videos/intro.mp4", 
-    100, 100,  // x, y position
-    false      // keepResident
-);
-
-videoPlayer.pbvpSetLooping(true);
-videoPlayer.pbvpPlay();
-
-// In render loop
-videoPlayer.pbvpUpdate(currentTick);  // Decode & sync
-videoPlayer.pbvpRender();             // Draw to screen
-```
-
-**Advanced Features:**
-```cpp
-// Transform video like any sprite
-videoPlayer.pbvpSetScaleFactor(0.5f);   // Scale to 50%
-videoPlayer.pbvpSetAlpha(0.8f);         // 80% opacity
-videoPlayer.pbvpSetRotation(45.0f);     // Rotate 45°
-
-// Playback control
-videoPlayer.pbvpSetPlaybackSpeed(2.0f); // 2x speed
-videoPlayer.pbvpSeekTo(30.0f);          // Jump to 30s
-
-// Query video info
-stVideoInfo info = videoPlayer.pbvpGetVideoInfo();
-// width, height, fps, duration, hasAudio, hasVideo
-```
 
 **Supported Formats:**
 - **Containers:** MP4, AVI, MOV, WebM, MKV
@@ -244,16 +208,16 @@ stVideoInfo info = videoPlayer.pbvpGetVideoInfo();
 
 **Performance Considerations:**
 - Raspberry Pi: Keep videos ≤720p for smooth playback
-- CPU-intensive decoding (no HW acceleration yet)
+- Software decoding only by default; hardware decode path (`h264_v4l2m2m`) exists but is disabled (`ENABLE_HW_VIDEO_DECODE=0` in `PBBuildSwitch.h`)
 - Each frame uses width × height × 4 bytes of memory
 - Limit simultaneous videos
 
 **Platform Differences:**
-| Feature | Windows | Raspberry Pi |
-|---------|---------|--------------|
+| Feature | Windows | Raspberry Pi / Debian |
+|---------|---------|----------------------|
 | Video playback | ✅ Supported | ✅ Supported |
 | Audio playback | ❌ Stubbed | ✅ Via SDL2 |
-| Hardware decode | ❌ Not yet | ❌ Not yet |
+| Hardware decode | ❌ Not applicable | ❌ Disabled by default (`ENABLE_HW_VIDEO_DECODE=0`) |
 
 **Documentation:** [Game_Creation_API.md](Game_Creation_API.md) (PBVideoPlayer section)
 
@@ -386,52 +350,17 @@ Use for devices requiring:
 Simple devices (basic slingshots, bumpers) can use direct output messages.
 
 **Base Class Functions:**
-```cpp
-// Virtual functions (override in derived classes)
-virtual void pbdInit();           // Initialize/reset device
-virtual void pbdEnable(bool);     // Enable/disable device
-virtual void pdbStartRun();       // Start device operation
-virtual void pbdExecute() = 0;    // Update device (pure virtual)
-
-// Utility functions
-bool pdbIsRunning() const;        // Check if operation in progress
-bool pbdIsError() const;          // Check for error state
-int pbdResetError();              // Get and clear error
-void pbdSetState(unsigned int);   // Set current state
-unsigned int pbdGetState() const; // Get current state
-```
+- `pbdInit()` — Initialize/reset device state
+- `pbdEnable(bool)` — Enable or disable the device
+- `pdbStartRun()` — Start a device operation cycle
+- `pbdExecute()` — Update device state machine (call every frame, pure virtual)
+- `pdbIsRunning()` — Check if an operation is in progress
+- `pbdIsError()` / `pbdResetError()` — Error state management
+- `pbdSetState()` / `pbdGetState()` — Direct state control
 
 **Example: pbdEjector Class**
 
-The framework includes a complete implementation of a ball ejector:
-
-```cpp
-class pbdEjector : public PBDevice {
-    // Manages ball ejection with LED and solenoid control
-    
-    States:
-        IDLE → BALL_DETECTED → SOLENOID_ON → SOLENOID_OFF
-                                    ↓              ↓
-                                    └──(retry)─────┘
-                                    ↓
-                                COMPLETE
-};
-
-// Usage in game code
-pbdEjector* m_scoop = new pbdEjector(&g_PBEngine, 
-                                    INPUT_SCOOP,
-                                    LED_SCOOP,
-                                    OUTPUT_SCOOP_EJECT);
-m_scoop->pbdEnable(true);
-
-// In game loop
-m_scoop->pbdExecute();  // Call every frame
-
-// Check completion
-if (!m_scoop->pdbIsRunning()) {
-    // Ejection complete, award points
-}
-```
+The framework includes a complete ball ejector implementation that manages LED feedback, solenoid firing, and retry logic through a state machine: `IDLE → BALL_DETECTED → SOLENOID_ON → SOLENOID_OFF → COMPLETE`.
 
 **Device Flow Pattern:**
 ```
@@ -540,35 +469,6 @@ Set Timer ──→ Timer Running ──→ Timer Expires ──→ Input Messag
 - **Mode Timeout**: Time-limited game modes
 - **Bonus Countdown**: Animated bonus display timing
 - **Periodic Events**: Repeating timers for animations or effects
-
-**Example Usage:**
-```cpp
-// Define timer IDs
-#define TIMER_BALL_SAVE 100
-#define TIMER_SKILL_SHOT 101
-#define TIMER_MULTIBALL_DELAY 102
-
-// Set a 5-second ball save timer
-g_PBEngine.pbeSetTimer(TIMER_BALL_SAVE, 5000);
-
-// Set watchdog timer (dedicated, doesn't count against limit)
-g_PBEngine.pbeSetWatchdogTimer(10000);
-
-// Handle timer expiration in game logic
-if (inputMessage.inputMsg == PB_IMSG_TIMER) {
-    switch (inputMessage.inputId) {
-        case WATCHDOGTIMER:  // ID = 0
-            // Watchdog timer expired
-            break;
-        case TIMER_BALL_SAVE:
-            // Ball save period ended
-            break;
-        case TIMER_SKILL_SHOT:
-            // Skill shot window closed
-            break;
-    }
-}
-```
 
 **Key Features:**
 - **Automatic Management**: Timers are processed automatically in main loop

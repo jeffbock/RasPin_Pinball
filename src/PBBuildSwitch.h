@@ -5,9 +5,9 @@
 #ifndef PBBuildSwitch_h
 #define PBBuildSwitch_h
 
-// =============================================================================
-// SECTION 1: PLATFORM SELECTION  (EXE_MODE_*)
-// =============================================================================
+// =======================================================================================
+// SECTION 1: PLATFORM SELECTION (EXE_MODE_*) and Enable HW Mode (ENABLE_PINBALL_HARDWARE)
+// =======================================================================================
 // Selects the target operating system / environment.  Exactly one must be set.
 //
 // Build tasks in tasks.json pass -DEXE_MODE_* (GCC/Clang) or /DEXE_MODE_* (MSVC)
@@ -18,20 +18,7 @@
 //   EXE_MODE_DEBIAN   - Debian/Ubuntu Linux.  Simulator mode only.
 //   EXE_MODE_RASPI    - Raspberry Pi OS.  Supports both simulator and hardware
 //                       mode (see ENABLE_PINBALL_HARDWARE below).
-
-#if !defined(EXE_MODE_WINDOWS) && !defined(EXE_MODE_DEBIAN) && !defined(EXE_MODE_RASPI)
-#define EXE_MODE_WINDOWS
-//#define EXE_MODE_DEBIAN
-// #define EXE_MODE_RASPI
-#endif
-
-#if (defined(EXE_MODE_WINDOWS) + defined(EXE_MODE_DEBIAN) + defined(EXE_MODE_RASPI)) != 1
-#error "Exactly one EXE_MODE_* define must be enabled"
-#endif
-
-// =============================================================================
-// SECTION 2: PINBALL HARDWARE MODE  (ENABLE_PINBALL_HARDWARE)
-// =============================================================================
+//
 // Define ENABLE_PINBALL_HARDWARE to enable full physical pinball machine support.
 // This activates wiringPi GPIO/I2C/SPI communication with the hardware breakout
 // board, debounce inputs, output coils, LEDs, and NeoPixels.
@@ -44,7 +31,17 @@
 //   - Windowed X11 (Linux) or Win32 window with keyboard input.
 //   - No physical I/O hardware required.
 //   - SIMULATOR_SMALL_WINDOW option is available (see Section 3).
-//
+
+#if !defined(EXE_MODE_WINDOWS) && !defined(EXE_MODE_DEBIAN) && !defined(EXE_MODE_RASPI)
+#define EXE_MODE_WINDOWS
+//#define EXE_MODE_DEBIAN
+// #define EXE_MODE_RASPI
+#endif
+
+#if (defined(EXE_MODE_WINDOWS) + defined(EXE_MODE_DEBIAN) + defined(EXE_MODE_RASPI)) != 1
+#error "Exactly one EXE_MODE_* define must be enabled"
+#endif
+
 // To build for a real pinball machine, uncomment the line below:
 // #define ENABLE_PINBALL_HARDWARE
 
@@ -53,7 +50,7 @@
 #endif
 
 // =============================================================================
-// SECTION 3: SIMULATOR OPTIONS
+// SECTION 2: SIMULATOR OPTIONS
 // =============================================================================
 // These options apply whenever ENABLE_PINBALL_HARDWARE is NOT defined, i.e.
 // any Windows, Debian, or Raspberry Pi simulator build.
@@ -66,7 +63,7 @@
 #endif
 
 // =============================================================================
-// SECTION 4: MAIN MENU OPTION
+// SECTION 3: MAIN MENU OPTION
 // =============================================================================
 // Controls which optional item appears as the 5th entry in the main menu.
 //   0 = High Scores  (default)
@@ -81,6 +78,7 @@
 // This is independent of ENABLE_PINBALL_HARDWARE — simulators may also have
 // hardware decode capability depending on the host platform.
 // Set to 1 to enable hardware decode, 0 for software decode.
+// BUG / CONFIG ISSUE:  This doesn't seem to work for Raspberry Pi, where it's really needed. Might work later w/ OS updates.
 #define ENABLE_HW_VIDEO_DECODE 0
 
 #endif

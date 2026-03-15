@@ -21,9 +21,9 @@ PBTableState (Top Level)
     │
     ├─ PBTBL_INIT
     ├─ PBTBL_START
-    ├─ PBTBL_MAINSCREEN ──────┐
-    ├─ PBTBL_STDPLAY          │ Mode System Active
-    ├─ PBTBL_RESET            │
+    ├─ PBTBL_MAIN ────────────┐
+    ├─ PBTBL_RESET            │ Mode System Active
+    ├─ PBTBL_GAMEEND          │
     └─ PBTBL_END              ┘
                               │
                     ┌─────────┴─────────┐
@@ -117,7 +117,8 @@ enum class ScreenPriority {
 
 ```cpp
 struct ScreenRequest {
-    int screenId;                    // ID of screen to display
+    PBTableState tableState;         // Main table state to display
+    int subScreenState;              // Subscreen enum value for the table state
     ScreenPriority priority;         // Priority level
     unsigned long durationMs;        // How long to display (0 = until cleared)
     unsigned long requestTick;       // When request was made
@@ -130,7 +131,7 @@ struct ScreenRequest {
 - **pbeRequestScreen()** - Request a screen to be displayed
 - **pbeUpdateScreenManager()** - Update screen queue and determine current screen
 - **pbeClearScreenRequests()** - Clear all pending screen requests
-- **pbeGetCurrentScreen()** - Get the currently displayed screen ID
+- **pbeGetCurrentScreenState()** - Get the currently displayed `PBTableState`
 
 ## Mode System Flow Charts
 
@@ -282,7 +283,7 @@ struct ScreenRequest {
 ```
 ┌────────────────────────────────────────────────┐
 │          Screen Request Made                   │
-│     pbeRequestScreen(id, priority, ...)        │
+│  pbeRequestScreen(state, sub, priority, ...)   │
 └─────────────────┬──────────────────────────────┘
                   │
                   ▼
@@ -428,8 +429,8 @@ void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
             modeState.yourModeState = PBYourModeState::YOURMODE_INIT;
             modeState.yourModeStateStartTick = currentTick;
             
-            // Request your mode's screen
-            pbeRequestScreen(300, ScreenPriority::PRIORITY_MEDIUM, 0, true);
+            // Request your mode's screen (example: main gameplay state with sub-state 0)
+            pbeRequestScreen(PBTableState::PBTBL_MAIN, 0, ScreenPriority::PRIORITY_MEDIUM, 0, true);
             break;
     }
 }
@@ -522,16 +523,17 @@ switch (modeState.currentMode) {
 
 ```cpp
 // Normal scoring display - can be interrupted
-pbeRequestScreen(SCREEN_SCORE, ScreenPriority::PRIORITY_LOW, 0, true);
+// Requests PBTBL_MAIN with sub-state 0 (MAIN_NORMAL)
+pbeRequestScreen(PBTableState::PBTBL_MAIN, (int)PBTBLMainScreenState::MAIN_NORMAL, ScreenPriority::PRIORITY_LOW, 0, true);
 
-// Mode start - stays for 3 seconds, can be preempted by higher priority
-pbeRequestScreen(SCREEN_MODE_START, ScreenPriority::PRIORITY_MEDIUM, 3000, true);
+// Mode start screen - stays for 3 seconds, can be preempted by higher priority
+pbeRequestScreen(PBTableState::PBTBL_START, 0, ScreenPriority::PRIORITY_MEDIUM, 3000, true);
 
-// Jackpot - stays for 5 seconds, cannot be preempted
-pbeRequestScreen(SCREEN_JACKPOT, ScreenPriority::PRIORITY_HIGH, 5000, false);
+// Extra ball screen - stays for 5 seconds, cannot be preempted
+pbeRequestScreen(PBTableState::PBTBL_MAIN, (int)PBTBLMainScreenState::MAIN_EXTRABALL, ScreenPriority::PRIORITY_HIGH, 5000, false);
 
-// Game over - stays until cleared, cannot be preempted
-pbeRequestScreen(SCREEN_GAMEOVER, ScreenPriority::PRIORITY_CRITICAL, 0, false);
+// Game end screen - stays until cleared, cannot be preempted
+pbeRequestScreen(PBTableState::PBTBL_GAMEEND, 0, ScreenPriority::PRIORITY_CRITICAL, 0, false);
 ```
 
 ## Example: Implementing a Wizard Mode
@@ -598,7 +600,7 @@ bool PBEngine::pbeCheckWizardQualified() {
 
 The mode system integrates with the existing table state system:
 
-- **PBTBL_MAINSCREEN** and **PBTBL_STDPLAY** both use the mode system
+- **PBTBL_MAIN** uses the mode system (mode transitions happen inside the main gameplay state)
 - Mode state is per-player (stored in `pbGameState`)
 - Screen manager is global (shared across all players)
 - Mode transitions can happen at any time based on game conditions
