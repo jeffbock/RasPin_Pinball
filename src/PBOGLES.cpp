@@ -493,7 +493,10 @@ GLuint PBOGLES::oglLoadBMPTexture (const char* filename, unsigned int* width, un
     GLuint texture;
 
     glGenTextures(1, &texture);
-    if (texture == 0) return (0);
+    if (texture == 0) {
+        delete[] rgbData;
+        return (0);
+    }
 
     // Create the texture.  NOTE:  We don't force power of two textures, nor does the system have ability
     // to assign UV texture coodiates within a texture (sprites always use full texture).  If non-power of two 

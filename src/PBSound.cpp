@@ -374,7 +374,10 @@ Mix_Chunk* PBSound::createAudioChunkFromSamples(const float* audioSamples, int n
     // For stereo: numSamples = frames * 2
     // Each sample converts to Sint16, so buffer size = numSamples * sizeof(Sint16)
     int bufferSize = numSamples * sizeof(Sint16);
-    Sint16* buffer = new Sint16[numSamples];
+    Sint16* buffer = (Sint16*)SDL_malloc(bufferSize);
+    if (!buffer) {
+        return nullptr;
+    }
     
     for (int i = 0; i < numSamples; i++) {
         // Clamp and convert float [-1.0, 1.0] to Sint16 [-32768, 32767]
@@ -385,7 +388,11 @@ Mix_Chunk* PBSound::createAudioChunkFromSamples(const float* audioSamples, int n
     }
     
     // Create Mix_Chunk from buffer
-    Mix_Chunk* chunk = new Mix_Chunk;
+    Mix_Chunk* chunk = (Mix_Chunk*)SDL_calloc(1, sizeof(Mix_Chunk));
+    if (!chunk) {
+        SDL_free(buffer);
+        return nullptr;
+    }
     chunk->allocated = 1;
     chunk->abuf = (Uint8*)buffer;
     chunk->alen = bufferSize;
