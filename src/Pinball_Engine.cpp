@@ -1275,6 +1275,10 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
             m_sandboxVideoSpriteId = NOSPRITE;
             m_sandboxVideoLoaded = false;
         }
+        // Reset fade state so stale flags don't carry over
+        m_videoFadingIn = false;
+        m_videoFadingOut = false;
+        m_videoFadeStartTick = 0;
     }
     
     if (!pbeLoadTestSandbox()) {
@@ -2353,6 +2357,10 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         m_sandboxVideoSpriteId = NOSPRITE;
                         m_sandboxVideoLoaded = false;
                     }
+                    // Reset fade state so stale flags don't carry over
+                    m_videoFadingIn = false;
+                    m_videoFadingOut = false;
+                    m_videoFadeStartTick = 0;
                     
                     // Clean up sandbox ejector device before exiting
                     if (m_sandboxEjector) {

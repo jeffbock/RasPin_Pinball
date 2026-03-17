@@ -97,6 +97,7 @@ bool PBGfx::gfxReloadTexture(unsigned int spriteId) {
                     case GFX_BMP: textureType = OGL_BMP; break;
                     case GFX_PNG: textureType = OGL_PNG; break;
                     case GFX_NONE: textureType = OGL_NONE; break;
+                    case GFX_VIDEO: textureType = OGL_VIDEO; break;
                     default: return (false);
                 }
                 m_spriteList[it->second.parentSpriteId].glTextureId = oglLoadTexture(m_spriteList[it->second.parentSpriteId].textureFileName.c_str(), textureType, &tempX, &tempY);
