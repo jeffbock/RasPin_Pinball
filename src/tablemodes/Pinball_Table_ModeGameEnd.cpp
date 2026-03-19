@@ -27,6 +27,16 @@ bool PBEngine::pbeLoadGameEnd(){
         return (false);
     }
     
+    // Disable auto-outputs and turn off all gameplay LEDs
+    SetAutoOutputEnable(false);
+    SendOutputMsg(PB_OMSG_LED, IDO_SAVELED,    PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_LINLANELED, PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_RINLANELED, PB_OFF, false);
+    m_leftInlaneLEDOn  = false;
+    m_rightInlaneLEDOn = false;
+    m_mainNeoPixelMode = 3;  // Prevent render base from restarting animations
+    SendNeoPixelAllMsg(IDO_NEOPIXEL0, 0, 0, 0, 255);
+
     m_gameEndLoaded = true;
     return (true);
 }
@@ -263,14 +273,14 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
             
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 // Left/right flipper: cycle the active letter through the character set
-                if (inputMessage.inputId == IDI_RPIOP27_LFLIP || inputMessage.inputId == IDI_RPIOP17_RFLIP) {
+                if (inputMessage.inputId == IDI_LFLIP || inputMessage.inputId == IDI_RFLIP) {
                     char& letter = qualifier.initials[m_gameEndActiveLetterPos];
                     int idx = 1; // default to 'A' if current char not found
                     for (int c = 0; c < INITIALS_CHARS_COUNT; c++) {
                         if (INITIALS_CHARS[c] == letter) { idx = c; break; }
                     }
                     // Left flipper: cycle DOWN (space wraps to 9); right flipper: cycle UP (9 wraps to space)
-                    if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
+                    if (inputMessage.inputId == IDI_LFLIP) {
                         letter = INITIALS_CHARS[(idx - 1 + INITIALS_CHARS_COUNT) % INITIALS_CHARS_COUNT];
                     } else {
                         letter = INITIALS_CHARS[(idx + 1) % INITIALS_CHARS_COUNT];
@@ -278,14 +288,14 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
                     m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                 }
                 // Left activate: move cursor left (stay at leftmost if already there)
-                else if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
+                else if (inputMessage.inputId == IDI_LACTIVATE) {
                     if (m_gameEndActiveLetterPos > 0) {
                         m_gameEndActiveLetterPos--;
                         m_soundSystem.pbsPlayEffect(SOUNDCLICK);
                     }
                 }
                 // Right activate: move cursor right, or complete entry if at rightmost
-                else if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
+                else if (inputMessage.inputId == IDI_RACTIVATE) {
                     if (m_gameEndActiveLetterPos < 2) {
                         // Move to next letter position
                         m_gameEndActiveLetterPos++;

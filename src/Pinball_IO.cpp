@@ -121,19 +121,22 @@ void InitializeOutputDefs() {
     
     // Initialize each output using its #define index
     // Format: SetOutputDef(index, name, msg_type, pin, board_type, board_index, initial_state, on_time_ms, off_time_ms, neopixel_index)
-    SetOutputDef(IDO_RPIOP23_StartLED, "RPI0P23 Start LED", PB_OMSG_GENERIC_IO, 23, PB_RASPI, 0, PB_ON, 0, 0, 0, initialized, hasErrors);
-    SetOutputDef(IDO_IOD0P10_LFLIP, "IO0P10 LFlipper", PB_OMSG_GENERIC_IO, 10, PB_IO, 0, PB_OFF, 100, 100, 0, initialized, hasErrors);
-    SetOutputDef(IDO_IOD0P11_RFLIP, "IO0P11 RFlipper", PB_OMSG_GENERIC_IO, 11, PB_IO, 0, PB_OFF, 100, 100, 0, initialized, hasErrors);
-    SetOutputDef(IDO_LED0P08_LSlingLED, "LED0P08 LSling LED", PB_OMSG_LED, 8, PB_LED, 0, PB_OFF, 100, 100, 0, initialized, hasErrors);
-    SetOutputDef(IDO_LED0P09_RSlingLED, "LED0P09 RSling LED", PB_OMSG_LED, 9, PB_LED, 0, PB_OFF, 150, 50, 0, initialized, hasErrors);
-    SetOutputDef(IDO_IOD0P08_LSLING, "IO0P08 LSling", PB_OMSG_GENERIC_IO, 8, PB_IO, 0, PB_OFF, 250, 250, 0, initialized, hasErrors);
-    SetOutputDef(IDO_IOD0P09_RSLING, "IO0P09 RSling", PB_OMSG_GENERIC_IO, 9, PB_IO, 0, PB_OFF, 250, 250, 0, initialized, hasErrors);
-    SetOutputDef(IDO_IO2P08_EJECT, "IO2P08 Eject", PB_OMSG_GENERIC_IO, 8, PB_IO, 2, PB_OFF, 2000, 2000, 0, initialized, hasErrors);
-    SetOutputDef(IDO_LED0P10_EJECTLED, "LED0P10 Eject LED", PB_OMSG_LED, 10, PB_LED, 0, PB_OFF, 200, 0, 0, initialized, hasErrors);
-    SetOutputDef(IDO_IO1P08_POP, "IO1P08 Pop", PB_OMSG_GENERIC_IO, 8, PB_IO, 1, PB_OFF, 1000, 1000, 0, initialized, hasErrors);    
-    SetOutputDef(IDO_RPIOP10_NEOPIXEL0, "NeoPixel0", PB_OMSG_NEOPIXEL, 10, PB_NEOPIXEL, 0, PB_OFF, 0, 0, 0, initialized, hasErrors);
-    // Not sure if we will use 2 NeoPixels or not, commented out for now..
-    // SetOutputDef(IDO_RPIOP12_NEOPIXEL1, "NeoPixel1", PB_OMSG_NEOPIXEL, 12, PB_NEOPIXEL, 1, PB_OFF, 0, 0, 0, initialized, hasErrors);
+    // RPI outputs (unchanged)
+    SetOutputDef(IDO_STARTLED,    "RPI0P23 Start LED",   PB_OMSG_GENERIC_IO, 23, PB_RASPI,    0, PB_ON,  0,    0,   0, initialized, hasErrors);
+    // IO board 0: solenoids pins 0-3, eject pin 4
+    SetOutputDef(IDO_RSLING,      "IO0P00 RSling",        PB_OMSG_GENERIC_IO,  0, PB_IO,       0, PB_OFF, 250, 250, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LSLING,      "IO0P01 LSling",        PB_OMSG_GENERIC_IO,  1, PB_IO,       0, PB_OFF, 250, 250, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LFLIP,       "IO0P02 LFlipper",      PB_OMSG_GENERIC_IO,  2, PB_IO,       0, PB_OFF, 100, 100, 0, initialized, hasErrors);
+    SetOutputDef(IDO_RFLIP,       "IO0P03 RFlipper",      PB_OMSG_GENERIC_IO,  3, PB_IO,       0, PB_OFF, 100, 100, 0, initialized, hasErrors);
+    SetOutputDef(IDO_EJECT,       "IO0P04 Eject",         PB_OMSG_GENERIC_IO,  4, PB_IO,       0, PB_OFF, 200, 200, 0, initialized, hasErrors);
+    // NeoPixel strip
+    SetOutputDef(IDO_NEOPIXEL0,   "NeoPixel0",            PB_OMSG_NEOPIXEL,   10, PB_NEOPIXEL, 0, PB_OFF,   0,   0, 0, initialized, hasErrors);
+    // LED board 0: indicator LEDs pins 0-4
+    SetOutputDef(IDO_LSLINGLED,   "LED0P00 LSling LED",   PB_OMSG_LED,         0, PB_LED,      0, PB_OFF, 100, 100, 0, initialized, hasErrors);
+    SetOutputDef(IDO_RSLINGLED,   "LED0P01 RSling LED",   PB_OMSG_LED,         1, PB_LED,      0, PB_OFF, 150,  50, 0, initialized, hasErrors);
+    SetOutputDef(IDO_LINLANELED,  "LED0P02 LInlane LED",  PB_OMSG_LED,         2, PB_LED,      0, PB_OFF, 100,   0, 0, initialized, hasErrors);
+    SetOutputDef(IDO_RINLANELED,  "LED0P03 RInlane LED",  PB_OMSG_LED,         3, PB_LED,      0, PB_OFF, 100,   0, 0, initialized, hasErrors);
+    SetOutputDef(IDO_SAVELED,     "LED0P04 Ball Save LED",PB_OMSG_LED,         4, PB_LED,      0, PB_OFF, 100,   0, 0, initialized, hasErrors);
     
     if (hasErrors) {
         g_PBEngine.pbeSendConsole("RasPin: ERROR: Output initialization failed!");
@@ -152,17 +155,21 @@ void InitializeInputDefs() {
     
     // Initialize each input using its #define index
     // Format: SetInputDef(index, name, sim_key, msg_type, pin, board_type, board_index, initial_state, state_tick, debounce_ms, auto_output, auto_output_id, auto_pin_state, auto_use_pulse)
-    SetInputDef(IDI_RPIOP27_LFLIP, "RPI0P27 LFlipper", "A", PB_IMSG_BUTTON, 27, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_IOD0P10_LFLIP, PB_ON, false, initialized, hasErrors);
-    SetInputDef(IDI_RPIOP17_RFLIP, "RPI0P17 RFlipper", "D", PB_IMSG_BUTTON, 17, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_IOD0P11_RFLIP, PB_ON, false, initialized, hasErrors);
-    SetInputDef(IDI_RPIOP05_LACTIVATE, "RPI0P05 LActivate", "Q", PB_IMSG_BUTTON, 5, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_RPIOP22_RACTIVATE, "RPI0P22 RActivate", "E", PB_IMSG_BUTTON, 22, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_RPIOP06_START, "RPI0P06 Start", "Z", PB_IMSG_BUTTON, 6, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_RPIOP24_RESET, "RPI0P24 Reset", "C", PB_IMSG_BUTTON, 24, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_IO2P06_LSLING, "IO2P06 LSling", "4", PB_IMSG_JETBUMPER, 6, PB_IO, 2, PB_OFF, 0, 5, true, IDO_IOD0P08_LSLING, PB_ON, true, initialized, hasErrors);
-    SetInputDef(IDI_IO2P05_RSLING, "IO2P05 RSling", "5", PB_IMSG_JETBUMPER, 5, PB_IO, 2, PB_OFF, 0, 5, true, IDO_IOD0P09_RSLING, PB_ON, true, initialized, hasErrors);
-    SetInputDef(IDI_IO0P07_EJECTSW2, "IO0P07 EjectSW2", "1", PB_IMSG_SENSOR, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_IO1P07_SENSOR2, "IO1P07 Sensor2", "2", PB_IMSG_SENSOR, 7, PB_IO, 1, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_IO2P07_SENSOR3, "IO2P07 Sensor3", "3", PB_IMSG_SENSOR, 7, PB_IO, 2, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
+    // RPI inputs (unchanged)
+    SetInputDef(IDI_LFLIP,       "RPI0P27 LFlipper",    "A", PB_IMSG_BUTTON,   27, PB_RASPI, 0, PB_OFF, 0, 5, true,  IDO_LFLIP,  PB_ON,  false, initialized, hasErrors);
+    SetInputDef(IDI_RFLIP,       "RPI0P17 RFlipper",    "D", PB_IMSG_BUTTON,   17, PB_RASPI, 0, PB_OFF, 0, 5, true,  IDO_RFLIP,  PB_ON,  false, initialized, hasErrors);
+    SetInputDef(IDI_LACTIVATE,   "RPI0P05 LActivate",   "Q", PB_IMSG_BUTTON,    5, PB_RASPI, 0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_RACTIVATE,   "RPI0P22 RActivate",   "E", PB_IMSG_BUTTON,   22, PB_RASPI, 0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_START,       "RPI0P06 Start",       "Z", PB_IMSG_BUTTON,    6, PB_RASPI, 0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_RESET,       "RPI0P24 Reset",       "C", PB_IMSG_BUTTON,   24, PB_RASPI, 0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
+    // IO board 0, pins 5-11: inputs start after outputs (outputs occupy pins 0-4)
+    SetInputDef(IDI_RINLANE,      "IO0P05 RInlane",      "1", PB_IMSG_SENSOR,    5, PB_IO,    0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_LINLANE,      "IO0P06 LInlane",      "2", PB_IMSG_SENSOR,    6, PB_IO,    0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_BALLREADY,    "IO0P07 Ball Ready",   "3", PB_IMSG_SENSOR,    7, PB_IO,    0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_BALLDRAIN,    "IO0P08 Ball Drain",   "4", PB_IMSG_SENSOR,    8, PB_IO,    0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_BALLDELIVERED,"IO0P09 Ball Delivered","5", PB_IMSG_SENSOR,   9, PB_IO,    0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_RSLING,       "IO0P10 RSling",       "6", PB_IMSG_SLING,    10, PB_IO,    0, PB_OFF, 0, 5, true,  IDO_RSLING, PB_ON,  true,  initialized, hasErrors);
+    SetInputDef(IDI_LSLING,       "IO0P11 LSling",       "7", PB_IMSG_SLING,    11, PB_IO,    0, PB_OFF, 0, 5, true,  IDO_LSLING, PB_ON,  true,  initialized, hasErrors);
     
     if (hasErrors) {
         g_PBEngine.pbeSendConsole("RasPin: ERROR: Input initialization failed!");

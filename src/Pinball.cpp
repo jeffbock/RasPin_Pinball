@@ -147,6 +147,54 @@ void ShowVersion() {
     g_PBEngine.pbeSendConsole(versionStr);
 }
 
+// Simulator output processing: drain the output queue and update lastState for overlay display.
+// Used by both Windows and Linux simulator builds (no actual hardware calls).
+#if defined(EXE_MODE_WINDOWS) || defined(EXE_MODE_DEBIAN) || (defined(EXE_MODE_RASPI) && !defined(ENABLE_PINBALL_HARDWARE))
+bool PBSimulatorProcessOutput() {
+    while (!g_PBEngine.m_outputQueue.empty()) {
+        stOutputMessage tempMessage = g_PBEngine.m_outputQueue.front();
+        g_PBEngine.m_outputQueue.pop();
+
+        unsigned int outputId = tempMessage.outputId;
+        if (outputId >= NUM_OUTPUTS) continue;
+
+        if (g_PBEngine.m_outputPulseMap.find(outputId) != g_PBEngine.m_outputPulseMap.end()) continue;
+
+        stOutputDef& outputDef = g_outputDef[outputId];
+
+        if (tempMessage.outputMsg == PB_OMSG_GENERIC_IO || tempMessage.outputMsg == PB_OMSG_LED) {
+            bool isPulseOutput = tempMessage.usePulse && (outputDef.onTimeMS > 0 || outputDef.offTimeMS > 0);
+            if (isPulseOutput) {
+                stOutputPulse pulse;
+                pulse.outputId = outputId;
+                pulse.onTimeMS = outputDef.onTimeMS;
+                pulse.offTimeMS = outputDef.offTimeMS;
+                pulse.startTickMS = tempMessage.sentTick;
+                g_PBEngine.m_outputPulseMap[outputId] = pulse;
+            }
+            outputDef.lastState = tempMessage.outputState;
+        }
+    }
+
+    unsigned long currentMS = g_PBEngine.GetTickCountGfx();
+    auto it = g_PBEngine.m_outputPulseMap.begin();
+    while (it != g_PBEngine.m_outputPulseMap.end()) {
+        stOutputPulse& pulse = it->second;
+        unsigned long elapsed = currentMS - pulse.startTickMS;
+        if (elapsed >= (unsigned long)(pulse.onTimeMS + pulse.offTimeMS)) {
+            if (pulse.outputId < NUM_OUTPUTS) g_outputDef[pulse.outputId].lastState = PB_OFF;
+            it = g_PBEngine.m_outputPulseMap.erase(it);
+        } else {
+            if (elapsed >= (unsigned long)pulse.onTimeMS && pulse.outputId < NUM_OUTPUTS)
+                g_outputDef[pulse.outputId].lastState = PB_OFF;
+            ++it;
+        }
+    }
+
+    return true;
+}
+#endif
+
 // Windows startup and render code
 #ifdef EXE_MODE_WINDOWS
 #include "PBWinRender.h"
@@ -191,6 +239,15 @@ void PBWinSimInput(std::string character, PBPinState inputState, stInputMessage*
             // Update the various state items for the input, could be used by the progam later
             g_inputDef[i].lastState = inputState;
             g_inputDef[i].lastStateTick = inputMessage->sentTick;
+
+            // Fire auto-output if enabled globally and for this input
+            if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[i].autoOutput) {
+                unsigned int autoOutputId = g_inputDef[i].autoOutputId;
+                PBOutputMsg outputType = g_outputDef[autoOutputId].outputMsg;
+                PBPinState outputState = (g_inputDef[i].autoPinState == PB_ON) ? inputState :
+                                         (inputState == PB_ON ? PB_OFF : PB_ON);
+                g_PBEngine.SendOutputMsg(outputType, g_inputDef[i].autoOutputId, outputState, g_inputDef[i].autoOutputUsePulse);
+            }
 
             return;
         }
@@ -243,9 +300,7 @@ bool PBProcessInput() {
     return (true);
 }
 
-bool PBProcessOutput() {
-    return (true);
-}
+bool PBProcessOutput() { return PBSimulatorProcessOutput(); }
 
 bool PBProcessIO() {
     if (!PBProcessInput()) return false;
@@ -317,6 +372,16 @@ bool PBLinuxSimInput(const std::string& character, PBPinState inputState, stInpu
 
             g_inputDef[i].lastState = inputState;
             g_inputDef[i].lastStateTick = inputMessage->sentTick;
+
+            // Fire auto-output if enabled globally and for this input
+            if (g_PBEngine.GetAutoOutputEnable() && g_inputDef[i].autoOutput) {
+                unsigned int autoOutputId = g_inputDef[i].autoOutputId;
+                PBOutputMsg outputType = g_outputDef[autoOutputId].outputMsg;
+                PBPinState outputState = (g_inputDef[i].autoPinState == PB_ON) ? inputState :
+                                         (inputState == PB_ON ? PB_OFF : PB_ON);
+                g_PBEngine.SendOutputMsg(outputType, g_inputDef[i].autoOutputId, outputState, g_inputDef[i].autoOutputUsePulse);
+            }
+
             return true;
         }
     }
@@ -388,9 +453,7 @@ bool PBProcessInput() {
     return true;
 }
 
-bool PBProcessOutput() {
-    return true;
-}
+bool PBProcessOutput() { return PBSimulatorProcessOutput(); }
 
 bool PBProcessIO() {
     if (!PBProcessInput()) return false;

@@ -50,7 +50,7 @@ enum PBInputMsg {
     PB_IMSG_EMPTY = 0,
     PB_IMSG_SENSOR = 1,
     PB_IMSG_TARGET = 2,
-    PB_IMSG_JETBUMPER = 3,
+    PB_IMSG_SLING = 3,
     PB_IMSG_POPBUMPER = 4,
     PB_IMSG_BUTTON = 5,
     PB_IMSG_TIMER = 6,
@@ -105,31 +105,40 @@ struct stOutputDef{
 
 // The actual definition of the output items - the user of the library will need to define these for the specific table
 
-#define IDO_RPIOP23_StartLED 0
-#define IDO_IOD0P10_LFLIP 1
-#define IDO_IOD0P11_RFLIP 2
-#define IDO_LED0P08_LSlingLED 3
-#define IDO_LED0P09_RSlingLED 4
-#define IDO_IOD0P08_LSLING 5
-#define IDO_IOD0P09_RSLING 6
-#define IDO_IO2P08_EJECT 7
-#define IDO_LED0P10_EJECTLED 8
-#define IDO_IO1P08_POP 9
-#define IDO_RPIOP10_NEOPIXEL0 10
-#define NUM_OUTPUTS 11  
+// --- Outputs: RPI (unchanged) ---
+#define IDO_STARTLED      0
+// --- Outputs: IO board 0, pins 0-4 (solenoids, then eject) ---
+#define IDO_RSLING        1
+#define IDO_LSLING        2
+#define IDO_LFLIP         3
+#define IDO_RFLIP         4
+#define IDO_EJECT         5
+// --- Outputs: NeoPixel ---
+#define IDO_NEOPIXEL0     6
+// --- Outputs: LED board 0, pins 0-4 ---
+#define IDO_LSLINGLED     7
+#define IDO_RSLINGLED     8
+#define IDO_LINLANELED    9
+#define IDO_RINLANELED    10
+#define IDO_SAVELED       11
+#define NUM_OUTPUTS               12
 
-#define IDI_RPIOP27_LFLIP 0
-#define IDI_RPIOP17_RFLIP 1
-#define IDI_RPIOP05_LACTIVATE 2
-#define IDI_RPIOP22_RACTIVATE 3
-#define IDI_RPIOP06_START 4
-#define IDI_RPIOP24_RESET 5
-#define IDI_IO0P07_EJECTSW2 6
-#define IDI_IO1P07_SENSOR2 7
-#define IDI_IO2P07_SENSOR3 8
-#define IDI_IO2P06_LSLING 9
-#define IDI_IO2P05_RSLING 10
-#define NUM_INPUTS 11
+// --- Inputs: RPI (unchanged) ---
+#define IDI_LFLIP         0
+#define IDI_RFLIP         1
+#define IDI_LACTIVATE     2
+#define IDI_RACTIVATE     3
+#define IDI_START         4
+#define IDI_RESET         5
+// --- Inputs: IO board 0, pins 5-11 (sensors start after outputs on pins 0-4) ---
+#define IDI_RINLANE        6
+#define IDI_LINLANE        7
+#define IDI_BALLREADY      8   // Ball-ready sensor (hopper): ball present and ready to eject
+#define IDI_BALLDRAIN      9
+#define IDI_BALLDELIVERED  10
+#define IDI_RSLING         11
+#define IDI_LSLING         12
+#define NUM_INPUTS                13
 
 // Declare the shared variables for input / output structures.
 // Arrays are initialized by InitializeInputDefs() and InitializeOutputDefs() functions

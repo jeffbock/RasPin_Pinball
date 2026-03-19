@@ -140,6 +140,21 @@ struct SecondaryScoreAnimState {
     }
 };
 
+// Per-player physical/visual state that maps to hardware outputs driven by the table.
+// Kept separate so it can be saved, restored, or extended independently of scoring state.
+struct stPlayerTableState {
+    bool inlaneLEDLeft;       // Left inlane LED is lit
+    bool inlaneLEDRight;      // Right inlane LED is lit
+    // Additional per-player table visual state can be added here.
+
+    stPlayerTableState() { reset(); }
+
+    void reset() {
+        inlaneLEDLeft  = false;
+        inlaneLEDRight = false;
+    }
+};
+
 // Per-player game state class
 class pbGameState {
 public:
@@ -153,6 +168,9 @@ public:
     unsigned int currentBall;         // Current ball number (1-based)
     bool ballSaveEnabled;             // Ball save active flag
     bool extraBallEnabled;            // Extra ball earned flag
+    unsigned long lastExtraBallThreshold; // Last score milestone that triggered extra ball
+
+    stPlayerTableState tableState;    // Per-player physical/visual table output state
     
     // Mode system state - tracks current game mode and its sub-states
     ModeState modeState;
@@ -189,7 +207,11 @@ public:
         currentBall = 1;
         ballSaveEnabled = false;
         extraBallEnabled = false;
-        
+        lastExtraBallThreshold = 0;
+
+        // Reset per-player table visual state
+        tableState.reset();
+
         // Reset mode state
         modeState.reset();
         

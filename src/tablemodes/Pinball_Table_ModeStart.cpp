@@ -307,6 +307,12 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                     pbeRequestScreen(PBTableState::PBTBL_MAIN, static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL),
                                      ScreenPriority::PRIORITY_LOW, 0, true);
 
+                    // Enable auto-outputs (flippers / slings) and queue first ball eject
+                    SetAutoOutputEnable(true);
+                    m_leftInlaneLEDOn  = false;
+                    m_rightInlaneLEDOn = false;
+                    m_ballEjectPending = true;
+
                     // Stop the torch sound effect
                     m_soundSystem.pbsStopEffect(torchId);
                 }
@@ -336,7 +342,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
 void PBEngine::pbeUpdateStateStart(stInputMessage inputMessage){
     // Handle button presses during start screen
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-        if (inputMessage.inputId == IDI_RPIOP06_START) {
+        if (inputMessage.inputId == IDI_START) {
             // Start button opens the doors
             m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_OPENDOOR);
         }

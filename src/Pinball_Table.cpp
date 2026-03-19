@@ -106,7 +106,7 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
     
     // Check for reset button press first, regardless of current state (unless already in reset)
     if (m_tableState != PBTableState::PBTBL_RESET) {
-        if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON && inputMessage.inputId == IDI_RPIOP24_RESET) {
+        if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON && inputMessage.inputId == IDI_RESET) {
             if (!m_ResetButtonPressed) {
                 // First time reset is pressed - save current state and screen
                 m_StateBeforeReset = m_tableState;
@@ -228,6 +228,31 @@ bool PBEngine::pbeTryAddPlayer(){
     m_soundSystem.pbsPlayEffect(SOUNDCLICK);
     
     return true;
+}
+
+// Called whenever a player's turn begins (game start, ball-save return, or player rotation).
+// Resets all hardware outputs that reflect transient per-ball visual state and syncs the
+// engine booleans with the incoming player's stored tableState.
+void PBEngine::pbeActivatePlayer(unsigned int playerIdx) {
+    // ---- Turn off inlane LEDs ----------------------------------------
+    // Always drive them off first so hardware matches the new state.
+    SendOutputMsg(PB_OMSG_LED, IDO_LINLANELED, PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_RINLANELED, PB_OFF, false);
+
+    // Restore inlane LED state from the incoming player's saved tableState,
+    // then copy the booleans into the engine tracking members.
+    pbGameState& ps = m_playerStates[playerIdx];
+    ps.tableState.reset();   // Inlane state is transient – fresh at start of every turn
+
+    m_leftInlaneLEDOn  = ps.tableState.inlaneLEDLeft;
+    m_rightInlaneLEDOn = ps.tableState.inlaneLEDRight;
+
+    // ---- Save LED reflects per-player save state ---------------------
+    SendOutputMsg(PB_OMSG_LED, IDO_SAVELED,
+                  ps.ballSaveEnabled ? PB_ON : PB_OFF, false);
+
+    // ---- NeoPixel animation restarts for the new player's turn ------
+    m_mainNeoPixelMode = 0;  // Let pbeRenderMainScreenBase pick the right animation
 }
 
 unsigned long PBEngine::getCurrentPlayerScore(){

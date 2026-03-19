@@ -20,6 +20,7 @@
 // Forward declarations
 class PBDevice;
 class pbdEjector;
+class pbdHopperEjector;
 
 // Standard library includes
 #include <iostream>
@@ -41,7 +42,7 @@ class pbdEjector;
 
 // NeoPixel configuration - LED count for each driver index
 // Index corresponds to boardIndex in g_outputDef. Set to 0 for unused indices.
-constexpr unsigned int g_NeoPixelSize[] = {35,1};  // Driver 0: 35 LEDs, Driver 1: 1 LED
+constexpr unsigned int g_NeoPixelSize[] = {30,1};  // Driver 0: 30 LEDs, Driver 1: 1 LED
 
 // Calculate SPI buffer sizes: each LED is 3 bytes (GRB), each byte needs 4 SPI bytes
 // Total: numLEDs * 3 * 4 bytes
@@ -448,7 +449,7 @@ public:
     bool m_videoFadingIn;
     bool m_videoFadingOut;
     float m_videoFadeDurationSec;
-    pbdEjector* m_sandboxEjector;
+    pbdHopperEjector* m_simpleFlipEjector;
     
     // 3D sandbox test variables
     unsigned int m_sandboxD20ModelId;
@@ -466,6 +467,13 @@ public:
     // Simple Flip Mode screen variables
     bool m_RestartSimpleFlipMode;
     bool m_OverlayWasOnBeforeSimpleFlip;  // Track if overlay was already on when entering
+
+    // Basic Table Variables
+    pbdHopperEjector* m_hopperDevice;    // Ball hopper ejector device
+    bool m_leftInlaneLEDOn;              // Left inlane LED current state
+    bool m_rightInlaneLEDOn;             // Right inlane LED current state
+    int  m_mainNeoPixelMode;             // 0=unset, 1=pulse_blue, 2=snake, 3=off(gameend)
+    bool m_ballEjectPending;             // Pending ball eject request
 
     // High Scores screen variables
     bool m_RestartHighScores;
@@ -656,6 +664,7 @@ private:
 
     // Player management functions
     bool pbeTryAddPlayer(); // Try to add a new player, returns true if successful
+    void pbeActivatePlayer(unsigned int playerIdx); // Reset visual state and prepare hardware for a player's turn
     unsigned long getCurrentPlayerScore(); // Get current player's score
     bool isCurrentPlayerEnabled(); // Get current player's enabled state
     PBTableState& getPlayerGameState(); // Get current player's game state

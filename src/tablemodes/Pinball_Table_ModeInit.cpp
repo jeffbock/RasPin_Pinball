@@ -55,9 +55,16 @@ void PBEngine::pbeUpdateStateInit(stInputMessage inputMessage){
 
 bool PBEngine::pbeTableInit(){
     
-    // Initialize and register the ball ejector device (using example IDs - can be configured per table)
-    pbdEjector* ballEjector = new pbdEjector(this, IDI_IO0P07_EJECTSW2, IDO_LED0P08_LSlingLED, IDO_IO2P08_EJECT);
-    pbeAddDevice(ballEjector);
+    // Initialize prototype game state variables
+    m_hopperDevice       = nullptr;
+    m_leftInlaneLEDOn    = false;
+    m_rightInlaneLEDOn   = false;
+    m_mainNeoPixelMode   = 0;
+    m_ballEjectPending   = false;
+
+    // Create and register the ball hopper ejector device
+    m_hopperDevice = new pbdHopperEjector(this, IDI_BALLREADY, IDO_EJECT, IDI_BALLDELIVERED);
+    pbeAddDevice(m_hopperDevice);
     
     // Initialize all NeoPixels to black/off when starting the pinball game
     // Iterate through all NeoPixel drivers in the map
