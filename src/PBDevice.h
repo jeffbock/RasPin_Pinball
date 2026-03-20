@@ -10,6 +10,12 @@
 #include "Pinball_IO.h"
 #include "Pinball_Engine.h"
 
+// Run mode for device operation
+enum PBDeviceRunMode {
+    RUN_ONCE       = 0,  // Run a single cycle then go idle
+    RUN_CONTINUOUS = 1   // Loop continuously until stopped
+};
+
 // Base class for pinball device management
 class PBDevice {
 public:
@@ -20,7 +26,7 @@ public:
     // Derived classes should call base class implementation at the end
     virtual void pbdInit();
     virtual void pbdEnable(bool enable);
-    virtual void pdbStartRun();
+    virtual void pdbStartRun(PBDeviceRunMode runMode = RUN_ONCE);
     
     // Base class functions (non-virtual)
     bool pdbIsRunning() const;
@@ -40,6 +46,7 @@ protected:
     bool m_running;               // Current run is done or not
     int m_error;                  // Error state (0 = no error)
     PBEngine* m_pEngine;          // Pointer to PBEngine (provides GetTickCountGfx and SendOutputMsg)
+    PBDeviceRunMode m_runMode;    // RUN_ONCE or RUN_CONTINUOUS
 };
 
 //==============================================================================
@@ -57,7 +64,7 @@ public:
     // Override base class virtual functions
     void pbdInit() override;
     void pbdEnable(bool enable) override;
-    void pdbStartRun() override;
+    void pdbStartRun(PBDeviceRunMode runMode = RUN_ONCE) override;
     void pbdExecute() override;
 
 private:
@@ -98,7 +105,7 @@ public:
 
     void pbdInit() override;
     void pbdEnable(bool enable) override;
-    void pdbStartRun() override;
+    void pdbStartRun(PBDeviceRunMode runMode = RUN_ONCE) override;
     void pbdExecute() override;
 
 private:

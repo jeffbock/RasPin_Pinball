@@ -215,6 +215,7 @@ bool PBEngine::pbeTryAddPlayer(){
     // Enable and initialize the new player
     m_playerStates[nextPlayerIdx].reset(m_saveFileData.ballsPerGame);
     m_playerStates[nextPlayerIdx].enabled = true;
+    m_playerStates[nextPlayerIdx].inGame  = true;
     
     // Count how many secondary players are now active (excluding current player)
     int secondaryCount = 0;

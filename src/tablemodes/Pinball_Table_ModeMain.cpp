@@ -327,8 +327,8 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     
     int slotIndex = 0;
     for (int i = 0; i < 4; i++) {
-        // Skip current player and disabled players
-        if (i == m_currentPlayer || !m_playerStates[i].enabled) continue;
+        // Skip current player and players not in this game
+        if (i == m_currentPlayer || !m_playerStates[i].inGame) continue;
         
         // Only render up to 3 secondary scores
         if (slotIndex >= 3) break;

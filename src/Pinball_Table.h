@@ -166,7 +166,8 @@ public:
     unsigned long inProgressScore;    // Score accumulated during current ball
     unsigned long previousScore;      // Previous score to detect changes during animation
     unsigned long scoreUpdateStartTick; // Tick when score update animation started
-    bool enabled;                     // Is this player slot enabled/active
+    bool enabled;                     // Is this player slot enabled/active (cleared when balls exhausted)
+    bool inGame;                      // Was this player added to the current game (never cleared mid-game)
     unsigned int currentBall;         // Current ball number (1-based)
     bool ballSaveEnabled;             // Ball save active flag
     bool extraBallEnabled;            // Extra ball earned flag
@@ -206,6 +207,7 @@ public:
         previousScore = 0;
         scoreUpdateStartTick = 0;
         // Note: enabled flag is NOT reset here - must be set explicitly
+        inGame = false;
         currentBall = 1;
         ballSaveEnabled = false;
         extraBallEnabled = false;

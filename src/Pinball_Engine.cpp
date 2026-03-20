@@ -1593,7 +1593,7 @@ bool PBEngine::pbeRenderSimpleFlipMode(unsigned long currentTick, unsigned long 
         // Start the ejector on mode entry
         if (m_simpleFlipEjector) {
             m_simpleFlipEjector->pbdEnable(true);
-            m_simpleFlipEjector->pdbStartRun();
+            m_simpleFlipEjector->pdbStartRun(RUN_CONTINUOUS);
         }
     }
     
@@ -2590,7 +2590,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             m_simpleFlipEjector->pbdInit();
                         } else {
                             // If not running, start the ejector
-                            m_simpleFlipEjector->pdbStartRun();
+                            m_simpleFlipEjector->pdbStartRun(RUN_CONTINUOUS);
                         }
                     }
                 }
@@ -2599,16 +2599,6 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
         }
         
         case PB_SIMPLEFLIPMODE: {
-            // Ball drain: reset and restart the ejector for the next ball
-            if (inputMessage.inputId == IDI_BALLDRAIN && inputMessage.inputState == PB_ON) {
-                if (m_simpleFlipEjector) {
-                    m_simpleFlipEjector->pbdEnable(false);  // turn solenoid off if active
-                    m_simpleFlipEjector->pbdInit();         // reset to IDLE
-                    m_simpleFlipEjector->pbdEnable(true);   // re-enable
-                    m_simpleFlipEjector->pdbStartRun();     // start cycle immediately
-                }
-            }
-
             // Simple Flip Mode - Just handle Start button to exit
             if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
                 if (inputMessage.inputId == IDI_START) {

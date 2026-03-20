@@ -288,10 +288,12 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                     m_currentPlayer = 0;
                     m_playerStates[0].reset(m_saveFileData.ballsPerGame);
                     m_playerStates[0].enabled = true;
+                    m_playerStates[0].inGame  = true;
                     // Make sure other players are disabled
                     for (int i = 1; i < 4; i++) {
                         m_playerStates[i].reset(m_saveFileData.ballsPerGame);
                         m_playerStates[i].enabled = false;
+                        m_playerStates[i].inGame  = false;
                     }
                     
                     // Initialize main score fade-in animation

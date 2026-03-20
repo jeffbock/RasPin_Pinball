@@ -16,6 +16,7 @@ PBDevice::PBDevice(PBEngine* pEngine) {
     m_state = 0;
     m_running = false;
     m_error = 0;
+    m_runMode = RUN_ONCE;
 }
 
 PBDevice::~PBDevice() {
@@ -37,7 +38,8 @@ void PBDevice::pbdEnable(bool enable) {
 }
 
 // Enable the device and set the m_running boolean
-void PBDevice::pdbStartRun() {
+void PBDevice::pdbStartRun(PBDeviceRunMode runMode) {
+    m_runMode = runMode;
     m_enabled = true;
     m_running = true;
     m_startTimeMS = m_pEngine->GetTickCountGfx();
@@ -121,7 +123,7 @@ void pbdEjector::pbdEnable(bool enable) {
 }
 
 // Override pdbStartRun - perform any pre-start work, then call base class
-void pbdEjector::pdbStartRun() {
+void pbdEjector::pdbStartRun(PBDeviceRunMode runMode) {
     // Reset derived class state for new run
     m_solenoidStartMS = 0;
     m_solenoidOffMS = 0;
@@ -129,7 +131,7 @@ void pbdEjector::pdbStartRun() {
     m_ledActive = false;
     
     // Call base class implementation at the end
-    PBDevice::pdbStartRun();
+    PBDevice::pdbStartRun(runMode);
 }
 
 void pbdEjector::pbdExecute() {
@@ -228,12 +230,12 @@ void pbdHopperEjector::pbdEnable(bool enable) {
     PBDevice::pbdEnable(enable);
 }
 
-void pbdHopperEjector::pdbStartRun() {
+void pbdHopperEjector::pdbStartRun(PBDeviceRunMode runMode) {
     m_solenoidStartMS = 0;
     m_solenoidActive  = false;
     m_stateStartMS    = m_pEngine->GetTickCountGfx();
     m_state           = STATE_CHECK_BALL_READY;
-    PBDevice::pdbStartRun();
+    PBDevice::pdbStartRun(runMode);
 }
 
 void pbdHopperEjector::pbdExecute() {
@@ -248,9 +250,15 @@ void pbdHopperEjector::pbdExecute() {
                 m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_solenoidOutputId, PB_OFF, false);
                 m_solenoidActive = false;
             }
-            m_error   = 1;
-            m_running = false;
-            m_state   = STATE_IDLE;
+            // Reset and loop back to check for the next ball
+            m_startTimeMS  = currentTimeMS;
+            m_stateStartMS = currentTimeMS;
+            if (m_runMode == RUN_CONTINUOUS) {
+                m_state = STATE_CHECK_BALL_READY;
+            } else {
+                m_running = false;
+                m_state   = STATE_IDLE;
+            }
             return;
         }
     }
@@ -284,9 +292,17 @@ void pbdHopperEjector::pbdExecute() {
         case STATE_WAIT_DELIVERY:
             // Step 3: wait for ball-delivered sensor
             if (g_inputDef[m_ballDeliveredInputId].lastState == PB_ON) {
-                // Ball delivered successfully - go directly to IDLE
-                m_running = false;
-                m_state   = STATE_IDLE;
+                // Ball delivered
+                m_startTimeMS  = currentTimeMS;
+                m_stateStartMS = currentTimeMS;
+                if (m_runMode == RUN_CONTINUOUS) {
+                    // Loop: immediately watch for the next ball
+                    m_state = STATE_CHECK_BALL_READY;
+                } else {
+                    // Single cycle complete - go idle
+                    m_running = false;
+                    m_state   = STATE_IDLE;
+                }
             } else if ((currentTimeMS - m_stateStartMS) >= HOPPER_DELIVERY_TIMEOUT_MS) {
                 // Ball-delivered not seen in 1s - go back and wait for ball-ready again
                 m_stateStartMS = currentTimeMS;
@@ -295,8 +311,14 @@ void pbdHopperEjector::pbdExecute() {
             break;
 
         case STATE_COMPLETE:
-            m_running = false;
-            m_state   = STATE_IDLE;
+            m_startTimeMS  = m_pEngine->GetTickCountGfx();
+            m_stateStartMS = m_startTimeMS;
+            if (m_runMode == RUN_CONTINUOUS) {
+                m_state = STATE_CHECK_BALL_READY;
+            } else {
+                m_running = false;
+                m_state   = STATE_IDLE;
+            }
             break;
 
         default:
