@@ -7,7 +7,7 @@ The Platform Initialization system handles platform-specific startup, rendering 
 ## Key Concepts
 
 - **Cross-Platform Design**: Same function signatures for Windows and Raspberry Pi
-- **Build Switching**: Use `PBBuildSwitch.h` to select target platform
+- **Build Switching**: Use `src/user/PBBuildSwitch.h` to select target platform
 - **Render Initialization**: OpenGL ES setup for both platforms
 - **Main Loop**: Consistent game loop structure
 
@@ -15,7 +15,7 @@ The Platform Initialization system handles platform-specific startup, rendering 
 
 ## Build Configuration
 
-### PBBuildSwitch.h
+### src/user/PBBuildSwitch.h
 
 Select the target platform by defining the appropriate mode.
 

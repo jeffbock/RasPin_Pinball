@@ -17,7 +17,7 @@ The VS code configuration files (eg: tasks.json, launch.json, settings.json, c_c
 
 The GIT repo uses LFS, make sure to install: Windows: winget install -e --id GitHub.GitLFS, RaspPi: sudo apt install git-lfs
 
-**Important Note**:  You must change the #define in PBBuildSwitch.h depending on which build you want. For example,
+**Important Note**:  You must change the #define in `src/user/PBBuildSwitch.h` depending on which build you want. For example,
 
 ```
 // For Windows development/simulation:
@@ -34,7 +34,7 @@ The GIT repo uses LFS, make sure to install: Windows: winget install -e --id Git
 #define EXE_MODE_DEBIAN
 ```
 
-See `PBBuildSwitch.h` for full details including `SIMULATOR_SMALL_WINDOW`, `MAIN_MENU_OPTION`, and `ENABLE_HW_VIDEO_DECODE` switches.
+See `src/user/PBBuildSwitch.h` for full details including `SIMULATOR_SMALL_WINDOW`, `MAIN_MENU_OPTION`, and `ENABLE_HW_VIDEO_DECODE` switches.
 
 # Building for Windows
 
@@ -133,7 +133,7 @@ WiringPi — GPIO / I2C for pinball hardware **[Raspberry Pi only]**:
 
 ### Build Configuration
 
-Set the appropriate define in `PBBuildSwitch.h` (or pass it at build time):
+Set the appropriate define in `src/user/PBBuildSwitch.h` (or pass it at build time):
 
 ```cpp
 // Raspberry Pi — simulator or hardware mode:
@@ -148,13 +148,13 @@ Then use Ctrl-Shift-P to run the matching VS Code build task.
 ### Display and Window Notes
 
 Both targets open an 800×480 full-screen X11 rendering surface using OGL ES 3.1.  
-`SIMULATOR_SMALL_WINDOW` can be uncommented in `PBBuildSwitch.h` for a half-size window, useful when working over RDP.
+`SIMULATOR_SMALL_WINDOW` can be uncommented in `src/user/PBBuildSwitch.h` for a half-size window, useful when working over RDP.
 
 **[Raspberry Pi only]** The current tested display configuration is an 800×480 screen on HDMI1 (the game display) and a larger monitor on HDMI2 for VS Code and debugging.
 
 ### Pinball Hardware **[Raspberry Pi only]**
 
-To control physical pinball hardware, a breakout box with left/right flippers, activate buttons, and a start button must be wired to the Raspberry Pi GPIOs per the hardware design, and `ENABLE_PINBALL_HARDWARE` must be defined in `PBBuildSwitch.h`.  
+To control physical pinball hardware, a breakout box with left/right flippers, activate buttons, and a start button must be wired to the Raspberry Pi GPIOs per the hardware design, and `ENABLE_PINBALL_HARDWARE` must be defined in `src/user/PBBuildSwitch.h`.  
 
 Without `ENABLE_PINBALL_HARDWARE`, the Raspberry Pi build runs in **simulator mode** — it opens an X11 window and accepts keyboard input, identical to the Debian simulator.
 

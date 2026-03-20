@@ -85,7 +85,7 @@ The framework separates engine code from game code. Everything under `src/user/`
 | File | Purpose |
 |------|---------|
 | `io_definitions.json` | Maps your physical I/O: input pins, outputs, LEDs, NeoPixel strips |
-| `src/PBBuildSwitch.h` | Build-time flags: platform, hardware enable, window size |
+| `src/user/PBBuildSwitch.h` | Build-time flags: platform, hardware enable, window size |
 
 ### Resources
 

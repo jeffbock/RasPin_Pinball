@@ -69,7 +69,7 @@
 //   0 = High Scores  (default)
 //   1 = Test Sandbox (developer hardware/feature test)
 //   2 = Simple Flip Mode (basic flipper I/O test with overlay)
-#define MAIN_MENU_OPTION 2
+#define MAIN_MENU_OPTION 1
 
 // =============================================================================
 // SECTION 5: VIDEO DECODE
