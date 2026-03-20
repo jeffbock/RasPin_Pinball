@@ -164,12 +164,13 @@ static nlohmann::json LoadIODefinitionsJSON() {
                 f >> j;
                 return j;
             } catch (const std::exception& e) {
-                g_PBEngine.pbeSendConsole(std::string("RasPin: ERROR: Failed to parse ") + path + ": " + e.what());
+                g_PBEngine.pbeSendConsole(std::string("RasPin: ERROR: Failed to parse ") + path +
+                    " - check JSON syntax: " + e.what());
                 return nlohmann::json();
             }
         }
     }
-    g_PBEngine.pbeSendConsole("RasPin: ERROR: Could not find io_definitions.json");
+    g_PBEngine.pbeSendConsole("RasPin: ERROR: Could not find io_definitions.json in working directory");
     return nlohmann::json();
 }
 
