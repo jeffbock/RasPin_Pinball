@@ -17,6 +17,15 @@ add_custom_target(update_version
     COMMENT "Updating build version number..."
 )
 
+# Custom target to generate IO header from JSON definitions
+add_custom_target(generate_io_header
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/../scripts/generate_io_header.py
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..
+    COMMENT "Generating io_defs_generated.h from io_definitions.json..."
+    DEPENDS ${CMAKE_SOURCE_DIR}/../io_definitions.json
+)
+add_dependencies(generate_io_header update_version)
+
 # Define source files
 set(PINBALL_SOURCES
     ../src/3rdparty/stb_image.cpp
@@ -34,6 +43,7 @@ set(PINBALL_SOURCES
     ../src/tablemodes/Pinball_Table_ModeMain.cpp
     ../src/tablemodes/Pinball_Table_ModeReset.cpp
     ../src/tablemodes/Pinball_Table_ModeGameEnd.cpp
+    ../src/tablemodes/Pinball_Table_ModePlayerEnd.cpp
     ../src/PBSound.cpp
     ../src/PBVideo.cpp
     ../src/PBVideoPlayer.cpp
@@ -46,8 +56,8 @@ set(PINBALL_SOURCES
 # Create the executable
 add_executable(Pinball ${PINBALL_SOURCES})
 
-# Make the executable depend on version update
-add_dependencies(Pinball update_version)
+# Make the executable depend on version update and IO header generation
+add_dependencies(Pinball generate_io_header)
 
 # Include directories
 target_include_directories(Pinball PRIVATE

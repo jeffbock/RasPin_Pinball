@@ -12,6 +12,9 @@
 #include "Pinball_Engine.h"
 #include "PBBuildSwitch.h"
 #include <cstring>  // For memset in SPI buffer operations
+#include <fstream>  // For JSON file loading
+#include <map>      // For autoOutput name resolution
+#include "3rdparty/json.hpp"
 
 #ifdef ENABLE_PINBALL_HARDWARE
 #include "wiringPi.h"
@@ -111,30 +114,95 @@ static bool SetInputDef(int index, const char* name, const char* simKey, PBInput
     return true;
 }
 
+// JSON string-to-enum lookup helpers
+static PBOutputMsg ParseOutputMsg(const std::string& s) {
+    if (s == "LED")              return PB_OMSG_LED;
+    if (s == "LEDCFG_GROUPDIM")  return PB_OMSG_LEDCFG_GROUPDIM;
+    if (s == "LEDCFG_GROUPBLINK")return PB_OMSG_LEDCFG_GROUPBLINK;
+    if (s == "LEDSET_BRIGHTNESS")return PB_OMSG_LEDSET_BRIGHTNESS;
+    if (s == "LED_SEQUENCE")     return PB_OMSG_LED_SEQUENCE;
+    if (s == "GENERIC_IO")       return PB_OMSG_GENERIC_IO;
+    if (s == "NEOPIXEL")         return PB_OMSG_NEOPIXEL;
+    if (s == "NEOPIXEL_SEQUENCE")return PB_OMSG_NEOPIXEL_SEQUENCE;
+    return PB_OMSG_GENERIC_IO;
+}
+
+static PBInputMsg ParseInputMsg(const std::string& s) {
+    if (s == "SENSOR")    return PB_IMSG_SENSOR;
+    if (s == "TARGET")    return PB_IMSG_TARGET;
+    if (s == "SLING")     return PB_IMSG_SLING;
+    if (s == "POPBUMPER") return PB_IMSG_POPBUMPER;
+    if (s == "BUTTON")    return PB_IMSG_BUTTON;
+    if (s == "TIMER")     return PB_IMSG_TIMER;
+    return PB_IMSG_EMPTY;
+}
+
+static PBBoardType ParseBoardType(const std::string& s) {
+    if (s == "RASPI")    return PB_RASPI;
+    if (s == "IO")       return PB_IO;
+    if (s == "LED")      return PB_LED;
+    if (s == "NEOPIXEL") return PB_NEOPIXEL;
+    return PB_NOBOARD;
+}
+
+static PBPinState ParsePinState(const std::string& s) {
+    if (s == "ON")         return PB_ON;
+    if (s == "BLINK")      return PB_BLINK;
+    if (s == "BRIGHTNESS") return PB_BRIGHTNESS;
+    return PB_OFF;
+}
+
+// Load the io_definitions.json file; returns parsed JSON or empty on failure
+static nlohmann::json LoadIODefinitionsJSON() {
+    // Try loading from current working directory (project root at runtime)
+    const char* paths[] = { "io_definitions.json", "src/io_definitions.json" };
+    for (const char* path : paths) {
+        std::ifstream f(path);
+        if (f.is_open()) {
+            try {
+                nlohmann::json j;
+                f >> j;
+                return j;
+            } catch (const std::exception& e) {
+                g_PBEngine.pbeSendConsole(std::string("RasPin: ERROR: Failed to parse ") + path +
+                    " - check JSON syntax: " + e.what());
+                return nlohmann::json();
+            }
+        }
+    }
+    g_PBEngine.pbeSendConsole("RasPin: ERROR: Could not find io_definitions.json in working directory");
+    return nlohmann::json();
+}
+
 // Initialize output definitions array
-// This function must be called before using g_outputDef
-// Each output is initialized using its IDO_* #define as the array index
+// Loads output definitions from io_definitions.json
+// Each output is initialized using its idx field as the array index
 void InitializeOutputDefs() {
     // Track which indices have been initialized to detect duplicates
     bool initialized[NUM_OUTPUTS] = {false};
     bool hasErrors = false;
-    
-    // Initialize each output using its #define index
-    // Format: SetOutputDef(index, name, msg_type, pin, board_type, board_index, initial_state, on_time_ms, off_time_ms, neopixel_index)
-    SetOutputDef(IDO_RPIOP23_StartLED, "RPI0P23 Start LED", PB_OMSG_GENERIC_IO, 23, PB_RASPI, 0, PB_ON, 0, 0, 0, initialized, hasErrors);
-    SetOutputDef(IDO_IOD0P10_LFLIP, "IO0P10 LFlipper", PB_OMSG_GENERIC_IO, 10, PB_IO, 0, PB_OFF, 100, 100, 0, initialized, hasErrors);
-    SetOutputDef(IDO_IOD0P11_RFLIP, "IO0P11 RFlipper", PB_OMSG_GENERIC_IO, 11, PB_IO, 0, PB_OFF, 100, 100, 0, initialized, hasErrors);
-    SetOutputDef(IDO_LED0P08_LSlingLED, "LED0P08 LSling LED", PB_OMSG_LED, 8, PB_LED, 0, PB_OFF, 100, 100, 0, initialized, hasErrors);
-    SetOutputDef(IDO_LED0P09_RSlingLED, "LED0P09 RSling LED", PB_OMSG_LED, 9, PB_LED, 0, PB_OFF, 150, 50, 0, initialized, hasErrors);
-    SetOutputDef(IDO_IOD0P08_LSLING, "IO0P08 LSling", PB_OMSG_GENERIC_IO, 8, PB_IO, 0, PB_OFF, 250, 250, 0, initialized, hasErrors);
-    SetOutputDef(IDO_IOD0P09_RSLING, "IO0P09 RSling", PB_OMSG_GENERIC_IO, 9, PB_IO, 0, PB_OFF, 250, 250, 0, initialized, hasErrors);
-    SetOutputDef(IDO_IO2P08_EJECT, "IO2P08 Eject", PB_OMSG_GENERIC_IO, 8, PB_IO, 2, PB_OFF, 2000, 2000, 0, initialized, hasErrors);
-    SetOutputDef(IDO_LED0P10_EJECTLED, "LED0P10 Eject LED", PB_OMSG_LED, 10, PB_LED, 0, PB_OFF, 200, 0, 0, initialized, hasErrors);
-    SetOutputDef(IDO_IO1P08_POP, "IO1P08 Pop", PB_OMSG_GENERIC_IO, 8, PB_IO, 1, PB_OFF, 1000, 1000, 0, initialized, hasErrors);    
-    SetOutputDef(IDO_RPIOP10_NEOPIXEL0, "NeoPixel0", PB_OMSG_NEOPIXEL, 10, PB_NEOPIXEL, 0, PB_OFF, 0, 0, 0, initialized, hasErrors);
-    // Not sure if we will use 2 NeoPixels or not, commented out for now..
-    // SetOutputDef(IDO_RPIOP12_NEOPIXEL1, "NeoPixel1", PB_OMSG_NEOPIXEL, 12, PB_NEOPIXEL, 1, PB_OFF, 0, 0, 0, initialized, hasErrors);
-    
+
+    nlohmann::json j = LoadIODefinitionsJSON();
+    if (j.empty() || !j.contains("outputs")) {
+        g_PBEngine.pbeSendConsole("RasPin: ERROR: No outputs found in io_definitions.json");
+        return;
+    }
+
+    for (const auto& o : j["outputs"]) {
+        int idx = o["idx"].get<int>();
+        SetOutputDef(idx,
+                     o["name"].get<std::string>().c_str(),
+                     ParseOutputMsg(o["msg"].get<std::string>()),
+                     o["pin"].get<unsigned int>(),
+                     ParseBoardType(o["board"].get<std::string>()),
+                     o["boardIdx"].get<unsigned int>(),
+                     ParsePinState(o["state"].get<std::string>()),
+                     o["onMs"].get<unsigned int>(),
+                     o["offMs"].get<unsigned int>(),
+                     o["neo"].get<unsigned int>(),
+                     initialized, hasErrors);
+    }
+
     if (hasErrors) {
         g_PBEngine.pbeSendConsole("RasPin: ERROR: Output initialization failed!");
     } else {
@@ -143,27 +211,59 @@ void InitializeOutputDefs() {
 }
 
 // Initialize input definitions array
-// This function must be called before using g_inputDef
-// Each input is initialized using its IDI_* #define as the array index
+// Loads input definitions from io_definitions.json
+// Each input is initialized using its idx field as the array index
 void InitializeInputDefs() {
     // Track which indices have been initialized to detect duplicates
     bool initialized[NUM_INPUTS] = {false};
     bool hasErrors = false;
-    
-    // Initialize each input using its #define index
-    // Format: SetInputDef(index, name, sim_key, msg_type, pin, board_type, board_index, initial_state, state_tick, debounce_ms, auto_output, auto_output_id, auto_pin_state, auto_use_pulse)
-    SetInputDef(IDI_RPIOP27_LFLIP, "RPI0P27 LFlipper", "A", PB_IMSG_BUTTON, 27, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_IOD0P10_LFLIP, PB_ON, false, initialized, hasErrors);
-    SetInputDef(IDI_RPIOP17_RFLIP, "RPI0P17 RFlipper", "D", PB_IMSG_BUTTON, 17, PB_RASPI, 0, PB_OFF, 0, 5, true, IDO_IOD0P11_RFLIP, PB_ON, false, initialized, hasErrors);
-    SetInputDef(IDI_RPIOP05_LACTIVATE, "RPI0P05 LActivate", "Q", PB_IMSG_BUTTON, 5, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_RPIOP22_RACTIVATE, "RPI0P22 RActivate", "E", PB_IMSG_BUTTON, 22, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_RPIOP06_START, "RPI0P06 Start", "Z", PB_IMSG_BUTTON, 6, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_RPIOP24_RESET, "RPI0P24 Reset", "C", PB_IMSG_BUTTON, 24, PB_RASPI, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_IO2P06_LSLING, "IO2P06 LSling", "4", PB_IMSG_JETBUMPER, 6, PB_IO, 2, PB_OFF, 0, 5, true, IDO_IOD0P08_LSLING, PB_ON, true, initialized, hasErrors);
-    SetInputDef(IDI_IO2P05_RSLING, "IO2P05 RSling", "5", PB_IMSG_JETBUMPER, 5, PB_IO, 2, PB_OFF, 0, 5, true, IDO_IOD0P09_RSLING, PB_ON, true, initialized, hasErrors);
-    SetInputDef(IDI_IO0P07_EJECTSW2, "IO0P07 EjectSW2", "1", PB_IMSG_SENSOR, 7, PB_IO, 0, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_IO1P07_SENSOR2, "IO1P07 Sensor2", "2", PB_IMSG_SENSOR, 7, PB_IO, 1, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_IO2P07_SENSOR3, "IO2P07 Sensor3", "3", PB_IMSG_SENSOR, 7, PB_IO, 2, PB_OFF, 0, 5, false, 0, PB_OFF, false, initialized, hasErrors);
-    
+
+    nlohmann::json j = LoadIODefinitionsJSON();
+    if (j.empty() || !j.contains("inputs") || !j.contains("outputs")) {
+        g_PBEngine.pbeSendConsole("RasPin: ERROR: No inputs/outputs found in io_definitions.json");
+        return;
+    }
+
+    // Build output name-to-index map for resolving autoOut references
+    std::map<std::string, unsigned int> outputIdMap;
+    for (const auto& o : j["outputs"]) {
+        outputIdMap[o["id"].get<std::string>()] = o["idx"].get<unsigned int>();
+    }
+
+    for (const auto& i : j["inputs"]) {
+        // Resolve autoOutputId from the output name
+        unsigned int autoOutputId = 0;
+        bool autoOutput = i["auto"].get<bool>();
+        std::string autoOutName = i["autoOut"].get<std::string>();
+        if (autoOutput && !autoOutName.empty()) {
+            auto it = outputIdMap.find(autoOutName);
+            if (it != outputIdMap.end()) {
+                autoOutputId = it->second;
+            } else {
+                g_PBEngine.pbeSendConsole("RasPin: ERROR: Input '" + i["id"].get<std::string>() +
+                                         "' references unknown autoOut '" + autoOutName + "'");
+                hasErrors = true;
+                continue;
+            }
+        }
+
+        SetInputDef(i["idx"].get<int>(),
+                    i["name"].get<std::string>().c_str(),
+                    i["key"].get<std::string>().c_str(),
+                    ParseInputMsg(i["msg"].get<std::string>()),
+                    i["pin"].get<unsigned int>(),
+                    ParseBoardType(i["board"].get<std::string>()),
+                    i["boardIdx"].get<unsigned int>(),
+                    ParsePinState(i["state"].get<std::string>()),
+                    i["tick"].get<unsigned long>(),
+                    i["debMs"].get<unsigned long>(),
+                    autoOutput,
+                    autoOutputId,
+                    ParsePinState(i["autoState"].get<std::string>()),
+                    i["autoPulse"].get<bool>(),
+                    initialized, hasErrors);
+    }
+
     if (hasErrors) {
         g_PBEngine.pbeSendConsole("RasPin: ERROR: Input initialization failed!");
     } else {

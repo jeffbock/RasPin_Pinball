@@ -50,7 +50,7 @@ enum PBInputMsg {
     PB_IMSG_EMPTY = 0,
     PB_IMSG_SENSOR = 1,
     PB_IMSG_TARGET = 2,
-    PB_IMSG_JETBUMPER = 3,
+    PB_IMSG_SLING = 3,
     PB_IMSG_POPBUMPER = 4,
     PB_IMSG_BUTTON = 5,
     PB_IMSG_TIMER = 6,
@@ -100,36 +100,10 @@ struct stOutputDef{
     unsigned int neoPixelIndex;  // Index of specific NeoPixel LED in chain (for single pixel operations)
 };
 
-// The actual definition of the input items - the user of the library will need to define these for the specific table
-// The IDs need to be unique, and will be checked during initilization - if there are duplicates, the engine will not start
-
-// The actual definition of the output items - the user of the library will need to define these for the specific table
-
-#define IDO_RPIOP23_StartLED 0
-#define IDO_IOD0P10_LFLIP 1
-#define IDO_IOD0P11_RFLIP 2
-#define IDO_LED0P08_LSlingLED 3
-#define IDO_LED0P09_RSlingLED 4
-#define IDO_IOD0P08_LSLING 5
-#define IDO_IOD0P09_RSLING 6
-#define IDO_IO2P08_EJECT 7
-#define IDO_LED0P10_EJECTLED 8
-#define IDO_IO1P08_POP 9
-#define IDO_RPIOP10_NEOPIXEL0 10
-#define NUM_OUTPUTS 11  
-
-#define IDI_RPIOP27_LFLIP 0
-#define IDI_RPIOP17_RFLIP 1
-#define IDI_RPIOP05_LACTIVATE 2
-#define IDI_RPIOP22_RACTIVATE 3
-#define IDI_RPIOP06_START 4
-#define IDI_RPIOP24_RESET 5
-#define IDI_IO0P07_EJECTSW2 6
-#define IDI_IO1P07_SENSOR2 7
-#define IDI_IO2P07_SENSOR3 8
-#define IDI_IO2P06_LSLING 9
-#define IDI_IO2P05_RSLING 10
-#define NUM_INPUTS 11
+// Input and output ID defines are auto-generated from io_definitions.json
+// To add/change inputs or outputs, edit io_definitions.json and run:
+//   python scripts/generate_io_header.py
+#include "io_defs_generated.h"
 
 // Declare the shared variables for input / output structures.
 // Arrays are initialized by InitializeInputDefs() and InitializeOutputDefs() functions

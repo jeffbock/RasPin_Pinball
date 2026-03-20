@@ -9,6 +9,7 @@
 #include "Pinball_Engine.h"
 #include "Pinball_Table.h"
 #include "Pinball_TableStr.h"
+#include "PBDevice.h"
 
 // ========================================================================
 // PBTBL_START: Load Function
@@ -287,10 +288,12 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                     m_currentPlayer = 0;
                     m_playerStates[0].reset(m_saveFileData.ballsPerGame);
                     m_playerStates[0].enabled = true;
+                    m_playerStates[0].inGame  = true;
                     // Make sure other players are disabled
                     for (int i = 1; i < 4; i++) {
                         m_playerStates[i].reset(m_saveFileData.ballsPerGame);
                         m_playerStates[i].enabled = false;
+                        m_playerStates[i].inGame  = false;
                     }
                     
                     // Initialize main score fade-in animation
@@ -306,6 +309,15 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                     pbeClearScreenRequests();
                     pbeRequestScreen(PBTableState::PBTBL_MAIN, static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL),
                                      ScreenPriority::PRIORITY_LOW, 0, true);
+
+                    // Enable auto-outputs (flippers / slings) and start first ball eject
+                    SetAutoOutputEnable(true);
+                    m_leftInlaneLEDOn  = false;
+                    m_rightInlaneLEDOn = false;
+                    if (m_hopperDevice) {
+                        m_hopperDevice->pbdEnable(true);
+                        m_hopperDevice->pdbStartRun();
+                    }
 
                     // Stop the torch sound effect
                     m_soundSystem.pbsStopEffect(torchId);
@@ -336,7 +348,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
 void PBEngine::pbeUpdateStateStart(stInputMessage inputMessage){
     // Handle button presses during start screen
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-        if (inputMessage.inputId == IDI_RPIOP06_START) {
+        if (inputMessage.inputId == IDI_START) {
             // Start button opens the doors
             m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_OPENDOOR);
         }

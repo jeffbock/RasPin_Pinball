@@ -16,6 +16,7 @@ PBDevice::PBDevice(PBEngine* pEngine) {
     m_state = 0;
     m_running = false;
     m_error = 0;
+    m_runMode = RUN_ONCE;
 }
 
 PBDevice::~PBDevice() {
@@ -37,7 +38,8 @@ void PBDevice::pbdEnable(bool enable) {
 }
 
 // Enable the device and set the m_running boolean
-void PBDevice::pdbStartRun() {
+void PBDevice::pdbStartRun(PBDeviceRunMode runMode) {
+    m_runMode = runMode;
     m_enabled = true;
     m_running = true;
     m_startTimeMS = m_pEngine->GetTickCountGfx();
@@ -121,7 +123,7 @@ void pbdEjector::pbdEnable(bool enable) {
 }
 
 // Override pdbStartRun - perform any pre-start work, then call base class
-void pbdEjector::pdbStartRun() {
+void pbdEjector::pdbStartRun(PBDeviceRunMode runMode) {
     // Reset derived class state for new run
     m_solenoidStartMS = 0;
     m_solenoidOffMS = 0;
@@ -129,7 +131,7 @@ void pbdEjector::pdbStartRun() {
     m_ledActive = false;
     
     // Call base class implementation at the end
-    PBDevice::pdbStartRun();
+    PBDevice::pdbStartRun(runMode);
 }
 
 void pbdEjector::pbdExecute() {
@@ -191,6 +193,138 @@ void pbdEjector::pbdExecute() {
             m_error = 1;
             m_state = STATE_IDLE;
             m_running = false;
+            break;
+    }
+}
+
+//==============================================================================
+// pbdHopperEjector Derived Class Implementation
+//==============================================================================
+
+pbdHopperEjector::pbdHopperEjector(PBEngine* pEngine, unsigned int ballReadyInputId,
+                                    unsigned int solenoidOutputId, unsigned int ballDeliveredInputId)
+    : PBDevice(pEngine) {
+    m_ballReadyInputId     = ballReadyInputId;
+    m_solenoidOutputId     = solenoidOutputId;
+    m_ballDeliveredInputId = ballDeliveredInputId;
+    m_solenoidStartMS      = 0;
+    m_stateStartMS         = 0;
+    m_solenoidActive       = false;
+    pbdInit();
+}
+
+pbdHopperEjector::~pbdHopperEjector() {}
+
+void pbdHopperEjector::pbdInit() {
+    m_solenoidStartMS = 0;
+    m_stateStartMS    = 0;
+    m_solenoidActive  = false;
+    PBDevice::pbdInit();
+}
+
+void pbdHopperEjector::pbdEnable(bool enable) {
+    if (!enable && m_solenoidActive) {
+        m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_solenoidOutputId, PB_OFF, false);
+        m_solenoidActive = false;
+    }
+    PBDevice::pbdEnable(enable);
+}
+
+void pbdHopperEjector::pdbStartRun(PBDeviceRunMode runMode) {
+    m_solenoidStartMS = 0;
+    m_solenoidActive  = false;
+    m_stateStartMS    = m_pEngine->GetTickCountGfx();
+    m_state           = STATE_CHECK_BALL_READY;
+    PBDevice::pdbStartRun(runMode);
+}
+
+void pbdHopperEjector::pbdExecute() {
+    if (!m_enabled) return;
+
+    unsigned long currentTimeMS = m_pEngine->GetTickCountGfx();
+
+    // Overall timeout check (applies in any active state)
+    if (m_state != STATE_IDLE && m_state != STATE_COMPLETE) {
+        if ((currentTimeMS - m_startTimeMS) >= HOPPER_OVERALL_TIMEOUT_MS) {
+            if (m_solenoidActive) {
+                m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_solenoidOutputId, PB_OFF, false);
+                m_solenoidActive = false;
+            }
+            // Reset and loop back to check for the next ball
+            m_startTimeMS  = currentTimeMS;
+            m_stateStartMS = currentTimeMS;
+            if (m_runMode == RUN_CONTINUOUS) {
+                m_state = STATE_CHECK_BALL_READY;
+            } else {
+                m_running = false;
+                m_state   = STATE_IDLE;
+            }
+            return;
+        }
+    }
+
+    switch (m_state) {
+        case STATE_IDLE:
+            // Waiting to be triggered externally via pdbStartRun()
+            break;
+
+        case STATE_CHECK_BALL_READY:
+            // Step 1: wait for ball-ready sensor to go ON
+            if (g_inputDef[m_ballReadyInputId].lastState == PB_ON) {
+                // Ball present - fire solenoid
+                m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_solenoidOutputId, PB_ON, false);
+                m_solenoidActive  = true;
+                m_solenoidStartMS = currentTimeMS;
+                m_state           = STATE_EJECTING;
+            }
+            break;
+
+        case STATE_EJECTING:
+            // Step 2: keep solenoid on for kick duration
+            if ((currentTimeMS - m_solenoidStartMS) >= HOPPER_SOLENOID_ON_MS) {
+                m_pEngine->SendOutputMsg(PB_OMSG_GENERIC_IO, m_solenoidOutputId, PB_OFF, false);
+                m_solenoidActive = false;
+                m_stateStartMS   = currentTimeMS;
+                m_state          = STATE_WAIT_DELIVERY;
+            }
+            break;
+
+        case STATE_WAIT_DELIVERY:
+            // Step 3: wait for ball-delivered sensor
+            if (g_inputDef[m_ballDeliveredInputId].lastState == PB_ON) {
+                // Ball delivered
+                m_startTimeMS  = currentTimeMS;
+                m_stateStartMS = currentTimeMS;
+                if (m_runMode == RUN_CONTINUOUS) {
+                    // Loop: immediately watch for the next ball
+                    m_state = STATE_CHECK_BALL_READY;
+                } else {
+                    // Single cycle complete - go idle
+                    m_running = false;
+                    m_state   = STATE_IDLE;
+                }
+            } else if ((currentTimeMS - m_stateStartMS) >= HOPPER_DELIVERY_TIMEOUT_MS) {
+                // Ball-delivered not seen in 1s - go back and wait for ball-ready again
+                m_stateStartMS = currentTimeMS;
+                m_state        = STATE_CHECK_BALL_READY;
+            }
+            break;
+
+        case STATE_COMPLETE:
+            m_startTimeMS  = m_pEngine->GetTickCountGfx();
+            m_stateStartMS = m_startTimeMS;
+            if (m_runMode == RUN_CONTINUOUS) {
+                m_state = STATE_CHECK_BALL_READY;
+            } else {
+                m_running = false;
+                m_state   = STATE_IDLE;
+            }
+            break;
+
+        default:
+            m_error   = 1;
+            m_running = false;
+            m_state   = STATE_IDLE;
             break;
     }
 }

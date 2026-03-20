@@ -20,6 +20,7 @@
 // Forward declarations
 class PBDevice;
 class pbdEjector;
+class pbdHopperEjector;
 
 // Standard library includes
 #include <iostream>
@@ -41,7 +42,7 @@ class pbdEjector;
 
 // NeoPixel configuration - LED count for each driver index
 // Index corresponds to boardIndex in g_outputDef. Set to 0 for unused indices.
-constexpr unsigned int g_NeoPixelSize[] = {35,1};  // Driver 0: 35 LEDs, Driver 1: 1 LED
+constexpr unsigned int g_NeoPixelSize[] = {30,1};  // Driver 0: 30 LEDs, Driver 1: 1 LED
 
 // Calculate SPI buffer sizes: each LED is 3 bytes (GRB), each byte needs 4 SPI bytes
 // Total: numLEDs * 3 * 4 bytes
@@ -193,6 +194,12 @@ struct stTimerEntry {
 
 // Timer ID for game-end "Game Over" display (3-second auto-return to start)
 #define GAMEEND_COMPLETE_TIMER_ID 200
+
+// Timer ID for inlane-triggered ball save (5-second timeout)
+#define BALLSAVE_TIMER_ID 201
+
+// Timer ID for PlayerEnd 4-second display countdown
+#define PLAYEREND_DISPLAY_TIMER_ID 202
 
 // Maximum number of active timers allowed
 #define MAX_TIMERS 10
@@ -448,7 +455,7 @@ public:
     bool m_videoFadingIn;
     bool m_videoFadingOut;
     float m_videoFadeDurationSec;
-    pbdEjector* m_sandboxEjector;
+    pbdHopperEjector* m_simpleFlipEjector;
     
     // 3D sandbox test variables
     unsigned int m_sandboxD20ModelId;
@@ -466,6 +473,12 @@ public:
     // Simple Flip Mode screen variables
     bool m_RestartSimpleFlipMode;
     bool m_OverlayWasOnBeforeSimpleFlip;  // Track if overlay was already on when entering
+
+    // Basic Table Variables
+    pbdHopperEjector* m_hopperDevice;    // Ball hopper ejector device
+    bool m_leftInlaneLEDOn;              // Left inlane LED current state
+    bool m_rightInlaneLEDOn;             // Right inlane LED current state
+    int  m_mainNeoPixelMode;             // 0=unset, 1=pulse_blue, 2=snake, 3=off(gameend)
 
     // High Scores screen variables
     bool m_RestartHighScores;
@@ -577,6 +590,9 @@ private:
     bool m_mainScreenLoaded;
     bool m_resetLoaded; 
     bool m_gameEndLoaded;
+    bool m_playerEndLoaded;       // Whether PlayerEnd screen resources are loaded
+    bool m_playerEndInitialized;  // Whether the PlayerEnd sub-state has been set up
+    int  m_playerEndNextPlayer;   // Player index to activate after the countdown
 
     // Game End mode state tracking
     bool m_gameEndInitialized;                           // Whether high score qualifiers have been determined
@@ -632,6 +648,7 @@ private:
     void pbeUpdateStateMain(stInputMessage inputMessage);     // tablemodes/Pinball_Table_ModeMain.cpp
     void pbeUpdateStateReset(stInputMessage inputMessage);    // tablemodes/Pinball_Table_ModeReset.cpp
     void pbeUpdateStateGameEnd(stInputMessage inputMessage);  // tablemodes/Pinball_Table_ModeGameEnd.cpp
+    void pbeUpdateStatePlayerEnd(stInputMessage inputMessage); // tablemodes/Pinball_Table_ModePlayerEnd.cpp
     
     // Render functions for the pinball game table
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
@@ -643,6 +660,7 @@ private:
     bool pbeRenderStatus(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderPlayerEnd(unsigned long currentTick, unsigned long lastTick);
 
     // Load functions for the pinball game table
     bool pbeLoadInitScreen(); // Load the init screen for the pinball game
@@ -650,12 +668,14 @@ private:
     bool pbeLoadMainScreen(); // Load the main screen for the pinball game
     bool pbeLoadReset(); // Load the reset screen
     bool pbeLoadGameEnd(); // Load the game end screen
+    bool pbeLoadPlayerEnd(); // Load the player end screen
     
     // Table initialization
     bool pbeTableInit(); // Initialize table devices and state
 
     // Player management functions
     bool pbeTryAddPlayer(); // Try to add a new player, returns true if successful
+    void pbeActivatePlayer(unsigned int playerIdx); // Reset visual state and prepare hardware for a player's turn
     unsigned long getCurrentPlayerScore(); // Get current player's score
     bool isCurrentPlayerEnabled(); // Get current player's enabled state
     PBTableState& getPlayerGameState(); // Get current player's game state

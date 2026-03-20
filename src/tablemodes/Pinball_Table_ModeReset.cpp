@@ -8,6 +8,7 @@
 
 #include "Pinball_Engine.h"
 #include "Pinball_Table.h"
+#include "PBDevice.h"
 
 // ========================================================================
 // PBTBL_RESET: Load Function
@@ -76,7 +77,7 @@ bool PBEngine::pbeRenderReset(unsigned long currentTick, unsigned long lastTick)
 void PBEngine::pbeUpdateStateReset(stInputMessage inputMessage){
     // Handle reset state inputs
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-        if (inputMessage.inputId == IDI_RPIOP24_RESET) {
+        if (inputMessage.inputId == IDI_RESET) {
             // Reset pressed again - clean up and return to main menu
             m_ResetButtonPressed = false;
             m_GameStarted = false; // Reset game started flag
@@ -96,11 +97,11 @@ void PBEngine::pbeUpdateStateReset(stInputMessage inputMessage){
             m_soundSystem.pbsStopAllEffects();
             m_soundSystem.pbsStopMusic();
         }
-        else if (inputMessage.inputId == IDI_RPIOP06_START || 
-                 inputMessage.inputId == IDI_RPIOP05_LACTIVATE || 
-                 inputMessage.inputId == IDI_RPIOP22_RACTIVATE ||
-                 inputMessage.inputId == IDI_RPIOP27_LFLIP ||
-                 inputMessage.inputId == IDI_RPIOP17_RFLIP) {
+        else if (inputMessage.inputId == IDI_START || 
+                 inputMessage.inputId == IDI_LACTIVATE || 
+                 inputMessage.inputId == IDI_RACTIVATE ||
+                 inputMessage.inputId == IDI_LFLIP ||
+                 inputMessage.inputId == IDI_RFLIP) {
             // Any other button pressed - cancel reset and return to previous state
             m_ResetButtonPressed = false;
             m_tableState = m_StateBeforeReset;

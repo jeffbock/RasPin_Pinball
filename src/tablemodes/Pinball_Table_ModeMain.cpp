@@ -9,6 +9,7 @@
 
 #include "Pinball_Engine.h"
 #include "Pinball_Table.h"
+#include "PBDevice.h"
 
 // ========================================================================
 // PBTBL_MAIN: Load Function
@@ -87,7 +88,19 @@ bool PBEngine::pbeRenderMainScreenBase(unsigned long currentTick, unsigned long 
 
     // Render status icons and values
     pbeRenderStatus(currentTick, lastTick);
-    
+
+    // NeoPixel animation: dramatic snake when ball save active, pulse-blue otherwise
+    if (m_mainNeoPixelMode < 3) {
+        bool wantSnake = m_playerStates[m_currentPlayer].ballSaveEnabled;
+        if (wantSnake) {
+            m_mainNeoPixelMode = 2;
+            neoPixelSnake(0, 0, 20, 255, 100, 200, 5, true, IDO_NEOPIXEL0, 40);
+        } else {
+            m_mainNeoPixelMode = 1;
+            neoPixelGradualFade(0, 0, 20, 0, 0, 200, IDO_NEOPIXEL0, 30, 800, false, true);
+        }
+    }
+
     return (true);
 }
 
@@ -314,8 +327,8 @@ void PBEngine::pbeRenderPlayerScores(unsigned long currentTick, unsigned long la
     
     int slotIndex = 0;
     for (int i = 0; i < 4; i++) {
-        // Skip current player and disabled players
-        if (i == m_currentPlayer || !m_playerStates[i].enabled) continue;
+        // Skip current player and players not in this game
+        if (i == m_currentPlayer || !m_playerStates[i].inGame) continue;
         
         // Only render up to 3 secondary scores
         if (slotIndex >= 3) break;
@@ -361,6 +374,7 @@ void PBEngine::pbeRenderStatusText(unsigned long currentTick, unsigned long last
     gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 0.35, false);
     std::string ballText = "Ball: " + std::to_string(m_playerStates[m_currentPlayer].currentBall);
+    if (m_playerStates[m_currentPlayer].extraBallEnabled) ballText += "+1";
     gfxRenderString(m_StartMenuFontId, ballText, ACTIVEDISPX + 10, yPos, 3, GFX_TEXTLEFT);
     
     // Check if both strings are empty - skip rendering entirely
@@ -587,56 +601,132 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
 // ========================================================================
 
 void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
-    // Handle start button press to add players
+
+    // START button: try to add a player mid-game
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
-        if (inputMessage.inputId == IDI_RPIOP06_START) {
-            if (pbeTryAddPlayer()){
-                // Play the sword cut sound
+        if (inputMessage.inputId == IDI_START) {
+            if (pbeTryAddPlayer()) {
                 m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
             }
         }
-        // Handle activate buttons to add score
-        else if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
-            addPlayerScore(100);
-        }
-        else if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
-            // TESTING: Trigger extra ball screen for 3.9 seconds
-            // This will play over the normal screen (priority 0)
-            pbeRequestScreen(PBTableState::PBTBL_MAIN, static_cast<int>(PBTBLMainScreenState::MAIN_EXTRABALL),
-                             ScreenPriority::PRIORITY_HIGH, 3900, false);
-            
-            // Also add score for testing
-            addPlayerScore(10000);
-        }
-        // Handle flipper buttons to enable/disable all characters
-        else if (inputMessage.inputId == IDI_RPIOP27_LFLIP) {
-            // Enable all characters
-            m_playerStates[m_currentPlayer].knightJoined = true;
-            m_playerStates[m_currentPlayer].priestJoined = true;
-            m_playerStates[m_currentPlayer].rangerJoined = true;
-        }
-        else if (inputMessage.inputId == IDI_RPIOP17_RFLIP) {
-            // Disable all characters
-            m_playerStates[m_currentPlayer].knightJoined = false;
-            m_playerStates[m_currentPlayer].priestJoined = false;
-            m_playerStates[m_currentPlayer].rangerJoined = false;
+    }
+
+    // Slingshot hits: +1000 score, sword cut sound, check extra ball milestone
+    if (inputMessage.inputMsg == PB_IMSG_SLING && inputMessage.inputState == PB_ON) {
+        if (inputMessage.inputId == IDI_LSLING || inputMessage.inputId == IDI_RSLING) {
+            addPlayerScore(1000);
+            m_soundSystem.pbsPlayEffect(SOUNDSWORDCUT);
+
+            // Check extra ball milestone (every 10,000 points)
+            pbGameState& ps = m_playerStates[m_currentPlayer];
+            unsigned long threshold = (ps.score / 10000UL) * 10000UL;
+            if (threshold > 0 && threshold > ps.lastExtraBallThreshold) {
+                ps.lastExtraBallThreshold = threshold;
+                pbeRequestScreen(PBTableState::PBTBL_MAIN,
+                                 static_cast<int>(PBTBLMainScreenState::MAIN_EXTRABALL),
+                                 ScreenPriority::PRIORITY_HIGH, 3900, false);
+                if (!ps.extraBallEnabled) {
+                    ps.extraBallEnabled = true;
+                    ps.ballSaveEnabled  = true;
+                    SendOutputMsg(PB_OMSG_LED, IDO_SAVELED, PB_ON, false);
+                }
+            }
         }
     }
-    
-    // Update mode system
+
+    // Inlane sensors: LED on when sensor hit, stays on. When both lit → activate ball save.
+    if (inputMessage.inputMsg == PB_IMSG_SENSOR && inputMessage.inputState == PB_ON) {
+        if (inputMessage.inputId == IDI_LINLANE && !m_leftInlaneLEDOn) {
+            m_leftInlaneLEDOn = true;
+            SendOutputMsg(PB_OMSG_LED, IDO_LINLANELED, PB_ON, false);
+        }
+        else if (inputMessage.inputId == IDI_RINLANE && !m_rightInlaneLEDOn) {
+            m_rightInlaneLEDOn = true;
+            SendOutputMsg(PB_OMSG_LED, IDO_RINLANELED, PB_ON, false);
+        }
+
+        // Both inlanes lit → activate ball save, start 5-second timer
+        if (m_leftInlaneLEDOn && m_rightInlaneLEDOn) {
+            m_leftInlaneLEDOn  = false;
+            m_rightInlaneLEDOn = false;
+            SendOutputMsg(PB_OMSG_LED, IDO_LINLANELED, PB_OFF, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_RINLANELED, PB_OFF, false);
+            pbGameState& ps = m_playerStates[m_currentPlayer];
+            ps.ballSaveEnabled = true;
+            SendOutputMsg(PB_OMSG_LED, IDO_SAVELED, PB_ON, false);
+            pbeSetTimer(BALLSAVE_TIMER_ID, 5000);
+        }
+    }
+
+    // Ball save timer expiry: turn off SAVE LED and clear flag
+    if (inputMessage.inputMsg == PB_IMSG_TIMER &&
+        inputMessage.inputId == BALLSAVE_TIMER_ID) {
+        pbGameState& ps = m_playerStates[m_currentPlayer];
+        ps.ballSaveEnabled = false;
+        SendOutputMsg(PB_OMSG_LED, IDO_SAVELED, PB_OFF, false);
+    }
+
+    // Ball drain sensor
+    if (inputMessage.inputMsg == PB_IMSG_SENSOR && inputMessage.inputState == PB_ON &&
+        inputMessage.inputId == IDI_BALLDRAIN) {
+
+        pbGameState& ps = m_playerStates[m_currentPlayer];
+        if (ps.ballSaveEnabled) {
+            // Ball save active – return ball, clear save and extra ball flags
+            ps.ballSaveEnabled  = false;
+            ps.extraBallEnabled = false;
+            pbeActivatePlayer(m_currentPlayer);   // resets LEDs, save LED off, NeoPixel restart
+            if (m_hopperDevice) {
+                m_hopperDevice->pbdEnable(true);
+                m_hopperDevice->pdbStartRun();
+            }
+        } else {
+            // No save – advance ball, rotate players or end game
+            ps.currentBall++;
+            if (ps.currentBall > m_saveFileData.ballsPerGame) {
+                ps.enabled = false;
+            }
+
+            // Cancel any active ball-save timer so it doesn't fire in the next state
+            pbeTimerStop(BALLSAVE_TIMER_ID);
+
+            // Find next enabled player (circular search)
+            int nextPlayer = -1;
+            for (int i = 1; i <= 4; i++) {
+                int candidate = (static_cast<int>(m_currentPlayer) + i) % 4;
+                if (m_playerStates[candidate].enabled) {
+                    nextPlayer = candidate;
+                    break;
+                }
+            }
+
+            if (nextPlayer < 0) {
+                // No more enabled players – go to game end
+                m_tableState = PBTableState::PBTBL_GAMEEND;
+                m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_INIT);
+                m_gameEndInitialized = false;
+                pbeClearScreenRequests();
+                pbeRequestScreen(PBTableState::PBTBL_GAMEEND,
+                                 static_cast<int>(PBTBLGameEndState::GAMEEND_INIT),
+                                 ScreenPriority::PRIORITY_LOW, 0, true);
+                return;
+            }
+
+            // Transition to PlayerEnd to show "Player X" and eject the next ball
+            m_playerEndNextPlayer  = nextPlayer;
+            m_playerEndInitialized = false;
+            m_tableState           = PBTableState::PBTBL_PLAYEREND;
+            m_tableSubScreenState  = static_cast<int>(PBTBLPlayerEndState::PLAYEREND_DISPLAY);
+            pbeClearScreenRequests();
+            pbeRequestScreen(PBTableState::PBTBL_PLAYEREND,
+                             static_cast<int>(PBTBLPlayerEndState::PLAYEREND_DISPLAY),
+                             ScreenPriority::PRIORITY_LOW, 0, true);
+            return;
+        }
+    }
+
+    // Update mode system (screen manager, mode state machine)
     pbeUpdateModeSystem(inputMessage, GetTickCountGfx());
-    
-    // TESTING ONLY: Transition to game end state when player 1 score exceeds 100,000
-    // This threshold is for development testing and should be replaced with proper
-    // end-of-game logic (e.g., last ball drained for last player) in production.
-    if (m_playerStates[0].score > 100000) {
-        m_tableState = PBTableState::PBTBL_GAMEEND;
-        m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_INIT);
-        m_gameEndInitialized = false;
-        pbeClearScreenRequests();
-        pbeRequestScreen(PBTableState::PBTBL_GAMEEND, static_cast<int>(PBTBLGameEndState::GAMEEND_INIT),
-                         ScreenPriority::PRIORITY_LOW, 0, true);
-    }
 }
 
 // ========================================================================
@@ -852,14 +942,14 @@ void PBEngine::pbeUpdateNormalPlayMode(stInputMessage inputMessage, unsigned lon
     // Handle inputs specific to normal play mode
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
         // Example: Left activate button changes state in normal play
-        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
+        if (inputMessage.inputId == IDI_LACTIVATE) {
             if (modeState.normalPlayState == PBNormalPlayState::NORMAL_IDLE) {
                 modeState.normalPlayState = PBNormalPlayState::NORMAL_ACTIVE;
                 modeState.normalPlayStateStartTick = currentTick;
             }
         }
         // Right activate button drains ball
-        else if (inputMessage.inputId == IDI_RPIOP22_RACTIVATE) {
+        else if (inputMessage.inputId == IDI_RACTIVATE) {
             if (modeState.normalPlayState == PBNormalPlayState::NORMAL_ACTIVE) {
                 modeState.normalPlayState = PBNormalPlayState::NORMAL_DRAIN;
                 modeState.normalPlayStateStartTick = currentTick;
@@ -875,7 +965,7 @@ void PBEngine::pbeUpdateMultiballMode(stInputMessage inputMessage, unsigned long
     // Handle inputs specific to multiball mode
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
         // Example: Add scoring in multiball
-        if (inputMessage.inputId == IDI_RPIOP05_LACTIVATE) {
+        if (inputMessage.inputId == IDI_LACTIVATE) {
             addPlayerScore(5000); // Higher scoring in multiball
         }
     }

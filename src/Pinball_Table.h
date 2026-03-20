@@ -31,6 +31,7 @@ enum class PBTableState {
     PBTBL_MAIN = 2,
     PBTBL_RESET = 3,
     PBTBL_GAMEEND = 4,
+    PBTBL_PLAYEREND = 5,
     PBTBL_END
 };
 
@@ -42,6 +43,7 @@ enum class PBTableState {
 #include "tablemodes/Pinball_Table_ModeMain.h"
 #include "tablemodes/Pinball_Table_ModeReset.h"
 #include "tablemodes/Pinball_Table_ModeGameEnd.h"
+#include "tablemodes/Pinball_Table_ModePlayerEnd.h"
 
 // Screen request priority levels
 enum class ScreenPriority {
@@ -140,6 +142,21 @@ struct SecondaryScoreAnimState {
     }
 };
 
+// Per-player physical/visual state that maps to hardware outputs driven by the table.
+// Kept separate so it can be saved, restored, or extended independently of scoring state.
+struct stPlayerTableState {
+    bool inlaneLEDLeft;       // Left inlane LED is lit
+    bool inlaneLEDRight;      // Right inlane LED is lit
+    // Additional per-player table visual state can be added here.
+
+    stPlayerTableState() { reset(); }
+
+    void reset() {
+        inlaneLEDLeft  = false;
+        inlaneLEDRight = false;
+    }
+};
+
 // Per-player game state class
 class pbGameState {
 public:
@@ -149,10 +166,14 @@ public:
     unsigned long inProgressScore;    // Score accumulated during current ball
     unsigned long previousScore;      // Previous score to detect changes during animation
     unsigned long scoreUpdateStartTick; // Tick when score update animation started
-    bool enabled;                     // Is this player slot enabled/active
+    bool enabled;                     // Is this player slot enabled/active (cleared when balls exhausted)
+    bool inGame;                      // Was this player added to the current game (never cleared mid-game)
     unsigned int currentBall;         // Current ball number (1-based)
     bool ballSaveEnabled;             // Ball save active flag
     bool extraBallEnabled;            // Extra ball earned flag
+    unsigned long lastExtraBallThreshold; // Last score milestone that triggered extra ball
+
+    stPlayerTableState tableState;    // Per-player physical/visual table output state
     
     // Mode system state - tracks current game mode and its sub-states
     ModeState modeState;
@@ -186,10 +207,15 @@ public:
         previousScore = 0;
         scoreUpdateStartTick = 0;
         // Note: enabled flag is NOT reset here - must be set explicitly
+        inGame = false;
         currentBall = 1;
         ballSaveEnabled = false;
         extraBallEnabled = false;
-        
+        lastExtraBallThreshold = 0;
+
+        // Reset per-player table visual state
+        tableState.reset();
+
         // Reset mode state
         modeState.reset();
         
