@@ -1,11 +1,9 @@
 # Ignore the build directory and Angle libs, don't want to commmit it
-winbuild/
-raspibuild/
-debianbuild/
-RasPi_CMake/build/
-RasPi_CMake/_codeql_build_dir/
-RasPi_CMake/RasPi_CMake
-RasPi_CMake/CMakeFiles/
+build/
+CMake/build/
+CMake/_codeql_build_dir/
+CMake/CMake
+CMake/CMakeFiles/
 src/lib_ogl_win/libEGL.dll.lib
 src/lib_ogl_win/libGLESv2.dll.lib
 src/lib_ogl_raspi/libEGL.dll.lib

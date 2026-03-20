@@ -117,7 +117,7 @@ driver.SetTimingMethod(NEOPIXEL_TIMING_NOP);
 // The driver automatically detects SPI capability based on output pin
 driver.SetTimingMethod(NEOPIXEL_TIMING_SPI);
 
-// Pin configuration in g_outputDef must use SPI MOSI pin:
+// Pin configuration in io_definitions.json must use SPI MOSI pin:
 // - SPI0 MOSI: GPIO 10 (Physical Pin 19)
 // - SPI1 MOSI: GPIO 20 (Physical Pin 38)
 // If pin is not SPI-capable, automatically falls back to NEOPIXEL_TIMING_CLOCKGETTIME
@@ -183,7 +183,7 @@ ls /dev/spidev*
 // The driver automatically detects PWM capability based on output pin
 driver.SetTimingMethod(NEOPIXEL_TIMING_PWM);
 
-// Pin configuration in g_outputDef must use PWM-capable pin:
+// Pin configuration in io_definitions.json must use PWM-capable pin:
 // - PWM0: GPIO 12 (Physical Pin 32) or GPIO 18 (Physical Pin 12)
 // - PWM1: GPIO 13 (Physical Pin 33) or GPIO 19 (Physical Pin 35)
 // If pin is not PWM-capable, automatically falls back to NEOPIXEL_TIMING_CLOCKGETTIME

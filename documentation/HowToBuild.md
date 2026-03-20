@@ -6,6 +6,8 @@ The build is set up with VS code, with both Windows and Raspberry Pi 5 build pat
 
 While using VS Code, by hitting Ctrl-Shift-P, you can bring up the Task Commands.  The following commands exist:
 - Windows / Rasberry Pi:  Full Pinball Build - Build the RasPin engine and executable to run PInball.
+- Windows / Rasberry Pi:  Full Pinball Build (Release) - Optimized release build with full compiler optimizations.
+- Windows: Copy Runtime DLLs - Copies all required Windows DLLs (FFmpeg and ANGLE) to both `build/windows/debug/` and `build/windows/release/`. Run this once after cloning, or again if DLLs are missing.
 - Windows / Rasberry Pi:  FontGen Build - Builds FontGen.cpp, a utility program takes a truetype font, and generate the files needed to use that font in the RasPin.
 - Windows / Rasberry Pi:  Single file build - used for testing single files
 
@@ -79,17 +81,19 @@ For Windows the libs and DLLs are already included in the source code, but can b
 
 2. Extract and copy files:
    ```
-   DLLs → winbuild/
    include/ → src/include_ogl_win/
    lib/ → src/lib_ogl_win/
    ```
+   The DLLs themselves are copied automatically by the **Windows: Copy Runtime DLLs** task (see below).
 
-3. Required DLLs:
+3. Required DLLs (handled automatically):
    - `avcodec-*.dll`
    - `avformat-*.dll`
    - `avutil-*.dll`
    - `swscale-*.dll`
    - `swresample-*.dll`
+
+The **Windows: Copy Runtime DLLs** task (in `tasks.json`) calls `scripts/copy_win_dlls.ps1`, which copies all required FFmpeg and ANGLE DLLs to `build/windows/debug/` and `build/windows/release/`. This is triggered automatically as part of the Windows Full Pinball Build tasks. You can also run it independently via Ctrl-Shift-P if the DLLs ever need refreshing.
 
  # Build Natively on Debian/Ubuntu (Simulator)
 

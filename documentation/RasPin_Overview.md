@@ -20,6 +20,87 @@ Development of this framework and game would have take signficantly possible lon
 
 Agentic Code AI is highly recommended as tool to utilize the RaspPin framework.  While you *could* write all the code manually, it excels at setting up rendering screens, following instructions to get base screen rendering, sprites, text and animation functions all set up - so you don't have to worry about the specifics of using the framework immediately.  After initial setup, the code can be tweaked to get exactly what you want.
 
+---
+
+## Project Directory Structure
+
+```
+PInball/
+├── build/                     # All compiled outputs (git-ignored)
+│   ├── windows/
+│   │   ├── debug/             # Windows debug exe + required DLLs
+│   │   └── release/           # Windows release exe + DLLs
+│   ├── raspi/
+│   │   ├── debug/             # Raspberry Pi debug binary + utilities
+│   │   └── release/           # Raspberry Pi optimized release binary
+│   └── debian/
+│       ├── debug/             # Debian/Linux debug binary
+│       └── release/           # Debian/Linux release binary
+├── CMake/                     # CMakeLists.txt for Raspberry Pi/Debian builds
+├── documentation/             # All framework documentation
+├── scripts/                   # Build helper scripts
+│   ├── copy_win_dlls.ps1      # Copies ANGLE + FFmpeg DLLs to Windows build dirs
+│   └── generate_io_header.py  # Auto-generates io_defs_generated.h from io_definitions.json
+├── src/
+│   ├── system/                # Framework core — do NOT modify these files
+│   │   ├── PBEngine.*         # Central game engine
+│   │   ├── PBGfx.*            # Graphics / OpenGL ES 3.1
+│   │   ├── PBSound.*          # Audio (SDL2_mixer)
+│   │   ├── PBVideo.*          # Video playback (FFmpeg)
+│   │   ├── Pinball_IO.*       # I/O hardware abstraction
+│   │   ├── Pinball_Engine.*   # Engine entry points
+│   │   └── ...
+│   ├── user/                  # Your game-specific code — edit these files
+│   │   ├── Pinball_Table.*    # Main table logic (Init/Start/Main/Reset/GameEnd/PlayerEnd)
+│   │   ├── tablemodes/        # Per-mode game logic split into individual files
+│   │   ├── PBDevice.*         # Custom device state machines
+│   │   ├── PBSequences.*      # LED animation sequences
+│   │   ├── PinballMenus.*     # Menu screens
+│   │   ├── PBSequences.*      # NeoPixel / LED animation sequences
+│   │   └── resources/         # Sprites, fonts, sounds, videos for your game
+│   ├── 3rdparty/              # Third-party libraries (stb, cgltf, etc.)
+│   ├── include_ogl_win/       # ANGLE OpenGL ES headers (Windows)
+│   └── lib_ogl_win/           # ANGLE import libraries (Windows)
+└── io_definitions.json        # I/O pin mapping — edit to match your hardware
+```
+
+---
+
+## Files You Should Modify
+
+The framework separates engine code from game code. Everything under `src/user/` is yours to customize; everything under `src/system/` is the framework engine.
+
+### Primary Game Files
+
+| File | Purpose |
+|------|---------|
+| `src/user/Pinball_Table.cpp/.h` | Your pinball table — game rules, scoring, input handling |
+| `src/user/tablemodes/Pinball_Table_Mode*.cpp` | Per-mode logic: Init, Start, Main, Reset, GameEnd, PlayerEnd |
+| `src/user/PinballMenus.cpp/.h` | Menu screen layouts and navigation logic |
+| `src/user/PBSequences.cpp/.h` | LED sequence and NeoPixel animation definitions |
+| `src/user/PBDevice.cpp/.h` | Custom physical device state machines (ejectors, hoppers, etc.) |
+
+### Configuration
+
+| File | Purpose |
+|------|---------|
+| `io_definitions.json` | Maps your physical I/O: input pins, outputs, LEDs, NeoPixel strips |
+| `src/PBBuildSwitch.h` | Build-time flags: platform, hardware enable, window size |
+
+### Resources
+
+All game assets live under `src/user/resources/`:
+- `fonts/` — TrueType fonts (run FontGen to generate the texture atlas/UV files)
+- `images/` — Sprite sheets and background images (`.png`)
+- `sounds/` — Music (`music/`) and sound effects (`sfx/`) (`.mp3`/`.wav`)
+- `videos/` — Video clips for attract mode, cutscenes, etc.
+
+### What to Leave Alone
+
+Files under `src/system/`, `src/3rdparty/`, `src/include_ogl_win/`, and `src/lib_ogl_win/` are framework internals. Modify them only if you are extending the engine itself.
+
+---
+
 ## System Architecture
 
 ### High-Level Component Diagram
@@ -880,13 +961,17 @@ Plan gameplay:
 ### 2. Setup I/O Definitions
 
 ```
-Edit Pinball_IO.cpp:
+Edit io_definitions.json:
 
-    Define inputs:
-        {id, message_type, hardware_type, chip, pin}
+    Define inputs (in "inputs" array):
+        {id, idx, name, key, msg, pin, board, boardIdx, debMs, auto, autoOut, ...}
     
-    Define outputs:
-        {id, message_type, hardware_type, chip, pin, pulse_times}
+    Define outputs (in "outputs" array):
+        {id, idx, name, msg, pin, board, boardIdx, onMs, offMs}
+
+Run: python scripts/generate_io_header.py
+    → regenerates src/io_defs_generated.h with IDI_*/IDO_* #defines
+    → rebuild the project to pick up changes
 ```
 
 ### 3. Create Game Screens
@@ -1028,6 +1113,53 @@ Sequence System:
     • Deferred messages during sequences
     • Group operations affect entire chip
 ```
+
+---
+
+## Advanced Topics
+
+### Creating Custom Devices
+
+A *device* is a state machine that manages a physical mechanism (ejector, hopper, gate, motor, etc.) that requires timed, multi-step control. The `PBDevice` base class in `src/user/PBDevice.h` provides the lifecycle scaffolding; you supply the state machine by overriding `pbdExecute()`.
+
+Derive your class from `PBDevice`, override the virtual functions (`pbdInit`, `pbdEnable`, `pdbStartRun`, and the required `pbdExecute`), and add whatever state variables your mechanism needs. Inside `pbdExecute()` — which is called every frame — use `m_state` to track progress through the sequence, `m_pEngine->GetTickCountGfx()` for elapsed-time checks, and `m_pEngine->SendOutputMsg()` to fire solenoids, LEDs, and motors. Create an instance in `Pinball_Table.cpp`, call `pbdInit()` during table initialization, and call `pbdExecute()` each frame from your update function.
+
+The included `pbdEjector` and `pbdHopperEjector` classes in `PBDevice.h` are fully-working reference implementations that cover the most common patterns.
+
+**Reference:** [PBDevice_API.md](PBDevice_API.md)
+
+---
+
+### Creating Custom LED Sequences
+
+LED sequences animate the chip-based LED drivers (TLC59116). A sequence is a fixed list of steps defined at compile time in `src/user/PBSequences.h/.cpp`. Each step specifies which LEDs on each chip are active (as a 16-bit bitmask per chip), how long the pattern stays on, and an optional off-gap before the next step.
+
+To add a new sequence, declare the `LEDSequence` and its chip mask in `PBSequences.h`, define the step array and data structures in `PBSequences.cpp`, then trigger it at runtime with `SendSeqMsg()`. The engine plays the sequence autonomously — no per-frame management needed. The existing `PBSeq_AllChipsTest`, `PBSeq_LastThreeTest`, and `PBSeq_RGBColorCycle` sequences are fully-working examples.
+
+**References:** [LED_Control_API.md](LED_Control_API.md)
+
+---
+
+### Creating Custom NeoPixel Animation Functions
+
+NeoPixel animation functions produce real-time, dynamic effects on WS2812B/SK6812 RGB LED strips. Unlike LED sequences (a static step list for chip-based LEDs), these are `PBEngine` methods called every frame that compute pixel colors on the fly — enabling smooth fades, moving snakes, strobes, and anything else you can calculate.
+
+The built-in animations in `Pinball_Engine.cpp` are the reference implementations:
+
+| Function | Effect |
+|----------|--------|
+| `neoPixelGradualFade` | Smooth cross-fade from one color to another across all pixels |
+| `neoPixelSweepFromEnds` | Color change sweeps from outer ends toward center (or reverse) |
+| `neoPixelToggle` | Up to 4 colors rotate/shift along the strip every step |
+| `neoPixelSplitToggle` | First and second halves swap between two colors |
+| `neoPixelStrobe` | Flashes between black and a color; off-time can shrink over a duration |
+| `neoPixelSnake` | A moving "snake" of pixels runs along the strip over a base color |
+
+Every animation follows the same pattern: it's called every frame, throttles itself internally using `stepTimeMS`, and keeps per-strip state in a static map keyed by `neoPixelId` so multiple strips run independently. Pixel changes are staged with `SendNeoPixelAllMsg()` or `SendNeoPixelSingleMsg()`, and the engine flushes them to hardware each frame via `SendAllStagedNeoPixels()`.
+
+To add a new animation, declare it in `Pinball_Engine.h` alongside the existing functions, implement it in `Pinball_Engine.cpp` following the state-map pattern of the existing functions, then call it each frame from your table update code. Use `GetTickCountGfx()` for timing and `m_NeoPixelDriverMap` to query LED count for per-pixel effects.
+
+**References:** [LED_Control_API.md](LED_Control_API.md) · [NeoPixel_Timing_Methods.md](NeoPixel_Timing_Methods.md) · [NeoPixel_Instrumentation.md](NeoPixel_Instrumentation.md)
 
 ---
 

@@ -10,7 +10,7 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
 
 Prototype hardware shown, full machine in development.
 
-# Current Features - This is changing constantly as work continues...
+# Current RasPin System Features (constantly adding features...)
 - Intended to be a hobby level, low cost system for creating full feature, half scale pinball machines with Raspberry Pi hardware
 - Cross platform VS Code environment for Linux (Linux via Debian / Raspberry Pi) and Windows - All OSes support simulator mode, while Raspberry Pi supports full pinball hardware.  Other Linux versions would likely work as well, but not tested.
 - Pinball HW mode supports a primary Pinball HDMI screen, plus 2nd monitor support for ease of debug / development
@@ -24,6 +24,7 @@ Prototype hardware shown, full machine in development.
 - Easy to use music and sound effect system with multiple channels
 - Full setup / control and diagnostics menus and capability, along with straight-forward ability to add / expand for your own personalize machine.
 - Mode and gameplay framework with a multi-mode state machine, mode sub-states, screen display priority management with and a structured game flow skeleton ready for building full pinball table rules
+- Base system supports "Simple Flip" debug mode for basic checkout.
 
 # Currently working on... (WIP)
 - Prototype Cabinet and lower 1/3 playfield (flipps, slings, lanes).  Cabinet done in 1/4 foamboard, dimensions in HW directory of repo.  Prototyping lanes and flippers via 3D printing, flipper solinoid drivers.  Will be mounted on 1/2 ply.
@@ -31,6 +32,10 @@ Prototype hardware shown, full machine in development.
 - FUTURE: Develop full version 1 whitewood
 - FUTURE: Full gameplay / code with version 1 whitewood
 - FUTURE: Develop schematics for the custom expander boards based on TI
+
+# Full Game Code Status
+-  Simple POC game now enabled, utilizing all aspects of code - lights, sound, music, devices, etc.. A full proof of concept of all key aspects of running a machine.  
+-  Rules: 1-4 players, slings score 1000 pts each, 5000 points gets and extra ball (no more than 1).  Extra ball lights Save LED.  Inlanes light when detected - when both light, Save LED lights for 5 seconds and cycle repeats.  Ball hopper eject device supported.
 
 # Documentation
 - **[RasPin Overview](documentation/RasPin_Overview.md)** - **START HERE** - High-level architecture overview with diagrams and introduction to all documentation

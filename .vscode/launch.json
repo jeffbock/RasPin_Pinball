@@ -5,10 +5,24 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Windows: Debug Pinball",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/windows/debug/Pinball.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "logging": {
+                "engineLogging": false
+            }
+        },
+        {
             "name": "Debian: Debug Pinball",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/debianbuild/Pinball_DebianOS",
+            "program": "${workspaceFolder}/build/debian/debug/Pinball_DebianOS",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -53,7 +67,7 @@
             "name": "RasPi: Debug Pinball",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/raspibuild/Pinball", // Path to the compiled executable for pinball.cpp
+            "program": "${workspaceFolder}/build/raspi/debug/Pinball", // Path to the compiled executable for pinball.cpp
             "args": [], // Arguments to pass to the program, if any
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -87,7 +101,7 @@
             "name": "RasPi: Debug Pinball (with Build)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/raspibuild/Pinball", // Path to the compiled executable for pinball.cpp
+            "program": "${workspaceFolder}/build/raspi/debug/Pinball", // Path to the compiled executable for pinball.cpp
             "args": [], // Arguments to pass to the program, if any
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -100,7 +114,7 @@
             "externalConsole": false,
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "cppbuild: Raspberry Pi: Full Pinball Build", // Links to your Raspberry Pi build task
+            "preLaunchTask": "Raspberry Pi: Full Pinball Build", // Links to your Raspberry Pi build task
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -121,15 +135,15 @@
             "name": "RasPi: Debug FontGen",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/rpi_build/FontGen", // Path to the compiled FontGen executable
-            "args": ["./src/resources/fonts/IMMORTAL.ttf", "60", "512", "4"], // Arguments for FontGen
+            "program": "${workspaceFolder}/build/raspi/debug/FontGen", // Path to the compiled FontGen executable
+            "args": ["./src/user/resources/fonts/IMMORTAL.ttf", "60", "512", "4"], // Arguments for FontGen
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "cppbuild: Raspberry Pi: FontGen Build", // Links to your Raspberry Pi FontGen build task
+            "preLaunchTask": "Raspberry Pi: FontGen Build", // Links to your Raspberry Pi FontGen build task
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -147,31 +161,16 @@
             }
         },
         {
-            "name": "Windows: Debug Pinball",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/winbuild/Pinball.exe", // Path to the compiled executable for pinball.cpp
-            "args": [], // Arguments to pass to the program, if any
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            // "preLaunchTask": "Windows: Full Pinball Build", // Commented out to skip building
-            "logging": {
-                "engineLogging": false
-            }
-        },
-        {
             "name": "Windows: Debug FontGen",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/winbuild/fontgen.exe", // Path to the compiled executable
-            "args": ["./winbuild/IMMORTAL.ttf", "60", "512", "4"], // Arguments to pass to the program
+            "program": "${workspaceFolder}/build/windows/debug/FontGen.exe", // Path to the compiled executable
+            "args": ["./src/user/resources/fonts/IMMORTAL.ttf", "60", "512", "4"], // Arguments to pass to the program
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
-            "preLaunchTask": "cppbuild: Windows: FontGen Build", // Ensure you have a build task configured
+            "preLaunchTask": "Windows: FontGen Build", // Ensure you have a build task configured
             "logging": {
                 "engineLogging": false
             }

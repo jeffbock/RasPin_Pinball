@@ -359,18 +359,21 @@ void ProcessDeferredLEDQueue();
 
 LEDs can also use pulse mode for timed effects.
 
-**Example:**
-```cpp
-// Define LED output with pulse timing
-stOutputDef g_outputDef[] = {
-    // id, outputMsg, boardType, boardIndex, pin, onTimeMS, offTimeMS
-    {LED_EXTRA_BALL, PB_OMSG_LED, PB_LED, 0, 10, 500, 100},
-    //                                           ^^^  ^^^
-    //                                           On for 500ms, off for 100ms
-};
+**Step 1: Configure pulse timing in `io_definitions.json`:**
+```json
+// In io_definitions.json → "outputs" array
+{"id":"IDO_EXTRABALL", "idx":11, "name":"Extra Ball LED", "msg":"LED",
+ "pin":10, "board":"LED", "boardIdx":0, "state":"OFF", "onMs":500, "offMs":100, "neo":0}
+//                                                                       ^^^      ^^^
+//                                                                  On 500ms  Off 100ms
+```
 
+After editing, run `python scripts/generate_io_header.py` and rebuild.
+
+**Step 2: Send with pulse enabled:**
+```cpp
 // Send with pulse enabled
-g_PBEngine.SendOutputMsg(PB_OMSG_LED, LED_EXTRA_BALL, PB_ON, true);
+g_PBEngine.SendOutputMsg(PB_OMSG_LED, IDO_EXTRABALL, PB_ON, true);
 // → LED will turn on for 500ms, then off for 100ms, then stop
 ```
 
@@ -665,17 +668,20 @@ NeoPixelDriver m_NeoPixelDriver[NUM_NEOPIXEL_DRIVERS] = {
 
 #### Output Definition
 
-Add to `g_outputDef[]` in `Pinball_IO.cpp`:
+Add a NeoPixel entry to the `"outputs"` array in `io_definitions.json`:
 
-```cpp
-{"NeoPixel LED0", PB_OMSG_NEOPIXEL, IDO_NEOPIXEL0, 0, PB_NEOPIXEL, 0, PB_OFF, 0, 0}
+```json
+{"id":"IDO_NEOPIXEL0", "idx":6, "name":"NeoPixel0", "msg":"NEOPIXEL",
+ "pin":0, "board":"NEOPIXEL", "boardIdx":0, "state":"OFF", "onMs":0, "offMs":0, "neo":0}
 ```
 
 Where:
-- `IDO_NEOPIXEL0` - Unique output ID
-- `0` - LED index in the strip (pin field)
-- `PB_NEOPIXEL` - Board type
-- `0` - Driver index (first driver)
+- `"id":"IDO_NEOPIXEL0"` - Unique `IDO_*` identifier; becomes a `#define` in `io_defs_generated.h`
+- `"pin":0` - LED index within the strip for single-pixel operations
+- `"board":"NEOPIXEL"` - Board type
+- `"boardIdx":0` - Driver index (0 = first `NeoPixelDriver` instance)
+
+After editing, run `python scripts/generate_io_header.py` and rebuild to pick up the new `IDO_NEOPIXEL0` constant.
 
 ### Important Notes
 

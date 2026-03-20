@@ -51,13 +51,13 @@ FontGen is built separately from the main pinball engine.
 Or manually:
 ```bash
 cl.exe /Zi /EHsc /nologo ^
-  /Fewinbuild/FontGen.exe ^
+  /Febuild/windows/debug/FontGen.exe ^
   src/3rdparty/stb_truetype.cpp ^
   src/3rdparty/stb_image_write.cpp ^
   src/PButils/FontGen.cpp
 ```
 
-**Output:** `winbuild/FontGen.exe`
+**Output:** `build/windows/debug/FontGen.exe`
 
 ### Raspberry Pi Build
 
@@ -65,14 +65,14 @@ cl.exe /Zi /EHsc /nologo ^
 
 Or manually:
 ```bash
-g++ -g -o raspibuild/FontGen \
+g++ -g -o build/raspi/debug/FontGen \
   src/3rdparty/stb_truetype.cpp \
   src/3rdparty/stb_image_write.cpp \
   src/PButils/FontGen.cpp \
   -lpthread
 ```
 
-**Output:** `raspibuild/FontGen`
+**Output:** `build/raspi/debug/FontGen`
 
 ## Using FontGen
 
@@ -178,13 +178,13 @@ gfxRenderString(myFontId, "HELLO WORLD",
 
 Or manually:
 ```bash
-g++ -g -o raspibuild/pblistdevices \
+g++ -g -o build/raspi/debug/pblistdevices \
   src/PButils/pblistdevices.cpp \
   -lwiringPi \
   -lpthread
 ```
 
-**Output:** `raspibuild/pblistdevices`
+**Output:** `build/raspi/debug/pblistdevices`
 
 ## Using pblistdevices
 
@@ -263,13 +263,13 @@ The utility scans the following I2C address ranges:
 
 Or manually:
 ```bash
-g++ -g -o raspibuild/pbsetamp \
+g++ -g -o build/raspi/debug/pbsetamp \
   src/PButils/pbsetamp.cpp \
   -lwiringPi \
   -lpthread
 ```
 
-**Output:** `raspibuild/pbsetamp`
+**Output:** `build/raspi/debug/pbsetamp`
 
 ## Using pbsetamp
 
@@ -387,12 +387,12 @@ crontab -e
 
 **Step 2: Add the following line to run pbsetamp at boot**
 ```bash
-@reboot /home/pi/PInballProj/PInball/raspibuild/pbsetamp 0
+@reboot /home/pi/PInballProj/PInball/build/raspi/debug/pbsetamp 0
 ```
 
 **Or with a specific I2C address:**
 ```bash
-@reboot /home/pi/PInballProj/PInball/raspibuild/pbsetamp --address 0x4B 0
+@reboot /home/pi/PInballProj/PInball/build/raspi/debug/pbsetamp --address 0x4B 0
 ```
 
 **Step 3: Save and exit the editor**
@@ -407,9 +407,9 @@ crontab -l
 If you have multiple amplifiers, mute them all:
 
 ```bash
-@reboot /home/pi/PInballProj/PInball/raspibuild/pbsetamp --address 0x4B 0
-@reboot /home/pi/PInballProj/PInball/raspibuild/pbsetamp --address 0x4C 0
-@reboot /home/pi/PInballProj/PInball/raspibuild/pbsetamp --address 0x4D 0
+@reboot /home/pi/PInballProj/PInball/build/raspi/debug/pbsetamp --address 0x4B 0
+@reboot /home/pi/PInballProj/PInball/build/raspi/debug/pbsetamp --address 0x4C 0
+@reboot /home/pi/PInballProj/PInball/build/raspi/debug/pbsetamp --address 0x4D 0
 ```
 
 ### Complete Boot Sequence Example
@@ -417,10 +417,10 @@ If you have multiple amplifiers, mute them all:
 **Crontab entry:**
 ```bash
 # Mute amplifier on boot for safety
-@reboot /home/pi/PInballProj/PInball/raspibuild/pbsetamp 0
+@reboot /home/pi/PInballProj/PInball/build/raspi/debug/pbsetamp 0
 
 # Optional: Start pinball engine after boot (delay to allow system initialization)
-@reboot sleep 10 && /home/pi/PInballProj/PInball/raspibuild/Pinball
+@reboot sleep 10 && /home/pi/PInballProj/PInball/build/raspi/release/Pinball
 ```
 
 **Then in your pinball engine code**, set the volume to the desired level after initialization:
@@ -446,7 +446,7 @@ grep CRON /var/log/syslog
 
 **Test the command manually first:**
 ```bash
-/home/pi/PInballProj/PInball/raspibuild/pbsetamp 0
+/home/pi/PInballProj/PInball/build/raspi/debug/pbsetamp 0
 ```
 
 ---
@@ -472,13 +472,13 @@ grep CRON /var/log/syslog
 **Windows:**
 ```bash
 # Only FontGen is available on Windows
-cd winbuild
+cd build/windows/debug
 FontGen.exe
 ```
 
 **Raspberry Pi:**
 ```bash
-cd raspibuild
+cd build/raspi/debug
 ./FontGen
 ./pblistdevices
 ./pbsetamp

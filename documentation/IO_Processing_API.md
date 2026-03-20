@@ -72,15 +72,18 @@ bool PBProcessInput();
 - Triggers auto-outputs if enabled
 
 **Example Input Definitions:**
-```cpp
-// In Pinball_IO.cpp
-stInputDef g_inputDef[NUM_INPUTS] = {
-    // id, inputMsg, boardType, boardIndex, pin, simMapKey
-    {INPUT_LEFT_FLIPPER, PB_IMSG_LEFT_FLIPPER, PB_IO, 0, 0, "z"},
-    {INPUT_RIGHT_FLIPPER, PB_IMSG_RIGHT_FLIPPER, PB_IO, 0, 1, "/"},
-    {INPUT_START_BUTTON, PB_IMSG_START_BUTTON, PB_RASPI, 0, 17, "1"},
-};
+```json
+// In io_definitions.json → "inputs" array
+{"id":"IDI_LFLIP",  "idx":0, "name":"LFlipper", "key":"A", "msg":"BUTTON", "pin":27, "board":"RASPI", "boardIdx":0, "state":"OFF", "tick":0, "debMs":5, "auto":false, "autoOut":"", "autoState":"OFF", "autoPulse":false},
+{"id":"IDI_RFLIP",  "idx":1, "name":"RFlipper", "key":"D", "msg":"BUTTON", "pin":17, "board":"RASPI", "boardIdx":0, "state":"OFF", "tick":0, "debMs":5, "auto":false, "autoOut":"", "autoState":"OFF", "autoPulse":false},
+{"id":"IDI_START",  "idx":4, "name":"Start",    "key":"Z", "msg":"BUTTON", "pin":6,  "board":"RASPI", "boardIdx":0, "state":"OFF", "tick":0, "debMs":5, "auto":false, "autoOut":"", "autoState":"OFF", "autoPulse":false}
 ```
+
+After editing `io_definitions.json`, run:
+```
+python scripts/generate_io_header.py
+```
+This regenerates `src/io_defs_generated.h` with updated `IDI_*` / `IDO_*` `#define` constants and array size macros.
 
 ### PBProcessOutput()
 
@@ -180,14 +183,12 @@ void ProcessActivePulseOutputs();
 - Works with I/O, GPIO, and LED outputs
 
 **Pulse Definition Example:**
-```cpp
-// In Pinball_IO.cpp
-stOutputDef g_outputDef[NUM_OUTPUTS] = {
-    // id, outputMsg, boardType, boardIndex, pin, onTimeMS, offTimeMS
-    {OUTPUT_LEFT_SLINGSHOT, PB_OMSG_GENERIC_IO, PB_IO, 0, 8, 50, 100},
-    //                                                      ^^  ^^^
-    //                                                      ON  OFF duration
-};
+```json
+// In io_definitions.json → "outputs" array
+// Configure onMs / offMs for pulse timing
+{"id":"IDO_RSLING", "idx":1, "name":"RSling", "msg":"GENERIC_IO", "pin":0, "board":"IO", "boardIdx":0, "state":"OFF", "onMs":50, "offMs":100, "neo":0}
+//                                                                                                                "onMs":^^ "offMs":^^^
+//                                                                                                                  ON duration  OFF duration
 ```
 
 **Timing Diagram:**
@@ -325,56 +326,66 @@ g_PBEngine.SendOutputMsg(PB_OMSG_LEDSET_BRIGHTNESS, LED_GI_STRIP,
 
 ## Input/Output Definitions
 
+All I/O definitions are stored in `io_definitions.json` at the project root. This is the **single source of truth** for every input and output. The workflow is:
+
+1. Edit `io_definitions.json` to add, remove, or modify inputs/outputs.
+2. Run `python scripts/generate_io_header.py` to regenerate `src/io_defs_generated.h`.
+3. Rebuild the project. The generated header provides the `IDI_*` / `IDO_*` `#define` constants and `NUM_INPUTS` / `NUM_OUTPUTS` macros used throughout the codebase.
+4. At runtime, `InitializeInputDefs()` and `InitializeOutputDefs()` load `io_definitions.json` and populate the `g_inputDef[]` and `g_outputDef[]` arrays automatically.
+
+**Do not** manually edit `Pinball_IO.cpp` to define I/O entries or `src/io_defs_generated.h` — these are managed by the JSON file and the generator script.
+
 ### stInputDef
 
-Defines an input's hardware connection and behavior.
+Defines an input's hardware connection and behavior. Populated at runtime from `io_definitions.json` — do not edit directly.
 
 ```cpp
 struct stInputDef {
-    unsigned int id;                // Unique input ID
+    std::string inputName;          // Human-readable name
+    std::string simMapKey;          // Keyboard key for Windows simulation
     PBInputMsg inputMsg;            // Message type to generate
+    unsigned int pin;               // Hardware pin number
     PBBoardType boardType;          // PB_RASPI, PB_IO, etc.
     unsigned int boardIndex;        // Which chip (for I/O expanders)
-    unsigned int pin;               // Hardware pin number
-    std::string simMapKey;          // Keyboard key for Windows simulation
-    bool autoOutput;                // Enable auto output
-    unsigned int autoOutputId;      // Output to trigger
-    PBPinState autoPinState;        // State to send to output
     PBPinState lastState;           // Last known state
     unsigned long lastStateTick;    // Timestamp of last state change
+    unsigned long debounceTimeMS;   // Debounce window in milliseconds
+    bool autoOutput;                // Enable auto output
+    unsigned int autoOutputId;      // Output index to trigger
+    PBPinState autoPinState;        // State to send to output
+    bool autoOutputUsePulse;        // If true, auto-output uses pulse mode
 };
 ```
+
+**Note:** The array index of `g_inputDef[]` is the input ID and matches the corresponding `IDI_*` `#define` from `io_defs_generated.h`.
 
 ### stOutputDef
 
-Defines an output's hardware connection and pulse timing.
+Defines an output's hardware connection and pulse timing. Populated at runtime from `io_definitions.json` — do not edit directly.
 
 ```cpp
 struct stOutputDef {
-    unsigned int id;                // Unique output ID
+    std::string outputName;         // Human-readable name
     PBOutputMsg outputMsg;          // Message type
+    unsigned int pin;               // Hardware pin number
     PBBoardType boardType;          // PB_RASPI, PB_IO, PB_LED
     unsigned int boardIndex;        // Which chip
-    unsigned int pin;               // Hardware pin number
+    PBPinState lastState;           // Last known state
     unsigned int onTimeMS;          // Pulse ON duration
     unsigned int offTimeMS;         // Pulse OFF duration
-    PBPinState lastState;           // Last known state
+    unsigned int neoPixelIndex;     // NeoPixel chain index (0 if not applicable)
 };
 ```
 
-**Example Definitions:**
-```cpp
-// Define outputs in Pinball_IO.cpp
-stOutputDef g_outputDef[NUM_OUTPUTS] = {
-    // Solenoid with 50ms pulse
-    {OUTPUT_LEFT_SLINGSHOT, PB_OMSG_GENERIC_IO, PB_IO, 0, 8, 50, 100},
-    
-    // LED output (no pulse timing needed)
-    {LED_ROLLOVER_1, PB_OMSG_LED, PB_LED, 0, 3, 0, 0},
-    
-    // Flipper (no pulse - controlled by input)
-    {OUTPUT_LEFT_FLIPPER, PB_OMSG_GENERIC_IO, PB_IO, 0, 10, 0, 0},
-};
+**Note:** The array index of `g_outputDef[]` is the output ID and matches the corresponding `IDO_*` `#define` from `io_defs_generated.h`.
+
+**Example Definitions (in `io_definitions.json`):**
+```json
+"outputs": [
+  {"id":"IDO_RSLING",   "idx":1, "name":"RSling",   "msg":"GENERIC_IO", "pin":0, "board":"IO",  "boardIdx":0, "state":"OFF", "onMs":50,  "offMs":100, "neo":0},
+  {"id":"IDO_SAVELED",  "idx":11,"name":"Save LED", "msg":"LED",        "pin":4, "board":"LED", "boardIdx":0, "state":"OFF", "onMs":0,   "offMs":0,   "neo":0},
+  {"id":"IDO_LFLIP",   "idx":3, "name":"LFlipper", "msg":"GENERIC_IO", "pin":2, "board":"IO",  "boardIdx":0, "state":"OFF", "onMs":100, "offMs":100, "neo":0}
+]
 ```
 
 ---
@@ -385,17 +396,18 @@ Auto output allows an input to directly trigger an output without game code proc
 
 ### Configuration
 
-1. **Define Auto Output in Input Definition:**
-```cpp
-stInputDef g_inputDef[NUM_INPUTS] = {
-    // id, inputMsg, boardType, boardIndex, pin, simMapKey, 
-    // autoOutput, autoOutputId, autoPinState
-    {INPUT_LEFT_FLIPPER, PB_IMSG_LEFT_FLIPPER, PB_IO, 0, 0, "z", 
-     true, OUTPUT_LEFT_FLIPPER, PB_ON},
-     // ^^^^  ^^^^^^^^^^^^^^^^^^^  ^^^^^
-     // Enable, Output to trigger, State to send
-};
+1. **Define Auto Output in `io_definitions.json`:**
+```json
+// In io_definitions.json → "inputs" array
+// Set "auto":true, "autoOut":"<IDO_*>", "autoState":"ON|OFF", "autoPulse":true|false
+{"id":"IDI_LFLIP", "idx":0, "name":"LFlipper", "key":"A", "msg":"BUTTON",
+ "pin":27, "board":"RASPI", "boardIdx":0, "state":"OFF", "tick":0, "debMs":5,
+ "auto":true, "autoOut":"IDO_LFLIP", "autoState":"ON", "autoPulse":false}
+//              ^^^^^^^^^^^  ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
+// Enable auto  Output to trigger            State to send   Pulse or track input
 ```
+
+After editing, run `python scripts/generate_io_header.py` to regenerate `src/io_defs_generated.h`.
 
 2. **Enable Auto Output Globally:**
 ```cpp
@@ -407,17 +419,22 @@ g_PBEngine.SetAutoOutputEnable(true);
 When an input with auto output enabled changes state:
 1. Normal input message is generated and queued
 2. **Immediately** (before game code processes), output message is sent
-3. Output uses the `autoPinState` (typically `PB_ON` for direct pass-through)
+3. Output uses the `autoState` from the JSON definition (typically `ON` for direct pass-through)
+4. If `autoPulse` is `true`, the output fires a timed pulse using its `onMs`/`offMs` values
 
-**Example - Flipper Setup:**
+**Example - Flipper Setup (`io_definitions.json`):**
+```json
+// Input: left flipper with auto-output to solenoid (tracks input, no pulse)
+{"id":"IDI_LFLIP", "idx":0, "name":"LFlipper", "key":"A", "msg":"BUTTON",
+ "pin":27, "board":"RASPI", "boardIdx":0, "state":"OFF", "tick":0, "debMs":5,
+ "auto":true, "autoOut":"IDO_LFLIP", "autoState":"ON", "autoPulse":false},
+
+// Output: flipper solenoid
+{"id":"IDO_LFLIP", "idx":3, "name":"LFlipper", "msg":"GENERIC_IO",
+ "pin":2, "board":"IO", "boardIdx":0, "state":"OFF", "onMs":100, "offMs":100, "neo":0}
+```
+
 ```cpp
-// Input definition
-{INPUT_LEFT_FLIPPER, PB_IMSG_LEFT_FLIPPER, PB_IO, 0, 0, "z", 
- true, OUTPUT_LEFT_FLIPPER, PB_ON},
-
-// Output definition  
-{OUTPUT_LEFT_FLIPPER, PB_OMSG_GENERIC_IO, PB_IO, 1, 5, 0, 0},
-
 // Enable in your initialization
 g_PBEngine.SetAutoOutputEnable(true);
 
