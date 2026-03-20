@@ -1,4 +1,38 @@
-{"outputs":[
+{"_docs": {
+  "_description": "IO definitions for the RasPin pinball engine. Edit this file to define inputs and outputs.",
+  "_usage": "Run 'python scripts/generate_io_header.py' to regenerate src/io_defs_generated.h after changes.",
+  "_output_fields": {
+    "id":       "Unique identifier, must start with IDO_. Used as the #define name in generated header.",
+    "idx":      "Integer array index (0-based, unique). Determines the #define value and g_outputDef[] slot.",
+    "name":     "Human-readable name for console/debug messages.",
+    "msg":      "Output message type. Values: GENERIC_IO | LED | LEDCFG_GROUPDIM | LEDCFG_GROUPBLINK | LEDSET_BRIGHTNESS | LED_SEQUENCE | NEOPIXEL | NEOPIXEL_SEQUENCE",
+    "pin":      "GPIO pin number or pin index for IO/LED expansion chips.",
+    "board":    "Board type. Values: RASPI | IO | LED | NEOPIXEL",
+    "boardIdx": "Board instance index (0 = first board of that type, 1 = second, etc).",
+    "state":    "Initial pin state. Values: ON | OFF | BLINK | BRIGHTNESS",
+    "onMs":     "On-time in milliseconds for timed outputs (0 = no timing).",
+    "offMs":    "Off-time in milliseconds for timed outputs (0 = no timing).",
+    "neo":      "NeoPixel index within the LED chain (for single-pixel operations, 0 if not applicable)."
+  },
+  "_input_fields": {
+    "id":        "Unique identifier, must start with IDI_. Used as the #define name in generated header.",
+    "idx":       "Integer array index (0-based, unique). Determines the #define value and g_inputDef[] slot.",
+    "name":      "Human-readable name for console/debug messages.",
+    "key":       "Keyboard key for simulator input mapping (single character).",
+    "msg":       "Input message type. Values: BUTTON | SENSOR | TARGET | SLING | POPBUMPER | TIMER | EMPTY",
+    "pin":       "GPIO pin number or pin index for IO expansion chips.",
+    "board":     "Board type. Values: RASPI | IO | LED | NEOPIXEL",
+    "boardIdx":  "Board instance index (0 = first board of that type, 1 = second, etc).",
+    "state":     "Initial pin state. Values: ON | OFF | BLINK | BRIGHTNESS",
+    "tick":      "Initial state tick counter (usually 0).",
+    "debMs":     "Debounce time in milliseconds.",
+    "auto":      "Boolean. If true, this input automatically triggers an output when activated.",
+    "autoOut":   "ID of the output to auto-trigger (must match an IDO_* id). Empty string if auto is false.",
+    "autoState": "Pin state to set on the auto-output. Values: ON | OFF | BLINK | BRIGHTNESS",
+    "autoPulse": "Boolean. If true, auto-output pulses; if false, auto-output tracks input state."
+  }
+},
+"outputs":[
   {"id":"IDO_STARTLED","idx":0,"name":"RPI0P23 Start LED","msg":"GENERIC_IO","pin":23,"board":"RASPI","boardIdx":0,"state":"ON","onMs":0,"offMs":0,"neo":0},
   {"id":"IDO_RSLING","idx":1,"name":"IO0P00 RSling","msg":"GENERIC_IO","pin":0,"board":"IO","boardIdx":0,"state":"OFF","onMs":250,"offMs":250,"neo":0},
   {"id":"IDO_LSLING","idx":2,"name":"IO0P01 LSling","msg":"GENERIC_IO","pin":1,"board":"IO","boardIdx":0,"state":"OFF","onMs":250,"offMs":250,"neo":0},
