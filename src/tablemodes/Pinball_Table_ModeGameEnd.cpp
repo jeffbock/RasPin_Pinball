@@ -10,6 +10,7 @@
 
 #include "Pinball_Engine.h"
 #include "Pinball_Table.h"
+#include "PBDevice.h"
 #include <algorithm>
 
 // ========================================================================
@@ -68,8 +69,10 @@ static void determineHighScoreQualifiers(
     std::vector<ScoreEntry> allScores;
     
     // Add all active player scores
+    // Note: enabled is already false for all players when game ends (cleared on ball drain),
+    // so we check score > 0 only - unused slots always have score = 0.
     for (int i = 0; i < 4; i++) {
-        if (playerStates[i].enabled && playerStates[i].score > 0) {
+        if (playerStates[i].score > 0) {
             ScoreEntry entry;
             entry.score = playerStates[i].score;
             entry.index = i;

@@ -104,7 +104,6 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_leftInlaneLEDOn  = false;
     m_rightInlaneLEDOn = false;
     m_mainNeoPixelMode = 0;
-    m_ballEjectPending = false;
 
     // High Scores screen variables
     m_RestartHighScores = true;
@@ -182,11 +181,16 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_mainScreenLoaded = false;
     m_resetLoaded = false;
     m_gameEndLoaded = false;
+    m_playerEndLoaded = false;
     
     // Game End mode state initialization
     m_gameEndInitialized = false;
     m_gameEndCurrentQualifierIdx = 0;
     m_gameEndActiveLetterPos = 0;
+
+    // Player End mode state initialization
+    m_playerEndInitialized = false;
+    m_playerEndNextPlayer  = 0;
     
     // Auto output control - default to disable since the menus launch first
     m_autoOutputEnable = false;
@@ -790,6 +794,7 @@ std::string PBEngine::TableStateToString(PBTableState state) {
         case PBTableState::PBTBL_MAIN: return "MAIN";
         case PBTableState::PBTBL_RESET: return "RESET";
         case PBTableState::PBTBL_GAMEEND: return "GAMEEND";
+        case PBTableState::PBTBL_PLAYEREND: return "PLAYEREND";
         case PBTableState::PBTBL_END: return "END";
         default: return "UNKNOWN";
     }
@@ -833,6 +838,15 @@ std::string PBEngine::TableScreenStateToString(PBTableState tableState, int subS
         }
         case PBTableState::PBTBL_END:
             return "END (No Sub States)";
+        case PBTableState::PBTBL_PLAYEREND: {
+            PBTBLPlayerEndState playerEndState = static_cast<PBTBLPlayerEndState>(subScreenState);
+            switch (playerEndState) {
+                case PBTBLPlayerEndState::PLAYEREND_DISPLAY:  return "PLAYEREND_DISPLAY";
+                case PBTBLPlayerEndState::PLAYEREND_EJECTING: return "PLAYEREND_EJECTING";
+                case PBTBLPlayerEndState::PLAYEREND_END:      return "PLAYEREND_END";
+                default: return "PLAYEREND_UNKNOWN";
+            }
+        }
         default:
             return "UNKNOWN";
     }

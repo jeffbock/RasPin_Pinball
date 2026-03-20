@@ -601,11 +601,6 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
 // ========================================================================
 
 void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
-    // Trigger pending ball eject (queued by game start or drain with ball-save)
-    if (m_ballEjectPending && m_hopperDevice) {
-        m_hopperDevice->pdbStartRun();
-        m_ballEjectPending = false;
-    }
 
     // START button: try to add a player mid-game
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
@@ -639,29 +634,36 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
         }
     }
 
-    // Inlane sensors: toggle LED; if both lit simultaneously, activate ball save
+    // Inlane sensors: LED on when sensor hit, stays on. When both lit → activate ball save.
     if (inputMessage.inputMsg == PB_IMSG_SENSOR && inputMessage.inputState == PB_ON) {
-        if (inputMessage.inputId == IDI_LINLANE) {
-            m_leftInlaneLEDOn = !m_leftInlaneLEDOn;
-            SendOutputMsg(PB_OMSG_LED, IDO_LINLANELED, m_leftInlaneLEDOn ? PB_ON : PB_OFF, false);
+        if (inputMessage.inputId == IDI_LINLANE && !m_leftInlaneLEDOn) {
+            m_leftInlaneLEDOn = true;
+            SendOutputMsg(PB_OMSG_LED, IDO_LINLANELED, PB_ON, false);
         }
-        else if (inputMessage.inputId == IDI_RINLANE) {
-            m_rightInlaneLEDOn = !m_rightInlaneLEDOn;
-            SendOutputMsg(PB_OMSG_LED, IDO_RINLANELED, m_rightInlaneLEDOn ? PB_ON : PB_OFF, false);
+        else if (inputMessage.inputId == IDI_RINLANE && !m_rightInlaneLEDOn) {
+            m_rightInlaneLEDOn = true;
+            SendOutputMsg(PB_OMSG_LED, IDO_RINLANELED, PB_ON, false);
         }
 
-        // Both inlanes lit → activate ball save
+        // Both inlanes lit → activate ball save, start 5-second timer
         if (m_leftInlaneLEDOn && m_rightInlaneLEDOn) {
             m_leftInlaneLEDOn  = false;
             m_rightInlaneLEDOn = false;
             SendOutputMsg(PB_OMSG_LED, IDO_LINLANELED, PB_OFF, false);
             SendOutputMsg(PB_OMSG_LED, IDO_RINLANELED, PB_OFF, false);
             pbGameState& ps = m_playerStates[m_currentPlayer];
-            if (!ps.ballSaveEnabled) {
-                ps.ballSaveEnabled = true;
-                SendOutputMsg(PB_OMSG_LED, IDO_SAVELED, PB_ON, false);
-            }
+            ps.ballSaveEnabled = true;
+            SendOutputMsg(PB_OMSG_LED, IDO_SAVELED, PB_ON, false);
+            pbeSetTimer(BALLSAVE_TIMER_ID, 5000);
         }
+    }
+
+    // Ball save timer expiry: turn off SAVE LED and clear flag
+    if (inputMessage.inputMsg == PB_IMSG_TIMER &&
+        inputMessage.inputId == BALLSAVE_TIMER_ID) {
+        pbGameState& ps = m_playerStates[m_currentPlayer];
+        ps.ballSaveEnabled = false;
+        SendOutputMsg(PB_OMSG_LED, IDO_SAVELED, PB_OFF, false);
     }
 
     // Ball drain sensor
@@ -674,13 +676,19 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
             ps.ballSaveEnabled  = false;
             ps.extraBallEnabled = false;
             pbeActivatePlayer(m_currentPlayer);   // resets LEDs, save LED off, NeoPixel restart
-            m_ballEjectPending = true;
+            if (m_hopperDevice) {
+                m_hopperDevice->pbdEnable(true);
+                m_hopperDevice->pdbStartRun();
+            }
         } else {
             // No save – advance ball, rotate players or end game
             ps.currentBall++;
             if (ps.currentBall > m_saveFileData.ballsPerGame) {
                 ps.enabled = false;
             }
+
+            // Cancel any active ball-save timer so it doesn't fire in the next state
+            pbeTimerStop(BALLSAVE_TIMER_ID);
 
             // Find next enabled player (circular search)
             int nextPlayer = -1;
@@ -704,9 +712,16 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
                 return;
             }
 
-            m_currentPlayer = static_cast<unsigned int>(nextPlayer);
-            pbeActivatePlayer(m_currentPlayer);   // resets LEDs for the new player's turn
-            m_ballEjectPending = true;
+            // Transition to PlayerEnd to show "Player X" and eject the next ball
+            m_playerEndNextPlayer  = nextPlayer;
+            m_playerEndInitialized = false;
+            m_tableState           = PBTableState::PBTBL_PLAYEREND;
+            m_tableSubScreenState  = static_cast<int>(PBTBLPlayerEndState::PLAYEREND_DISPLAY);
+            pbeClearScreenRequests();
+            pbeRequestScreen(PBTableState::PBTBL_PLAYEREND,
+                             static_cast<int>(PBTBLPlayerEndState::PLAYEREND_DISPLAY),
+                             ScreenPriority::PRIORITY_LOW, 0, true);
+            return;
         }
     }
 

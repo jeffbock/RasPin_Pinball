@@ -9,6 +9,7 @@
 #include "Pinball_Engine.h"
 #include "Pinball_Table.h"
 #include "Pinball_TableStr.h"
+#include "PBDevice.h"
 
 // ========================================================================
 // PBTBL_START: Load Function
@@ -307,11 +308,14 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                     pbeRequestScreen(PBTableState::PBTBL_MAIN, static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL),
                                      ScreenPriority::PRIORITY_LOW, 0, true);
 
-                    // Enable auto-outputs (flippers / slings) and queue first ball eject
+                    // Enable auto-outputs (flippers / slings) and start first ball eject
                     SetAutoOutputEnable(true);
                     m_leftInlaneLEDOn  = false;
                     m_rightInlaneLEDOn = false;
-                    m_ballEjectPending = true;
+                    if (m_hopperDevice) {
+                        m_hopperDevice->pbdEnable(true);
+                        m_hopperDevice->pdbStartRun();
+                    }
 
                     // Stop the torch sound effect
                     m_soundSystem.pbsStopEffect(torchId);

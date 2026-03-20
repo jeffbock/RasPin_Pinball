@@ -60,7 +60,6 @@ bool PBEngine::pbeTableInit(){
     m_leftInlaneLEDOn    = false;
     m_rightInlaneLEDOn   = false;
     m_mainNeoPixelMode   = 0;
-    m_ballEjectPending   = false;
 
     // Create and register the ball hopper ejector device
     m_hopperDevice = new pbdHopperEjector(this, IDI_BALLREADY, IDO_EJECT, IDI_BALLDELIVERED);

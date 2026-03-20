@@ -165,8 +165,8 @@ void InitializeInputDefs() {
     // IO board 0, pins 5-11: inputs start after outputs (outputs occupy pins 0-4)
     SetInputDef(IDI_RINLANE,      "IO0P05 RInlane",      "1", PB_IMSG_SENSOR,    5, PB_IO,    0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
     SetInputDef(IDI_LINLANE,      "IO0P06 LInlane",      "2", PB_IMSG_SENSOR,    6, PB_IO,    0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_BALLREADY,    "IO0P07 Ball Ready",   "3", PB_IMSG_SENSOR,    7, PB_IO,    0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
-    SetInputDef(IDI_BALLDRAIN,    "IO0P08 Ball Drain",   "4", PB_IMSG_SENSOR,    8, PB_IO,    0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_BALLDRAIN,    "IO0P07 Ball Drain",   "3", PB_IMSG_SENSOR,    7, PB_IO,    0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
+    SetInputDef(IDI_BALLREADY,    "IO0P08 Ball Ready",   "4", PB_IMSG_SENSOR,    8, PB_IO,    0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
     SetInputDef(IDI_BALLDELIVERED,"IO0P09 Ball Delivered","5", PB_IMSG_SENSOR,   9, PB_IO,    0, PB_OFF, 0, 5, false, 0,                  PB_OFF, false, initialized, hasErrors);
     SetInputDef(IDI_RSLING,       "IO0P10 RSling",       "6", PB_IMSG_SLING,    10, PB_IO,    0, PB_OFF, 0, 5, true,  IDO_RSLING, PB_ON,  true,  initialized, hasErrors);
     SetInputDef(IDI_LSLING,       "IO0P11 LSling",       "7", PB_IMSG_SLING,    11, PB_IO,    0, PB_OFF, 0, 5, true,  IDO_LSLING, PB_ON,  true,  initialized, hasErrors);

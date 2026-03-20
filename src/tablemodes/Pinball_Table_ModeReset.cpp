@@ -8,6 +8,7 @@
 
 #include "Pinball_Engine.h"
 #include "Pinball_Table.h"
+#include "PBDevice.h"
 
 // ========================================================================
 // PBTBL_RESET: Load Function

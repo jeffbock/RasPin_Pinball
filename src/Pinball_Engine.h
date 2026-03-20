@@ -195,6 +195,12 @@ struct stTimerEntry {
 // Timer ID for game-end "Game Over" display (3-second auto-return to start)
 #define GAMEEND_COMPLETE_TIMER_ID 200
 
+// Timer ID for inlane-triggered ball save (5-second timeout)
+#define BALLSAVE_TIMER_ID 201
+
+// Timer ID for PlayerEnd 4-second display countdown
+#define PLAYEREND_DISPLAY_TIMER_ID 202
+
 // Maximum number of active timers allowed
 #define MAX_TIMERS 10
 
@@ -473,7 +479,6 @@ public:
     bool m_leftInlaneLEDOn;              // Left inlane LED current state
     bool m_rightInlaneLEDOn;             // Right inlane LED current state
     int  m_mainNeoPixelMode;             // 0=unset, 1=pulse_blue, 2=snake, 3=off(gameend)
-    bool m_ballEjectPending;             // Pending ball eject request
 
     // High Scores screen variables
     bool m_RestartHighScores;
@@ -585,6 +590,9 @@ private:
     bool m_mainScreenLoaded;
     bool m_resetLoaded; 
     bool m_gameEndLoaded;
+    bool m_playerEndLoaded;       // Whether PlayerEnd screen resources are loaded
+    bool m_playerEndInitialized;  // Whether the PlayerEnd sub-state has been set up
+    int  m_playerEndNextPlayer;   // Player index to activate after the countdown
 
     // Game End mode state tracking
     bool m_gameEndInitialized;                           // Whether high score qualifiers have been determined
@@ -640,6 +648,7 @@ private:
     void pbeUpdateStateMain(stInputMessage inputMessage);     // tablemodes/Pinball_Table_ModeMain.cpp
     void pbeUpdateStateReset(stInputMessage inputMessage);    // tablemodes/Pinball_Table_ModeReset.cpp
     void pbeUpdateStateGameEnd(stInputMessage inputMessage);  // tablemodes/Pinball_Table_ModeGameEnd.cpp
+    void pbeUpdateStatePlayerEnd(stInputMessage inputMessage); // tablemodes/Pinball_Table_ModePlayerEnd.cpp
     
     // Render functions for the pinball game table
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
@@ -651,6 +660,7 @@ private:
     bool pbeRenderStatus(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderPlayerEnd(unsigned long currentTick, unsigned long lastTick);
 
     // Load functions for the pinball game table
     bool pbeLoadInitScreen(); // Load the init screen for the pinball game
@@ -658,6 +668,7 @@ private:
     bool pbeLoadMainScreen(); // Load the main screen for the pinball game
     bool pbeLoadReset(); // Load the reset screen
     bool pbeLoadGameEnd(); // Load the game end screen
+    bool pbeLoadPlayerEnd(); // Load the player end screen
     
     // Table initialization
     bool pbeTableInit(); // Initialize table devices and state

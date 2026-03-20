@@ -133,8 +133,8 @@ struct stOutputDef{
 // --- Inputs: IO board 0, pins 5-11 (sensors start after outputs on pins 0-4) ---
 #define IDI_RINLANE        6
 #define IDI_LINLANE        7
-#define IDI_BALLREADY      8   // Ball-ready sensor (hopper): ball present and ready to eject
-#define IDI_BALLDRAIN      9
+#define IDI_BALLREADY      9   // Ball-ready sensor (hopper): ball present and ready to eject
+#define IDI_BALLDRAIN      8
 #define IDI_BALLDELIVERED  10
 #define IDI_RSLING         11
 #define IDI_LSLING         12
