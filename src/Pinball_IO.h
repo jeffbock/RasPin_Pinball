@@ -100,45 +100,10 @@ struct stOutputDef{
     unsigned int neoPixelIndex;  // Index of specific NeoPixel LED in chain (for single pixel operations)
 };
 
-// The actual definition of the input items - the user of the library will need to define these for the specific table
-// The IDs need to be unique, and will be checked during initilization - if there are duplicates, the engine will not start
-
-// The actual definition of the output items - the user of the library will need to define these for the specific table
-
-// --- Outputs: RPI (unchanged) ---
-#define IDO_STARTLED      0
-// --- Outputs: IO board 0, pins 0-4 (solenoids, then eject) ---
-#define IDO_RSLING        1
-#define IDO_LSLING        2
-#define IDO_LFLIP         3
-#define IDO_RFLIP         4
-#define IDO_EJECT         5
-// --- Outputs: NeoPixel ---
-#define IDO_NEOPIXEL0     6
-// --- Outputs: LED board 0, pins 0-4 ---
-#define IDO_LSLINGLED     7
-#define IDO_RSLINGLED     8
-#define IDO_LINLANELED    9
-#define IDO_RINLANELED    10
-#define IDO_SAVELED       11
-#define NUM_OUTPUTS               12
-
-// --- Inputs: RPI (unchanged) ---
-#define IDI_LFLIP         0
-#define IDI_RFLIP         1
-#define IDI_LACTIVATE     2
-#define IDI_RACTIVATE     3
-#define IDI_START         4
-#define IDI_RESET         5
-// --- Inputs: IO board 0, pins 5-11 (sensors start after outputs on pins 0-4) ---
-#define IDI_RINLANE        6
-#define IDI_LINLANE        7
-#define IDI_BALLREADY      9   // Ball-ready sensor (hopper): ball present and ready to eject
-#define IDI_BALLDRAIN      8
-#define IDI_BALLDELIVERED  10
-#define IDI_RSLING         11
-#define IDI_LSLING         12
-#define NUM_INPUTS                13
+// Input and output ID defines are auto-generated from io_definitions.json
+// To add/change inputs or outputs, edit io_definitions.json and run:
+//   python scripts/generate_io_header.py
+#include "io_defs_generated.h"
 
 // Declare the shared variables for input / output structures.
 // Arrays are initialized by InitializeInputDefs() and InitializeOutputDefs() functions

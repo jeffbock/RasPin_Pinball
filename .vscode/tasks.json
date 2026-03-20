@@ -20,6 +20,26 @@
             "detail": "Auto-increment version numbers"
         },
 
+        // Generate IO Header from JSON definitions
+        {
+            "type": "shell",
+            "label": "Generate IO Header",
+            "command": "python",
+            "args": ["scripts/generate_io_header.py"],
+            "dependsOn": "Update Version",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "detail": "Generate src/io_defs_generated.h from io_definitions.json"
+        },
+
         // Windows C/C++ single file EXE build
         {
             "type": "cppbuild",
@@ -98,7 +118,7 @@
             "type": "cppbuild",
             "label": "Windows: Full Pinball Build",
             "command": "cl.exe",
-            "dependsOn": "Update Version",
+            "dependsOn": "Generate IO Header",
             "args": [
                 "/Zi",
                 "/DEXE_MODE_WINDOWS",
@@ -175,7 +195,7 @@
             "type": "cppbuild",
             "label": "Raspberry Pi: Full Pinball Build",
             "command": "/usr/bin/g++",
-            "dependsOn": "Update Version",
+            "dependsOn": "Generate IO Header",
             "args": [
                 "-g",
                 "-DEXE_MODE_RASPI",
@@ -244,7 +264,7 @@
             "type": "cppbuild",
             "label": "DebianOS: Full Pinball Build",
             "command": "/usr/bin/g++",
-            "dependsOn": "Update Version",
+            "dependsOn": "Generate IO Header",
             "args": [
                 "-g",
                 "-DEXE_MODE_DEBIAN",
@@ -477,7 +497,7 @@
             "type": "cppbuild",
             "label": "Windows: Full Pinball Build (Release)",
             "command": "cl.exe",
-            "dependsOn": "Update Version",
+            "dependsOn": "Generate IO Header",
             "args": [
                 "/O2",                    // Maximum optimization
                 "/Oi",                    // Enable intrinsic functions
@@ -561,7 +581,7 @@
             "type": "cppbuild",
             "label": "Raspberry Pi: Full Pinball Build (Release)",
             "command": "/usr/bin/g++",
-            "dependsOn": "Update Version",
+            "dependsOn": "Generate IO Header",
             "args": [
                 "-O3",                    // Maximum optimization
                 "-march=native",          // Optimize for target CPU
