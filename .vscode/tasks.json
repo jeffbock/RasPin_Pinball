@@ -483,6 +483,24 @@
             "detail": "Raspberry Pi: pbsetamp Build"
         },
 
+        // Raspberry Pi: pblaunch Build (GTK4 GUI launcher)
+        {
+            "type": "shell",
+            "label": "Raspberry Pi: pblaunch Build",
+            "command": "g++ -std=c++17 -g -o ${workspaceFolder}/build/raspi/debug/pblaunch ${workspaceFolder}/src/PButils/pblaunch.cpp $(pkg-config --cflags --libs gtk4)",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "Raspberry Pi: pblaunch GTK4 GUI launcher build"
+        },
+
         // Windows: Build All PBUtils
         {
             "label": "Windows: Build All PBUtils",
@@ -504,7 +522,8 @@
             "dependsOn": [
                 "Raspberry Pi: FontGen Build",
                 "Raspberry Pi: pblistdevices Build",
-                "Raspberry Pi: pbsetamp Build"
+                "Raspberry Pi: pbsetamp Build",
+                "Raspberry Pi: pblaunch Build"
             ],
             "dependsOrder": "sequence",
             "problemMatcher": [],

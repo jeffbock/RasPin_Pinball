@@ -32,12 +32,12 @@ if [ $? -eq 0 ]; then
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}🎉 Build completed successfully!${NC}"
-        echo -e "${GREEN}📦 Executable location: raspibuild/release/Pinball${NC}"
+        echo -e "${GREEN}📦 Executable location: build/raspi/release/Pinball${NC}"
         
         # Show file info
-        if [ -f "../raspibuild/release/Pinball" ]; then
+        if [ -f "../build/raspi/release/Pinball" ]; then
             echo -e "${YELLOW}📋 File information:${NC}"
-            ls -lh ../raspibuild/release/Pinball
+            ls -lh ../build/raspi/release/Pinball
         fi
     else
         echo -e "${RED}❌ Build failed!${NC}"

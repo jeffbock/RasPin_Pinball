@@ -122,15 +122,34 @@ add_executable(FontGen
     ${SRC}/PButils/FontGen.cpp
 )
 target_include_directories(FontGen PRIVATE ${SRC}/3rdparty)
-set_target_properties(FontGen PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ROOT}/build/raspi/debug)
+set_target_properties(FontGen PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUT_DIR})
 
-add_executable(pblistdevices ${SRC}/PButils/pblistdevices.cpp)
-target_link_libraries(pblistdevices PRIVATE wiringPi pthread)
-set_target_properties(pblistdevices PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ROOT}/build/raspi/debug)
+if(BUILD_TARGET STREQUAL "RASPI")
+    add_executable(pblistdevices ${SRC}/PButils/pblistdevices.cpp)
+    target_link_libraries(pblistdevices PRIVATE wiringPi pthread)
+    set_target_properties(pblistdevices PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUT_DIR})
 
-add_executable(pbsetamp ${SRC}/PButils/pbsetamp.cpp)
-target_link_libraries(pbsetamp PRIVATE wiringPi pthread)
-set_target_properties(pbsetamp PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ROOT}/build/raspi/debug)
+    add_executable(pbsetamp ${SRC}/PButils/pbsetamp.cpp)
+    target_link_libraries(pbsetamp PRIVATE wiringPi pthread)
+    set_target_properties(pbsetamp PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUT_DIR})
+endif()
+
+# pblaunch: GTK4 GUI launcher - builds on RASPI and DEBIAN if GTK4 is available
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(GTK4 QUIET IMPORTED_TARGET gtk4)
+    if(GTK4_FOUND)
+        add_executable(pblaunch ${SRC}/PButils/pblaunch.cpp)
+        target_link_libraries(pblaunch PRIVATE PkgConfig::GTK4)
+        set_target_properties(pblaunch PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUT_DIR})
+        install(TARGETS pblaunch DESTINATION /usr/local/bin)
+        message(STATUS "pblaunch: GTK4 found, will build")
+    else()
+        message(STATUS "pblaunch: GTK4 not found, skipping")
+    endif()
+else()
+    message(STATUS "pblaunch: PkgConfig not found, skipping")
+endif()
 
 # --- Status -------------------------------------------------------------------
 message(STATUS "Target : ${BUILD_TARGET}")

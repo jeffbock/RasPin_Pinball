@@ -1,8 +1,8 @@
 # Why Windows and Raspberry Pi?
-Despite the power of the Rasberry Pi, Windowws remains a faster and more capable development environemnt.  That said, you don't need to use Windows to develop with the RasPin engine - you can exclusively use PiOS.  At some point you must move to PiOS since Windows is limited to basic simulaton capabilities and cannot talk to the PInball hardware.  Thankfull, VS Code makes it pretty easy to switch between the two development environments.
+Despite the power of the Rasberry Pi, Windowss or a full Linux PC remains a faster and more capable development environemnt.  That said, you don't need to use Windows to develop with the RasPin engine - you can exclusively use PiOS.  At some point you must move to PiOS since Windows is limited to basic simulaton capabilities and cannot talk to the PInball hardware.  Thankfull, VS Code makes it pretty easy to switch between the three development environments.
 
 # Build Instructions
-The build is set up with VS code, with both Windows and Raspberry Pi 5 build paths.  The assumption is that development and debug is being done on a Windows machine, while final testing will deploy a build to the Raspberry Pi
+The build is set up with VS code, with both Windows and Linux (Raspberry Pi 5 / Debian) build paths.  The assumption is that development and debug is being done on a Windows or Debian simulator machine, while final testing will deploy a build to the Raspberry Pi
 
 While using VS Code, by hitting Ctrl-Shift-P, you can bring up the Task Commands.  The following commands exist:
 - Windows / Rasberry Pi:  Full Pinball Build - Build the RasPin engine and executable to run PInball.
@@ -37,7 +37,10 @@ The GIT repo uses LFS, make sure to install: Windows: winget install -e --id Git
 See `PBBuildSwitch.h` for full details including `SIMULATOR_SMALL_WINDOW`, `MAIN_MENU_OPTION`, and `ENABLE_HW_VIDEO_DECODE` switches.
 
 # Building for Windows
-Windows development assumes VS Code and Visual Studio 2022 are already installed installed. VS 2022 is required to get the MSVC compiler tool chain (cl.exe).  
+
+> **Note: Windows setup is significantly more complex than Linux.**  On Linux, all required libraries (OpenGL ES, FFmpeg, SDL2, etc.) are installed system-wide via `apt` and are immediately available to the compiler and linker with no extra steps.  On Windows there is no standard package manager for these, so headers, import libraries, and runtime DLLs must be manually sourced, compiled (ANGLE), or downloaded (FFmpeg) and placed in the appropriate directories within the repo.  Budget extra time for the initial Windows setup.
+
+Windows development assumes VS Code and Visual Studio 2022 are already installed. VS 2022 is required to get the MSVC compiler tool chain (cl.exe).  
 
 - Clone ANGLE repo from GitHub: [ANGLE](https://github.com/google/angle)
 - Follow the ANGLE Dev Instructions: [ANGLE Setup](https://github.com/google/angle/blob/main/doc/DevSetup.md)
@@ -69,71 +72,91 @@ Windows development assumes VS Code and Visual Studio 2022 are already installed
  
 - Note: At some point, the Windows setup may be updated to use the headers / libraries directly from the Angle locations, but it does not currently do that, unlike the Raspberry Pi setup.
 
-### FFMPEG Video Support Windows(PBVideoPlayer)
+### FFMPEG Video Support (Windows)
 
-For Windows the libs and DLLs are already included in the source code, but can be re-installed if need with details below.
+For Windows the libs and DLLs are already included in the source repo, but can be updated/re-installed as needed.
 
-1. Download FFmpeg shared libraries:
+1. Download FFmpeg shared libraries from:
    ```
    https://github.com/BtbN/FFmpeg-Builds/releases
    ```
    Choose: `ffmpeg-master-latest-win64-gpl-shared.zip`
 
-2. Extract and copy files:
-   ```
-   include/ → src/include_ogl_win/
-   lib/ → src/lib_ogl_win/
-   ```
-   The DLLs themselves are copied automatically by the **Windows: Copy Runtime DLLs** task (see below).
+2. Extract and copy into the repo:
+   - `include/` contents → `src/include_ogl_win/` (FFmpeg headers)
+   - `lib/` contents → `src/lib_ogl_win/` (FFmpeg `.lib` import libraries)
+   - The DLL files themselves are handled separately (see below).
 
-3. Required DLLs (handled automatically):
+3. Required runtime DLLs — these must be present alongside `Pinball.exe` at runtime:
    - `avcodec-*.dll`
    - `avformat-*.dll`
    - `avutil-*.dll`
    - `swscale-*.dll`
    - `swresample-*.dll`
+   - `libegl.dll` and `libglesv2.dll` (from your ANGLE build)
+   - Any DLLs that the above depend on (e.g. `avdevice-*.dll`, `avfilter-*.dll`, `postproc-*.dll`)
 
-The **Windows: Copy Runtime DLLs** task (in `tasks.json`) calls `scripts/copy_win_dlls.ps1`, which copies all required FFmpeg and ANGLE DLLs to `build/windows/debug/` and `build/windows/release/`. This is triggered automatically as part of the Windows Full Pinball Build tasks. You can also run it independently via Ctrl-Shift-P if the DLLs ever need refreshing.
+   **Where to put them:** The **Windows: Copy Runtime DLLs** task (Ctrl-Shift-P) runs `scripts/copy_win_dlls.ps1` automatically as part of every Windows Full Pinball Build. It copies all FFmpeg and ANGLE DLLs from `src/lib_ogl_win/` to both `build/windows/debug/` and `build/windows/release/`. Run it manually if DLLs are ever missing from those folders.
 
- # Build Natively on Debian/Ubuntu (Simulator)
+   **If the DLL version numbers change** (e.g. after a FFmpeg update), the `.dll` filenames in `src/lib_ogl_win/` must match what `copy_win_dlls.ps1` looks for — check that script if copies are silently skipped.
 
-The Debian/Ubuntu build provides a simulator mode identical to Windows: it opens an X11 window, accepts keyboard input, and requires no physical pinball hardware.  Use this on any Debian-based Linux desktop or laptop for development and testing.
+# Build Natively on Linux (Raspberry Pi / Debian)
 
-Required Installations:
+The Linux build supports two targets that share the same source, build tools, and required packages:
 
-XRandR - Multi-monitor support:  `sudo apt-get install x11-xserver-utils libxrandr-dev`
+| Target | Define | VS Code Task | Hardware Required |
+|---|---|---|---|
+| **Raspberry Pi 5 (PiOS)** | `EXE_MODE_RASPI` | Raspberry Pi: Full Pinball Build | Optional (see below) |
+| **Debian/Ubuntu simulator** | `EXE_MODE_DEBIAN` | DebianOS: Full Pinball Build | None |
 
-OpenGL ES - EGL/GLES headers:  `sudo apt install libgles2-mesa-dev libegl1-mesa-dev`
+Items marked **[Raspberry Pi only]** are not needed for a Debian simulator build.
 
-SDL_Mixer - Sound Library: `sudo apt install libsdl2-dev libsdl2-mixer-dev`
+Install VS Code if not already installed.
 
-FFMPEG - Video Playback: `sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev`
+### Required Installations
 
-Set `EXE_MODE_DEBIAN` in `PBBuildSwitch.h` (or pass `/DEXE_MODE_DEBIAN` at build time), then use the **DebianOS: Full Pinball Build** task in VS Code.  The resulting binary opens an X11 window and can be used for all simulation and debugging without any hardware.
+XRandR — multi-monitor support:
+- Debian: `sudo apt-get install x11-xserver-utils libxrandr-dev`
+- **[Raspberry Pi only]**: `sudo apt-get install x11-xserver-utils`  *(Pi OS includes `libxrandr-dev` by default)*
 
-**Note:** `SIMULATOR_SMALL_WINDOW` also applies to the Debian build — uncomment it in `PBBuildSwitch.h` for a half-size window useful when developing over RDP.
+OpenGL ES — EGL/GLES headers *(Debian/Ubuntu only — Pi OS includes these by default)*:  
+`sudo apt install libgles2-mesa-dev libegl1-mesa-dev`
 
- # Build Natively on Raspberry Pi 5
+SDL2 / SDL_Mixer — sound library:  
+`sudo apt install libsdl2-dev libsdl2-mixer-dev`
 
-Install VS Code via your favorite mechanism.
+FFmpeg — video playback:  
+`sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev`
 
-Almost everything that is required to build on Raspberry Pi should be set up by default on in PI OS, assuming your Pi is up to date and libs / headers are in standard locations.
+WiringPi — GPIO / I2C for pinball hardware **[Raspberry Pi only]**:  
+`sudo apt install ./wiringpi-3.0-1.deb`
 
-Required Installations
+### Build Configuration
 
-XRandR - Multi-monitor support:  `sudo apt-get install x11-xserver-utils`
+Set the appropriate define in `PBBuildSwitch.h` (or pass it at build time):
 
-WiringPi - I/O and I2C: `sudo apt install ./wiringpi-3.0-1.deb`
+```cpp
+// Raspberry Pi — simulator or hardware mode:
+#define EXE_MODE_RASPI
 
-SDL_Mixer - Sound Library: `sudo apt install libsdl2-dev libsdl2-mixer-dev`
+// Debian/Ubuntu — simulator mode only:
+#define EXE_MODE_DEBIAN
+```
 
-FFMPEG - Video Playback: `sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev`
+Then use Ctrl-Shift-P to run the matching VS Code build task.
 
-PInball is currently designed to run along with X11 and XRandR, and assumes that it will find an 800x480 display to utilize as a full screen display.  The current tested configuration is a 800x480 display on the HDMI1 port, while a larger monitor is used on HDMI2 for running VS Code and full screen debugging.
+### Display and Window Notes
 
-Of course, to control PInball on PiOS, it is assumed that you also have at least a basic breakout box containing left/right flipper, left/right activate and a start button wired up to the Raspberry Pi GPIOs per the design when `ENABLE_PINBALL_HARDWARE` is defined. Without `ENABLE_PINBALL_HARDWARE`, the Raspberry Pi build runs in **simulator mode** — it opens an X11 window and accepts keyboard input, identical to the Debian simulator, with no physical hardware required.
+Both targets open an 800×480 full-screen X11 rendering surface using OGL ES 3.1.  
+`SIMULATOR_SMALL_WINDOW` can be uncommented in `PBBuildSwitch.h` for a half-size window, useful when working over RDP.
 
-Use the task menu, ctrl-shift-P, to run the build tasks as described at the top of the document.
+**[Raspberry Pi only]** The current tested display configuration is an 800×480 screen on HDMI1 (the game display) and a larger monitor on HDMI2 for VS Code and debugging.
+
+### Pinball Hardware **[Raspberry Pi only]**
+
+To control physical pinball hardware, a breakout box with left/right flippers, activate buttons, and a start button must be wired to the Raspberry Pi GPIOs per the hardware design, and `ENABLE_PINBALL_HARDWARE` must be defined in `PBBuildSwitch.h`.  
+
+Without `ENABLE_PINBALL_HARDWARE`, the Raspberry Pi build runs in **simulator mode** — it opens an X11 window and accepts keyboard input, identical to the Debian simulator.
 
 # Cross Compile in Windows and running on Raspberry Pi 5
 As of this writing Raspberry Pi 5 is running the 12.2 of the GNU compiler toolkit.  Your cross compiler tools must match to be able to build in Windows but then run the executable on the Raspberry Pi 5.

@@ -44,7 +44,7 @@ make -j$(nproc)
 - Fast math optimizations (`-ffast-math`)
 - Loop unrolling (`-funroll-loops`)
 - Stripped symbols for smaller binary (`-s`)
-- Output: `raspibuild/release/Pinball`
+- Output: `build/raspi/release/Pinball`
 
 ### Debug Build
 ```bash
@@ -62,8 +62,8 @@ The CMake build automatically runs the version update script before compilation,
 
 ## Output Location
 
-- **Release builds**: `raspibuild/release/Pinball`
-- **Debug builds**: `raspibuild/debug/Pinball` (if you create a debug build)
+- **Release builds**: `build/raspi/release/Pinball`
+- **Debug builds**: `build/raspi/debug/Pinball`
 
 ## Cleaning
 

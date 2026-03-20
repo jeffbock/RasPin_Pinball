@@ -21,9 +21,9 @@ if [ -d "build" ]; then
 fi
 
 # Remove output binaries (optional - comment out if you want to keep them)
-# if [ -f "raspibuild/release/Pinball" ]; then
+# if [ -f "../build/raspi/release/Pinball" ]; then
 #     echo -e "${YELLOW}🗑️  Removing release binary...${NC}"
-#     rm -f raspibuild/release/Pinball
+#     rm -f ../build/raspi/release/Pinball
 # fi
 
 echo -e "${GREEN}✅ Clean completed!${NC}"

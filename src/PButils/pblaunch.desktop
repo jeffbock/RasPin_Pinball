@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=RasPin Launcher
+Comment=Launch Dragons of Destiny Pinball
+Exec=/usr/local/bin/pblaunch
+Icon=launch
+Terminal=false
+Categories=Game;Amusement;
+StartupNotify=true
+StartupWMClass=pblaunch
