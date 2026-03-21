@@ -133,9 +133,9 @@ Files under `src/system/`, `src/3rdparty/`, `src/include_ogl_win/`, and `src/lib
 │ PBGfx  │  │ PBSound  │  │PBVideo   │  │ I/O System  │  │ LED System  │
 │        │  │          │  │Player    │  │             │  │             │
 │Sprites │  │ Music    │  │          │  │ Input Msg   │  │ Sequences   │
-│Anims   │  │ Effects  │  │FFmpeg    │  │ Output Msg  │  │ Patterns    │
-│Text    │  │ Volume   │  │Sync      │  │ Debounce    │  │ Brightness  │
-│        │  │          │  │          │  │             │  │ NeoPixels   │
+│3D Mdls │  │ Effects  │  │FFmpeg    │  │ Output Msg  │  │ Patterns    │
+│Anims   │  │ Volume   │  │Sync      │  │ Debounce    │  │ Brightness  │
+│Text    │  │          │  │          │  │             │  │ NeoPixels   │
 └────────┘  └──────────┘  └──────────┘  └─────────────┘  └─────────────┘
 ```
 
@@ -183,12 +183,14 @@ Main States:
 ### 2. Graphics System (PBGfx)
 
 **What It Does:**
-- Sprite loading and rendering
+- Sprite loading and rendering (2D)
+- 3D model loading and rendering (glTF/GLB format)
 - Text rendering with custom fonts
-- Automatic sprite animations (position, scale, rotation, color)
+- Automatic animations for both sprites and 3D models
+- Blinn-Phong lighting with directional light and ambient control
 - OpenGL ES 3.1 backend for hardware acceleration
 
-**Rendering Pipeline:**
+**2D Rendering Pipeline:**
 ```
 Load Sprite → Create Instances → Configure Properties → Animate → Render
      │              │                   │                │         │
@@ -197,10 +199,24 @@ Load Sprite → Create Instances → Configure Properties → Animate → Render
                                      Rotation         Interp.
 ```
 
+**3D Rendering Pipeline:**
+```
+Load Model → Create Instance → Set Position/Properties → Animate → Render
+     │             │                    │                    │         │
+   .glb        Instance ID         PositionPx(X,Y)      Pos XYZ    pb3dBegin()
+   file        (per-object)        Rotation(rx,ry,rz)   Rot XYZ    pb3dRenderAll()
+                                   Scale, Alpha         Scale      pb3dEnd()
+                                   DepthZ offset        Alpha
+```
+
 **Key Features:**
-- Texture atlases for efficient memory use
+- Texture atlases for efficient 2D sprite memory use
 - Sprite instances allow multiple renderable versions
-- Animation system interpolates between states automatically
+- glTF/GLB 3D model loading with embedded textures via cgltf
+- 3D instance management with pixel-space positioning (screen coordinates for X/Y, depth offset for Z)
+- Blinn-Phong shading with specular highlights, directional lighting, and ambient color
+- Unified animation system interpolates between states for both 2D sprites and 3D models
+- Scene dirty-flag caching avoids redundant view/projection matrix uploads
 - Font rendering from generated texture atlases
 
 **Documentation:** [Game_Creation_API.md](Game_Creation_API.md)
@@ -739,7 +755,7 @@ Input Detection → Input Message → Game Logic → Output Message → Hardware
 
 ## Animation System
 
-### Sprite Animation Architecture
+### Sprite Animation Architecture (2D)
 
 Instead of manual frame-by-frame updates, RasPin uses automatic interpolation:
 
@@ -760,12 +776,45 @@ Engine Handles:
     • Manage loops
 ```
 
-**Animation Types:**
+**2D Animation Properties:**
 - Position (X, Y)
 - Scale (size)
 - Rotation (degrees)
 - Color (RGBA)
 - Texture coordinates (UV)
+
+### 3D Model Animation Architecture
+
+The 3D animation system uses the same automatic interpolation approach, extended to 3D properties:
+
+```
+Define States:
+    Start State: Position X=200, Y=300, Z=0.0, RotY=0°
+    End State:   Position X=200, Y=300, Z=-2.0, RotY=360°
+    
+Configure Animation:
+    Duration: 3 seconds
+    Loop: Restart
+    Properties: ANIM3D_POSZ_MASK | ANIM3D_ROTY_MASK
+    Type: Normal, Acceleration, Jump, or JumpRandom
+    
+Engine Handles:
+    • Interpolate 3D position, rotation, scale, alpha
+    • Pixel-space anchor correction for depth changes
+    • Handle loop modes (No Loop, Restart, Reverse)
+```
+
+**3D Animation Properties:**
+- Position (X, Y, Z) — pixel-space or world-space coordinates
+- Rotation (X, Y, Z) — degrees, with clockwise direction control
+- Scale (uniform)
+- Alpha (transparency, 0.0–1.0)
+
+**3D Animation Types:**
+- **Normal** — Linear interpolation between start and end states
+- **Acceleration** — Physics-based with velocity and acceleration vectors
+- **Jump** — Discrete jump from start to end at completion
+- **JumpRandom** — Random offset within a percentage range
 
 **Documentation:** [Game_Creation_API.md](Game_Creation_API.md) (Animation section)
 
@@ -867,7 +916,8 @@ Main Loop (60 FPS):
     
     5. Render Frame
        └─→ Clear screen
-       └─→ Draw sprites
+       └─→ Draw sprites (2D)
+       └─→ Render 3D models (pb3dBegin/RenderAll/End)
        └─→ Render text
        └─→ Swap buffers
     
@@ -892,17 +942,32 @@ function LoadScreen(forceReload):
     if already_loaded and not forceReload:
         return success
     
-    // Load sprites
+    // Load sprites (2D)
     sprite_id = LoadSprite(texture_file)
     
-    // Configure properties
+    // Configure 2D properties
     SetColor(sprite_id, color)
     SetScale(sprite_id, scale)
     
-    // Create animations
+    // Create 2D animations
     start_instance = CreateInstance(sprite_id)
     end_instance = CreateInstance(sprite_id)
     CreateAnimation(sprite_id, start, end, duration, loop)
+    
+    // Load 3D models
+    model_id = pb3dLoadModel("model.glb")
+    instance_id = pb3dCreateInstance(model_id)
+    pb3dSetInstancePositionPx(instance_id, screenX, screenY)
+    pb3dSetInstanceScale(instance_id, 1.0)
+    pb3dSetInstanceRotation(instance_id, 0, 0, 0)
+    
+    // Configure 3D lighting
+    pb3dSetLightDirection(0.5, -1.0, 0.3)
+    pb3dSetLightColor(1.0, 1.0, 1.0)
+    pb3dSetLightAmbient(0.2, 0.2, 0.2)
+    
+    // Create 3D animations
+    pb3dCreateAnimation(animData, false)
     
     // Load sounds
     PlayBackgroundMusic(music_file)
@@ -930,12 +995,18 @@ function RenderScreen(currentTick, lastTick):
     // Clear screen
     ClearScreen(background_color)
     
-    // Render static elements
+    // Render static 2D elements
     RenderSprite(background_sprite)
     
-    // Update and render animations
+    // Update and render 2D animations
     AnimateSprite(animated_sprite, currentTick)
     RenderSprite(animated_sprite)
+    
+    // Update and render 3D models
+    pb3dAnimateInstance(instance_id, currentTick)
+    pb3dBegin()
+    pb3dRenderAll()          // or pb3dRenderInstance(id) for individual control
+    pb3dEnd()
     
     // Render text
     SetColor(font, color)
@@ -981,12 +1052,15 @@ Add to Pinball_Table.cpp:
 
     Load function:
         • Load sprites and fonts
-        • Create animations
+        • Load 3D models and create instances
+        • Create 2D and 3D animations
+        • Configure lighting
         • Setup sound
     
     Render function:
         • Clear screen
-        • Render sprites
+        • Render sprites (2D)
+        • Render 3D models (pb3dBegin/RenderAll/End)
         • Display text
 ```
 
@@ -1027,15 +1101,16 @@ This PR includes comprehensive documentation for each subsystem:
 2. **[PBEngine_API.md](PBEngine_API.md)** - Core engine functions and state management
 
 ### Graphics, Audio, and Video
-3. **[Game_Creation_API.md](Game_Creation_API.md)** - Complete guide to sprites, animations, sound, and video playback
-4. **[FontGen_Guide.md](FontGen_Guide.md)** - Creating custom fonts for text rendering
+3. **[Game_Creation_API.md](Game_Creation_API.md)** - Complete guide to sprites, 3D models, animations, sound, and video playback
+4. **[PB3D_API.md](PB3D_API.md)** - 3D rendering: model loading, instance management, lighting, and animation
+5. **[FontGen_Guide.md](FontGen_Guide.md)** - Creating custom fonts for text rendering
 
 ### Hardware Control
-5. **[IO_Processing_API.md](IO_Processing_API.md)** - Input/output message system and hardware communication
-6. **[LED_Control_API.md](LED_Control_API.md)** - LED control, NeoPixel RGB strips, and animation sequences
-7. **[NeoPixel_Timing_Methods.md](NeoPixel_Timing_Methods.md)** - Timing methods for reliable NeoPixel control (clock_gettime, NOP, SPI, PWM)
-8. **[NeoPixel_Instrumentation.md](NeoPixel_Instrumentation.md)** - Diagnostic tools for NeoPixel timing verification
-9. **[PBDevice_API.md](PBDevice_API.md)** - Device management for complex pinball mechanisms
+6. **[IO_Processing_API.md](IO_Processing_API.md)** - Input/output message system and hardware communication
+7. **[LED_Control_API.md](LED_Control_API.md)** - LED control, NeoPixel RGB strips, and animation sequences
+8. **[NeoPixel_Timing_Methods.md](NeoPixel_Timing_Methods.md)** - Timing methods for reliable NeoPixel control (clock_gettime, NOP, SPI, PWM)
+9. **[NeoPixel_Instrumentation.md](NeoPixel_Instrumentation.md)** - Diagnostic tools for NeoPixel timing verification
+10. **[PBDevice_API.md](PBDevice_API.md)** - Device management for complex pinball mechanisms
 
 ### Additional Resources
 10. **[HowToBuild.md](HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
@@ -1084,11 +1159,18 @@ Graphics   ─┬─ Never knows about I/O
 ### Graphics Optimization
 
 ```
-Best Practices:
+2D Best Practices:
     • Batch sprite property changes before rendering
     • Use instances instead of duplicate sprites
     • Keep frequently used textures resident
     • Limit active animations
+
+3D Best Practices:
+    • Use pb3dRenderAll() to draw all visible instances in one call
+    • Reuse model IDs — create multiple instances from one loaded model
+    • Scene dirty-flag caching avoids redundant matrix uploads
+    • Hide offscreen instances with pb3dSetInstanceVisible(false)
+    • Unload models no longer needed with pb3dUnloadModel()
 ```
 
 ### I/O Optimization
