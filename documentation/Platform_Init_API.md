@@ -50,6 +50,12 @@ Select the target platform by defining the appropriate mode.
 
 **Note:** Exactly one `EXE_MODE_*` must be defined. `ENABLE_PINBALL_HARDWARE` requires `EXE_MODE_RASPI`; defining it with any other mode causes a compile error. When `ENABLE_PINBALL_HARDWARE` is not defined, all three platforms run in simulator mode (X11/Win32 window + keyboard input).
 
+### Performance Options
+
+| Switch | Default | Purpose |
+|--------|---------|--------|
+| `ENABLE_IDLE_SLEEP` | Disabled | Inserts a 100µs sleep on main loop iterations where I/O was processed but rendering was skipped (frame-rate cap not yet elapsed). Reduces CPU usage and thermals with negligible impact on sensor polling rate. |
+
 ---
 
 ## Initialization Functions

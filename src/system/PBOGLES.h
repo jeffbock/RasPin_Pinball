@@ -124,8 +124,11 @@ private:
 #endif
     unsigned int m_lastTextureId;
     bool m_started;
+    bool m_scissorEnabled;          // cached scissor test state — avoids redundant D3D11 rasterizer state churn on ANGLE
+    bool m_depthTestEnabled;        // cached GL_DEPTH_TEST state — avoids redundant D3D11 rasterizer state churn on ANGLE
+    bool m_cullFaceEnabled;         // cached GL_CULL_FACE state  — avoids redundant D3D11 rasterizer state churn on ANGLE
+    bool m_blendEnabled;            // cached GL_BLEND state      — avoids redundant D3D11 rasterizer state churn on ANGLE
     float m_quadRed, m_quadGreen, m_quadBlue, m_quadAlpha;
-    
     
     // OGLES Context variables
     EGLDisplay m_display;

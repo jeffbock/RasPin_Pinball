@@ -7,6 +7,7 @@
 #include "PBSequences.h"
 #include "PBDevice.h"
 #include <cmath>
+#include <algorithm>
 
 // Define NeoPixel global arrays (declared as extern in Pinball_Engine.h)
 stNeoPixelNode* g_NeoPixelNodeArray[2];
@@ -3102,16 +3103,13 @@ bool PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS, bool
     
     // Note: Currently single-threaded, mutex locking not needed
     // std::lock_guard<std::mutex> lock(m_timerQMutex);
-    m_timerQueue.push(timerEntry);
+    m_timerQueue.push_back(timerEntry);
     return true;
 }
 
-// Process all timers in the queue, check for expired timers,
-// and send input messages for any that have expired
-// Note: Uses a simple queue and temporary copy pattern for simplicity.
-// For typical pinball games, the number of active timers is small (< 10),
-// so the O(n) processing is negligible. If many simultaneous timers are
-// needed, consider using std::priority_queue ordered by expireTickMS.
+// Process all timers, check for expired timers,
+// and send input messages for any that have expired.
+// Uses in-place vector processing to avoid per-frame allocations.
 void PBEngine::pbeProcessTimers() {
     unsigned long currentTick = GetTickCountGfx();
     
@@ -3131,21 +3129,17 @@ void PBEngine::pbeProcessTimers() {
         m_watchdogTimer.expireTickMS = 0;
     }
     
-    // Early exit if queue is empty
+    // Early exit if no timers
     if (m_timerQueue.empty()) {
         return;
     }
     
-    // Create a temporary queue to hold non-expired timers
-    std::queue<stTimerEntry> remainingTimers;
-    
     // Note: Currently single-threaded, mutex locking not needed
     // std::lock_guard<std::mutex> lock(m_timerQMutex);
     
-    // Process all timers in the queue
-    while (!m_timerQueue.empty()) {
-        stTimerEntry timerEntry = m_timerQueue.front();
-        m_timerQueue.pop();
+    // Process all timers in-place, removing expired ones
+    for (size_t i = 0; i < m_timerQueue.size(); ) {
+        stTimerEntry& timerEntry = m_timerQueue[i];
         
         // Check if this timer has expired
         if (currentTick >= timerEntry.expireTickMS) {
@@ -3153,27 +3147,26 @@ void PBEngine::pbeProcessTimers() {
             stInputMessage inputMessage;
             inputMessage.inputMsg = PB_IMSG_TIMER;
             inputMessage.inputId = timerEntry.timerId;
-            // Use PB_ON to indicate the timer has fired (consistent with other input messages)
             inputMessage.inputState = PB_ON;
             inputMessage.sentTick = currentTick;
             
-            // Add the timer expiration message to the input queue
             m_inputQueue.push(inputMessage);
             
-            // If this is a repeat timer, restart it
+            // If this is a repeat timer, restart it in-place
             if (timerEntry.repeat) {
                 timerEntry.startTickMS = currentTick;
                 timerEntry.expireTickMS = currentTick + timerEntry.durationMS;
-                remainingTimers.push(timerEntry);
+                ++i;  // Keep this entry, advance
+            } else {
+                // Remove by swapping with last element (order doesn't matter for timers)
+                m_timerQueue[i] = m_timerQueue.back();
+                m_timerQueue.pop_back();
+                // Don't increment i - need to check the swapped element
             }
         } else {
-            // Timer has not expired - keep it in the queue
-            remainingTimers.push(timerEntry);
+            ++i;  // Timer still active, advance
         }
     }
-    
-    // Swap the remaining timers back into the main timer queue
-    m_timerQueue = std::move(remainingTimers);
 }
 
 // Check if a timer with the given ID exists and is not expired
@@ -3186,37 +3179,17 @@ bool PBEngine::pbeTimerActive(unsigned int timerId) {
         return (m_watchdogTimer.durationMS > 0 && currentTick < m_watchdogTimer.expireTickMS);
     }
     
-    // Early exit if queue is empty
-    if (m_timerQueue.empty()) {
-        return false;
-    }
-    
-    // Create a temporary queue to iterate through all timers
-    std::queue<stTimerEntry> tempQueue;
-    bool found = false;
-    
-    // Note: Currently single-threaded, mutex locking not needed
-    // std::lock_guard<std::mutex> lock(m_timerQMutex);
-    
-    // Search through all timers in the queue
-    while (!m_timerQueue.empty()) {
-        stTimerEntry timerEntry = m_timerQueue.front();
-        m_timerQueue.pop();
-        tempQueue.push(timerEntry);
-        
-        // Check if this is the timer we're looking for and it hasn't expired
+    // Search through all timers in the vector
+    for (const auto& timerEntry : m_timerQueue) {
         if (timerEntry.timerId == timerId && currentTick < timerEntry.expireTickMS) {
-            found = true;
+            return true;
         }
     }
     
-    // Restore the timer queue
-    m_timerQueue = std::move(tempQueue);
-    
-    return found;
+    return false;
 }
 
-// Remove a timer with the given ID from the queue if it exists
+// Remove a timer with the given ID if it exists
 void PBEngine::pbeTimerStop(unsigned int timerId) {
     // Handle watchdog timer first (timerId = 0)
     if (timerId == WATCHDOGTIMER_ID) {
@@ -3225,38 +3198,16 @@ void PBEngine::pbeTimerStop(unsigned int timerId) {
         return;
     }
     
-    // Early exit if queue is empty
-    if (m_timerQueue.empty()) {
-        return;
-    }
-    
-    // Create a temporary queue to hold timers that should remain
-    std::queue<stTimerEntry> remainingTimers;
-    
-    // Note: Currently single-threaded, mutex locking not needed
-    // std::lock_guard<std::mutex> lock(m_timerQMutex);
-    
-    // Process all timers in the queue
-    while (!m_timerQueue.empty()) {
-        stTimerEntry timerEntry = m_timerQueue.front();
-        m_timerQueue.pop();
-        
-        // Keep the timer if it's not the one we're looking for
-        if (timerEntry.timerId != timerId) {
-            remainingTimers.push(timerEntry);
-        }
-    }
-    
-    // Swap the remaining timers back into the main timer queue
-    m_timerQueue = std::move(remainingTimers);
+    // Remove all timers matching the given ID
+    m_timerQueue.erase(
+        std::remove_if(m_timerQueue.begin(), m_timerQueue.end(),
+            [timerId](const stTimerEntry& entry) { return entry.timerId == timerId; }),
+        m_timerQueue.end());
 }
 
 // Stop all timers, and optionally stop the watchdog timer
 void PBEngine::pbeTimerStopAll(bool stopWatchdog) {
-    // Clear the entire timer queue
-    while (!m_timerQueue.empty()) {
-        m_timerQueue.pop();
-    }
+    m_timerQueue.clear();
     
     // Stop the watchdog timer if requested
     if (stopWatchdog) {

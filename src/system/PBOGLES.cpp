@@ -15,6 +15,10 @@ PBOGLES::PBOGLES() {
     m_aspectRatio = 0.0f;
     m_lastTextureId = 0;
     m_started = false;
+    m_scissorEnabled    = false;
+    m_depthTestEnabled  = false;
+    m_cullFaceEnabled   = false;
+    m_blendEnabled      = false;
 #ifdef SIMULATOR_SMALL_WINDOW
     m_surfaceWidth  = 0;
     m_surfaceHeight = 0;
@@ -151,6 +155,7 @@ bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
     m_useTexAlpha = glGetUniformLocation(m_shaderProgram, "useTexAlpha");
 
     glEnable(GL_BLEND);
+    m_blendEnabled = true;
     // glBlendFunc(GL_SRC_COLOR, GL_ONE_MINUS_SRC_COLOR);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     // glBlendFunc(GL_ONE, GL_ONE);
@@ -205,8 +210,12 @@ bool PBOGLES::oglSwap(bool flush){
 // Set or disable scissor test using OpenGL ES 3.1
 void PBOGLES::oglSetScissor(bool enable, int x1, int y1, int x2, int y2) {
     if (enable) {
-        // Enable scissor test
-        glEnable(GL_SCISSOR_TEST);
+        // Enable scissor test — only call glEnable if not already enabled to avoid
+        // redundant D3D11 rasterizer state creation (ANGLE warning #55 SETPRIVATEDATA_CHANGINGPARAMS)
+        if (!m_scissorEnabled) {
+            glEnable(GL_SCISSOR_TEST);
+            m_scissorEnabled = true;
+        }
         
         // Convert screen space coordinates to OpenGL scissor coordinates
         // OpenGL scissor uses bottom-left origin, so we need to convert Y coordinate
@@ -231,8 +240,11 @@ void PBOGLES::oglSetScissor(bool enable, int x1, int y1, int x2, int y2) {
         // Set the scissor rectangle
         glScissor(x, y, width, height);
     } else {
-        // Disable scissor test
-        glDisable(GL_SCISSOR_TEST);
+        // Disable scissor test — only call glDisable if currently enabled
+        if (m_scissorEnabled) {
+            glDisable(GL_SCISSOR_TEST);
+            m_scissorEnabled = false;
+        }
     }
 }
 
@@ -572,11 +584,11 @@ GLuint PBOGLES::oglCreateVideoTexture(unsigned int width, unsigned int height) {
 // about the internal 2D shader program, attrib layout or GL state.
 void PBOGLES::oglRestore2DState() {
     // Disable 3D-specific state
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
+    if (m_depthTestEnabled) { glDisable(GL_DEPTH_TEST); m_depthTestEnabled = false; }
+    if (m_cullFaceEnabled)  { glDisable(GL_CULL_FACE);  m_cullFaceEnabled  = false; }
 
     // Re-enable standard alpha blending for 2D sprites
-    glEnable(GL_BLEND);
+    if (!m_blendEnabled) { glEnable(GL_BLEND); m_blendEnabled = true; }
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Unbind VAO so 2D CPU-pointer vertex calls work correctly
@@ -746,10 +758,10 @@ void PBOGLES::ogl3dDestroyTexture(unsigned int texId) {
 
 // Begin the 3D rendering pass: enable depth testing and bind the 3D shader.
 void PBOGLES::ogl3dBeginPass() {
-    glEnable(GL_DEPTH_TEST);
+    if (!m_depthTestEnabled) { glEnable(GL_DEPTH_TEST);  m_depthTestEnabled = true; }
     glDepthFunc(GL_LEQUAL);
     // Backface culling disabled — glTF winding-order varies by exporter.
-    glDisable(GL_CULL_FACE);
+    if (m_cullFaceEnabled)    { glDisable(GL_CULL_FACE); m_cullFaceEnabled  = false; }
     glUseProgram(m_3dShaderProgram);
 }
 
@@ -776,10 +788,10 @@ void PBOGLES::ogl3dSetInstanceUniforms(const float mvp[16], const float modelMat
 // Enable or disable alpha blending for transparent 3D instances.
 void PBOGLES::ogl3dSetBlend(bool enable) {
     if (enable) {
-        glEnable(GL_BLEND);
+        if (!m_blendEnabled) { glEnable(GL_BLEND); m_blendEnabled = true; }
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     } else {
-        glDisable(GL_BLEND);
+        if (m_blendEnabled) { glDisable(GL_BLEND); m_blendEnabled = false; }
     }
 }
 

@@ -1518,7 +1518,7 @@ int main(int argc, char const *argv[])
                 break;
             }
             // Process all the input message queue and update the game state
-            if (!g_PBEngine.m_inputQueue.empty()){
+            while (!g_PBEngine.m_inputQueue.empty()){
                 inputMessage = g_PBEngine.m_inputQueue.front();
                 g_PBEngine.m_inputQueue.pop();
 
@@ -1570,6 +1570,16 @@ int main(int argc, char const *argv[])
             lastTick = currentTick;
             didLimitRender = true;
         }
+#ifdef ENABLE_IDLE_SLEEP
+        else if (!firstLoop) {
+            // Processing was done but rendering was skipped this iteration.
+            // Yield CPU briefly to reduce power/thermal load without meaningfully
+            // impacting sensor polling rate. At 100us, this caps the non-render
+            // loop rate to ~10,000 iterations/sec which is still far faster than
+            // any mechanical switch can change state.
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
+#endif
     }
 
    // Join the input thread before exiting

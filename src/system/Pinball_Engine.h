@@ -493,7 +493,7 @@ public:
     std::map<int, stNeoPixelSequenceInfo> m_NeoPixelSequenceMap;  // Key: boardIndex
     std::queue<stOutputMessage> m_deferredQueue;
     std::mutex m_deferredQMutex;
-    std::queue<stTimerEntry> m_timerQueue;
+    std::vector<stTimerEntry> m_timerQueue;
     std::mutex m_timerQMutex;
     stTimerEntry m_watchdogTimer;  // Dedicated watchdog timer (timerId = 0)
 

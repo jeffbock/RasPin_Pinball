@@ -72,6 +72,17 @@
 #define MAIN_MENU_OPTION 1
 
 // =============================================================================
+// SECTION 4: PERFORMANCE OPTIONS
+// =============================================================================
+// When the main loop completes I/O processing but skips rendering (because
+// the frame-rate cap hasn't elapsed), it normally spins immediately.  Enabling
+// ENABLE_IDLE_SLEEP inserts a 100 microsecond yield on those non-render
+// iterations.  This reduces CPU usage and thermals with negligible impact on
+// sensor polling rate (~10,000 polls/sec is still far faster than any
+// mechanical switch).  Default: disabled (maximum polling rate).
+// #define ENABLE_IDLE_SLEEP
+
+// =============================================================================
 // SECTION 5: VIDEO DECODE
 // =============================================================================
 // Enable hardware video decoding (requires V4L2 M2M support).
