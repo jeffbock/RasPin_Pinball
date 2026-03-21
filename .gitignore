@@ -1,9 +1,14 @@
 # Ignore the build directory and Angle libs, don't want to commmit it
 build/
-CMake/build/
+
+# CMake generated files (out-of-source and in-source artifacts)
+CMake/build*/
 CMake/_codeql_build_dir/
 CMake/CMake
 CMake/CMakeFiles/
+CMake/CMakeCache.txt
+CMake/cmake_install.cmake
+CMake/Makefile
 src/lib_ogl_win/libEGL.dll.lib
 src/lib_ogl_win/libGLESv2.dll.lib
 src/lib_ogl_raspi/libEGL.dll.lib
