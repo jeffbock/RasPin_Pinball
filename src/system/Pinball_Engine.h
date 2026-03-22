@@ -657,6 +657,7 @@ private:
     bool pbeRenderMainScreenBase(unsigned long currentTick, unsigned long lastTick);  // Always renders: background, scores, status
     bool pbeRenderMainScreenNormal(unsigned long currentTick, unsigned long lastTick); // Normal score/message display
     bool pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned long lastTick); // Extra ball video display
+    bool pbeRenderMainScreenBallSaved(unsigned long currentTick, unsigned long lastTick); // Ball saved message display
     bool pbeRenderStatus(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick);

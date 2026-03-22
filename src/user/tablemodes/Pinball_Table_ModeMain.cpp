@@ -112,6 +112,14 @@ bool PBEngine::pbeRenderMainScreenNormal(unsigned long currentTick, unsigned lon
     return (true);
 }
 
+// Renders the "Ball Saved" message when a ball save is triggered on drain
+bool PBEngine::pbeRenderMainScreenBallSaved(unsigned long currentTick, unsigned long lastTick){
+    gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255); // Gold color
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    gfxRenderString(m_StartMenuFontId, "Ball Saved", (ACTIVEDISPX + (1024 / 3)), ACTIVEDISPY + 350, 5, GFX_TEXTCENTER);
+    return (true);
+}
+
 // Renders the extra ball award screen with video
 bool PBEngine::pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned long lastTick){
     static unsigned long lastScreenStartTick = 0;
@@ -208,6 +216,9 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
     switch (subScreenState) {
         case PBTBLMainScreenState::MAIN_EXTRABALL:
             pbeRenderMainScreenExtraBall(currentTick, lastTick);
+            break;
+        case PBTBLMainScreenState::MAIN_BALLSAVED:
+            pbeRenderMainScreenBallSaved(currentTick, lastTick);
             break;
         case PBTBLMainScreenState::MAIN_NORMAL:
         default:
@@ -680,6 +691,10 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
                 m_hopperDevice->pbdEnable(true);
                 m_hopperDevice->pdbStartRun();
             }
+            // Show "Ball Saved" message for 2 seconds
+            pbeRequestScreen(PBTableState::PBTBL_MAIN,
+                             static_cast<int>(PBTBLMainScreenState::MAIN_BALLSAVED),
+                             ScreenPriority::PRIORITY_HIGH, 2000, false);
         } else {
             // No save – advance ball, rotate players or end game
             ps.currentBall++;

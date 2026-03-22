@@ -37,7 +37,8 @@
 enum class PBTBLMainScreenState {
     MAIN_NORMAL = 0,        
     MAIN_EXTRABALL = 1,     
-    MAIN_END = 2
+    MAIN_BALLSAVED = 2,     
+    MAIN_END = 3
 };
 
 // ========================================================================
