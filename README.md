@@ -27,14 +27,14 @@ Prototype hardware shown, full machine in development.
 - Base system supports "Simple Flip" debug mode for basic checkout.
 
 # Currently working on... (WIP)
-- Prototype Cabinet and lower 1/3 playfield (flipps, slings, lanes).  Cabinet done in 1/4 foamboard, dimensions in HW directory of repo.  Prototyping lanes and flippers via 3D printing, flipper solinoid drivers.  Will be mounted on 1/2 ply.
+- Prototype Cabinet and lower 1/3 playfield (flipps, slings, lanes).  Cabinet done in 1/4 foamboard, dimensions in HW directory of repo.  Prototyping lanes and flippers via 3D printing, flipper solenoid drivers.  Will be mounted on 1/2 ply.
 - FUTURE: Prototype HW (Balleject, targets, pop bumpers, lane / ramp detect, etc..)
 - FUTURE: Develop full version 1 whitewood
 - FUTURE: Full gameplay / code with version 1 whitewood
 - FUTURE: Develop schematics for the custom expander boards based on TI
 
 # Full Game Code Status
--  Simple POC game now enabled, utilizing all aspects of code - lights, sound, music, devices, etc.. A full proof of concept of all key aspects of running a machine.  
+-  Simple POC game now enabled, utilizing all aspects of code - lights, sound, music, devices, etc.. A full proof of concept of all key aspects of running a machine, although many simple placeholders for messages / callouts.  
 -  Rules: 1-4 players, slings score 1000 pts each, 5000 points gets and extra ball (no more than 1).  Extra ball lights Save LED.  Inlanes light when detected - when both light, Save LED lights for 5 seconds and cycle repeats.  Ball hopper eject device supported.
 
 # Documentation
