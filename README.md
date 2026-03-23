@@ -10,7 +10,7 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
 
 Prototype hardware shown, full machine in development.
 
-# Current RasPin System Features (constantly adding features...)
+# Current RasPin System Features
 - Intended to be a hobby level, low cost system for creating full feature, half scale pinball machines with Raspberry Pi hardware
 - Cross platform VS Code environment for Linux (Linux via Debian / Raspberry Pi) and Windows - All OSes support simulator mode, while Raspberry Pi supports full pinball hardware.  Other Linux versions would likely work as well, but not tested.
 - Pinball HW mode supports a primary Pinball HDMI screen, plus 2nd monitor support for ease of debug / development
