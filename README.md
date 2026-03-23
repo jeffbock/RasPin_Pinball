@@ -27,7 +27,7 @@ Prototype hardware shown, full machine in development.
 - Base system supports "Simple Flip" debug mode for basic checkout.
 
 # Currently working on... (WIP)
-- Prototype Cabinet and lower 1/3 playfield (flipps, slings, lanes).  Cabinet done in 1/4 foamboard, dimensions in HW directory of repo.  Prototyping lanes and flippers via 3D printing, flipper solenoid drivers.  Will be mounted on 1/2 ply.
+- Prototype Cabinet and lower 1/3 playfield.  Cabinet done in 1/4 foamboard, dimensions in HW directory of repo.  Prototyping lanes and flippers via 3D printing, flipper solenoid drivers.  Will be mounted on 1/2 ply.
 - FUTURE: Prototype HW (Balleject, targets, pop bumpers, lane / ramp detect, etc..)
 - FUTURE: Develop full version 1 whitewood
 - FUTURE: Full gameplay / code with version 1 whitewood
@@ -56,12 +56,13 @@ Prototype hardware shown, full machine in development.
   - **FontGen** (Windows & Raspberry Pi) - Converts TrueType fonts to texture atlases for text rendering
   - **pblistdevices** (Raspberry Pi only) - Scans I2C bus and lists all connected hardware devices
   - **pbsetamp** (Raspberry Pi only) - Controls MAX9744 amplifier volume settings
+  - **pblaunch** (Linux / Rasberry Pi Only) - A GUI based utility to find/launch/stop the EXE without the development environment.
 
 # Design and Development guidelines
 -  Actual machine based on Raspberry Pi 5 and PiOS for ease of development and debug.  Full power of Linux OS.  
 -  Cross platform support via VS Code: Shared code between Linux/PiOS and Windows - using Windows for high power development / simulation, although could do this with a full Linux PC as well.
 -  Keep the structure and coding straightfoward so that intermediate level coders and utilize the system and build new tables.
--  Modular / HAL based graphics engine - allow for easy upgrade to other APIs if desired (currently OGL 3.1, but maybe Vulkan later?)
+-  Modular / HAL based graphics engine - allow for easy upgrade to other APIs if desired (currently OGL 3.1 ES, but maybe Vulkan later?)
 -  All IO (sensor/button inputs, lighting and solenoid outputs) routed through Pi controller.
     - Allows for complete decoupling of inputs and outputs - maximum flexibility of how to respond to inputs but design to reduce latency
     - IO expanders (based on TI TCA9555) / driver boards used in conjunction with Pi controller to greatly expand number of elements in the system.
@@ -71,14 +72,15 @@ Prototype hardware shown, full machine in development.
 -  Sound and display using standard HDMI and audio output jacks from the Pi controller.  The code has flexibility in primary screen selection for the table.
     - Can use HDMI speaker sound or external amplifier based on readily avaialble MAX9744 breakout boards.
 -  Simple sound usage with WAV / MP3 files for easy to use music and sound effects.
--  Allow for flexibility in configuration, eg: standard menus but SW should be architected to quickly change tables and layouts.
--  Everything should be rougly half-scale compared to a normal pinball machine - which means ~14" W x 28"H play area with a 1/2" ball.
+-  Graphics (2D, Sprites, 3D) have simplified user interfaces and are all screen coodinate based for easy understanding.
+-  Allow for flexibility in configuration, eg: standard menus but SW is architected to quickly change tables and layouts.
+-  Everything should be rougly half-scale compared to a normal pinball machine - currently targeing 15" x 24" playfield, with a 5/8" ball.
     -  All custom pinball mechanisms will be developed with 3D models for 3D printing, allowing others to easily duplicate the construction.
-    -  Cabinet will be developed using bass wood plywood.
+    -  Cabinet / backbox will be developed using 1/4" plywood for weight / cost.  Playfield will be 1/2" plywood.
 -  Focus on architecture and design, utilize AI for speed of development but review all code closely to ensure desired behavior
 
 # About the lead developer
--  I've been a computer engineer in the industry for 30+ years, working for major tech firms, primarily in HW/SW interfacing and testing for graphics and AI drivers.  Creating SW to talk to HW and graphics engines at that level has always been a hobby and pinball seems to be an excellent overall systems and architectural challenge to do all the things that are interesting.
+-  Jeff has been a computer engineer in the industry for 30+ years, working for major tech firms, primarily in HW/SW interfacing and testing for graphics and AI drivers.  Creating SW to talk to HW and graphics engines at that level has always been a hobby and pinball seems to be an excellent overall systems and architectural challenge to do all the things that are interesting.
 
 # License Guidelines
 -  TL;DR: The SW and all files are open source unless otherwise noted, and available to users for personal but not commercial projects.  Any contributions to the repo become available for all to use.  The original repo owner reserves the rights to use the code and all contributions for commercial use.  Hey - I might want to build and sell a few machines at some point... ;)  If you want to use the code for commercial purposes, then let's talk.
