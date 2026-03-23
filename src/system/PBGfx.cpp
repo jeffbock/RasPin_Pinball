@@ -494,6 +494,12 @@ bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, int x, int
     unsigned int width=0, height=0;
     float u1=0.0f, v1=0.0f, u2 = 1.0f, v2 = 1.0f;
 
+    // Pre-compute string width once (only needed for non-left justification)
+    int stringWidth = 0;
+    if (justify != GFX_TEXTLEFT) {
+        stringWidth = gfxStringWidth(spriteId, input, spacingPixels);
+    }
+
     // For each character in the string, set up the rendering info and call the render sprite function
     for (unsigned int i = 0; i < input.length(); i++) {
         unsigned int charId = (unsigned int)input[i];
@@ -527,7 +533,6 @@ bool PBGfx::gfxRenderString(unsigned int spriteId, std::string input, int x, int
         m_instanceList[spriteId].y = y;
         m_instanceList[spriteId].x = x;
 
-        int stringWidth = gfxStringWidth(spriteId, input, spacingPixels);
         int oldX = m_instanceList[spriteId].x;
 
         // Adjust the x coordinate based on the justification

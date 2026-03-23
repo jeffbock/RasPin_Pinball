@@ -80,8 +80,10 @@ bool PBEngine::pbeRenderMainScreenBase(unsigned long currentTick, unsigned long 
     // Clear to black background
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
      
-    // Render all player scores
-    pbeRenderPlayerScores(currentTick, lastTick);
+    // Render all player scores (skip during ball saved screen)
+    if (static_cast<PBTBLMainScreenState>(pbeGetCurrentSubScreenState()) != PBTBLMainScreenState::MAIN_BALLSAVED) {
+        pbeRenderPlayerScores(currentTick, lastTick);
+    }
 
     // Render status text with fade effects
     pbeRenderStatusText(currentTick, lastTick);
@@ -657,11 +659,8 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
         }
 
         // Both inlanes lit → activate ball save, start 5-second timer
+        // Leave inlane LEDs on while save is active; they turn off when the timer expires
         if (m_leftInlaneLEDOn && m_rightInlaneLEDOn) {
-            m_leftInlaneLEDOn  = false;
-            m_rightInlaneLEDOn = false;
-            SendOutputMsg(PB_OMSG_LED, IDO_LINLANELED, PB_OFF, false);
-            SendOutputMsg(PB_OMSG_LED, IDO_RINLANELED, PB_OFF, false);
             pbGameState& ps = m_playerStates[m_currentPlayer];
             ps.ballSaveEnabled = true;
             SendOutputMsg(PB_OMSG_LED, IDO_SAVELED, PB_ON, false);
@@ -669,12 +668,16 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
         }
     }
 
-    // Ball save timer expiry: turn off SAVE LED and clear flag
+    // Ball save timer expiry: turn off SAVE LED, both inlane LEDs, and clear flags
     if (inputMessage.inputMsg == PB_IMSG_TIMER &&
         inputMessage.inputId == BALLSAVE_TIMER_ID) {
         pbGameState& ps = m_playerStates[m_currentPlayer];
         ps.ballSaveEnabled = false;
+        m_leftInlaneLEDOn  = false;
+        m_rightInlaneLEDOn = false;
         SendOutputMsg(PB_OMSG_LED, IDO_SAVELED, PB_OFF, false);
+        SendOutputMsg(PB_OMSG_LED, IDO_LINLANELED, PB_OFF, false);
+        SendOutputMsg(PB_OMSG_LED, IDO_RINLANELED, PB_OFF, false);
     }
 
     // Ball drain sensor

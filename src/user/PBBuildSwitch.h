@@ -59,7 +59,7 @@
 // (half width, half height).  Useful for RDP / remote-desktop performance.
 // Comment out to use full native resolution.
 #ifndef ENABLE_PINBALL_HARDWARE
-#define SIMULATOR_SMALL_WINDOW
+// #define SIMULATOR_SMALL_WINDOW
 #endif
 
 // =============================================================================
@@ -83,7 +83,15 @@
 // #define ENABLE_IDLE_SLEEP
 
 // =============================================================================
-// SECTION 5: VIDEO DECODE
+// SECTION 5: DEBUG / DIAGNOSTIC OPTIONS
+// =============================================================================
+// Uncomment to completely disable 3D rendering and remove the EGL depth buffer.
+// Use this to isolate whether the depth buffer/3D state is affecting 2D performance.
+// All pb3dBegin/pb3dEnd calls become no-ops and EGL requests no depth bits.
+// #define PBDEBUG_DISABLE_3D
+
+// =============================================================================
+// SECTION 6: VIDEO DECODE
 // =============================================================================
 // Enable hardware video decoding (requires V4L2 M2M support).
 // This is independent of ENABLE_PINBALL_HARDWARE — simulators may also have

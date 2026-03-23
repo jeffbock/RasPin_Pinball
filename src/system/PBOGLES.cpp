@@ -98,7 +98,11 @@ bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
         EGL_BLUE_SIZE, 8,
         EGL_GREEN_SIZE, 8,
         EGL_RED_SIZE, 8,
+#ifdef PBDEBUG_DISABLE_3D
+        EGL_DEPTH_SIZE, 0,
+#else
         EGL_DEPTH_SIZE, 24,
+#endif
         EGL_NONE
     };
 
@@ -159,6 +163,10 @@ bool PBOGLES::oglInit(long width, long height, NativeWindowType nativeWindow) {
     // glBlendFunc(GL_SRC_COLOR, GL_ONE_MINUS_SRC_COLOR);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     // glBlendFunc(GL_ONE, GL_ONE);
+
+    // Depth writes are disabled for 2D rendering — the depth buffer is only used during
+    // 3D passes. ogl3dBeginPass() re-enables writes before 3D draws.
+    glDepthMask(GL_FALSE);
     
     // Set the internal variables and reflect that the basic rendering engine has been intialized
     m_width = width;
@@ -186,7 +194,7 @@ bool PBOGLES::oglClear(float red, float blue, float green, float alpha, bool doF
 #endif
         glClearColor(red, green, blue, alpha);
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT);  // Depth buffer is cleared by ogl3dBeginPass before 3D draws
 
         if (doFlip) {
             if (oglSwap(false) == false) return (false);
@@ -583,9 +591,16 @@ GLuint PBOGLES::oglCreateVideoTexture(unsigned int width, unsigned int height) {
 // Called by PB3D::pb3dEnd() so that the 3D layer never needs to know
 // about the internal 2D shader program, attrib layout or GL state.
 void PBOGLES::oglRestore2DState() {
+#ifdef PBDEBUG_DISABLE_3D
+    return;  // 3D disabled for performance diagnostics
+#endif
     // Disable 3D-specific state
     if (m_depthTestEnabled) { glDisable(GL_DEPTH_TEST); m_depthTestEnabled = false; }
     if (m_cullFaceEnabled)  { glDisable(GL_CULL_FACE);  m_cullFaceEnabled  = false; }
+    // Disable depth writes — 2D sprites must not write to the depth buffer.
+    // Per the OpenGL ES spec, depth writes occur even when GL_DEPTH_TEST is disabled
+    // if glDepthMask is GL_TRUE, causing major unnecessary memory bandwidth.
+    glDepthMask(GL_FALSE);
 
     // Re-enable standard alpha blending for 2D sprites
     if (!m_blendEnabled) { glEnable(GL_BLEND); m_blendEnabled = true; }
@@ -758,6 +773,13 @@ void PBOGLES::ogl3dDestroyTexture(unsigned int texId) {
 
 // Begin the 3D rendering pass: enable depth testing and bind the 3D shader.
 void PBOGLES::ogl3dBeginPass() {
+#ifdef PBDEBUG_DISABLE_3D
+    return;  // 3D disabled for performance diagnostics
+#endif
+    // Re-enable depth writes and clear before 3D draws.
+    // glDepthMask is GL_FALSE during 2D — must set TRUE before glClear(DEPTH) is effective.
+    glDepthMask(GL_TRUE);
+    glClear(GL_DEPTH_BUFFER_BIT);
     if (!m_depthTestEnabled) { glEnable(GL_DEPTH_TEST);  m_depthTestEnabled = true; }
     glDepthFunc(GL_LEQUAL);
     // Backface culling disabled — glTF winding-order varies by exporter.

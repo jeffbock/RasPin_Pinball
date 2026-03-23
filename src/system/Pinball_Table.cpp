@@ -68,6 +68,7 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
             switch (mainState) {
                 case PBTBLMainScreenState::MAIN_NORMAL:
                 case PBTBLMainScreenState::MAIN_EXTRABALL:
+                case PBTBLMainScreenState::MAIN_BALLSAVED:
                     success = pbeRenderMainScreen(currentTick, lastTick, mainState);
                     break;
                 default:

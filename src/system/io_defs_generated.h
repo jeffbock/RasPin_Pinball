@@ -27,8 +27,8 @@
 #define IDI_RACTIVATE      3
 #define IDI_START          4
 #define IDI_RESET          5
-#define IDI_RINLANE        6
-#define IDI_LINLANE        7
+#define IDI_LINLANE        6
+#define IDI_RINLANE        7
 #define IDI_BALLDRAIN      8
 #define IDI_BALLREADY      9
 #define IDI_BALLDELIVERED  10
