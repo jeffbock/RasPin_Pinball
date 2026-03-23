@@ -927,9 +927,9 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
     // INPUTS Section (moved down to accommodate second state line)
     gfxSetColor(m_defaultFontSpriteId, 0, 255, 255, 255);  // Cyan for inputs header
     #ifndef ENABLE_PINBALL_HARDWARE
-    gfxRenderShadowString(m_defaultFontSpriteId, "Inputs (Simulated)", 20, 46, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Inputs (Simulated)", 20, 36, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
     #else
-    gfxRenderShadowString(m_defaultFontSpriteId, "INPUTS", 20, 46, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Inputs", 20, 36, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
     #endif
     
     // Render inputs in one column (48 items will fit with 40% scale)
@@ -969,7 +969,7 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
     // OUTPUTS Section - Position moved 225 pixels further right total
     int outputStartX = PB_SCREENWIDTH - 305;  // Shifted left 25px to avoid overlap with ON/OFF state
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 0, 255);  // Yellow for outputs header
-    gfxRenderShadowString(m_defaultFontSpriteId, "OUTPUTS", outputStartX, 46, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+    gfxRenderShadowString(m_defaultFontSpriteId, "Outputs", outputStartX, 36, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
     
     // Render outputs in one column (48 items will fit with 40% scale)
     for (int i = 0; i < NUM_OUTPUTS; i++) {
@@ -1706,7 +1706,6 @@ bool PBEngine::pbeLoadBenchmark(){
     }
 
     // Load 3D diceset model for the 3D rendering benchmark scene
-#ifndef PBDEBUG_DISABLE_3D
     if (!m_bench3DDiceLoaded) {
         m_bench3DModelId = pb3dLoadModel("src/user/resources/3d/diceset.glb");
         if (m_bench3DModelId != 0) {
@@ -1744,7 +1743,6 @@ bool PBEngine::pbeLoadBenchmark(){
             pbeSendConsole("WARNING: Failed to load diceset.glb for 3D benchmark scene");
         }
     }
-#endif // PBDEBUG_DISABLE_3D
 
     return (true);
 }
@@ -1875,7 +1873,6 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
     // Each draw call repositions, reorients, and rescales the instance before rendering so the
     // GPU workload is representative (no batching of identical transforms).
     // pb3dBegin/End wraps the whole burst to avoid distorting the count with state-switch overhead.
-#ifndef PBDEBUG_DISABLE_3D
     if (elapsedTime < ((m_TicksPerScene * 5) + m_CountDownTicks)) {
         gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
 
@@ -1904,7 +1901,6 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         gfxRenderShadowString(m_defaultFontSpriteId, "3D Rendering Test", tempX, 200, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         return (true);
     }
-#endif // PBDEBUG_DISABLE_3D
     
     if (elapsedTime >= ((m_TicksPerScene * 5) + m_CountDownTicks)) {
 
@@ -1919,11 +1915,7 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 265, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
         temp = "Transformed Sprite Rate: " + std::to_string(msForTransformSprite > 0 ? spriteTransformCount / msForTransformSprite : 0) + "k SPS";
         gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 290, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
-#ifdef PBDEBUG_DISABLE_3D
-        temp = "3D Render Rate: N/A (disabled)";
-#else
         temp = "3D Render Rate: " + std::to_string(msFor3DRender > 0 ? bench3DCount / msFor3DRender : 0) + "k OPS";
-#endif
         gfxRenderShadowString(m_defaultFontSpriteId, temp, tempX, 315, 1, GFX_TEXTCENTER, 0, 0, 255, 255, 2);
 
         m_BenchmarkDone = true;
