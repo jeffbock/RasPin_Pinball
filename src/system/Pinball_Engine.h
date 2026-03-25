@@ -192,7 +192,7 @@ struct stTimerEntry {
 #define SANDBOX_NEOPIXEL_TIMER_ID 100
 #define SANDBOX_NEOPIXEL_TIMER_INTERVAL_MS 100
 
-// Timer ID for game-end "Game Over" display (3-second auto-return to start)
+// Timer ID for game-end "Game Over" display (10-second auto-return to start)
 #define GAMEEND_COMPLETE_TIMER_ID 200
 
 // Timer ID for inlane-triggered ball save (5-second timeout)
