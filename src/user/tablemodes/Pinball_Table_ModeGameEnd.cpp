@@ -398,12 +398,7 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
             bool timerFired = (inputMessage.inputMsg == PB_IMSG_TIMER &&
                                inputMessage.inputId == GAMEEND_COMPLETE_TIMER_ID);
             bool buttonPressed = (inputMessage.inputMsg == PB_IMSG_BUTTON &&
-                                  inputMessage.inputState == PB_ON &&
-                                  (inputMessage.inputId == IDI_START   ||
-                                   inputMessage.inputId == IDI_LFLIP   ||
-                                   inputMessage.inputId == IDI_RFLIP   ||
-                                   inputMessage.inputId == IDI_LACTIVATE ||
-                                   inputMessage.inputId == IDI_RACTIVATE));
+                                  inputMessage.inputState == PB_ON);
             if (timerFired || buttonPressed) {
                 // Clean up and return to start screen
                 m_gameEndInitialized = false;
