@@ -154,10 +154,10 @@ bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTic
         
         // Transition to appropriate sub-state
         if (m_gameEndQualifiers.empty()) {
-            // No players qualified - show "Game Over" for 3 seconds then return to start
+            // No players qualified - show "Game Over" for 10 seconds then return to start
             m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_COMPLETE);
             currentState = PBTBLGameEndState::GAMEEND_COMPLETE;
-            pbeSetTimer(GAMEEND_COMPLETE_TIMER_ID, 3000);
+            pbeSetTimer(GAMEEND_COMPLETE_TIMER_ID, 10000);
         } else {
             // Set current player to first qualifier for proper score display
             m_currentPlayer = m_gameEndQualifiers[0].playerIndex;
@@ -234,12 +234,47 @@ bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTic
         }
         
         case PBTBLGameEndState::GAMEEND_COMPLETE: {
-            // Render "Game Over" text - transition is driven by GAMEEND_COMPLETE_TIMER_ID in pbeUpdateStateGameEnd
+            // Render "Game Over" title
             gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
             gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
-            gfxRenderShadowString(m_StartMenuFontId, "Game Over", 
-                (ACTIVEDISPX + (1024/3)), ACTIVEDISPY + 380, 5, GFX_TEXTCENTER,
+            gfxRenderShadowString(m_StartMenuFontId, "Game Over",
+                (ACTIVEDISPX + (1024/3)), ACTIVEDISPY + 200, 5, GFX_TEXTCENTER,
                 0, 0, 0, 255, 3);
+
+            // Shimmer offset cycles 1→2→3→4→5→4→3→2 (repeating every 1600ms)
+            int shimStep = static_cast<int>((currentTick / 200) % 8);
+            int shimOffset = (shimStep <= 4) ? (shimStep + 1) : (9 - shimStep);
+
+            // Build a set of qualifying player indices for quick lookup
+            bool isQualifier[4] = { false, false, false, false };
+            for (size_t i = 0; i < m_gameEndQualifiers.size(); i++) {
+                int idx = m_gameEndQualifiers[i].playerIndex;
+                if (idx >= 0 && idx < 4) isQualifier[idx] = true;
+            }
+
+            // Display all player scores in medium white text, format "PX: score"
+            gfxSetScaleFactor(m_StartMenuFontId, 0.7, false);
+            int scoreY = ACTIVEDISPY + 320;
+            int scoreLineSpacing = 70;
+            for (int i = 0; i < 4; i++) {
+                if (m_playerStates[i].score > 0 || m_playerStates[i].inGame) {
+                    std::string scoreStr = "P" + std::to_string(i + 1) + ": " + formatScoreWithCommas(m_playerStates[i].score);
+                    if (isQualifier[i]) {
+                        // High score qualifier: bright red shadow with shimmer effect
+                        gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+                        gfxRenderShadowString(m_StartMenuFontId, scoreStr,
+                            (ACTIVEDISPX + (1024/3)), scoreY, 5, GFX_TEXTCENTER,
+                            220, 0, 0, 255, shimOffset);
+                    } else {
+                        // Normal player: plain white text
+                        gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+                        gfxRenderShadowString(m_StartMenuFontId, scoreStr,
+                            (ACTIVEDISPX + (1024/3)), scoreY, 5, GFX_TEXTCENTER,
+                            0, 0, 0, 255, 2);
+                    }
+                    scoreY += scoreLineSpacing;
+                }
+            }
             break;
         }
         
@@ -347,19 +382,10 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
                             // Save to file
                             pbeSaveFile();
                             
-                            // All initials entered - transition directly to start screen
-                            m_gameEndInitialized = false;
-                            m_gameEndQualifiers.clear();
-                            for (int i = 0; i < 4; i++) {
-                                m_playerStates[i].reset(m_saveFileData.ballsPerGame);
-                                m_playerStates[i].enabled = false;
-                            }
-                            m_tableState = PBTableState::PBTBL_START;
-                            m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START);
-                            m_RestartTable = true;
-                            pbeClearScreenRequests();
-                            m_soundSystem.pbsStopAllEffects();
-                            m_soundSystem.pbsStopMusic();
+                            // All initials entered - show game over screen for 10 seconds
+                            // Keep m_gameEndQualifiers so the render function can apply shimmer
+                            m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_COMPLETE);
+                            pbeSetTimer(GAMEEND_COMPLETE_TIMER_ID, 10000);
                         }
                     }
                 }
@@ -368,9 +394,17 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
         }
         
         case PBTBLGameEndState::GAMEEND_COMPLETE: {
-            // 3-second timer fires PB_IMSG_TIMER with GAMEEND_COMPLETE_TIMER_ID
-            if (inputMessage.inputMsg == PB_IMSG_TIMER &&
-                inputMessage.inputId == GAMEEND_COMPLETE_TIMER_ID) {
+            // 10-second timer or any button press returns to start screen
+            bool timerFired = (inputMessage.inputMsg == PB_IMSG_TIMER &&
+                               inputMessage.inputId == GAMEEND_COMPLETE_TIMER_ID);
+            bool buttonPressed = (inputMessage.inputMsg == PB_IMSG_BUTTON &&
+                                  inputMessage.inputState == PB_ON &&
+                                  (inputMessage.inputId == IDI_START   ||
+                                   inputMessage.inputId == IDI_LFLIP   ||
+                                   inputMessage.inputId == IDI_RFLIP   ||
+                                   inputMessage.inputId == IDI_LACTIVATE ||
+                                   inputMessage.inputId == IDI_RACTIVATE));
+            if (timerFired || buttonPressed) {
                 // Clean up and return to start screen
                 m_gameEndInitialized = false;
                 m_gameEndQualifiers.clear();
