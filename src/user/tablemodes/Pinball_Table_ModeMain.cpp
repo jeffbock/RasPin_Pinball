@@ -702,19 +702,19 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
     // Left/right flipper shifts all inn lane LEDs; if all three light → "Inn Open!".
     if (inputMessage.inputMsg == PB_IMSG_SENSOR && inputMessage.inputState == PB_ON) {
         bool innLaneHit = false;
-        if (inputMessage.inputId == IDI_INN1LANE && !m_innLaneLEDOn[0]) {
+        if (inputMessage.inputId == IDI_INN1 && !m_innLaneLEDOn[0]) {
             m_innLaneLEDOn[0] = true;
-            SendOutputMsg(PB_OMSG_LED, IDO_INN1LANELED, PB_ON, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN1LED, PB_ON, false);
             innLaneHit = true;
         }
-        else if (inputMessage.inputId == IDI_INN2LANE && !m_innLaneLEDOn[1]) {
+        else if (inputMessage.inputId == IDI_INN2 && !m_innLaneLEDOn[1]) {
             m_innLaneLEDOn[1] = true;
-            SendOutputMsg(PB_OMSG_LED, IDO_INN2LANELED, PB_ON, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN2LED, PB_ON, false);
             innLaneHit = true;
         }
-        else if (inputMessage.inputId == IDI_INN3LANE && !m_innLaneLEDOn[2]) {
+        else if (inputMessage.inputId == IDI_INN3 && !m_innLaneLEDOn[2]) {
             m_innLaneLEDOn[2] = true;
-            SendOutputMsg(PB_OMSG_LED, IDO_INN3LANELED, PB_ON, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN3LED, PB_ON, false);
             innLaneHit = true;
         }
 
@@ -726,9 +726,9 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
                 ps.bInnOpen = true;
                 // Reset inn lane LEDs
                 m_innLaneLEDOn[0] = m_innLaneLEDOn[1] = m_innLaneLEDOn[2] = false;
-                SendOutputMsg(PB_OMSG_LED, IDO_INN1LANELED, PB_OFF, false);
-                SendOutputMsg(PB_OMSG_LED, IDO_INN2LANELED, PB_OFF, false);
-                SendOutputMsg(PB_OMSG_LED, IDO_INN3LANELED, PB_OFF, false);
+                SendOutputMsg(PB_OMSG_LED, IDO_INN1LED, PB_OFF, false);
+                SendOutputMsg(PB_OMSG_LED, IDO_INN2LED, PB_OFF, false);
+                SendOutputMsg(PB_OMSG_LED, IDO_INN3LED, PB_OFF, false);
                 // Flash "Inn Open!" for 2 seconds
                 pbeRequestScreen(PBTableState::PBTBL_MAIN,
                                  static_cast<int>(PBTBLMainScreenState::MAIN_INN_OPEN),
@@ -745,9 +745,9 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
             m_innLaneLEDOn[0] = m_innLaneLEDOn[1];
             m_innLaneLEDOn[1] = m_innLaneLEDOn[2];
             m_innLaneLEDOn[2] = temp;
-            SendOutputMsg(PB_OMSG_LED, IDO_INN1LANELED, m_innLaneLEDOn[0] ? PB_ON : PB_OFF, false);
-            SendOutputMsg(PB_OMSG_LED, IDO_INN2LANELED, m_innLaneLEDOn[1] ? PB_ON : PB_OFF, false);
-            SendOutputMsg(PB_OMSG_LED, IDO_INN3LANELED, m_innLaneLEDOn[2] ? PB_ON : PB_OFF, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN1LED, m_innLaneLEDOn[0] ? PB_ON : PB_OFF, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN2LED, m_innLaneLEDOn[1] ? PB_ON : PB_OFF, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN3LED, m_innLaneLEDOn[2] ? PB_ON : PB_OFF, false);
         }
         else if (inputMessage.inputId == IDI_RFLIP) {
             // Rotate LEDs right: [1]→[2], [0]→[1], [2]→[0]
@@ -755,9 +755,9 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
             m_innLaneLEDOn[2] = m_innLaneLEDOn[1];
             m_innLaneLEDOn[1] = m_innLaneLEDOn[0];
             m_innLaneLEDOn[0] = temp;
-            SendOutputMsg(PB_OMSG_LED, IDO_INN1LANELED, m_innLaneLEDOn[0] ? PB_ON : PB_OFF, false);
-            SendOutputMsg(PB_OMSG_LED, IDO_INN2LANELED, m_innLaneLEDOn[1] ? PB_ON : PB_OFF, false);
-            SendOutputMsg(PB_OMSG_LED, IDO_INN3LANELED, m_innLaneLEDOn[2] ? PB_ON : PB_OFF, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN1LED, m_innLaneLEDOn[0] ? PB_ON : PB_OFF, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN2LED, m_innLaneLEDOn[1] ? PB_ON : PB_OFF, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN3LED, m_innLaneLEDOn[2] ? PB_ON : PB_OFF, false);
         }
     }
 
@@ -765,19 +765,19 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
     // When all three are lit → "Key Obtained!". Flippers do NOT shift these LEDs.
     if (inputMessage.inputMsg == PB_IMSG_TARGET && inputMessage.inputState == PB_ON) {
         bool keyTargetHit = false;
-        if (inputMessage.inputId == IDI_KEY1TARGET && !m_keyTargetLEDOn[0]) {
+        if (inputMessage.inputId == IDI_KEY1 && !m_keyTargetLEDOn[0]) {
             m_keyTargetLEDOn[0] = true;
-            SendOutputMsg(PB_OMSG_LED, IDO_KEY1TARGETLED, PB_ON, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_KEY1LED, PB_ON, false);
             keyTargetHit = true;
         }
-        else if (inputMessage.inputId == IDI_KEY2TARGET && !m_keyTargetLEDOn[1]) {
+        else if (inputMessage.inputId == IDI_KEY2 && !m_keyTargetLEDOn[1]) {
             m_keyTargetLEDOn[1] = true;
-            SendOutputMsg(PB_OMSG_LED, IDO_KEY2TARGETLED, PB_ON, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_KEY2LED, PB_ON, false);
             keyTargetHit = true;
         }
-        else if (inputMessage.inputId == IDI_KEY3TARGET && !m_keyTargetLEDOn[2]) {
+        else if (inputMessage.inputId == IDI_KEY3 && !m_keyTargetLEDOn[2]) {
             m_keyTargetLEDOn[2] = true;
-            SendOutputMsg(PB_OMSG_LED, IDO_KEY3TARGETLED, PB_ON, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_KEY3LED, PB_ON, false);
             keyTargetHit = true;
         }
 

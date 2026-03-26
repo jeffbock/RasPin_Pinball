@@ -255,14 +255,14 @@ void PBEngine::pbeActivatePlayer(unsigned int playerIdx) {
     SendOutputMsg(PB_OMSG_LED, IDO_RINLANELED, PB_OFF, false);
 
     // Turn off inn lane LEDs
-    SendOutputMsg(PB_OMSG_LED, IDO_INN1LANELED, PB_OFF, false);
-    SendOutputMsg(PB_OMSG_LED, IDO_INN2LANELED, PB_OFF, false);
-    SendOutputMsg(PB_OMSG_LED, IDO_INN3LANELED, PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_INN1LED, PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_INN2LED, PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_INN3LED, PB_OFF, false);
 
     // Turn off key target LEDs
-    SendOutputMsg(PB_OMSG_LED, IDO_KEY1TARGETLED, PB_OFF, false);
-    SendOutputMsg(PB_OMSG_LED, IDO_KEY2TARGETLED, PB_OFF, false);
-    SendOutputMsg(PB_OMSG_LED, IDO_KEY3TARGETLED, PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_KEY1LED, PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_KEY2LED, PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_KEY3LED, PB_OFF, false);
 
     // Restore inlane LED state from the incoming player's saved tableState,
     // then copy the booleans into the engine tracking members.
