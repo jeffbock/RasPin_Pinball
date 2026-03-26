@@ -37,8 +37,10 @@
 enum class PBTBLMainScreenState {
     MAIN_NORMAL = 0,        
     MAIN_EXTRABALL = 1,     
-    MAIN_BALLSAVED = 2,     
-    MAIN_END = 3
+    MAIN_BALLSAVED = 2,
+    MAIN_INN_OPEN = 3,      // "Inn Open!" 2-second flash message
+    MAIN_KEY_OBTAINED = 4,  // "Key Obtained!" 2-second flash message
+    MAIN_END = 5
 };
 
 // ========================================================================

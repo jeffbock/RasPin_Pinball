@@ -44,7 +44,16 @@
   {"id":"IDO_RSLINGLED","idx":8,"name":"LED0P01 RSling LED","msg":"LED","pin":1,"board":"LED","boardIdx":0,"state":"OFF","onMs":150,"offMs":50,"neo":0},
   {"id":"IDO_LINLANELED","idx":9,"name":"LED0P02 LInlane LED","msg":"LED","pin":2,"board":"LED","boardIdx":0,"state":"OFF","onMs":100,"offMs":0,"neo":0},
   {"id":"IDO_RINLANELED","idx":10,"name":"LED0P03 RInlane LED","msg":"LED","pin":3,"board":"LED","boardIdx":0,"state":"OFF","onMs":100,"offMs":0,"neo":0},
-  {"id":"IDO_SAVELED","idx":11,"name":"LED0P04 Ball Save LED","msg":"LED","pin":4,"board":"LED","boardIdx":0,"state":"OFF","onMs":100,"offMs":0,"neo":0}
+  {"id":"IDO_SAVELED","idx":11,"name":"LED0P04 Ball Save LED","msg":"LED","pin":4,"board":"LED","boardIdx":0,"state":"OFF","onMs":100,"offMs":0,"neo":0},
+  {"id":"IDO_POP1","idx":12,"name":"IO1P00 Pop1 Solenoid","msg":"GENERIC_IO","pin":0,"board":"IO","boardIdx":1,"state":"OFF","onMs":50,"offMs":50,"neo":0},
+  {"id":"IDO_POP2","idx":13,"name":"IO1P01 Pop2 Solenoid","msg":"GENERIC_IO","pin":1,"board":"IO","boardIdx":1,"state":"OFF","onMs":50,"offMs":50,"neo":0},
+  {"id":"IDO_POP3","idx":14,"name":"IO1P02 Pop3 Solenoid","msg":"GENERIC_IO","pin":2,"board":"IO","boardIdx":1,"state":"OFF","onMs":50,"offMs":50,"neo":0},
+  {"id":"IDO_INN1LANELED","idx":15,"name":"LED1P00 Inn1 Lane LED","msg":"LED","pin":0,"board":"LED","boardIdx":1,"state":"OFF","onMs":100,"offMs":0,"neo":0},
+  {"id":"IDO_INN2LANELED","idx":16,"name":"LED1P01 Inn2 Lane LED","msg":"LED","pin":1,"board":"LED","boardIdx":1,"state":"OFF","onMs":100,"offMs":0,"neo":0},
+  {"id":"IDO_INN3LANELED","idx":17,"name":"LED1P02 Inn3 Lane LED","msg":"LED","pin":2,"board":"LED","boardIdx":1,"state":"OFF","onMs":100,"offMs":0,"neo":0},
+  {"id":"IDO_KEY1TARGETLED","idx":18,"name":"LED1P03 Key1 Target LED","msg":"LED","pin":3,"board":"LED","boardIdx":1,"state":"OFF","onMs":100,"offMs":0,"neo":0},
+  {"id":"IDO_KEY2TARGETLED","idx":19,"name":"LED1P04 Key2 Target LED","msg":"LED","pin":4,"board":"LED","boardIdx":1,"state":"OFF","onMs":100,"offMs":0,"neo":0},
+  {"id":"IDO_KEY3TARGETLED","idx":20,"name":"LED1P05 Key3 Target LED","msg":"LED","pin":5,"board":"LED","boardIdx":1,"state":"OFF","onMs":100,"offMs":0,"neo":0}
 ],"inputs":[
   {"id":"IDI_LFLIP","idx":0,"name":"RPI0P27 LFlipper","key":"A","msg":"BUTTON","pin":27,"board":"RASPI","boardIdx":0,"state":"OFF","tick":0,"debMs":5,"auto":true,"autoOut":"IDO_LFLIP","autoState":"ON","autoPulse":false},
   {"id":"IDI_RFLIP","idx":1,"name":"RPI0P17 RFlipper","key":"D","msg":"BUTTON","pin":17,"board":"RASPI","boardIdx":0,"state":"OFF","tick":0,"debMs":5,"auto":true,"autoOut":"IDO_RFLIP","autoState":"ON","autoPulse":false},
@@ -58,5 +67,14 @@
   {"id":"IDI_BALLREADY","idx":9,"name":"IO0P08 Ball Ready","key":"4","msg":"SENSOR","pin":8,"board":"IO","boardIdx":0,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
   {"id":"IDI_BALLDELIVERED","idx":10,"name":"IO0P09 Ball Delivered","key":"5","msg":"SENSOR","pin":9,"board":"IO","boardIdx":0,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
   {"id":"IDI_RSLING","idx":11,"name":"IO0P10 RSling","key":"6","msg":"SLING","pin":10,"board":"IO","boardIdx":0,"state":"OFF","tick":0,"debMs":5,"auto":true,"autoOut":"IDO_RSLING","autoState":"ON","autoPulse":true},
-  {"id":"IDI_LSLING","idx":12,"name":"IO0P11 LSling","key":"7","msg":"SLING","pin":11,"board":"IO","boardIdx":0,"state":"OFF","tick":0,"debMs":5,"auto":true,"autoOut":"IDO_LSLING","autoState":"ON","autoPulse":true}
+  {"id":"IDI_LSLING","idx":12,"name":"IO0P11 LSling","key":"7","msg":"SLING","pin":11,"board":"IO","boardIdx":0,"state":"OFF","tick":0,"debMs":5,"auto":true,"autoOut":"IDO_LSLING","autoState":"ON","autoPulse":true},
+  {"id":"IDI_POP1","idx":13,"name":"IO1P00 Pop1 Sensor","key":"8","msg":"POPBUMPER","pin":0,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":true,"autoOut":"IDO_POP1","autoState":"ON","autoPulse":true},
+  {"id":"IDI_POP2","idx":14,"name":"IO1P01 Pop2 Sensor","key":"9","msg":"POPBUMPER","pin":1,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":true,"autoOut":"IDO_POP2","autoState":"ON","autoPulse":true},
+  {"id":"IDI_POP3","idx":15,"name":"IO1P02 Pop3 Sensor","key":"0","msg":"POPBUMPER","pin":2,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":true,"autoOut":"IDO_POP3","autoState":"ON","autoPulse":true},
+  {"id":"IDI_INN1LANE","idx":16,"name":"IO1P03 Inn1 Lane","key":"P","msg":"SENSOR","pin":3,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
+  {"id":"IDI_INN2LANE","idx":17,"name":"IO1P04 Inn2 Lane","key":"O","msg":"SENSOR","pin":4,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
+  {"id":"IDI_INN3LANE","idx":18,"name":"IO1P05 Inn3 Lane","key":"I","msg":"SENSOR","pin":5,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
+  {"id":"IDI_KEY1TARGET","idx":19,"name":"IO1P06 Key1 Target","key":"U","msg":"TARGET","pin":6,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
+  {"id":"IDI_KEY2TARGET","idx":20,"name":"IO1P07 Key2 Target","key":"Y","msg":"TARGET","pin":7,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
+  {"id":"IDI_KEY3TARGET","idx":21,"name":"IO1P08 Key3 Target","key":"T","msg":"TARGET","pin":8,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false}
 ]}

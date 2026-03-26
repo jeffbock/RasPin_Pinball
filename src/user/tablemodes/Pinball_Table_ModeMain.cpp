@@ -128,6 +128,22 @@ bool PBEngine::pbeRenderMainScreenBallSaved(unsigned long currentTick, unsigned 
     return (true);
 }
 
+// Renders the "Inn Open!" message when all 3 inn lanes are completed
+bool PBEngine::pbeRenderMainScreenInnOpen(unsigned long currentTick, unsigned long lastTick){
+    gfxSetColor(m_StartMenuFontId, 100, 220, 255, 255); // Light blue color
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    gfxRenderString(m_StartMenuFontId, "Inn Open!", (ACTIVEDISPX + (1024 / 3)), ACTIVEDISPY + 350, 5, GFX_TEXTCENTER);
+    return (true);
+}
+
+// Renders the "Key Obtained!" message when all 3 key targets are hit
+bool PBEngine::pbeRenderMainScreenKeyObtained(unsigned long currentTick, unsigned long lastTick){
+    gfxSetColor(m_StartMenuFontId, 255, 200, 50, 255); // Bright yellow color
+    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
+    gfxRenderString(m_StartMenuFontId, "Key Obtained!", (ACTIVEDISPX + (1024 / 3)), ACTIVEDISPY + 350, 5, GFX_TEXTCENTER);
+    return (true);
+}
+
 // Renders the extra ball award screen with video
 bool PBEngine::pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned long lastTick){
     static unsigned long lastScreenStartTick = 0;
@@ -227,6 +243,12 @@ bool PBEngine::pbeRenderMainScreen(unsigned long currentTick, unsigned long last
             break;
         case PBTBLMainScreenState::MAIN_BALLSAVED:
             pbeRenderMainScreenBallSaved(currentTick, lastTick);
+            break;
+        case PBTBLMainScreenState::MAIN_INN_OPEN:
+            pbeRenderMainScreenInnOpen(currentTick, lastTick);
+            break;
+        case PBTBLMainScreenState::MAIN_KEY_OBTAINED:
+            pbeRenderMainScreenKeyObtained(currentTick, lastTick);
             break;
         case PBTBLMainScreenState::MAIN_NORMAL:
         default:
@@ -661,6 +683,114 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
                     ps.ballSaveEnabled  = true;
                     SendOutputMsg(PB_OMSG_LED, IDO_SAVELED, PB_ON, false);
                 }
+            }
+        }
+    }
+
+    // Pop bumper hits: +50 score, +1 gold
+    if (inputMessage.inputMsg == PB_IMSG_POPBUMPER && inputMessage.inputState == PB_ON) {
+        if (inputMessage.inputId == IDI_POP1 ||
+            inputMessage.inputId == IDI_POP2 ||
+            inputMessage.inputId == IDI_POP3) {
+            addPlayerScore(50);
+            pbGameState& ps = m_playerStates[m_currentPlayer];
+            ps.goldValue++;
+        }
+    }
+
+    // Inn lane sensors: +250 score, light the matching LED.
+    // Left/right flipper shifts all inn lane LEDs; if all three light → "Inn Open!".
+    if (inputMessage.inputMsg == PB_IMSG_SENSOR && inputMessage.inputState == PB_ON) {
+        bool innLaneHit = false;
+        if (inputMessage.inputId == IDI_INN1LANE && !m_innLaneLEDOn[0]) {
+            m_innLaneLEDOn[0] = true;
+            SendOutputMsg(PB_OMSG_LED, IDO_INN1LANELED, PB_ON, false);
+            innLaneHit = true;
+        }
+        else if (inputMessage.inputId == IDI_INN2LANE && !m_innLaneLEDOn[1]) {
+            m_innLaneLEDOn[1] = true;
+            SendOutputMsg(PB_OMSG_LED, IDO_INN2LANELED, PB_ON, false);
+            innLaneHit = true;
+        }
+        else if (inputMessage.inputId == IDI_INN3LANE && !m_innLaneLEDOn[2]) {
+            m_innLaneLEDOn[2] = true;
+            SendOutputMsg(PB_OMSG_LED, IDO_INN3LANELED, PB_ON, false);
+            innLaneHit = true;
+        }
+
+        if (innLaneHit) {
+            addPlayerScore(250);
+            // Check if all three inn lanes are lit
+            if (m_innLaneLEDOn[0] && m_innLaneLEDOn[1] && m_innLaneLEDOn[2]) {
+                pbGameState& ps = m_playerStates[m_currentPlayer];
+                ps.bInnOpen = true;
+                // Reset inn lane LEDs
+                m_innLaneLEDOn[0] = m_innLaneLEDOn[1] = m_innLaneLEDOn[2] = false;
+                SendOutputMsg(PB_OMSG_LED, IDO_INN1LANELED, PB_OFF, false);
+                SendOutputMsg(PB_OMSG_LED, IDO_INN2LANELED, PB_OFF, false);
+                SendOutputMsg(PB_OMSG_LED, IDO_INN3LANELED, PB_OFF, false);
+                // Flash "Inn Open!" for 2 seconds
+                pbeRequestScreen(PBTableState::PBTBL_MAIN,
+                                 static_cast<int>(PBTBLMainScreenState::MAIN_INN_OPEN),
+                                 ScreenPriority::PRIORITY_HIGH, 2000, false);
+            }
+        }
+    }
+
+    // Flipper buttons: shift inn lane LEDs left or right (circular rotate)
+    if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
+        if (inputMessage.inputId == IDI_LFLIP) {
+            // Rotate LEDs left: [1]→[0], [2]→[1], [0]→[2]
+            bool temp = m_innLaneLEDOn[0];
+            m_innLaneLEDOn[0] = m_innLaneLEDOn[1];
+            m_innLaneLEDOn[1] = m_innLaneLEDOn[2];
+            m_innLaneLEDOn[2] = temp;
+            SendOutputMsg(PB_OMSG_LED, IDO_INN1LANELED, m_innLaneLEDOn[0] ? PB_ON : PB_OFF, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN2LANELED, m_innLaneLEDOn[1] ? PB_ON : PB_OFF, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN3LANELED, m_innLaneLEDOn[2] ? PB_ON : PB_OFF, false);
+        }
+        else if (inputMessage.inputId == IDI_RFLIP) {
+            // Rotate LEDs right: [1]→[2], [0]→[1], [2]→[0]
+            bool temp = m_innLaneLEDOn[2];
+            m_innLaneLEDOn[2] = m_innLaneLEDOn[1];
+            m_innLaneLEDOn[1] = m_innLaneLEDOn[0];
+            m_innLaneLEDOn[0] = temp;
+            SendOutputMsg(PB_OMSG_LED, IDO_INN1LANELED, m_innLaneLEDOn[0] ? PB_ON : PB_OFF, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN2LANELED, m_innLaneLEDOn[1] ? PB_ON : PB_OFF, false);
+            SendOutputMsg(PB_OMSG_LED, IDO_INN3LANELED, m_innLaneLEDOn[2] ? PB_ON : PB_OFF, false);
+        }
+    }
+
+    // Key target sensors: +250 score, light the matching LED.
+    // When all three are lit → "Key Obtained!". Flippers do NOT shift these LEDs.
+    if (inputMessage.inputMsg == PB_IMSG_TARGET && inputMessage.inputState == PB_ON) {
+        bool keyTargetHit = false;
+        if (inputMessage.inputId == IDI_KEY1TARGET && !m_keyTargetLEDOn[0]) {
+            m_keyTargetLEDOn[0] = true;
+            SendOutputMsg(PB_OMSG_LED, IDO_KEY1TARGETLED, PB_ON, false);
+            keyTargetHit = true;
+        }
+        else if (inputMessage.inputId == IDI_KEY2TARGET && !m_keyTargetLEDOn[1]) {
+            m_keyTargetLEDOn[1] = true;
+            SendOutputMsg(PB_OMSG_LED, IDO_KEY2TARGETLED, PB_ON, false);
+            keyTargetHit = true;
+        }
+        else if (inputMessage.inputId == IDI_KEY3TARGET && !m_keyTargetLEDOn[2]) {
+            m_keyTargetLEDOn[2] = true;
+            SendOutputMsg(PB_OMSG_LED, IDO_KEY3TARGETLED, PB_ON, false);
+            keyTargetHit = true;
+        }
+
+        if (keyTargetHit) {
+            addPlayerScore(250);
+            // Check if all three key targets are lit
+            if (m_keyTargetLEDOn[0] && m_keyTargetLEDOn[1] && m_keyTargetLEDOn[2]) {
+                pbGameState& ps = m_playerStates[m_currentPlayer];
+                ps.bKeyObtained = true;
+                // Flash "Key Obtained!" for 2 seconds
+                pbeRequestScreen(PBTableState::PBTBL_MAIN,
+                                 static_cast<int>(PBTBLMainScreenState::MAIN_KEY_OBTAINED),
+                                 ScreenPriority::PRIORITY_HIGH, 2000, false);
             }
         }
     }

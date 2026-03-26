@@ -192,6 +192,8 @@ public:
     int defenseValue;                 // Defense/shield value
     int dungeonFloor;                 // Current dungeon floor
     int dungeonLevel;                 // Dungeon difficulty level
+    bool bInnOpen;                    // All 3 inn lanes completed (Inn is open)
+    bool bKeyObtained;                // All 3 key targets hit (Key obtained)
 
     // Constructor
     pbGameState() {
@@ -233,6 +235,8 @@ public:
         defenseValue = 0;
         dungeonFloor = 1;
         dungeonLevel = 1;
+        bInnOpen = false;
+        bKeyObtained = false;
     }
 };
 

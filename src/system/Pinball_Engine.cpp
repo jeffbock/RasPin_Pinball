@@ -105,6 +105,8 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_leftInlaneLEDOn  = false;
     m_rightInlaneLEDOn = false;
     m_mainNeoPixelMode = 0;
+    m_innLaneLEDOn[0]   = m_innLaneLEDOn[1]   = m_innLaneLEDOn[2]   = false;
+    m_keyTargetLEDOn[0] = m_keyTargetLEDOn[1] = m_keyTargetLEDOn[2] = false;
 
     // High Scores screen variables
     m_RestartHighScores = true;
@@ -823,6 +825,9 @@ std::string PBEngine::TableScreenStateToString(PBTableState tableState, int subS
             switch (mainState) {
                 case PBTBLMainScreenState::MAIN_NORMAL: return "MAIN_NORMAL";
                 case PBTBLMainScreenState::MAIN_EXTRABALL: return "MAIN_EXTRABALL";
+                case PBTBLMainScreenState::MAIN_BALLSAVED: return "MAIN_BALLSAVED";
+                case PBTBLMainScreenState::MAIN_INN_OPEN: return "MAIN_INN_OPEN";
+                case PBTBLMainScreenState::MAIN_KEY_OBTAINED: return "MAIN_KEY_OBTAINED";
                 case PBTBLMainScreenState::MAIN_END: return "MAIN_END";
                 default: return "MAIN_UNKNOWN";
             }
