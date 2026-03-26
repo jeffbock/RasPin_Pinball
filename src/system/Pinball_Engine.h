@@ -503,6 +503,8 @@ public:
     // Main screen variables
     unsigned int m_PBTBLMainScreenBGId;
     unsigned int m_PBTBLCharacterCircle256Id, m_PBTBLDungeon256Id, m_PBTBLShield256Id, m_PBTBLSword256Id, m_PBTBLTreasure256Id;
+    unsigned int m_PBTBLDungeonEyesBlinkId;
+    unsigned long m_dungeonBlinkNextTick;
     unsigned int m_PBTBLArcherHeadshot256Id, m_PBTBLKnightHeadshot256Id, m_PBTBLWolfHeadshot256Id;
     
     // Extra ball screen variables

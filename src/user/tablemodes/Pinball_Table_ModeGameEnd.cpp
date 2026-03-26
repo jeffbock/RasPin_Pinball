@@ -235,7 +235,7 @@ bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTic
         
         case PBTBLGameEndState::GAMEEND_COMPLETE: {
             // Render "Game Over" title
-            gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+            gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
             gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
             gfxRenderShadowString(m_StartMenuFontId, "Game Over",
                 (ACTIVEDISPX + (1024/3)), ACTIVEDISPY + 200, 5, GFX_TEXTCENTER,
@@ -300,6 +300,7 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
             if (m_gameEndCurrentQualifierIdx >= (int)m_gameEndQualifiers.size()) {
                 // All qualifiers done, should not happen but handle gracefully
                 m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_COMPLETE);
+                pbeSetTimer(GAMEEND_COMPLETE_TIMER_ID, 20000);
                 break;
             }
             
@@ -385,7 +386,7 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
                             // All initials entered - show game over screen for 10 seconds
                             // Keep m_gameEndQualifiers so the render function can apply shimmer
                             m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_COMPLETE);
-                            pbeSetTimer(GAMEEND_COMPLETE_TIMER_ID, 10000);
+                            pbeSetTimer(GAMEEND_COMPLETE_TIMER_ID, 20000);
                         }
                     }
                 }
@@ -394,7 +395,7 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
         }
         
         case PBTBLGameEndState::GAMEEND_COMPLETE: {
-            // 10-second timer or any button press returns to start screen
+            // 20-second timer or any button press returns to start screen
             bool timerFired = (inputMessage.inputMsg == PB_IMSG_TIMER &&
                                inputMessage.inputId == GAMEEND_COMPLETE_TIMER_ID);
             bool buttonPressed = (inputMessage.inputMsg == PB_IMSG_BUTTON &&
@@ -413,7 +414,7 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
                 pbeClearScreenRequests();
                 m_soundSystem.pbsStopAllEffects();
                 m_soundSystem.pbsStopMusic();
-            }
+            } 
             break;
         }
         

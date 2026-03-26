@@ -59,7 +59,7 @@
         // Windows C/C++ single file EXE build
         {
             "type": "cppbuild",
-            "label": "Windows: Single file build",
+            "label": "Windows: Single file build (Debug)",
             "command": "cl.exe",
             "args": [
                 "/Zi",
@@ -106,7 +106,7 @@
         // Raspberry Pi: Single File Build
         {
             "type": "cppbuild",
-            "label": "Raspberry Pi: Single File Build",
+            "label": "Raspberry Pi: Single File Build (Debug)",
             "command": "/usr/bin/g++",
             "args": [
                 "-g",
@@ -132,7 +132,7 @@
         // Windows Full Build for Pinball
         {
             "type": "cppbuild",
-            "label": "Windows: Full Pinball Build",
+            "label": "Windows: Full Pinball Build (Debug)",
             "command": "cl.exe",
             "dependsOn": ["Generate IO Header", "Windows: Copy Runtime DLLs"],
             "dependsOrder": "parallel",
@@ -206,13 +206,13 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "detail": "Windows: Full Pinball Build"
+            "detail": "Windows: Full Pinball Build (Debug)"
         },
 
         // Raspberry Pi: Full Build
         {
             "type": "cppbuild",
-            "label": "Raspberry Pi: Full Pinball Build",
+            "label": "Raspberry Pi: Full Pinball Build (Debug)",
             "command": "/usr/bin/g++",
             "dependsOn": "Generate IO Header",
             "args": [
@@ -277,13 +277,13 @@
                 "kind": "build",
                 "isDefault": false
             },
-            "detail": "Raspberry Pi: Full Pinball Build"
+            "detail": "Raspberry Pi: Full Pinball Build (Debug)"
         },
 
         // DebianOS: Full Build
         {
             "type": "cppbuild",
-            "label": "DebianOS: Full Pinball Build",
+            "label": "DebianOS: Full Pinball Build (Debug)",
             "command": "/usr/bin/g++",
             "dependsOn": "Generate IO Header",
             "args": [
@@ -347,13 +347,13 @@
                 "kind": "build",
                 "isDefault": false
             },
-            "detail": "DebianOS: Full Pinball Build"
+            "detail": "DebianOS: Full Pinball Build (Debug)"
         },
 
         // FontGen Windows Build
         {
             "type": "cppbuild",
-            "label": "Windows: FontGen Build",
+            "label": "Windows: FontGen Build (Debug)",
             "command": "cl.exe",
             "args": [
                 "/Zi",
@@ -393,13 +393,13 @@
                 "kind": "build",
                 "isDefault": false
             },
-            "detail": "Windows: FontGen Build"
+            "detail": "Windows: FontGen Build (Debug)"
         },
 
         // Raspberry Pi: FontGen Build
         {
             "type": "cppbuild",
-            "label": "Raspberry Pi: FontGen Build",
+            "label": "Raspberry Pi: FontGen Build (Debug)",
             "command": "/usr/bin/g++",
             "args": [
                 "-g",
@@ -424,13 +424,13 @@
                 "kind": "build",
                 "isDefault": false
             },
-            "detail": "Raspberry Pi: FontGen Build"
+            "detail": "Raspberry Pi: FontGen Build (Debug)"
         },
 
         // Raspberry Pi: pblistdevices Build
         {
             "type": "cppbuild",
-            "label": "Raspberry Pi: pblistdevices Build",
+            "label": "Raspberry Pi: pblistdevices Build (Debug)",
             "command": "/usr/bin/g++",
             "args": [
                 "-g",
@@ -452,13 +452,13 @@
                 "kind": "build",
                 "isDefault": false
             },
-            "detail": "Raspberry Pi: pblistdevices Build"
+            "detail": "Raspberry Pi: pblistdevices Build (Debug)"
         },
 
         // Raspberry Pi: pbsetamp Build
         {
             "type": "cppbuild",
-            "label": "Raspberry Pi: pbsetamp Build",
+            "label": "Raspberry Pi: pbsetamp Build (Debug)",
             "command": "/usr/bin/g++",
             "args": [
                 "-g",
@@ -480,13 +480,13 @@
                 "kind": "build",
                 "isDefault": false
             },
-            "detail": "Raspberry Pi: pbsetamp Build"
+            "detail": "Raspberry Pi: pbsetamp Build (Debug)"
         },
 
         // Raspberry Pi: pblaunch Build (GTK4 GUI launcher)
         {
             "type": "shell",
-            "label": "Raspberry Pi: pblaunch Build",
+            "label": "Raspberry Pi: pblaunch Build (Debug)",
             "command": "g++ -std=c++17 -g -o ${workspaceFolder}/build/raspi/debug/pblaunch ${workspaceFolder}/src/PButils/pblaunch.cpp $(pkg-config --cflags --libs gtk4)",
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -503,9 +503,9 @@
 
         // Windows: Build All PBUtils
         {
-            "label": "Windows: Build All PBUtils",
+            "label": "Windows: Build All PBUtils (Debug)",
             "dependsOn": [
-                "Windows: FontGen Build"
+                "Windows: FontGen Build (Debug)"
             ],
             "dependsOrder": "sequence",
             "problemMatcher": [],
@@ -518,12 +518,12 @@
 
         // Raspberry Pi: Build All PBUtils
         {
-            "label": "Raspberry Pi: Build All PBUtils",
+            "label": "Raspberry Pi: Build All PBUtils (Debug)",
             "dependsOn": [
-                "Raspberry Pi: FontGen Build",
-                "Raspberry Pi: pblistdevices Build",
-                "Raspberry Pi: pbsetamp Build",
-                "Raspberry Pi: pblaunch Build"
+                "Raspberry Pi: FontGen Build (Debug)",
+                "Raspberry Pi: pblistdevices Build (Debug)",
+                "Raspberry Pi: pbsetamp Build (Debug)",
+                "Raspberry Pi: pblaunch Build (Debug)"
             ],
             "dependsOrder": "sequence",
             "problemMatcher": [],

@@ -3095,12 +3095,23 @@ bool PBEngine::pbeSetTimer(unsigned int timerId, unsigned int timerValueMS, bool
         return false;
     }
     
+    unsigned long currentTick = GetTickCountGfx();
+    
+    // If a timer with this ID already exists, restart it in-place
+    for (auto& entry : m_timerQueue) {
+        if (entry.timerId == timerId) {
+            entry.durationMS = timerValueMS;
+            entry.startTickMS = currentTick;
+            entry.expireTickMS = currentTick + timerValueMS;
+            entry.repeat = repeat;
+            return true;
+        }
+    }
+    
     // Check if we've reached the maximum number of active timers
     if (m_timerQueue.size() >= MAX_TIMERS) {
         return false;
     }
-    
-    unsigned long currentTick = GetTickCountGfx();
     
     stTimerEntry timerEntry;
     timerEntry.timerId = timerId;

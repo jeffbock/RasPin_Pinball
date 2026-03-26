@@ -31,6 +31,12 @@ bool PBEngine::pbeLoadMainScreen(){
     m_PBTBLDungeon256Id = gfxLoadSprite("Dungeon256", "src/user/resources/textures/Dungeon256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLDungeon256Id, 255, 255, 255, 255);
     gfxSetScaleFactor(m_PBTBLDungeon256Id, 0.42, false);
+
+    // Eye-blink overlay: solid black 30x30, no texture
+    m_PBTBLDungeonEyesBlinkId = gfxLoadSprite("DungeonEyesBlink", "", GFX_NONE, GFX_NOMAP, GFX_UPPERLEFT, true, false);
+    gfxSetWH(m_PBTBLDungeonEyesBlinkId, 30, 30);
+    gfxSetColor(m_PBTBLDungeonEyesBlinkId, 3, 7, 22, 255);
+    m_dungeonBlinkNextTick = (rand() % 14001) + 1000;  // Initial random delay of 1-15s
     
     m_PBTBLShield256Id = gfxLoadSprite("Shield256", "src/user/resources/textures/Shield256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLShield256Id, 255, 255, 255, 255);
@@ -564,7 +570,19 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
     gfxRenderSprite(m_PBTBLSword256Id, swordX, swordY);
     gfxRenderSprite(m_PBTBLShield256Id, shieldX, shieldY);
     gfxRenderSprite(m_PBTBLDungeon256Id, dungeonX, dungeonY);
-    
+
+    // Eye-blink: visible for 1 second, then hidden for a random 1-15 second interval.
+    static const int blinkX = dungeonX + (int)(256 * 0.42f / 2) - 12;  // horizontal center
+    static const int blinkY = dungeonY + 30;                              // top of dungeon sprite + 30
+    if (currentTick >= m_dungeonBlinkNextTick) {
+        if (currentTick < m_dungeonBlinkNextTick + 1000) {
+            gfxRenderSprite(m_PBTBLDungeonEyesBlinkId, blinkX, blinkY);
+        } else {
+            // Blink finished — schedule next one with a random 1-15 second delay
+            m_dungeonBlinkNextTick = currentTick + (rand() % 14001) + 1000;
+        }
+    }
+
     // Render character names with gold color and shadow
     gfxSetColor(m_StartMenuFontId, 235, 176, 20, 255);
     gfxSetScaleFactor(m_StartMenuFontId, 0.3, false);
