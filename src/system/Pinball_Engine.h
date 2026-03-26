@@ -479,6 +479,8 @@ public:
     bool m_leftInlaneLEDOn;              // Left inlane LED current state
     bool m_rightInlaneLEDOn;             // Right inlane LED current state
     int  m_mainNeoPixelMode;             // 0=unset, 1=pulse_blue, 2=snake, 3=off(gameend)
+    bool m_innLaneLEDOn[3];             // Inn lane 1/2/3 LED states
+    bool m_keyTargetLEDOn[3];           // Key target 1/2/3 LED states
 
     // High Scores screen variables
     bool m_RestartHighScores;
@@ -660,6 +662,8 @@ private:
     bool pbeRenderMainScreenNormal(unsigned long currentTick, unsigned long lastTick); // Normal score/message display
     bool pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned long lastTick); // Extra ball video display
     bool pbeRenderMainScreenBallSaved(unsigned long currentTick, unsigned long lastTick); // Ball saved message display
+    bool pbeRenderMainScreenInnOpen(unsigned long currentTick, unsigned long lastTick);    // "Inn Open!" flash message
+    bool pbeRenderMainScreenKeyObtained(unsigned long currentTick, unsigned long lastTick); // "Key Obtained!" flash message
     bool pbeRenderStatus(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick);

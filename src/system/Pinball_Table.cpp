@@ -69,6 +69,8 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
                 case PBTBLMainScreenState::MAIN_NORMAL:
                 case PBTBLMainScreenState::MAIN_EXTRABALL:
                 case PBTBLMainScreenState::MAIN_BALLSAVED:
+                case PBTBLMainScreenState::MAIN_INN_OPEN:
+                case PBTBLMainScreenState::MAIN_KEY_OBTAINED:
                     success = pbeRenderMainScreen(currentTick, lastTick, mainState);
                     break;
                 default:
@@ -252,6 +254,16 @@ void PBEngine::pbeActivatePlayer(unsigned int playerIdx) {
     SendOutputMsg(PB_OMSG_LED, IDO_LINLANELED, PB_OFF, false);
     SendOutputMsg(PB_OMSG_LED, IDO_RINLANELED, PB_OFF, false);
 
+    // Turn off inn lane LEDs
+    SendOutputMsg(PB_OMSG_LED, IDO_INN1LED, PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_INN2LED, PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_INN3LED, PB_OFF, false);
+
+    // Turn off key target LEDs
+    SendOutputMsg(PB_OMSG_LED, IDO_KEY1LED, PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_KEY2LED, PB_OFF, false);
+    SendOutputMsg(PB_OMSG_LED, IDO_KEY3LED, PB_OFF, false);
+
     // Restore inlane LED state from the incoming player's saved tableState,
     // then copy the booleans into the engine tracking members.
     pbGameState& ps = m_playerStates[playerIdx];
@@ -259,6 +271,10 @@ void PBEngine::pbeActivatePlayer(unsigned int playerIdx) {
 
     m_leftInlaneLEDOn  = ps.tableState.inlaneLEDLeft;
     m_rightInlaneLEDOn = ps.tableState.inlaneLEDRight;
+
+    // Reset inn lane and key target LED tracking state
+    m_innLaneLEDOn[0]   = m_innLaneLEDOn[1]   = m_innLaneLEDOn[2]   = false;
+    m_keyTargetLEDOn[0] = m_keyTargetLEDOn[1] = m_keyTargetLEDOn[2] = false;
 
     // ---- Save LED reflects per-player save state ---------------------
     SendOutputMsg(PB_OMSG_LED, IDO_SAVELED,

@@ -18,7 +18,16 @@
 #define IDO_LINLANELED     9
 #define IDO_RINLANELED     10
 #define IDO_SAVELED        11
-#define NUM_OUTPUTS        12
+#define IDO_POP1           12
+#define IDO_POP2           13
+#define IDO_POP3           14
+#define IDO_INN1LED        15
+#define IDO_INN2LED        16
+#define IDO_INN3LED        17
+#define IDO_KEY1LED        18
+#define IDO_KEY2LED        19
+#define IDO_KEY3LED        20
+#define NUM_OUTPUTS        21
 
 // --- Input definitions (IDI_*) ---
 #define IDI_LFLIP          0
@@ -34,6 +43,15 @@
 #define IDI_BALLDELIVERED  10
 #define IDI_RSLING         11
 #define IDI_LSLING         12
-#define NUM_INPUTS         13
+#define IDI_POP1           13
+#define IDI_POP2           14
+#define IDI_POP3           15
+#define IDI_INN1           16
+#define IDI_INN2           17
+#define IDI_INN3           18
+#define IDI_KEY1           19
+#define IDI_KEY2           20
+#define IDI_KEY3           21
+#define NUM_INPUTS         22
 
 #endif // IO_DEFS_GENERATED_H
