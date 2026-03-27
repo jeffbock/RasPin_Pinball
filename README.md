@@ -34,8 +34,17 @@ Prototype hardware shown, full machine in development.
 - FUTURE: Develop schematics for the custom expander boards based on TI
 
 # Full Game Code Status
--  Simple POC game now enabled, utilizing all aspects of code - lights, sound, music, devices, etc.. A full proof of concept of all key aspects of running a machine, although many simple placeholders for messages / callouts.  
--  Rules: 1-4 players, slings score 1000 pts each, 5000 points gets and extra ball (no more than 1).  Extra ball lights Save LED.  Inlanes light when detected - when both light, Save LED lights for 5 seconds and cycle repeats.  Ball hopper eject device supported.
+- **Dragons of Destiny (DoD)** — fantasy-themed full game now enabled, utilizing all aspects of code: lights, sound, music, devices, 3D graphics, NeoPixels, and more.
+- **Attract sequence:** Castle doors → animated torches → "Press Start" blink → cycles through Instructions and High Score screens every 18 s.
+- **Rules (1–4 players):**
+  - **Pop bumpers:** 3 pops on the upper playfield — each hit scores 50 pts and adds +1 gold; auto-fire solenoid triggers immediately via the auto-output system.
+  - **Slingshots:** L/R slings score 1,000 pts each hit; every 10,000-point sling milestone awards an extra ball and activates ball save.
+  - **Inn lanes:** 3 lanes at the top of the field; completing all 3 scores 250 pts each, sets Inn Open, and resets lane LEDs. Flippers rotate the lit lane indicator left/right.
+  - **Key targets:** 3 standup targets; completing all 3 scores 250 pts each and sets Key Obtained. State tracked and displayed in the status panel.
+  - **Inlanes + ball save:** Hitting both inlane sensors lights the SAVE LED and activates a 5-second ball-save timer.
+  - **Character recruit & dungeon:** Per-player party members (Knight/Priest/Ranger) and dungeon floor/level tracked and displayed in the status panel. Full recruitment mechanic is planned.
+  - **Ball hopper eject device** supported.
+- See **[Dragons of Destiny Table Spec](documentation/DoDTable.md)** for full state machine diagrams, I/O map, per-player data structures, and mode-by-mode details.
 
 # Documentation
 - **[RasPin Overview](documentation/RasPin_Overview.md)** - **START HERE** - High-level architecture overview with diagrams and introduction to all documentation
@@ -51,6 +60,8 @@ Prototype hardware shown, full machine in development.
   - **[Platform Init API](documentation/Platform_Init_API.md)** - Platform initialization, main loop, and configuration
   - **[Game Creation API](documentation/Game_Creation_API.md)** - Graphics (PBGfx), sound (PBSound), video playback (PBVideoPlayer), sprites, animations, and screen management
   - **[3D Rendering API](documentation/PB3D_API.md)** - 3D model loading (glTF/GLB), instance management, lighting, perspective animation, and coordinate system
+
+- **[Dragons of Destiny Table Spec](documentation/DoDTable.md)** - Full specification for the *Dragons of Destiny* example table: gameplay overview, all state machines with transition diagrams, I/O pin assignments, per-player data structures, screen-manager system, and AI prompt templates for each mode
 
 - **[Utilities Guide](documentation/Utilities_Guide.md)** - Complete guide for all RasPin utilities:
   - **FontGen** (Windows & Raspberry Pi) - Converts TrueType fonts to texture atlases for text rendering
