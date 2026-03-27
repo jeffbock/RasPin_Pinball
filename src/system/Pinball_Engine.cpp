@@ -8,6 +8,9 @@
 #include "PBDevice.h"
 #include <cmath>
 #include <algorithm>
+#ifdef ENABLE_PINBALL_HARDWARE
+#include <unistd.h>  // for close() used by pbeScanI2CBus probe fds
+#endif
 
 // Define NeoPixel global arrays (declared as extern in Pinball_Engine.h)
 stNeoPixelNode* g_NeoPixelNodeArray[2];
@@ -1033,54 +1036,57 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
 
     // I2C scan result strings - rendered serially on one line, centered as a group at the bottom
     // Each segment may be a different color (yellow = WARNING, white = normal)
-    // Note: spacingPixels=0.4 truncates to 0 as unsigned int; gfxStringWidth already applies scaleFactor
-    auto getScanTextColor = [](const std::string& s, uint8_t& r, uint8_t& g, uint8_t& b) {
-        if (s.find("WARNING") != std::string::npos) {
-            r = 255; g = 255; b = 0;   // yellow for warnings
-        } else {
-            r = 255; g = 255; b = 255; // white for normal
-        }
-    };
+    // Only render when scan data is available (strings are populated by pbeScanI2CBus)
+    if (!g_PBEngine.m_scanIOConsoleLine.empty()) {
+        // Note: spacingPixels=0.4 truncates to 0 as unsigned int; gfxStringWidth already applies scaleFactor
+        auto getScanTextColor = [](const std::string& s, uint8_t& r, uint8_t& g, uint8_t& b) {
+            if (s.find("WARNING") != std::string::npos) {
+                r = 255; g = 255; b = 0;   // yellow for warnings
+            } else {
+                r = 255; g = 255; b = 255; // white for normal
+            }
+        };
 
-    const std::string scanSep = "  |  ";
-    const int         scanY   = PB_SCREENHEIGHT - 29;
+        const std::string scanSep = "  |  ";
+        const int         scanY   = PB_SCREENHEIGHT - 29;
 
-    // Measure total width using spacingPixels=0 to match actual rendering
-    int totalScanWidth = gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanIOConsoleLine,  0) +
-                         gfxStringWidth(m_defaultFontSpriteId, scanSep, 0) +
-                         gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanLEDConsoleLine, 0) +
-                         gfxStringWidth(m_defaultFontSpriteId, scanSep, 0) +
-                         gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanAmpConsoleLine, 0);
-    int scanX = PB_SCREENWIDTH / 2 - totalScanWidth / 2;
+        // Measure total width using spacingPixels=0 to match actual rendering
+        int totalScanWidth = gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanIOConsoleLine,  0) +
+                             gfxStringWidth(m_defaultFontSpriteId, scanSep, 0) +
+                             gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanLEDConsoleLine, 0) +
+                             gfxStringWidth(m_defaultFontSpriteId, scanSep, 0) +
+                             gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanAmpConsoleLine, 0);
+        int scanX = PB_SCREENWIDTH / 2 - totalScanWidth / 2;
 
-    uint8_t scanR, scanG, scanB;
+        uint8_t scanR, scanG, scanB;
 
-    // IO string
-    getScanTextColor(g_PBEngine.m_scanIOConsoleLine, scanR, scanG, scanB);
-    gfxSetColor(m_defaultFontSpriteId, scanR, scanG, scanB, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, g_PBEngine.m_scanIOConsoleLine, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
-    scanX += gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanIOConsoleLine, 0);
+        // IO string
+        getScanTextColor(g_PBEngine.m_scanIOConsoleLine, scanR, scanG, scanB);
+        gfxSetColor(m_defaultFontSpriteId, scanR, scanG, scanB, 255);
+        gfxRenderShadowString(m_defaultFontSpriteId, g_PBEngine.m_scanIOConsoleLine, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+        scanX += gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanIOConsoleLine, 0);
 
-    // Separator
-    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, scanSep, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
-    scanX += gfxStringWidth(m_defaultFontSpriteId, scanSep, 0);
+        // Separator
+        gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+        gfxRenderShadowString(m_defaultFontSpriteId, scanSep, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+        scanX += gfxStringWidth(m_defaultFontSpriteId, scanSep, 0);
 
-    // LED string
-    getScanTextColor(g_PBEngine.m_scanLEDConsoleLine, scanR, scanG, scanB);
-    gfxSetColor(m_defaultFontSpriteId, scanR, scanG, scanB, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, g_PBEngine.m_scanLEDConsoleLine, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
-    scanX += gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanLEDConsoleLine, 0);
+        // LED string
+        getScanTextColor(g_PBEngine.m_scanLEDConsoleLine, scanR, scanG, scanB);
+        gfxSetColor(m_defaultFontSpriteId, scanR, scanG, scanB, 255);
+        gfxRenderShadowString(m_defaultFontSpriteId, g_PBEngine.m_scanLEDConsoleLine, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+        scanX += gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanLEDConsoleLine, 0);
 
-    // Separator
-    gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, scanSep, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
-    scanX += gfxStringWidth(m_defaultFontSpriteId, scanSep, 0);
+        // Separator
+        gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+        gfxRenderShadowString(m_defaultFontSpriteId, scanSep, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+        scanX += gfxStringWidth(m_defaultFontSpriteId, scanSep, 0);
 
-    // Amp string
-    getScanTextColor(g_PBEngine.m_scanAmpConsoleLine, scanR, scanG, scanB);
-    gfxSetColor(m_defaultFontSpriteId, scanR, scanG, scanB, 255);
-    gfxRenderShadowString(m_defaultFontSpriteId, g_PBEngine.m_scanAmpConsoleLine, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+        // Amp string
+        getScanTextColor(g_PBEngine.m_scanAmpConsoleLine, scanR, scanG, scanB);
+        gfxSetColor(m_defaultFontSpriteId, scanR, scanG, scanB, 255);
+        gfxRenderShadowString(m_defaultFontSpriteId, g_PBEngine.m_scanAmpConsoleLine, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+    }
 
     return (true);   
 }
@@ -2754,6 +2760,7 @@ void PBEngine::pbeScanI2CBus()
             if (result >= 0) {
                 m_IOChipAddresses[m_numIOChips++] = addr;
             }
+            close(fd);  // Close probe fd; chip constructors open their own
         }
     }
     for (int i = 0; i < m_numIOChips; i++)
@@ -2770,6 +2777,7 @@ void PBEngine::pbeScanI2CBus()
             if (result >= 0) {
                 m_LEDChipAddresses[m_numLEDChips++] = addr;
             }
+            close(fd);  // Close probe fd; chip constructors open their own
         }
     }
     for (int i = 0; i < m_numLEDChips; i++)
@@ -2786,8 +2794,10 @@ void PBEngine::pbeScanI2CBus()
             if (result >= 0) {
                 m_ampAddress    = addr;
                 m_numAmpDevices = 1;
+                close(fd);  // Close probe fd; AmpDriver constructor opens its own
                 break;
             }
+            close(fd);  // Close probe fd for non-matching device
         }
     }
     if (m_numAmpDevices > 0)
@@ -2808,7 +2818,17 @@ void PBEngine::pbeScanI2CBus()
     m_numLEDChips   = MAX_LED_CHIPS;
     m_numAmpDevices = 1;
     for (int i = 0; i < MAX_IO_CHIPS;  i++) { m_IOChipAddresses[i]  = (uint8_t)(PB_ADD_IO_BASE  + i); m_IOChip[i]  = IODriverDebounce(m_IOChipAddresses[i],  0xFF, 1); }
-    for (int i = 0; i < MAX_LED_CHIPS; i++) { m_LEDChipAddresses[i] = (uint8_t)(PB_ADD_LED_BASE + i); m_LEDChip[i] = LEDDriver(m_LEDChipAddresses[i]); }
+    {
+        int ledIdx = 0;
+        for (int i = 0; i < PB_ADD_LED_SCAN_COUNT && ledIdx < MAX_LED_CHIPS; i++) {
+            uint8_t addr = (uint8_t)(PB_ADD_LED_BASE + i);
+            if (addr == PB_ADD_LED_ALLCALL) continue;  // Skip All-Call address, same as hardware scan
+            m_LEDChipAddresses[ledIdx] = addr;
+            m_LEDChip[ledIdx] = LEDDriver(addr);
+            ledIdx++;
+        }
+        m_numLEDChips = ledIdx;
+    }
     m_ampAddress = PB_I2C_AMPLIFIER_BASE;
     m_ampDriver  = AmpDriver(m_ampAddress);
 
