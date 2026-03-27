@@ -1004,3 +1004,32 @@ void PB3D::pb3dAnimateRestart(unsigned int instanceId, unsigned long startTick) 
         it->second.startTick = (unsigned int)startTick;
     }
 }
+
+// Convenience fade helpers — create a one-shot alpha animation (0→1 or 1→0).
+void PB3D::pb3dFadeIn(unsigned int instanceId, float timeSec, unsigned long startTick) {
+    st3DAnimateData anim = {};
+    anim.animateInstanceId = instanceId;
+    anim.typeMask          = ANIM3D_ALPHA_MASK;
+    anim.animType          = GFX_ANIM_NORMAL;
+    anim.loop              = GFX_NOLOOP;
+    anim.startAlpha        = 0.0f;
+    anim.endAlpha          = 1.0f;
+    anim.animateTimeSec    = timeSec;
+    anim.startTick         = (unsigned int)startTick;
+    anim.isActive          = true;
+    pb3dCreateAnimation(anim, true);
+}
+
+void PB3D::pb3dFadeOut(unsigned int instanceId, float timeSec, unsigned long startTick) {
+    st3DAnimateData anim = {};
+    anim.animateInstanceId = instanceId;
+    anim.typeMask          = ANIM3D_ALPHA_MASK;
+    anim.animType          = GFX_ANIM_NORMAL;
+    anim.loop              = GFX_NOLOOP;
+    anim.startAlpha        = 1.0f;
+    anim.endAlpha          = 0.0f;
+    anim.animateTimeSec    = timeSec;
+    anim.startTick         = (unsigned int)startTick;
+    anim.isActive          = true;
+    pb3dCreateAnimation(anim, true);
+}
