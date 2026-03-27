@@ -196,6 +196,11 @@ public:
     void pb3dAnimateRestart(unsigned int instanceId);
     void pb3dAnimateRestart(unsigned int instanceId, unsigned long startTick);
 
+    // Convenience fade helpers — start a GFX_ANIM_NORMAL / GFX_NOLOOP animation
+    // that interpolates instance alpha 0→1 (fade in) or 1→0 (fade out).
+    void pb3dFadeIn (unsigned int instanceId, float timeSec, unsigned long startTick);
+    void pb3dFadeOut(unsigned int instanceId, float timeSec, unsigned long startTick);
+
 protected:
     // Console output — default uses stdout; overridden in PBEngine to route to the on-screen console
     virtual void pb3dSendConsole(const std::string& msg);
