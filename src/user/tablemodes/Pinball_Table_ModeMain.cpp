@@ -86,9 +86,17 @@ bool PBEngine::pbeRenderMainScreenBase(unsigned long currentTick, unsigned long 
     // Clear to black background
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
      
-    // Render all player scores (skip during ball saved screen)
-    if (static_cast<PBTBLMainScreenState>(pbeGetCurrentSubScreenState()) != PBTBLMainScreenState::MAIN_BALLSAVED) {
-        pbeRenderPlayerScores(currentTick, lastTick);
+    // Render all player scores (skip main score during ball saved, inn open, and key obtained screens)
+    {
+        PBTBLMainScreenState curState = static_cast<PBTBLMainScreenState>(pbeGetCurrentSubScreenState());
+        bool hideMain = (curState == PBTBLMainScreenState::MAIN_BALLSAVED ||
+                         curState == PBTBLMainScreenState::MAIN_INN_OPEN ||
+                         curState == PBTBLMainScreenState::MAIN_KEY_OBTAINED);
+        if (!hideMain) {
+            pbeRenderPlayerScores(currentTick, lastTick);
+        } else if (curState != PBTBLMainScreenState::MAIN_BALLSAVED) {
+            pbeRenderPlayerScores(currentTick, lastTick, false);
+        }
     }
 
     // Render status text with fade effects
@@ -130,7 +138,7 @@ bool PBEngine::pbeRenderMainScreenBallSaved(unsigned long currentTick, unsigned 
 
 // Renders the "Inn Open!" message when all 3 inn lanes are completed
 bool PBEngine::pbeRenderMainScreenInnOpen(unsigned long currentTick, unsigned long lastTick){
-    gfxSetColor(m_StartMenuFontId, 100, 220, 255, 255); // Light blue color
+    gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255); // Gold color
     gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
     gfxRenderString(m_StartMenuFontId, "Inn Open!", (ACTIVEDISPX + (1024 / 3)), ACTIVEDISPY + 350, 5, GFX_TEXTCENTER);
     return (true);
@@ -138,7 +146,7 @@ bool PBEngine::pbeRenderMainScreenInnOpen(unsigned long currentTick, unsigned lo
 
 // Renders the "Key Obtained!" message when all 3 key targets are hit
 bool PBEngine::pbeRenderMainScreenKeyObtained(unsigned long currentTick, unsigned long lastTick){
-    gfxSetColor(m_StartMenuFontId, 255, 200, 50, 255); // Bright yellow color
+    gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255); // Gold color
     gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
     gfxRenderString(m_StartMenuFontId, "Key Obtained!", (ACTIVEDISPX + (1024 / 3)), ACTIVEDISPY + 350, 5, GFX_TEXTCENTER);
     return (true);
