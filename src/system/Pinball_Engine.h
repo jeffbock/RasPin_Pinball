@@ -37,8 +37,11 @@ class pbdHopperEjector;
 #include <array>
 
 // Hardware configuration defines
-#define NUM_IO_CHIPS    3
-#define NUM_LED_CHIPS   3
+// These reflect the maximum number of addressable chips for each type:
+//   IO  (TCA9555):  0x20-0x27 = 8 possible addresses
+//   LED (TLC59116): 0x60-0x6F = 16 range, minus 0x68 All-Call = 15 usable
+#define MAX_IO_CHIPS    8
+#define MAX_LED_CHIPS   15
 
 // NeoPixel configuration - LED count for each driver index
 // Index corresponds to boardIndex in g_outputDef. Set to 0 for unused indices.
@@ -149,7 +152,7 @@ struct stOutputOptions {
     unsigned int offBlinkMS;
     unsigned int brightness;
     PBSequenceLoopMode loopMode;
-    uint16_t activeLEDMask[NUM_LED_CHIPS];
+    uint16_t activeLEDMask[MAX_LED_CHIPS];
     const LEDSequence *setLEDSequence;
     const NeoPixelSequence *setNeoPixelSequence;  // For NeoPixel sequences
     uint8_t neoPixelRed;                          // Red channel for single NeoPixel LED (0-255)
@@ -216,13 +219,13 @@ struct stLEDSequenceInfo {
     int currentSeqIndex;                      // Changed to int to handle negative values
     int previousSeqIndex;                     // Changed to int to handle negative values
     int indexStep;
-    uint8_t previousLEDValues[NUM_LED_CHIPS][4];
-    uint16_t activeLEDMask[NUM_LED_CHIPS];
+    uint8_t previousLEDValues[MAX_LED_CHIPS][4];
+    uint16_t activeLEDMask[MAX_LED_CHIPS];
     LEDSequence *pLEDSequence;
 };
 
 struct stLEDSequence {
-    uint16_t LEDOnBits [NUM_LED_CHIPS];
+    uint16_t LEDOnBits [MAX_LED_CHIPS];
     unsigned int onDurationMS;
     unsigned int offDurationMS;
 };
@@ -381,21 +384,52 @@ public:
     #endif
 
     // Member variables for LED and IO chips - in Windows they are just faked
-    // This would need to changed if there are more or less IO chips in the system
+    // Chip arrays are pre-allocated to MAX size; actual count discovered at runtime via pbeScanI2CBus()
+    // It costs extra memory to pre-allocate the max size, but it simplifies the code and avoids dynamic memory allocation during runtime
     
-    IODriverDebounce m_IOChip[NUM_IO_CHIPS] = {
-        IODriverDebounce(PB_ADD_IO0, 0xFF, 1),
-        IODriverDebounce(PB_ADD_IO1, 0xFF, 1),
-        IODriverDebounce(PB_ADD_IO2, 0xFF, 1)
+    IODriverDebounce m_IOChip[MAX_IO_CHIPS] = {
+        IODriverDebounce(0, 0xFF, 1),
+        IODriverDebounce(0, 0xFF, 1),
+        IODriverDebounce(0, 0xFF, 1),
+        IODriverDebounce(0, 0xFF, 1),
+        IODriverDebounce(0, 0xFF, 1),
+        IODriverDebounce(0, 0xFF, 1),
+        IODriverDebounce(0, 0xFF, 1),
+        IODriverDebounce(0, 0xFF, 1)
     };
 
-    LEDDriver m_LEDChip[NUM_LED_CHIPS] = {
-        LEDDriver(PB_ADD_LED0),
-        LEDDriver(PB_ADD_LED1),
-        LEDDriver(PB_ADD_LED2)
+    LEDDriver m_LEDChip[MAX_LED_CHIPS] = {
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0),
+        LEDDriver(0)
     };
 
-    AmpDriver m_ampDriver = AmpDriver(PB_I2C_AMPLIFIER);
+    AmpDriver m_ampDriver = AmpDriver(0);
+
+    // I2C bus scan results - populated by pbeScanI2CBus() at startup
+    int m_numIOChips    = 0;
+    int m_numLEDChips   = 0;
+    int m_numAmpDevices = 0;
+    uint8_t m_IOChipAddresses[MAX_IO_CHIPS]   = {};
+    uint8_t m_LEDChipAddresses[MAX_LED_CHIPS] = {};
+    uint8_t m_ampAddress = 0;
+
+    // Saved I2C scan result strings (set by pbeScanI2CBus, shown in overlay)
+    std::string m_scanIOConsoleLine;
+    std::string m_scanLEDConsoleLine;
+    std::string m_scanAmpConsoleLine;
 
     // NeoPixel driver map - drivers are created dynamically during initialization
     // Key: boardIndex from g_outputDef
@@ -640,6 +674,9 @@ private:
     // Reload functions to reset load state
     void pbeEngineReload();  // Reset all engine screen load states
     void pbeTableReload();   // Reset all table screen load states
+
+    // I2C bus scan - called at start of pbeSetupIO()
+    void pbeScanI2CBus();
 
     ///////////////////////////////
     // Specfic Game Table Functions

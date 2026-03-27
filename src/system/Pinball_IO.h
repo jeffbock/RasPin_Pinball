@@ -11,7 +11,9 @@
 #include <string>
 #include <cstdint>
 
-#define PB_I2C_AMPLIFIER 0x4B
+// MAX9744 amplifier I2C address scan range (0x4B-0x4D)
+#define PB_I2C_AMPLIFIER_BASE   0x4B
+#define PB_AMP_SCAN_COUNT       3
 
 // Geneic IO definitions
 // PB_Blink and PB_Brightness added for LED driver support - they are not valid for inputs or other outputs
@@ -133,10 +135,10 @@ void InitializeOutputDefs();
 #define TLC59116_MODE1_NORMAL   0x00
 #define TLC59116_MODE2_DMBLNK   0x20
 
-// TLC5916 Addresses
-#define PB_ADD_LED0 0x60
-#define PB_ADD_LED1 0x61
-#define PB_ADD_LED2 0x62
+// TLC59116 I2C address scan range (0x60-0x6F, skip 0x68 = All-Call address)
+#define PB_ADD_LED_BASE         0x60
+#define PB_ADD_LED_SCAN_COUNT   16
+#define PB_ADD_LED_ALLCALL      0x68
 
 // Simple LED Driver class for controlling a single tlc59116 chip
 enum LEDState {
@@ -216,10 +218,9 @@ private:
 #define TCA9555_CONFIG_PORT0    0x06
 #define TCA9555_CONFIG_PORT1    0x07
 
-// TCA9555 Addresses
-#define PB_ADD_IO0              0x20
-#define PB_ADD_IO1              0x21
-#define PB_ADD_IO2              0x22
+// TCA9555 I2C address scan range (0x20-0x27)
+#define PB_ADD_IO_BASE          0x20
+#define PB_ADD_IO_SCAN_COUNT    8
 
 // Pin direction enum for IODriver
 enum PBPinDirection {

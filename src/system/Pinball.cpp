@@ -505,7 +505,7 @@ return true;
 bool  PBProcessInput() {
 
     static stInputMessage inputMessage;
-    static int IOReadValue[NUM_IO_CHIPS] = {0};
+    static int IOReadValue[MAX_IO_CHIPS] = {0};
 
     // Loop through all the inputs in m_inputPiMap and, read them, check for state change, and send a message if changed
 
@@ -553,7 +553,7 @@ bool  PBProcessInput() {
     }
     
     // Read each IODriver and place it in the array value
-    for (int i = 0; i < NUM_IO_CHIPS; i++) {
+    for (int i = 0; i < g_PBEngine.m_numIOChips; i++) {
         IOReadValue[i] = g_PBEngine.m_IOChip[i].ReadInputsDB();
     }
 
@@ -699,14 +699,14 @@ int FindOutputDefIndex(unsigned int outputId) {
 
 // Helper function to send all staged IO outputs to hardware
 void SendAllStagedIO() {
-    for (int i = 0; i < NUM_IO_CHIPS; i++) {
+    for (int i = 0; i < g_PBEngine.m_numIOChips; i++) {
         g_PBEngine.m_IOChip[i].SendStagedOutput();
     }
 }
 
 // Helper function to send all staged LED outputs to hardware
 void SendAllStagedLED() {
-    for (int i = 0; i < NUM_LED_CHIPS; i++) {
+    for (int i = 0; i < g_PBEngine.m_numLEDChips; i++) {
         g_PBEngine.m_LEDChip[i].SendStagedLED();
     }
 }
@@ -730,7 +730,7 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
         g_PBEngine.m_LEDSequenceInfo.pLEDSequence = const_cast<LEDSequence*>(message.options->setLEDSequence);
             
         // Copy activeLEDMask from output options to sequence info
-        for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+        for (int chipIndex = 0; chipIndex < g_PBEngine.m_numLEDChips; chipIndex++) {
             g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex] = message.options->activeLEDMask[chipIndex];
         }
         
@@ -742,7 +742,7 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
             SendAllStagedLED();
             
             // Now save the current hardware state for later restoration
-            for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+            for (int chipIndex = 0; chipIndex < g_PBEngine.m_numLEDChips; chipIndex++) {
                 // Save all 4 LED control registers for later restore 
                 for (int regIndex = 0; regIndex < 4; regIndex++) {
                     g_PBEngine.m_LEDSequenceInfo.previousLEDValues[chipIndex][regIndex] = g_PBEngine.m_LEDChip[chipIndex].ReadLEDControl(CurrentHW, regIndex);
@@ -751,7 +751,7 @@ void ProcessLEDSequenceMessage(const stOutputMessage& message) {
         }
         
         // Clear pulse map and stage LEDs to OFF for all active pins
-        for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+        for (int chipIndex = 0; chipIndex < g_PBEngine.m_numLEDChips; chipIndex++) {
             // For each active pin, clear it from pulse map and stage to OFF
             uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
             for (int pin = 0; pin < 16; pin++) {
@@ -811,7 +811,7 @@ void ProcessIOOutputMessage(const stOutputMessage& message, stOutputDef& outputD
             digitalWrite(outputDef.pin, outputValue);
         } else if (outputDef.boardType == PB_IO) {
             // Stage the output value to the appropriate IODriver chip
-            if (outputDef.boardIndex < NUM_IO_CHIPS) {
+            if (outputDef.boardIndex < g_PBEngine.m_numIOChips) {
                 g_PBEngine.m_IOChip[outputDef.boardIndex].StageOutputPin(outputDef.pin, message.outputState);
             }
         }
@@ -827,7 +827,7 @@ void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& output
     if (!skipSequenceCheck) {
         bool sequenceActiveForPin = false;
         if (g_PBEngine.m_LEDSequenceInfo.sequenceEnabled && 
-            outputDef.boardIndex < NUM_LED_CHIPS) {
+            outputDef.boardIndex < g_PBEngine.m_numLEDChips) {
             // Check if this specific pin is in the active LED mask
             sequenceActiveForPin = (g_PBEngine.m_LEDSequenceInfo.activeLEDMask[outputDef.boardIndex] & (1 << outputDef.pin)) != 0;
         }
@@ -862,7 +862,7 @@ void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& output
         // Handle regular LED pin control
         if (message.outputMsg == PB_OMSG_LED) {
             // Stage the LED control to the appropriate LED chip
-            if (outputDef.boardIndex < NUM_LED_CHIPS) {
+            if (outputDef.boardIndex < g_PBEngine.m_numLEDChips) {
                 LEDState ledState = (message.outputState == PB_ON) ? LEDOn : LEDOff;
                 g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, ledState);
             }
@@ -872,7 +872,7 @@ void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& output
         }
         else if (message.outputMsg == PB_OMSG_LEDSET_BRIGHTNESS) {
             // Stage the LED brightness to the appropriate LED chip
-            if (outputDef.boardIndex < NUM_LED_CHIPS) {
+            if (outputDef.boardIndex < g_PBEngine.m_numLEDChips) {
                 uint8_t brightness = message.options ? message.options->brightness : 255;
                 g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDBrightness(false, outputDef.pin, brightness);
             }
@@ -883,7 +883,7 @@ void ProcessLEDOutputMessage(const stOutputMessage& message, stOutputDef& output
 // Process LED configuration messages that write immediately
 void ProcessLEDConfigMessage(const stOutputMessage& message, stOutputDef& outputDef) {
     // LED config messages always write immediately, no staging
-    if (outputDef.boardIndex < NUM_LED_CHIPS) {
+    if (outputDef.boardIndex < g_PBEngine.m_numLEDChips) {
         if (message.outputMsg == PB_OMSG_LEDCFG_GROUPDIM) {
             unsigned int brightness = message.options ? message.options->brightness : 255;
             g_PBEngine.m_LEDChip[outputDef.boardIndex].SetGroupMode(GroupModeDimming, brightness, 0, 0);
@@ -915,9 +915,9 @@ void ProcessActivePulseOutputs() {
                 if (outputDef.boardType == PB_RASPI) {
                     int outputValue = LOW;
                     digitalWrite(outputDef.pin, outputValue);
-                } else if (outputDef.boardType == PB_IO && outputDef.boardIndex < NUM_IO_CHIPS) {
+                } else if (outputDef.boardType == PB_IO && outputDef.boardIndex < g_PBEngine.m_numIOChips) {
                     g_PBEngine.m_IOChip[outputDef.boardIndex].StageOutputPin(outputDef.pin, PB_ON);
-                } else if (outputDef.boardType == PB_LED && outputDef.boardIndex < NUM_LED_CHIPS) {
+                } else if (outputDef.boardType == PB_LED && outputDef.boardIndex < g_PBEngine.m_numLEDChips) {
                     // Stage the LED ON to the appropriate LED chip
                     g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, LEDOn);
                 }
@@ -927,9 +927,9 @@ void ProcessActivePulseOutputs() {
                 if (outputDef.boardType == PB_RASPI) {
                     int outputValue = HIGH;
                     digitalWrite(outputDef.pin, outputValue);
-                } else if (outputDef.boardType == PB_IO && outputDef.boardIndex < NUM_IO_CHIPS) {
+                } else if (outputDef.boardType == PB_IO && outputDef.boardIndex < g_PBEngine.m_numIOChips) {
                     g_PBEngine.m_IOChip[outputDef.boardIndex].StageOutputPin(outputDef.pin, PB_OFF);
-                } else if (outputDef.boardType == PB_LED && outputDef.boardIndex < NUM_LED_CHIPS) {
+                } else if (outputDef.boardType == PB_LED && outputDef.boardIndex < g_PBEngine.m_numLEDChips) {
                     // Stage the LED OFF to the appropriate LED chip
                     g_PBEngine.m_LEDChip[outputDef.boardIndex].StageLEDControl(false, outputDef.pin, LEDOff);
                 }
@@ -1002,7 +1002,7 @@ void ProcessActiveLEDSequence() {
                 g_PBEngine.m_LEDSequenceInfo.currentSeqIndex < g_PBEngine.m_LEDSequenceInfo.pLEDSequence->stepCount) {
                 const auto& currentStep = g_PBEngine.m_LEDSequenceInfo.pLEDSequence->steps[g_PBEngine.m_LEDSequenceInfo.currentSeqIndex];
                 
-                for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+                for (int chipIndex = 0; chipIndex < g_PBEngine.m_numLEDChips; chipIndex++) {
                     // Get the active LED mask for this chip
                     uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
                     
@@ -1099,14 +1099,14 @@ void EndLEDSequence() {
     
     // Before restoration, sync m_ledControl with current hardware state to ensure we have
     // a clean baseline for restoration and deferred message processing
-    for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+    for (int chipIndex = 0; chipIndex < g_PBEngine.m_numLEDChips; chipIndex++) {
         for (int regIndex = 0; regIndex < 4; regIndex++) {
             g_PBEngine.m_LEDChip[chipIndex].SyncStagedWithHardware(regIndex);
         }
     }
     
     // Restore saved LED values only for pins that were in the active mask
-    for (int chipIndex = 0; chipIndex < NUM_LED_CHIPS; chipIndex++) {
+    for (int chipIndex = 0; chipIndex < g_PBEngine.m_numLEDChips; chipIndex++) {
         uint16_t activeMask = g_PBEngine.m_LEDSequenceInfo.activeLEDMask[chipIndex];
         for (int ledPin = 0; ledPin < 16; ledPin++) {
             if (activeMask & (1 << ledPin)) {
