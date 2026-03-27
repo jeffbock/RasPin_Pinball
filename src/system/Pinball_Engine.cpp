@@ -1242,16 +1242,16 @@ bool PBEngine::pbeLoadTestSandbox(){
             anim2.startTick = currentTick;
             pb3dCreateAnimation(anim2, true);
             
-            // DICE 3 â€” JUMP + RESTART (dice roll snap + Z alternates between 0 and -1.5 on each jump)
+            // DICE 3 â€” FADE IN/OUT + REVERSE (alpha fades 0->1->0 in a continuous loop with a gentle Y-spin)
             st3DAnimateData anim3 = {};
             anim3.animateInstanceId = m_sandboxDiceInstance[2];
-            anim3.typeMask = ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK | ANIM3D_POSZ_MASK;
-            anim3.animType = GFX_ANIM_JUMP;
-            anim3.loop = GFX_RESTART;
-            anim3.startRotX = 0.0f; anim3.startRotY = 0.0f; anim3.startRotZ = 0.0f;
-            anim3.endRotX = 120.0f; anim3.endRotY = 240.0f; anim3.endRotZ = 60.0f;
-            anim3.startPosZ = 0.0f; anim3.endPosZ = -4.5f;  // snaps to -4.5, then swaps back each cycle
-            anim3.animateTimeSec = 1.5f;
+            anim3.typeMask = ANIM3D_ALPHA_MASK | ANIM3D_ROTY_MASK;
+            anim3.animType = GFX_ANIM_NORMAL;
+            anim3.loop = GFX_REVERSE;
+            anim3.startAlpha = 0.0f;  anim3.endAlpha = 1.0f;
+            anim3.startRotY = 0.0f;   anim3.endRotY = 360.0f;
+            anim3.rotateClockwiseY = true;
+            anim3.animateTimeSec = 2.0f;
             anim3.isActive = true;
             anim3.startTick = currentTick;
             pb3dCreateAnimation(anim3, true);
@@ -1468,7 +1468,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
                 // Labels sit just below each die (dice centers at py 210 and 680)
                 gfxRenderShadowString(m_defaultFontSpriteId, "NORMAL+REVERSE",  195,  440, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
                 gfxRenderShadowString(m_defaultFontSpriteId, "ACCELERATE",      1725, 440, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
-                gfxRenderShadowString(m_defaultFontSpriteId, "JUMP",             195,  910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxRenderShadowString(m_defaultFontSpriteId, "FADE IN/OUT",      195,  910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
                 gfxRenderShadowString(m_defaultFontSpriteId, "JUMPRANDOM",      1725, 910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
             }
             
