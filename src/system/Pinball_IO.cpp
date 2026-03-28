@@ -152,6 +152,19 @@ static PBPinState ParsePinState(const std::string& s) {
     return PB_OFF;
 }
 
+// Generates a standardized pin prefix from board type, board index, and pin number.
+// Prepended to the user-supplied JSON name at load time.
+// Format: RASPI->"RPI{b}P{p}", IO->"IO{b}P{p:02}", LED->"LED{b}P{p:02}", NEOPIXEL->"NEO{b}"
+static std::string BuildPinPrefix(const std::string& boardStr, unsigned int boardIdx, unsigned int pin) {
+    char buf[32];
+    if      (boardStr == "RASPI")    snprintf(buf, sizeof(buf), "RPI%uP%u",   boardIdx, pin);
+    else if (boardStr == "IO")       snprintf(buf, sizeof(buf), "IO%uP%02u",  boardIdx, pin);
+    else if (boardStr == "LED")      snprintf(buf, sizeof(buf), "LED%uP%02u", boardIdx, pin);
+    else if (boardStr == "NEOPIXEL") snprintf(buf, sizeof(buf), "NEO%u",      boardIdx);
+    else                             snprintf(buf, sizeof(buf), "UNK%u",      boardIdx);
+    return std::string(buf);
+}
+
 // Load the io_definitions.json file; returns parsed JSON or empty on failure
 static nlohmann::json LoadIODefinitionsJSON() {
     // Try loading from current working directory (project root at runtime)
@@ -188,19 +201,24 @@ void InitializeOutputDefs() {
         return;
     }
 
+    int idx = 0;
     for (const auto& o : j["outputs"]) {
-        int idx = o["idx"].get<int>();
+        std::string bStr     = o["board"].get<std::string>();
+        unsigned int pin     = o["pin"].get<unsigned int>();
+        unsigned int bIdx    = o["boardIdx"].get<unsigned int>();
+        std::string fullName = BuildPinPrefix(bStr, bIdx, pin) + " " + o["name"].get<std::string>();
         SetOutputDef(idx,
-                     o["name"].get<std::string>().c_str(),
+                     fullName.c_str(),
                      ParseOutputMsg(o["msg"].get<std::string>()),
-                     o["pin"].get<unsigned int>(),
-                     ParseBoardType(o["board"].get<std::string>()),
-                     o["boardIdx"].get<unsigned int>(),
+                     pin,
+                     ParseBoardType(bStr),
+                     bIdx,
                      ParsePinState(o["state"].get<std::string>()),
                      o["onMs"].get<unsigned int>(),
                      o["offMs"].get<unsigned int>(),
                      o["neo"].get<unsigned int>(),
                      initialized, hasErrors);
+        idx++;
     }
 
     if (hasErrors) {
@@ -226,10 +244,14 @@ void InitializeInputDefs() {
 
     // Build output name-to-index map for resolving autoOut references
     std::map<std::string, unsigned int> outputIdMap;
-    for (const auto& o : j["outputs"]) {
-        outputIdMap[o["id"].get<std::string>()] = o["idx"].get<unsigned int>();
+    {
+        unsigned int outIdx = 0;
+        for (const auto& o : j["outputs"]) {
+            outputIdMap[o["id"].get<std::string>()] = outIdx++;
+        }
     }
 
+    int idx = 0;
     for (const auto& i : j["inputs"]) {
         // Resolve autoOutputId from the output name
         unsigned int autoOutputId = 0;
@@ -243,17 +265,22 @@ void InitializeInputDefs() {
                 g_PBEngine.pbeSendConsole("RasPin: ERROR: Input '" + i["id"].get<std::string>() +
                                          "' references unknown autoOut '" + autoOutName + "'");
                 hasErrors = true;
+                idx++;
                 continue;
             }
         }
 
-        SetInputDef(i["idx"].get<int>(),
-                    i["name"].get<std::string>().c_str(),
+        std::string bStr     = i["board"].get<std::string>();
+        unsigned int pin     = i["pin"].get<unsigned int>();
+        unsigned int bIdx    = i["boardIdx"].get<unsigned int>();
+        std::string fullName = BuildPinPrefix(bStr, bIdx, pin) + " " + i["name"].get<std::string>();
+        SetInputDef(idx,
+                    fullName.c_str(),
                     i["key"].get<std::string>().c_str(),
                     ParseInputMsg(i["msg"].get<std::string>()),
-                    i["pin"].get<unsigned int>(),
-                    ParseBoardType(i["board"].get<std::string>()),
-                    i["boardIdx"].get<unsigned int>(),
+                    pin,
+                    ParseBoardType(bStr),
+                    bIdx,
                     ParsePinState(i["state"].get<std::string>()),
                     i["tick"].get<unsigned long>(),
                     i["debMs"].get<unsigned long>(),
@@ -262,6 +289,7 @@ void InitializeInputDefs() {
                     ParsePinState(i["autoState"].get<std::string>()),
                     i["autoPulse"].get<bool>(),
                     initialized, hasErrors);
+        idx++;
     }
 
     if (hasErrors) {

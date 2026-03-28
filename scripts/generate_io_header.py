@@ -35,7 +35,6 @@ VALID_STATE = {"ON", "OFF", "BLINK", "BRIGHTNESS"}
 # --- Schema definitions ---
 OUTPUT_SCHEMA = {
     "id":       str,
-    "idx":      int,
     "name":     str,
     "msg":      str,
     "pin":      int,
@@ -49,7 +48,6 @@ OUTPUT_SCHEMA = {
 
 INPUT_SCHEMA = {
     "id":        str,
-    "idx":       int,
     "name":      str,
     "key":       str,
     "msg":       str,
@@ -90,31 +88,20 @@ def validate_entry(entry, schema, section, index, errors):
 def validate_outputs(outputs, errors):
     """Validate all output entries."""
     seen_ids = set()
-    seen_idx = set()
 
     for i, o in enumerate(outputs):
         validate_entry(o, OUTPUT_SCHEMA, "output", i, errors)
 
         oid = o.get("id", "")
-        idx = o.get("idx")
 
         # ID naming convention
         if isinstance(oid, str) and oid and not oid.startswith("IDO_"):
             errors.append(f"output '{oid}': id must start with 'IDO_'")
 
-        # Duplicate checks
+        # Duplicate id check
         if oid in seen_ids:
             errors.append(f"output '{oid}': duplicate id")
         seen_ids.add(oid)
-
-        if idx is not None and idx in seen_idx:
-            errors.append(f"output '{oid}': duplicate idx {idx}")
-        if idx is not None:
-            seen_idx.add(idx)
-
-        # Non-negative index
-        if isinstance(idx, int) and idx < 0:
-            errors.append(f"output '{oid}': idx must be >= 0, got {idx}")
 
         # Enum validation
         msg = o.get("msg", "")
@@ -136,31 +123,20 @@ def validate_outputs(outputs, errors):
 def validate_inputs(inputs, output_ids, errors):
     """Validate all input entries."""
     seen_ids = set()
-    seen_idx = set()
 
     for i, inp in enumerate(inputs):
         validate_entry(inp, INPUT_SCHEMA, "input", i, errors)
 
         iid = inp.get("id", "")
-        idx = inp.get("idx")
 
         # ID naming convention
         if isinstance(iid, str) and iid and not iid.startswith("IDI_"):
             errors.append(f"input '{iid}': id must start with 'IDI_'")
 
-        # Duplicate checks (also against output IDs)
+        # Duplicate id check (also against output IDs)
         if iid in seen_ids or iid in output_ids:
             errors.append(f"input '{iid}': duplicate id")
         seen_ids.add(iid)
-
-        if idx is not None and idx in seen_idx:
-            errors.append(f"input '{iid}': duplicate idx {idx}")
-        if idx is not None:
-            seen_idx.add(idx)
-
-        # Non-negative index
-        if isinstance(idx, int) and idx < 0:
-            errors.append(f"input '{iid}': idx must be >= 0, got {idx}")
 
         # Enum validation
         msg = inp.get("msg", "")
@@ -242,9 +218,9 @@ def main():
             print(f"  - {err}", file=sys.stderr)
         sys.exit(1)
 
-    # Compute NUM_OUTPUTS and NUM_INPUTS as max index + 1
-    num_outputs = max(o["idx"] for o in outputs) + 1 if outputs else 0
-    num_inputs = max(i["idx"] for i in inputs) + 1 if inputs else 0
+    # Compute NUM_OUTPUTS and NUM_INPUTS from JSON array length (order = index)
+    num_outputs = len(outputs)
+    num_inputs = len(inputs)
 
     # Find the longest id name for alignment
     all_ids = [o["id"] for o in outputs] + [i["id"] for i in inputs] + ["NUM_OUTPUTS", "NUM_INPUTS"]
@@ -262,18 +238,18 @@ def main():
 
     # Output defines
     lines.append("// --- Output definitions (IDO_*) ---")
-    for o in sorted(outputs, key=lambda x: x["idx"]):
+    for idx, o in enumerate(outputs):
         padding = " " * (max_id_len - len(o["id"]))
-        lines.append(f"#define {o['id']}{padding}  {o['idx']}")
+        lines.append(f"#define {o['id']}{padding}  {idx}")
     padding = " " * (max_id_len - len("NUM_OUTPUTS"))
     lines.append(f"#define NUM_OUTPUTS{padding}  {num_outputs}")
     lines.append("")
 
     # Input defines
     lines.append("// --- Input definitions (IDI_*) ---")
-    for i in sorted(inputs, key=lambda x: x["idx"]):
+    for idx, i in enumerate(inputs):
         padding = " " * (max_id_len - len(i["id"]))
-        lines.append(f"#define {i['id']}{padding}  {i['idx']}")
+        lines.append(f"#define {i['id']}{padding}  {idx}")
     padding = " " * (max_id_len - len("NUM_INPUTS"))
     lines.append(f"#define NUM_INPUTS{padding}  {num_inputs}")
     lines.append("")

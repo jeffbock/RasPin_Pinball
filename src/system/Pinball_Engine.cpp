@@ -8,6 +8,9 @@
 #include "PBDevice.h"
 #include <cmath>
 #include <algorithm>
+#ifdef ENABLE_PINBALL_HARDWARE
+#include <unistd.h>  // for close() used by pbeScanI2CBus probe fds
+#endif
 
 // Define NeoPixel global arrays (declared as extern in Pinball_Engine.h)
 stNeoPixelNode* g_NeoPixelNodeArray[2];
@@ -119,6 +122,17 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
 
     m_PassSelfTest = true;
     m_RestartBootUp = true;
+
+    // I2C scan results - initialized to zero; populated by pbeScanI2CBus() during pbeSetupIO()
+    m_numIOChips    = 0;
+    m_numLEDChips   = 0;
+    m_numAmpDevices = 0;
+    for (int i = 0; i < MAX_IO_CHIPS;  i++) m_IOChipAddresses[i]  = 0;
+    for (int i = 0; i < MAX_LED_CHIPS; i++) m_LEDChipAddresses[i] = 0;
+    m_ampAddress        = 0;
+    m_scanIOConsoleLine  = "";
+    m_scanLEDConsoleLine = "";
+    m_scanAmpConsoleLine = "";
 
     /////////////////////
     // Table variables
@@ -1019,7 +1033,61 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
         }
         gfxRenderShadowString(m_defaultFontSpriteId, stateText, x + 225, y, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
     }
-    
+
+    // I2C scan result strings - rendered serially on one line, centered as a group at the bottom
+    // Each segment may be a different color (yellow = WARNING, white = normal)
+    // Only render when scan data is available (strings are populated by pbeScanI2CBus)
+    if (!g_PBEngine.m_scanIOConsoleLine.empty()) {
+        // Note: spacingPixels=0.4 truncates to 0 as unsigned int; gfxStringWidth already applies scaleFactor
+        auto getScanTextColor = [](const std::string& s, uint8_t& r, uint8_t& g, uint8_t& b) {
+            if (s.find("WARNING") != std::string::npos) {
+                r = 255; g = 255; b = 0;   // yellow for warnings
+            } else {
+                r = 255; g = 255; b = 255; // white for normal
+            }
+        };
+
+        const std::string scanSep = "  |  ";
+        const int         scanY   = PB_SCREENHEIGHT - 29;
+
+        // Measure total width using spacingPixels=0 to match actual rendering
+        int totalScanWidth = gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanIOConsoleLine,  0) +
+                             gfxStringWidth(m_defaultFontSpriteId, scanSep, 0) +
+                             gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanLEDConsoleLine, 0) +
+                             gfxStringWidth(m_defaultFontSpriteId, scanSep, 0) +
+                             gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanAmpConsoleLine, 0);
+        int scanX = PB_SCREENWIDTH / 2 - totalScanWidth / 2;
+
+        uint8_t scanR, scanG, scanB;
+
+        // IO string
+        getScanTextColor(g_PBEngine.m_scanIOConsoleLine, scanR, scanG, scanB);
+        gfxSetColor(m_defaultFontSpriteId, scanR, scanG, scanB, 255);
+        gfxRenderShadowString(m_defaultFontSpriteId, g_PBEngine.m_scanIOConsoleLine, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+        scanX += gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanIOConsoleLine, 0);
+
+        // Separator
+        gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+        gfxRenderShadowString(m_defaultFontSpriteId, scanSep, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+        scanX += gfxStringWidth(m_defaultFontSpriteId, scanSep, 0);
+
+        // LED string
+        getScanTextColor(g_PBEngine.m_scanLEDConsoleLine, scanR, scanG, scanB);
+        gfxSetColor(m_defaultFontSpriteId, scanR, scanG, scanB, 255);
+        gfxRenderShadowString(m_defaultFontSpriteId, g_PBEngine.m_scanLEDConsoleLine, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+        scanX += gfxStringWidth(m_defaultFontSpriteId, g_PBEngine.m_scanLEDConsoleLine, 0);
+
+        // Separator
+        gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
+        gfxRenderShadowString(m_defaultFontSpriteId, scanSep, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+        scanX += gfxStringWidth(m_defaultFontSpriteId, scanSep, 0);
+
+        // Amp string
+        getScanTextColor(g_PBEngine.m_scanAmpConsoleLine, scanR, scanG, scanB);
+        gfxSetColor(m_defaultFontSpriteId, scanR, scanG, scanB, 255);
+        gfxRenderShadowString(m_defaultFontSpriteId, g_PBEngine.m_scanAmpConsoleLine, scanX, scanY, 0.4, GFX_TEXTLEFT, 0, 0, 0, 255, 1);
+    }
+
     return (true);   
 }
 
@@ -1470,6 +1538,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
                 gfxRenderShadowString(m_defaultFontSpriteId, "ACCELERATE",      1725, 440, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
                 gfxRenderShadowString(m_defaultFontSpriteId, "FADE IN/OUT",      195,  910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
                 gfxRenderShadowString(m_defaultFontSpriteId, "JUMPRANDOM",      1725, 910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxSetScaleFactor(m_defaultFontSpriteId, 1.0f, false);
             }
             
             // Render video title over the video at the top, matching video alpha
@@ -2086,7 +2155,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                 }
             }
 
-            if (inputMessage.inputId == IDI_START) {
+            if (inputMessage.inputId == IDI_START && inputMessage.inputState == PB_ON) {
                 // Save the values to the settings file and exit the screen
                 m_mainState = PB_STARTMENU;
                 m_RestartMenu = true;
@@ -2661,9 +2730,130 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
     }
 }
 
+// Scans the I2C bus for all known peripheral device types and populates member variables.
+// Must be called after wiringPiSetupPinType(). Results stored in m_numIOChips, m_numLEDChips,
+// m_numAmpDevices, m_IOChipAddresses, m_LEDChipAddresses, m_ampAddress, and the three console strings.
+void PBEngine::pbeScanI2CBus()
+{
+#ifdef ENABLE_PINBALL_HARDWARE
+
+    // Helper lambda: build a "devices" substring like "(0) 0x20, (1) 0x21"
+    // or "WARNING: No Devices found" if the count is zero
+    auto buildDeviceList = [](uint8_t* addrs, int count) -> std::string {
+        if (count == 0) return "WARNING: No Devices found";
+        std::string s;
+        char buf[32];
+        for (int i = 0; i < count; i++) {
+            if (i > 0) s += ", ";
+            snprintf(buf, sizeof(buf), "(%d) 0x%02X", i, addrs[i]);
+            s += buf;
+        }
+        return s;
+    };
+
+    // --- IO Expanders (TCA9555) ---
+    m_numIOChips = 0;
+    for (int i = 0; i < PB_ADD_IO_SCAN_COUNT && m_numIOChips < MAX_IO_CHIPS; i++) {
+        uint8_t addr = (uint8_t)(PB_ADD_IO_BASE + i);
+        int fd = wiringPiI2CSetup(addr);
+        if (fd >= 0) {
+            int result = wiringPiI2CReadReg8(fd, 0x00);
+            if (result >= 0) {
+                m_IOChipAddresses[m_numIOChips++] = addr;
+            }
+            close(fd);  // Close probe fd; chip constructors open their own
+        }
+    }
+    for (int i = 0; i < m_numIOChips; i++)
+        m_IOChip[i] = IODriverDebounce(m_IOChipAddresses[i], 0xFF, 1);
+
+    // --- LED Drivers (TLC59116) ---
+    m_numLEDChips = 0;
+    for (int i = 0; i < PB_ADD_LED_SCAN_COUNT && m_numLEDChips < MAX_LED_CHIPS; i++) {
+        uint8_t addr = (uint8_t)(PB_ADD_LED_BASE + i);
+        if (addr == PB_ADD_LED_ALLCALL) continue;  // Skip All-Call address
+        int fd = wiringPiI2CSetup(addr);
+        if (fd >= 0) {
+            int result = wiringPiI2CReadReg8(fd, 0x00);
+            if (result >= 0) {
+                m_LEDChipAddresses[m_numLEDChips++] = addr;
+            }
+            close(fd);  // Close probe fd; chip constructors open their own
+        }
+    }
+    for (int i = 0; i < m_numLEDChips; i++)
+        m_LEDChip[i] = LEDDriver(m_LEDChipAddresses[i]);
+
+    // --- Amplifier (MAX9744) ---
+    m_numAmpDevices = 0;
+    m_ampAddress    = 0;
+    for (int i = 0; i < PB_AMP_SCAN_COUNT; i++) {
+        uint8_t addr = (uint8_t)(PB_I2C_AMPLIFIER_BASE + i);
+        int fd = wiringPiI2CSetup(addr);
+        if (fd >= 0) {
+            int result = wiringPiI2CRead(fd);
+            if (result >= 0) {
+                m_ampAddress    = addr;
+                m_numAmpDevices = 1;
+                close(fd);  // Close probe fd; AmpDriver constructor opens its own
+                break;
+            }
+            close(fd);  // Close probe fd for non-matching device
+        }
+    }
+    if (m_numAmpDevices > 0)
+        m_ampDriver = AmpDriver(m_ampAddress);
+
+    // --- Build and send console strings ---
+    char ampBuf[32] = {0};
+    if (m_numAmpDevices > 0)
+        snprintf(ampBuf, sizeof(ampBuf), "(0) 0x%02X", m_ampAddress);
+
+    m_scanIOConsoleLine  = "IO (TCA9555): "  + buildDeviceList(m_IOChipAddresses,  m_numIOChips);
+    m_scanLEDConsoleLine = "LED (TLC59116): " + buildDeviceList(m_LEDChipAddresses, m_numLEDChips);
+    m_scanAmpConsoleLine = "Amp (MAX9744): "  + (m_numAmpDevices > 0 ? std::string(ampBuf) : "WARNING: No Devices found");
+
+#else
+    // Non-hardware (Windows / simulation): assume all MAX devices present with default addresses
+    m_numIOChips    = MAX_IO_CHIPS;
+    m_numLEDChips   = MAX_LED_CHIPS;
+    m_numAmpDevices = 1;
+    for (int i = 0; i < MAX_IO_CHIPS;  i++) { m_IOChipAddresses[i]  = (uint8_t)(PB_ADD_IO_BASE  + i); m_IOChip[i]  = IODriverDebounce(m_IOChipAddresses[i],  0xFF, 1); }
+    {
+        int ledIdx = 0;
+        for (int i = 0; i < PB_ADD_LED_SCAN_COUNT && ledIdx < MAX_LED_CHIPS; i++) {
+            uint8_t addr = (uint8_t)(PB_ADD_LED_BASE + i);
+            if (addr == PB_ADD_LED_ALLCALL) continue;  // Skip All-Call address, same as hardware scan
+            m_LEDChipAddresses[ledIdx] = addr;
+            m_LEDChip[ledIdx] = LEDDriver(addr);
+            ledIdx++;
+        }
+        m_numLEDChips = ledIdx;
+    }
+    m_ampAddress = PB_I2C_AMPLIFIER_BASE;
+    m_ampDriver  = AmpDriver(m_ampAddress);
+
+    pbeSendConsole("RasPin: I2C scan: Hardware not present - peripheral scan skipped, using simulated devices");
+
+    m_scanIOConsoleLine  = "IO (TCA9555): Simulated";
+    m_scanLEDConsoleLine = "LED (TLC59116): Simulated";
+    m_scanAmpConsoleLine = "Amp (MAX9744): Simulated";
+#endif // ENABLE_PINBALL_HARDWARE
+
+    pbeSendConsole("RasPin: I2C scan - " + m_scanIOConsoleLine);
+    pbeSendConsole("RasPin: I2C scan - " + m_scanLEDConsoleLine);
+    pbeSendConsole("RasPin: I2C scan - " + m_scanAmpConsoleLine);
+}
+
 // Function checks the input / output structures for errors and if Raspberry Pi, sets up the GPIO pins
 bool PBEngine::pbeSetupIO()
 {
+    // Scan I2C bus first to discover which chips are present and assign chip objects
+    #ifdef ENABLE_PINBALL_HARDWARE
+    wiringPiSetupPinType(WPI_PIN_BCM);
+    #endif // ENABLE_PINBALL_HARDWARE
+    g_PBEngine.pbeScanI2CBus();
+
     // Validation checks for input/output definitions
     // These checks verify the configuration is valid after initialization
     g_PBEngine.pbeSendConsole("RasPin: Validating I/O configuration");
@@ -2744,10 +2934,6 @@ bool PBEngine::pbeSetupIO()
     // Loop through each of the inputs and program the GPIOs and setup the debounce class for each input
      g_PBEngine.pbeSendConsole("RasPin: Intializing Inputs");
 
-    #ifdef ENABLE_PINBALL_HARDWARE
-    wiringPiSetupPinType(WPI_PIN_BCM);
-    #endif // ENABLE_PINBALL_HARDWARE
-
     // Set up inputs
     for (int i = 0; i < NUM_INPUTS; i++) {
         if (g_inputDef[i].boardType == PB_RASPI){
@@ -2758,13 +2944,13 @@ bool PBEngine::pbeSetupIO()
         }
         else if (g_inputDef[i].boardType == PB_IO) {
             // Configure the pin as input on the appropriate IO chip
-            if (g_inputDef[i].boardIndex < NUM_IO_CHIPS) {
+            if (g_inputDef[i].boardIndex < g_PBEngine.m_numIOChips) {
                 g_PBEngine.m_IOChip[g_inputDef[i].boardIndex].ConfigurePin(g_inputDef[i].pin, PB_INPUT);
                 g_PBEngine.m_IOChip[g_inputDef[i].boardIndex].SetPinDebounceTime(g_inputDef[i].pin, g_inputDef[i].debounceTimeMS);
             } else {
                 g_PBEngine.pbeSendConsole("RasPin: ERROR: Input " + g_inputDef[i].inputName + 
                     " references IO board " + std::to_string(g_inputDef[i].boardIndex) + 
-                    " which exceeds NUM_IO_CHIPS (" + std::to_string(NUM_IO_CHIPS) + ")");
+                    " which exceeds discovered IO chip count (" + std::to_string(g_PBEngine.m_numIOChips) + ")");
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
@@ -2786,19 +2972,19 @@ bool PBEngine::pbeSetupIO()
         }
         else if (g_outputDef[i].boardType == PB_IO) {
             // Configure the pin as output on the appropriate IO chip
-            if (g_outputDef[i].boardIndex < NUM_IO_CHIPS) {
+            if (g_outputDef[i].boardIndex < g_PBEngine.m_numIOChips) {
                 g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].ConfigurePin(g_outputDef[i].pin, PB_OUTPUT);    
                 g_PBEngine.m_IOChip[g_outputDef[i].boardIndex].StageOutputPin(g_outputDef[i].pin, g_outputDef[i].lastState);  // Initialize to HIGH
             } else {
                 g_PBEngine.pbeSendConsole("RasPin: ERROR: Output " + g_outputDef[i].outputName + 
                     " references IO board " + std::to_string(g_outputDef[i].boardIndex) + 
-                    " which exceeds NUM_IO_CHIPS (" + std::to_string(NUM_IO_CHIPS) + ")");
+                    " which exceeds discovered IO chip count (" + std::to_string(g_PBEngine.m_numIOChips) + ")");
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
         else if (g_outputDef[i].boardType == PB_LED) {
             // Configure the LED on the appropriate LED chip
-            if (g_outputDef[i].boardIndex < NUM_LED_CHIPS) {
+            if (g_outputDef[i].boardIndex < g_PBEngine.m_numLEDChips) {
                 if (g_outputDef[i].lastState == PB_ON)
                     g_PBEngine.m_LEDChip[g_outputDef[i].boardIndex].StageLEDControl(true, g_outputDef[i].pin, LEDOn);  // Initialize to ON
                 else
@@ -2806,7 +2992,7 @@ bool PBEngine::pbeSetupIO()
             } else {
                 g_PBEngine.pbeSendConsole("RasPin: ERROR: Output " + g_outputDef[i].outputName + 
                     " references LED board " + std::to_string(g_outputDef[i].boardIndex) + 
-                    " which exceeds NUM_LED_CHIPS (" + std::to_string(NUM_LED_CHIPS) + ")");
+                    " which exceeds discovered LED chip count (" + std::to_string(g_PBEngine.m_numLEDChips) + ")");
                 g_PBEngine.m_PassSelfTest = false;
             }
         }
@@ -2844,7 +3030,7 @@ bool PBEngine::pbeSetupIO()
     g_PBEngine.pbeSendConsole("RasPin: Verifying HW LED and IO Setup");
     
     // Check LEDDriver MODE1 registers - bit 4 should be 0 (normal operation)
-    for (int i = 0; i < NUM_LED_CHIPS; i++) {
+    for (int i = 0; i < g_PBEngine.m_numLEDChips; i++) {
         uint8_t mode1 = g_PBEngine.m_LEDChip[i].ReadModeRegister(1);
         if ((mode1 & 0x10) != 0) {  // Check bit 4
             uint8_t address = g_PBEngine.m_LEDChip[i].GetAddress();
@@ -2854,7 +3040,7 @@ bool PBEngine::pbeSetupIO()
     }
     
     // Check IODriver POLARITY_PORT0 registers - should return 0x00 (normal polarity)
-    for (int i = 0; i < NUM_IO_CHIPS; i++) {
+    for (int i = 0; i < g_PBEngine.m_numIOChips; i++) {
         uint8_t polarity0 = g_PBEngine.m_IOChip[i].ReadPolarityPort(0);
         if (polarity0 != 0x00) {  // Should be 0x00, not 0xFF
             uint8_t address = g_PBEngine.m_IOChip[i].GetAddress();
@@ -2864,14 +3050,14 @@ bool PBEngine::pbeSetupIO()
     }
     #endif // ENABLE_PINBALL_HARDWARE
 
-    // Setup and verify the amplifier
+    // Setup and verify the amplifier (amplifier not found is a warning only - does not block table start)
     g_PBEngine.pbeSendConsole("RasPin: Initializing amplifier");
     g_PBEngine.m_ampDriver.SetVolume(0);  
     
     if (!g_PBEngine.m_ampDriver.IsConnected()) {
         uint8_t address = g_PBEngine.m_ampDriver.GetAddress();
-        g_PBEngine.pbeSendConsole("RasPin: ERROR: Amplifier (address 0x" + std::to_string(address) + ") not detected");
-        g_PBEngine.m_PassSelfTest = false;
+        g_PBEngine.pbeSendConsole("RasPin: WARNING: Amplifier (address 0x" + std::to_string(address) + ") not detected - audio will not work");
+        // Note: amplifier missing does NOT set m_PassSelfTest = false; table can still start without audio
     } 
     
     return (g_PBEngine.m_PassSelfTest);
@@ -2948,7 +3134,7 @@ void PBEngine::SendSeqMsg(const LEDSequence* sequence, const uint16_t* mask, PBS
         seqOptions.setLEDSequence = sequence;
         
         // Copy the mask for all LED chips
-        for (int i = 0; i < NUM_LED_CHIPS; i++) {
+        for (int i = 0; i < MAX_LED_CHIPS; i++) {
             seqOptions.activeLEDMask[i] = mask[i];
         }
         

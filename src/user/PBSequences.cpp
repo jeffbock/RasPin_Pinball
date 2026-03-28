@@ -23,7 +23,7 @@ const LEDSequence PBSeq_AllChipsTest = {
     sizeof(PBSeq_AllChipsTest_Steps) / sizeof(PBSeq_AllChipsTest_Steps[0])
 };
 
-const uint16_t PBSeq_AllChipsTestMask[NUM_LED_CHIPS] = {0xFFFF, 0xFFFF, 0xFFFF};
+const uint16_t PBSeq_AllChipsTestMask[MAX_LED_CHIPS] = {0xFFFF, 0xFFFF, 0xFFFF};
 
 // Static array of steps for LastThreeTest sequence (LEDs 8,9,10 on each chip)
 static const stLEDSequence PBSeq_LastThreeTest_Steps[] = {
@@ -38,7 +38,7 @@ const LEDSequence PBSeq_LastThreeTest = {
     sizeof(PBSeq_LastThreeTest_Steps) / sizeof(PBSeq_LastThreeTest_Steps[0])
 };
 
-const uint16_t PBSeq_LastThreeTestMask[NUM_LED_CHIPS] = {0x0700, 0x0700, 0x0700};
+const uint16_t PBSeq_LastThreeTestMask[MAX_LED_CHIPS] = {0x0700, 0x0700, 0x0700};
 
 // Static array of steps for RGB Color Cycle sequence (LEDs 8=Red, 9=Green, 10=Blue on each chip)
 static const stLEDSequence PBSeq_RGBColorCycle_Steps[] = {
@@ -98,7 +98,7 @@ const LEDSequence PBSeq_RGBColorCycle = {
     sizeof(PBSeq_RGBColorCycle_Steps) / sizeof(PBSeq_RGBColorCycle_Steps[0])
 };
 
-const uint16_t PBSeq_RGBColorCycleMask[NUM_LED_CHIPS] = {0x0700, 0x0700, 0x0700};
+const uint16_t PBSeq_RGBColorCycleMask[MAX_LED_CHIPS] = {0x0700, 0x0700, 0x0700};
 
 /*
  * TEMPLATE FOR CREATING NEW SEQUENCES
@@ -117,7 +117,7 @@ const uint16_t PBSeq_RGBColorCycleMask[NUM_LED_CHIPS] = {0x0700, 0x0700, 0x0700}
  *     sizeof(YourSequenceName_Steps) / sizeof(YourSequenceName_Steps[0])
  * };
  * 
- * const uint16_t YourSequenceNameMask[NUM_LED_CHIPS] = {chip0mask, chip1mask, chip2mask};
+ * const uint16_t YourSequenceNameMask[MAX_LED_CHIPS] = {chip0mask, chip1mask, chip2mask};
  * 
  * NOTES:
  * - LEDOnBits: Which LEDs to turn on (1=on, 0=off) for each chip
