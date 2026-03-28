@@ -1538,6 +1538,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
                 gfxRenderShadowString(m_defaultFontSpriteId, "ACCELERATE",      1725, 440, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
                 gfxRenderShadowString(m_defaultFontSpriteId, "FADE IN/OUT",      195,  910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
                 gfxRenderShadowString(m_defaultFontSpriteId, "JUMPRANDOM",      1725, 910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxSetScaleFactor(m_defaultFontSpriteId, 1.0f, false);
             }
             
             // Render video title over the video at the top, matching video alpha
@@ -2808,9 +2809,9 @@ void PBEngine::pbeScanI2CBus()
     if (m_numAmpDevices > 0)
         snprintf(ampBuf, sizeof(ampBuf), "(0) 0x%02X", m_ampAddress);
 
-    m_scanIOConsoleLine  = "IO (TCA9555): "  + std::to_string(m_numIOChips)  + " devices - " + buildDeviceList(m_IOChipAddresses,  m_numIOChips);
-    m_scanLEDConsoleLine = "LED (TLC59116): " + std::to_string(m_numLEDChips) + " devices - " + buildDeviceList(m_LEDChipAddresses, m_numLEDChips);
-    m_scanAmpConsoleLine = "Amp (MAX9744): "  + std::to_string(m_numAmpDevices) + " devices - " + (m_numAmpDevices > 0 ? std::string(ampBuf) : "WARNING: No Devices found");
+    m_scanIOConsoleLine  = "IO (TCA9555): "  + buildDeviceList(m_IOChipAddresses,  m_numIOChips);
+    m_scanLEDConsoleLine = "LED (TLC59116): " + buildDeviceList(m_LEDChipAddresses, m_numLEDChips);
+    m_scanAmpConsoleLine = "Amp (MAX9744): "  + (m_numAmpDevices > 0 ? std::string(ampBuf) : "WARNING: No Devices found");
 
 #else
     // Non-hardware (Windows / simulation): assume all MAX devices present with default addresses
