@@ -181,7 +181,7 @@ static int cmdInfo(const char* path) {
                               << "\"  parent: " << parentIdx << "\n";
                 }
             } else {
-                std::cout << "    (bone list truncated — " << skin->joints_count << " joints)\n";
+                std::cout << "    (bone list truncated - " << skin->joints_count << " joints)\n";
             }
         }
     } else {
@@ -378,7 +378,7 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold) {
     }
 
     if (!bonesBelow.empty()) {
-        std::cout << "\nBones below threshold — candidates for removal (" << bonesBelow.size() << "):\n";
+        std::cout << "\nBones below threshold - candidates for removal (" << bonesBelow.size() << "):\n";
         for (int bi : bonesBelow) {
             const cgltf_node* jn = skin->joints[bi];
             double w = (totalVertices > 0) ? totalWeight[(size_t)bi] / (double)totalVertices : 0.0;
@@ -387,7 +387,7 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold) {
                       << "\"  avg weight: " << std::fixed << std::setprecision(4) << w << "\n";
         }
     } else {
-        std::cout << "\nNo bones below threshold — no simplification recommended.\n";
+        std::cout << "\nNo bones below threshold - no simplification recommended.\n";
     }
 
     // Report if bone count exceeds max-bones
@@ -422,7 +422,7 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold) {
 // ============================================================================
 
 static void printHelp(const char* argv0) {
-    std::cout << "pb3dutil — 3D model analysis and utility tool for RasPin Pinball\n\n"
+    std::cout << "pb3dutil - 3D model analysis and utility tool for RasPin Pinball\n\n"
               << "Usage:\n"
               << "  " << argv0 << " --info        <file.glb>\n"
               << "  " << argv0 << " --list-clips  <file.glb>\n"
