@@ -78,11 +78,21 @@ protected:
     bool         ogl3dInitShader(const char* vertSrc, const char* fragSrc);
     void         ogl3dDestroyShader();
 
+    // Skinned-mesh shader lifecycle (separate program with bone matrix array)
+    bool         ogl3dInitSkinnedShader(const char* vertSrc, const char* fragSrc);
+    void         ogl3dDestroySkinnedShader();
+
     // Mesh GPU resource management (interleaved layout: pos3 + norm3 + uv2 = 8 floats/vertex)
     bool         ogl3dCreateMesh(const float* vertData, size_t vertFloatCount,
                                  const unsigned int* idxData, size_t idxCount,
                                  unsigned int& outVao, unsigned int& outVbo, unsigned int& outEbo);
     void         ogl3dDestroyMesh(unsigned int vao, unsigned int vbo, unsigned int ebo);
+
+    // Skinned mesh GPU resource management
+    // Interleaved layout: pos3 + norm3 + uv2 + joints4 + weights4 = 16 floats/vertex
+    bool         ogl3dCreateSkinnedMesh(const float* vertData, size_t vertFloatCount,
+                                        const unsigned int* idxData, size_t idxCount,
+                                        unsigned int& outVao, unsigned int& outVbo, unsigned int& outEbo);
 
     // Texture GPU resource management
     unsigned int ogl3dCreateTexture(const unsigned char* pixels, int width, int height);
@@ -90,7 +100,13 @@ protected:
     void         ogl3dDestroyTexture(unsigned int texId);
 
     // Frame pass control
-    void         ogl3dBeginPass();   // enable depth test, bind 3D shader
+    void         ogl3dBeginPass();         // enable depth test, bind static 3D shader
+    void         ogl3dBeginSkinnedPass();  // enable depth test, bind skinned 3D shader
+
+    // Mid-frame shader switch: switch between static and skinned shaders
+    // without re-clearing the depth buffer.  Call after ogl3dBeginPass().
+    void         ogl3dActivateStaticShader();
+    void         ogl3dActivateSkinnedShader();
 
     // Scene-level uniform upload (light direction/colour/ambient, camera eye)
     void         ogl3dSetSceneUniforms(float lightDirX, float lightDirY, float lightDirZ,
@@ -98,8 +114,19 @@ protected:
                                        float ambR,      float ambG,      float ambB,
                                        float eyeX,      float eyeY,      float eyeZ);
 
-    // Per-instance uniform upload (MVP + model matrix + alpha)
+    // Scene-level uniforms for the skinned shader pass (same parameters, different program)
+    void         ogl3dSetSkinnedSceneUniforms(float lightDirX, float lightDirY, float lightDirZ,
+                                              float lightColR, float lightColG, float lightColB,
+                                              float ambR,      float ambG,      float ambB,
+                                              float eyeX,      float eyeY,      float eyeZ);
+
+    // Per-instance uniform upload (MVP + model matrix + alpha) — static path
     void         ogl3dSetInstanceUniforms(const float mvp[16], const float modelMat[16], float alpha);
+
+    // Per-instance uniform upload for skinned path (adds bone matrices array)
+    void         ogl3dSetSkinnedInstanceUniforms(const float mvp[16], const float modelMat[16],
+                                                 float alpha,
+                                                 const float* boneMatrices, int numBones);
 
     // Blend state helper
     void         ogl3dSetBlend(bool enable);
@@ -149,6 +176,14 @@ private:
     GLint  m_3dMVPUniform,       m_3dModelUniform,      m_3dLightDirUniform;
     GLint  m_3dLightColorUniform, m_3dAmbientUniform,   m_3dCameraEyeUniform, m_3dAlphaUniform;
     GLint  m_3dPosAttrib,         m_3dNormalAttrib,      m_3dTexCoordAttrib;
+
+    // Skinned-mesh shader program and cached uniform / attribute locations
+    GLuint m_3dSkinnedShaderProgram;
+    GLint  m_3dSk_MVPUniform,    m_3dSk_ModelUniform,   m_3dSk_LightDirUniform;
+    GLint  m_3dSk_LightColUniform, m_3dSk_AmbientUniform, m_3dSk_CameraEyeUniform, m_3dSk_AlphaUniform;
+    GLint  m_3dSk_BonesUniform;
+    GLint  m_3dSk_PosAttrib,     m_3dSk_NormalAttrib,   m_3dSk_TexCoordAttrib;
+    GLint  m_3dSk_JointsAttrib,  m_3dSk_WeightsAttrib;
 
     // Shaders used for sprite rendering.  All sprites are quads, with textures and an overall alpha control value
     // Vertex shader source code

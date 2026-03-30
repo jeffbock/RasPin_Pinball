@@ -62,6 +62,36 @@ const char* PB3D::fragmentShader3DSource = R"(#version 300 es
     }
 )";
 
+// Skinned-mesh vertex shader: identical to the static shader but transforms
+// positions and normals through the weighted sum of up to 4 bone matrices.
+// Vertex layout (16 floats): pos3 norm3 uv2 joints4 weights4
+const char* PB3D::vertexShader3DSkinnedSource = R"(#version 300 es
+    precision mediump float;
+    in vec3 aPosition;
+    in vec3 aNormal;
+    in vec2 aTexCoord;
+    in vec4 aJoints;   // bone indices (stored as float, cast to int in shader)
+    in vec4 aWeights;  // blend weights (sum to 1.0)
+    uniform mat4 uMVP;
+    uniform mat4 uModel;
+    uniform mat4 uBones[64];
+    out vec2 vTexCoord;
+    out vec3 vNormal;
+    out vec3 vWorldPos;
+    void main() {
+        mat4 skinMat = aWeights.x * uBones[int(aJoints.x)]
+                     + aWeights.y * uBones[int(aJoints.y)]
+                     + aWeights.z * uBones[int(aJoints.z)]
+                     + aWeights.w * uBones[int(aJoints.w)];
+        vec4 skinnedPos = skinMat * vec4(aPosition, 1.0);
+        gl_Position = uMVP * skinnedPos;
+        vWorldPos   = (uModel * skinnedPos).xyz;
+        mat3 skinNorm = mat3(skinMat);
+        vNormal   = normalize(skinNorm * aNormal);
+        vTexCoord = aTexCoord;
+    }
+)";
+
 // ============================================================================
 // Constructor / Destructor
 // ============================================================================
@@ -71,6 +101,7 @@ PB3D::PB3D() {
     m_next3dInstanceId = 1;
 
     m_sceneDirty = true;
+    m_skinnedShaderActive = false;
 
     // Default camera: eye straight back on Z axis so Z=0 maps to screen surface.
     // FOV=45, aspect handled at render time. eyeZ=8 gives a comfortable frustum size.
@@ -96,6 +127,7 @@ PB3D::~PB3D() {
         }
     }
     ogl3dDestroyShader();
+    ogl3dDestroySkinnedShader();
 }
 
 // ============================================================================
@@ -111,10 +143,16 @@ void PB3D::pb3dSendConsole(const std::string& msg) {
 // ============================================================================
 
 bool PB3D::pb3dInit() {
-    // Compile and link the 3D shader via PBOGLES; also caches uniform/attrib locations
+    // Compile and link the static 3D shader (for non-skinned models)
     if (!ogl3dInitShader(vertexShader3DSource, fragmentShader3DSource)) {
         pb3dSendConsole("PB3D: Failed to create 3D shader program");
         return false;
+    }
+    // Compile and link the skinned 3D shader (for models with bone skeletons)
+    // Fragment shader is shared with the static path.
+    if (!ogl3dInitSkinnedShader(vertexShader3DSkinnedSource, fragmentShader3DSource)) {
+        pb3dSendConsole("PB3D: WARNING - Failed to create skinned 3D shader; skeleton animation disabled");
+        // Non-fatal: models without skins still work
     }
     return true;
 }
@@ -152,6 +190,7 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
     st3DModel model;
     model.name = glbFilePath;
     model.isLoaded = true;
+    model.hasSkeleton = false;
 
     // --- Pass 1: compute the combined bounding box over ALL triangle primitives ---
     // Uses accessor-level min/max when available (O(1) per accessor); falls back
@@ -219,10 +258,12 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
             cgltf_primitive* prim = &mesh->primitives[pi];
             if (prim->type != cgltf_primitive_type_triangles) continue;
 
-            // Find POSITION, NORMAL, TEXCOORD_0 accessors
-            const cgltf_accessor* posAccessor = nullptr;
-            const cgltf_accessor* normAccessor = nullptr;
-            const cgltf_accessor* texAccessor = nullptr;
+            // Find POSITION, NORMAL, TEXCOORD_0, JOINTS_0, WEIGHTS_0 accessors
+            const cgltf_accessor* posAccessor    = nullptr;
+            const cgltf_accessor* normAccessor   = nullptr;
+            const cgltf_accessor* texAccessor    = nullptr;
+            const cgltf_accessor* jointsAccessor = nullptr;
+            const cgltf_accessor* weightsAccessor= nullptr;
 
             for (cgltf_size ai = 0; ai < prim->attributes_count; ai++) {
                 if (prim->attributes[ai].type == cgltf_attribute_type_position)
@@ -231,6 +272,10 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
                     normAccessor = prim->attributes[ai].data;
                 else if (prim->attributes[ai].type == cgltf_attribute_type_texcoord)
                     texAccessor = prim->attributes[ai].data;
+                else if (prim->attributes[ai].type == cgltf_attribute_type_joints)
+                    jointsAccessor = prim->attributes[ai].data;
+                else if (prim->attributes[ai].type == cgltf_attribute_type_weights)
+                    weightsAccessor = prim->attributes[ai].data;
             }
 
             if (!posAccessor) continue;
@@ -311,6 +356,16 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
                 cgltf_accessor_read_float_buffer(texAccessor, texcoords.data(), 2);
             }
 
+            // Read JOINTS_0 and WEIGHTS_0 for skinned meshes
+            bool hasSkinData = (jointsAccessor != nullptr && weightsAccessor != nullptr);
+            std::vector<float> joints(vertexCount * 4, 0.0f);
+            std::vector<float> weights(vertexCount * 4, 0.0f);
+            if (hasSkinData) {
+                // Joints may be UNSIGNED_BYTE or UNSIGNED_SHORT — cgltf_accessor_read_float normalizes
+                cgltf_accessor_read_float_buffer(jointsAccessor, joints.data(), 4);
+                cgltf_accessor_read_float_buffer(weightsAccessor, weights.data(), 4);
+            }
+
             // Apply global normalization: all primitives share the same center and scale
             // so that their relative positions within the model are preserved.
             for (cgltf_size v = 0; v < vertexCount; v++) {
@@ -318,42 +373,78 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
                 positions[v*3+1] = (positions[v*3+1] - normCY) * normScale;
                 positions[v*3+2] = (positions[v*3+2] - normCZ) * normScale;
             }
-            // Build interleaved vertex buffer: [posX, posY, posZ, normX, normY, normZ, u, v]
-            std::vector<float> interleavedData(vertexCount * 8);
-            for (cgltf_size v = 0; v < vertexCount; v++) {
-                interleavedData[v * 8 + 0] = positions[v * 3 + 0];
-                interleavedData[v * 8 + 1] = positions[v * 3 + 1];
-                interleavedData[v * 8 + 2] = positions[v * 3 + 2];
-                interleavedData[v * 8 + 3] = normals[v * 3 + 0];
-                interleavedData[v * 8 + 4] = normals[v * 3 + 1];
-                interleavedData[v * 8 + 5] = normals[v * 3 + 2];
-                interleavedData[v * 8 + 6] = texcoords[v * 2 + 0];
-                interleavedData[v * 8 + 7] = texcoords[v * 2 + 1];
-            }
-
-            // Read index data (unsigned int to avoid 65535-vertex truncation)
-            std::vector<unsigned int> indices;
-            if (prim->indices) {
-                indices.resize(prim->indices->count);
-                for (cgltf_size ii = 0; ii < prim->indices->count; ii++) {
-                    indices[ii] = (unsigned int)cgltf_accessor_read_index(prim->indices, ii);
-                }
-            } else {
-                // Generate sequential indices if none provided
-                indices.resize(vertexCount);
-                for (cgltf_size ii = 0; ii < vertexCount; ii++) {
-                    indices[ii] = (unsigned int)ii;
-                }
-            }
 
             // Create GPU resources via PBOGLES (no direct GL calls in PB3D)
             st3DMesh gpuMesh = {};
+            gpuMesh.isSkinned = hasSkinData;
 
-            ogl3dCreateMesh(interleavedData.data(), interleavedData.size(),
-                            indices.data(), indices.size(),
-                            gpuMesh.vao, gpuMesh.vboVertices, gpuMesh.eboIndices);
+            if (hasSkinData) {
+                // Skinned layout: [posX, posY, posZ, normX, normY, normZ, u, v, j0, j1, j2, j3, w0, w1, w2, w3]
+                std::vector<float> interleavedData(vertexCount * 16);
+                for (cgltf_size v = 0; v < vertexCount; v++) {
+                    interleavedData[v*16+ 0] = positions[v*3+0];
+                    interleavedData[v*16+ 1] = positions[v*3+1];
+                    interleavedData[v*16+ 2] = positions[v*3+2];
+                    interleavedData[v*16+ 3] = normals[v*3+0];
+                    interleavedData[v*16+ 4] = normals[v*3+1];
+                    interleavedData[v*16+ 5] = normals[v*3+2];
+                    interleavedData[v*16+ 6] = texcoords[v*2+0];
+                    interleavedData[v*16+ 7] = texcoords[v*2+1];
+                    interleavedData[v*16+ 8] = joints[v*4+0];
+                    interleavedData[v*16+ 9] = joints[v*4+1];
+                    interleavedData[v*16+10] = joints[v*4+2];
+                    interleavedData[v*16+11] = joints[v*4+3];
+                    interleavedData[v*16+12] = weights[v*4+0];
+                    interleavedData[v*16+13] = weights[v*4+1];
+                    interleavedData[v*16+14] = weights[v*4+2];
+                    interleavedData[v*16+15] = weights[v*4+3];
+                }
 
-            gpuMesh.indexCount = (unsigned int)indices.size();
+                // Read index data
+                std::vector<unsigned int> indices;
+                if (prim->indices) {
+                    indices.resize(prim->indices->count);
+                    for (cgltf_size ii = 0; ii < prim->indices->count; ii++)
+                        indices[ii] = (unsigned int)cgltf_accessor_read_index(prim->indices, ii);
+                } else {
+                    indices.resize(vertexCount);
+                    for (cgltf_size ii = 0; ii < vertexCount; ii++) indices[ii] = (unsigned int)ii;
+                }
+
+                ogl3dCreateSkinnedMesh(interleavedData.data(), interleavedData.size(),
+                                       indices.data(), indices.size(),
+                                       gpuMesh.vao, gpuMesh.vboVertices, gpuMesh.eboIndices);
+                gpuMesh.indexCount = (unsigned int)indices.size();
+            } else {
+                // Static layout: [posX, posY, posZ, normX, normY, normZ, u, v]
+                std::vector<float> interleavedData(vertexCount * 8);
+                for (cgltf_size v = 0; v < vertexCount; v++) {
+                    interleavedData[v*8+0] = positions[v*3+0];
+                    interleavedData[v*8+1] = positions[v*3+1];
+                    interleavedData[v*8+2] = positions[v*3+2];
+                    interleavedData[v*8+3] = normals[v*3+0];
+                    interleavedData[v*8+4] = normals[v*3+1];
+                    interleavedData[v*8+5] = normals[v*3+2];
+                    interleavedData[v*8+6] = texcoords[v*2+0];
+                    interleavedData[v*8+7] = texcoords[v*2+1];
+                }
+
+                // Read index data
+                std::vector<unsigned int> indices;
+                if (prim->indices) {
+                    indices.resize(prim->indices->count);
+                    for (cgltf_size ii = 0; ii < prim->indices->count; ii++)
+                        indices[ii] = (unsigned int)cgltf_accessor_read_index(prim->indices, ii);
+                } else {
+                    indices.resize(vertexCount);
+                    for (cgltf_size ii = 0; ii < vertexCount; ii++) indices[ii] = (unsigned int)ii;
+                }
+
+                ogl3dCreateMesh(interleavedData.data(), interleavedData.size(),
+                                indices.data(), indices.size(),
+                                gpuMesh.vao, gpuMesh.vboVertices, gpuMesh.eboIndices);
+                gpuMesh.indexCount = (unsigned int)indices.size();
+            }
 
             // Load texture from material — deduplicate via localTexCache so primitives
             // sharing the same cgltf_image get the same GPU texture handle.
@@ -397,6 +488,156 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
             }
 
             model.meshes.push_back(gpuMesh);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Skeleton loading: read skin 0 if present, then load animations
+    // -----------------------------------------------------------------------
+    if (data->skins_count > 0) {
+        cgltf_skin* skin = &data->skins[0];
+
+        // Build map from cgltf_node* -> boneIndex for parent resolution
+        std::map<const cgltf_node*, int> nodeToJoint;
+        for (cgltf_size ji = 0; ji < skin->joints_count; ji++) {
+            nodeToJoint[skin->joints[ji]] = (int)ji;
+        }
+
+        // Read inverse bind matrices (one per joint, column-major 4×4)
+        std::vector<float> ibmBuffer;
+        if (skin->inverse_bind_matrices) {
+            size_t ibmCount = skin->inverse_bind_matrices->count;
+            ibmBuffer.resize(ibmCount * 16, 0.0f);
+            for (cgltf_size ji = 0; ji < ibmCount; ji++) {
+                cgltf_accessor_read_float(skin->inverse_bind_matrices, ji,
+                                          ibmBuffer.data() + ji * 16, 16);
+            }
+        }
+
+        for (cgltf_size ji = 0; ji < skin->joints_count && ji < (cgltf_size)PB3D_MAX_BONES; ji++) {
+            const cgltf_node* jointNode = skin->joints[ji];
+            st3DBone bone;
+            bone.name = jointNode->name ? jointNode->name : ("bone_" + std::to_string(ji));
+
+            // Parent index: find whether this joint's parent is also a joint
+            bone.parentIndex = -1;
+            if (jointNode->parent) {
+                auto parentIt = nodeToJoint.find(jointNode->parent);
+                if (parentIt != nodeToJoint.end()) bone.parentIndex = parentIt->second;
+            }
+
+            // Inverse bind matrix
+            if (!ibmBuffer.empty() && ji < ibmBuffer.size() / 16) {
+                memcpy(bone.inverseBindMatrix, ibmBuffer.data() + ji * 16, 64);
+            } else {
+                memset(bone.inverseBindMatrix, 0, 64);
+                bone.inverseBindMatrix[0]  = 1.0f;
+                bone.inverseBindMatrix[5]  = 1.0f;
+                bone.inverseBindMatrix[10] = 1.0f;
+                bone.inverseBindMatrix[15] = 1.0f;
+            }
+
+            // Rest pose TRS from glTF node
+            if (jointNode->has_translation) {
+                bone.restTranslation[0] = jointNode->translation[0];
+                bone.restTranslation[1] = jointNode->translation[1];
+                bone.restTranslation[2] = jointNode->translation[2];
+            } else {
+                bone.restTranslation[0] = bone.restTranslation[1] = bone.restTranslation[2] = 0.0f;
+            }
+            if (jointNode->has_rotation) {
+                bone.restRotation[0] = jointNode->rotation[0]; // x
+                bone.restRotation[1] = jointNode->rotation[1]; // y
+                bone.restRotation[2] = jointNode->rotation[2]; // z
+                bone.restRotation[3] = jointNode->rotation[3]; // w
+            } else {
+                bone.restRotation[0] = bone.restRotation[1] = bone.restRotation[2] = 0.0f;
+                bone.restRotation[3] = 1.0f;
+            }
+            if (jointNode->has_scale) {
+                bone.restScale[0] = jointNode->scale[0];
+                bone.restScale[1] = jointNode->scale[1];
+                bone.restScale[2] = jointNode->scale[2];
+            } else {
+                bone.restScale[0] = bone.restScale[1] = bone.restScale[2] = 1.0f;
+            }
+
+            model.skeleton.bones.push_back(bone);
+        }
+
+        // Load animation clips
+        for (cgltf_size ai = 0; ai < data->animations_count; ai++) {
+            const cgltf_animation* anim = &data->animations[ai];
+            st3DAnimClip clip;
+            clip.name     = anim->name ? anim->name : ("clip_" + std::to_string(ai));
+            clip.duration = 0.0f;
+
+            for (cgltf_size ci = 0; ci < anim->channels_count; ci++) {
+                const cgltf_animation_channel* ch   = &anim->channels[ci];
+                const cgltf_animation_sampler*  smp = ch->sampler;
+                if (!ch->target_node || !smp || !smp->input || !smp->output) continue;
+
+                auto jointIt = nodeToJoint.find(ch->target_node);
+                if (jointIt == nodeToJoint.end()) continue;
+
+                int boneIdx = jointIt->second;
+                if (boneIdx >= PB3D_MAX_BONES) continue;
+
+                st3DAnimChannel channel;
+                channel.boneIndex = boneIdx;
+
+                switch (ch->target_path) {
+                    case cgltf_animation_path_type_translation:
+                        channel.type = ANIM_CHANNEL_TRANSLATION; break;
+                    case cgltf_animation_path_type_rotation:
+                        channel.type = ANIM_CHANNEL_ROTATION;    break;
+                    case cgltf_animation_path_type_scale:
+                        channel.type = ANIM_CHANNEL_SCALE;       break;
+                    default: continue;
+                }
+
+                switch (smp->interpolation) {
+                    case cgltf_interpolation_type_step:
+                        channel.interpolation = ANIM_INTERP_STEP;        break;
+                    case cgltf_interpolation_type_cubic_spline:
+                        channel.interpolation = ANIM_INTERP_CUBICSPLINE; break;
+                    default:
+                        channel.interpolation = ANIM_INTERP_LINEAR;      break;
+                }
+
+                cgltf_size kfCount = smp->input->count;
+                int valComponents  = (channel.type == ANIM_CHANNEL_ROTATION) ? 4 : 3;
+                int stride = (channel.interpolation == ANIM_INTERP_CUBICSPLINE) ? 3 : 1;
+
+                for (cgltf_size ki = 0; ki < kfCount; ki++) {
+                    st3DAnimKeyframe kf;
+                    cgltf_accessor_read_float(smp->input, ki, &kf.time, 1);
+                    if (kf.time > clip.duration) clip.duration = kf.time;
+
+                    cgltf_size outIdx = (channel.interpolation == ANIM_INTERP_CUBICSPLINE)
+                                       ? ((cgltf_size)stride * ki + 1) : ki;
+                    kf.value[3] = 0.0f;
+                    cgltf_accessor_read_float(smp->output, outIdx,
+                                              kf.value, (cgltf_size)valComponents);
+                    channel.keyframes.push_back(kf);
+                }
+
+                if (!channel.keyframes.empty()) {
+                    clip.channels.push_back(channel);
+                }
+            }
+
+            if (!clip.channels.empty()) {
+                model.skeleton.clips.push_back(clip);
+            }
+        }
+
+        model.hasSkeleton = !model.skeleton.bones.empty();
+        if (model.hasSkeleton) {
+            pb3dSendConsole("PB3D: Skeleton loaded: " +
+                            std::to_string(model.skeleton.bones.size()) + " bones, " +
+                            std::to_string(model.skeleton.clips.size()) + " clips from: " +
+                            std::string(glbFilePath));
         }
     }
 
@@ -451,6 +692,22 @@ unsigned int PB3D::pb3dCreateInstance(unsigned int modelId) {
     instance.hasPixelAnchor = false;
     instance.anchorPixelX = 0.0f; instance.anchorPixelY = 0.0f;
     instance.anchorBaseX  = 0.0f; instance.anchorBaseY  = 0.0f;
+
+    // Initialize skeleton animation state
+    instance.skelState.clipIndex       = -1;
+    instance.skelState.currentTime     = 0.0f;
+    instance.skelState.looping         = false;
+    instance.skelState.isPlaying       = false;
+    instance.skelState.lastUpdateTick  = 0;
+    memset(instance.skelState.boneMatrices, 0, sizeof(instance.skelState.boneMatrices));
+    // Default bone matrices to identity so a rest-pose model renders correctly
+    const st3DModel& mdl = m_3dModelList.at(modelId);
+    int numBones = (int)mdl.skeleton.bones.size();
+    if (numBones > PB3D_MAX_BONES) numBones = PB3D_MAX_BONES;
+    for (int bi = 0; bi < numBones; bi++) {
+        float* m = instance.skelState.boneMatrices + bi * 16;
+        m[0] = m[5] = m[10] = m[15] = 1.0f;
+    }
 
     unsigned int instanceId = m_next3dInstanceId++;
     m_3dInstanceList[instanceId] = instance;
@@ -570,16 +827,27 @@ void PB3D::pb3dPixelToWorld(float pixelX, float pixelY, float depthZ, float& out
 
 void PB3D::pb3dBegin() {
     ogl3dBeginPass();
+    m_skinnedShaderActive = false;
 
     // Re-upload light uniforms and recompute view/projection matrices only when
     // the scene has changed (camera or lighting).  Neither changes at runtime in
     // normal usage, so this eliminates constant trig work every frame.
     if (m_sceneDirty) {
+        // Static shader scene uniforms
         ogl3dSetSceneUniforms(
             m_light.dirX,     m_light.dirY,     m_light.dirZ,
             m_light.r,        m_light.g,        m_light.b,
             m_light.ambientR, m_light.ambientG, m_light.ambientB,
             m_camera.eyeX,    m_camera.eyeY,    m_camera.eyeZ);
+
+        // Skinned shader scene uniforms (switch, upload, switch back)
+        ogl3dActivateSkinnedShader();
+        ogl3dSetSkinnedSceneUniforms(
+            m_light.dirX,     m_light.dirY,     m_light.dirZ,
+            m_light.r,        m_light.g,        m_light.b,
+            m_light.ambientR, m_light.ambientG, m_light.ambientB,
+            m_camera.eyeX,    m_camera.eyeY,    m_camera.eyeZ);
+        ogl3dActivateStaticShader();
 
         // Compute view matrix using linmath.h
         vec3 eye = {m_camera.eyeX, m_camera.eyeY, m_camera.eyeZ};
@@ -603,6 +871,11 @@ void PB3D::pb3dBegin() {
 }
 
 void PB3D::pb3dEnd() {
+    // Ensure static shader is restored before going back to 2D
+    if (m_skinnedShaderActive) {
+        ogl3dActivateStaticShader();
+        m_skinnedShaderActive = false;
+    }
     oglRestore2DState();
 }
 
@@ -671,15 +944,34 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
     mat4x4_mul(mvp, proj, viewModel);
 
     // Set per-instance uniforms and transparency blend state
-    ogl3dSetInstanceUniforms((const float*)mvp, (const float*)model, inst.alpha);
+    const st3DModel& model3d = modelIt->second;
+    bool needSkinned = model3d.hasSkeleton && (inst.skelState.clipIndex >= 0);
 
-    // Handle transparency: enable blend before draw, restore opaque state after
-    // so consecutive instances don't inherit each other's blend state.
+    // Switch shader if needed (without re-clearing the depth buffer)
+    if (needSkinned && !m_skinnedShaderActive) {
+        ogl3dActivateSkinnedShader();
+        m_skinnedShaderActive = true;
+    } else if (!needSkinned && m_skinnedShaderActive) {
+        ogl3dActivateStaticShader();
+        m_skinnedShaderActive = false;
+    }
+
     bool blendEnabled = (inst.alpha < 1.0f);
     ogl3dSetBlend(blendEnabled);
 
+    if (needSkinned) {
+        // Skinned path: upload MVP, model, alpha, and bone matrices
+        int numBones = (int)model3d.skeleton.bones.size();
+        if (numBones > PB3D_MAX_BONES) numBones = PB3D_MAX_BONES;
+        ogl3dSetSkinnedInstanceUniforms((const float*)mvp, (const float*)model,
+                                        inst.alpha, inst.skelState.boneMatrices, numBones);
+    } else {
+        // Static path: upload MVP, model, alpha
+        ogl3dSetInstanceUniforms((const float*)mvp, (const float*)model, inst.alpha);
+    }
+
     // Render each mesh primitive via PBOGLES
-    for (auto& mesh : modelIt->second.meshes) {
+    for (auto& mesh : model3d.meshes) {
         ogl3dDrawMeshPrimitive(mesh.vao, mesh.textureId, mesh.indexCount);
     }
 
@@ -737,8 +1029,7 @@ bool PB3D::pb3dCreateAnimation(st3DAnimateData anim, bool replaceExisting) {
 
 bool PB3D::pb3dAnimateInstance(unsigned int instanceId, unsigned int currentTick) {
     if (instanceId == 0) {
-        // Update all active animations directly from the map iterator,
-        // avoiding a second find() call per animation.
+        // Update all active transform animations
         bool anyActive = false;
         for (auto& pair : m_3dAnimateList) {
             if (pair.second.isActive) {
@@ -746,17 +1037,40 @@ bool PB3D::pb3dAnimateInstance(unsigned int instanceId, unsigned int currentTick
                 anyActive = true;
             }
         }
+        // Update all active skeleton animations
+        for (auto& pair : m_3dInstanceList) {
+            st3DInstance& inst = pair.second;
+            if (inst.skelState.isPlaying) {
+                auto modelIt = m_3dModelList.find(inst.modelId);
+                if (modelIt != m_3dModelList.end() && modelIt->second.hasSkeleton) {
+                    pb3dUpdateSkelState(inst, modelIt->second.skeleton, currentTick);
+                    anyActive = true;
+                }
+            }
+        }
         return anyActive;
     }
 
+    bool anyActive = false;
+
+    // Update transform animation if one exists
     auto animIt = m_3dAnimateList.find(instanceId);
-    if (animIt == m_3dAnimateList.end()) return false;
+    if (animIt != m_3dAnimateList.end() && animIt->second.isActive) {
+        pb3dProcessAnimation(animIt->second, currentTick);
+        anyActive = true;
+    }
 
-    st3DAnimateData& anim = animIt->second;
-    if (!anim.isActive) return false;
+    // Update skeleton animation if playing
+    auto instIt = m_3dInstanceList.find(instanceId);
+    if (instIt != m_3dInstanceList.end() && instIt->second.skelState.isPlaying) {
+        auto modelIt = m_3dModelList.find(instIt->second.modelId);
+        if (modelIt != m_3dModelList.end() && modelIt->second.hasSkeleton) {
+            pb3dUpdateSkelState(instIt->second, modelIt->second.skeleton, currentTick);
+            anyActive = true;
+        }
+    }
 
-    pb3dProcessAnimation(anim, currentTick);
-    return true;
+    return anyActive;
 }
 
 void PB3D::pb3dProcessAnimation(st3DAnimateData& anim, unsigned int currentTick) {
@@ -1032,4 +1346,290 @@ void PB3D::pb3dFadeOut(unsigned int instanceId, float timeSec, unsigned long sta
     anim.startTick         = (unsigned int)startTick;
     anim.isActive          = true;
     pb3dCreateAnimation(anim, true);
+}
+
+// ============================================================================
+// Skeleton Animation API
+// ============================================================================
+
+std::vector<std::string> PB3D::pb3dListAnimClips(unsigned int modelId) {
+    std::vector<std::string> names;
+    auto it = m_3dModelList.find(modelId);
+    if (it == m_3dModelList.end() || !it->second.hasSkeleton) return names;
+    for (const auto& clip : it->second.skeleton.clips) {
+        names.push_back(clip.name);
+    }
+    return names;
+}
+
+int PB3D::pb3dFindAnimClip(unsigned int modelId, const std::string& clipName) {
+    auto it = m_3dModelList.find(modelId);
+    if (it == m_3dModelList.end() || !it->second.hasSkeleton) return -1;
+    const auto& clips = it->second.skeleton.clips;
+    for (int i = 0; i < (int)clips.size(); i++) {
+        if (clips[i].name == clipName) return i;
+    }
+    return -1;
+}
+
+bool PB3D::pb3dPlayAnimClip(unsigned int instanceId, const std::string& clipName, bool loop) {
+    auto instIt = m_3dInstanceList.find(instanceId);
+    if (instIt == m_3dInstanceList.end()) return false;
+    auto modelIt = m_3dModelList.find(instIt->second.modelId);
+    if (modelIt == m_3dModelList.end() || !modelIt->second.hasSkeleton) return false;
+    int clipIdx = pb3dFindAnimClip(instIt->second.modelId, clipName);
+    if (clipIdx < 0) return false;
+    return pb3dPlayAnimClip(instanceId, clipIdx, loop);
+}
+
+bool PB3D::pb3dPlayAnimClip(unsigned int instanceId, int clipIndex, bool loop) {
+    auto instIt = m_3dInstanceList.find(instanceId);
+    if (instIt == m_3dInstanceList.end()) return false;
+    auto modelIt = m_3dModelList.find(instIt->second.modelId);
+    if (modelIt == m_3dModelList.end() || !modelIt->second.hasSkeleton) return false;
+    if (clipIndex < 0 || clipIndex >= (int)modelIt->second.skeleton.clips.size()) return false;
+
+    st3DSkelState& ss = instIt->second.skelState;
+    ss.clipIndex      = clipIndex;
+    ss.currentTime    = 0.0f;
+    ss.looping        = loop;
+    ss.isPlaying      = true;
+    ss.lastUpdateTick = 0;
+    // Compute initial bone matrices for time 0
+    pb3dUpdateSkelState(instIt->second, modelIt->second.skeleton, 0);
+    return true;
+}
+
+bool PB3D::pb3dStopAnimClip(unsigned int instanceId) {
+    auto instIt = m_3dInstanceList.find(instanceId);
+    if (instIt == m_3dInstanceList.end()) return false;
+    instIt->second.skelState.isPlaying = false;
+    return true;
+}
+
+bool PB3D::pb3dIsAnimClipPlaying(unsigned int instanceId) const {
+    auto instIt = m_3dInstanceList.find(instanceId);
+    if (instIt == m_3dInstanceList.end()) return false;
+    return instIt->second.skelState.isPlaying;
+}
+
+float PB3D::pb3dGetAnimClipTime(unsigned int instanceId) const {
+    auto instIt = m_3dInstanceList.find(instanceId);
+    if (instIt == m_3dInstanceList.end()) return 0.0f;
+    return instIt->second.skelState.currentTime;
+}
+
+bool PB3D::pb3dSetAnimClipTime(unsigned int instanceId, float timeSec) {
+    auto instIt = m_3dInstanceList.find(instanceId);
+    if (instIt == m_3dInstanceList.end()) return false;
+    auto modelIt = m_3dModelList.find(instIt->second.modelId);
+    if (modelIt == m_3dModelList.end() || !modelIt->second.hasSkeleton) return false;
+    instIt->second.skelState.currentTime = timeSec;
+    pb3dUpdateSkelState(instIt->second, modelIt->second.skeleton, 0);
+    return true;
+}
+
+// ============================================================================
+// Skeleton Animation Internal Helpers
+// ============================================================================
+
+// Update bone matrices for an instance based on the current time stored in skelState.
+// Call every frame for playing instances via pb3dAnimateInstance.
+void PB3D::pb3dUpdateSkelState(st3DInstance& inst, const st3DSkeleton& skel, unsigned int currentTick) {
+    st3DSkelState& ss = inst.skelState;
+    if (!ss.isPlaying || ss.clipIndex < 0 || ss.clipIndex >= (int)skel.clips.size()) return;
+
+    // Advance time if currentTick is valid
+    if (currentTick > 0 && ss.lastUpdateTick > 0 && currentTick > ss.lastUpdateTick) {
+        float dt = (currentTick - ss.lastUpdateTick) / 1000.0f;
+        ss.currentTime += dt;
+        const st3DAnimClip& clip = skel.clips[ss.clipIndex];
+        if (clip.duration > 0.0f && ss.currentTime > clip.duration) {
+            if (ss.looping) {
+                ss.currentTime = fmodf(ss.currentTime, clip.duration);
+            } else {
+                ss.currentTime = clip.duration;
+                ss.isPlaying   = false;
+            }
+        }
+    }
+    ss.lastUpdateTick = currentTick;
+
+    pb3dComputeBoneMatrices(skel, skel.clips[ss.clipIndex], ss.currentTime, ss.boneMatrices);
+}
+
+// Evaluate a single animation channel at the given time; writes 3 or 4 floats to out[].
+void PB3D::pb3dSkelEvalChannel(const st3DAnimChannel& ch, float time, float out[4]) {
+    if (ch.keyframes.empty()) {
+        out[0] = out[1] = out[2] = 0.0f; out[3] = 1.0f;
+        return;
+    }
+
+    // Clamp to first / last keyframe
+    if (time <= ch.keyframes.front().time) {
+        memcpy(out, ch.keyframes.front().value, sizeof(float) * 4);
+        return;
+    }
+    if (time >= ch.keyframes.back().time) {
+        memcpy(out, ch.keyframes.back().value, sizeof(float) * 4);
+        return;
+    }
+
+    // Find surrounding keyframes (linear search; typical clips have few keyframes per bone)
+    size_t k = 0;
+    while (k + 1 < ch.keyframes.size() && ch.keyframes[k + 1].time <= time) k++;
+
+    const st3DAnimKeyframe& kf0 = ch.keyframes[k];
+    const st3DAnimKeyframe& kf1 = ch.keyframes[k + 1];
+    float span = kf1.time - kf0.time;
+    float t    = (span > 1e-8f) ? (time - kf0.time) / span : 0.0f;
+
+    if (ch.interpolation == ANIM_INTERP_STEP) {
+        memcpy(out, kf0.value, sizeof(float) * 4);
+    } else if (ch.type == ANIM_CHANNEL_ROTATION) {
+        pb3dSkelSlerpQuat(kf0.value, kf1.value, t, out);
+    } else {
+        // LINEAR translation or scale
+        out[0] = pb3dSkelInterpolateFloat(kf0.value[0], kf1.value[0], t);
+        out[1] = pb3dSkelInterpolateFloat(kf0.value[1], kf1.value[1], t);
+        out[2] = pb3dSkelInterpolateFloat(kf0.value[2], kf1.value[2], t);
+        out[3] = 0.0f;
+    }
+}
+
+float PB3D::pb3dSkelInterpolateFloat(float a, float b, float t) {
+    return a + (b - a) * t;
+}
+
+// Spherical linear interpolation for unit quaternions (xyzw).
+void PB3D::pb3dSkelSlerpQuat(const float qa[4], const float qb[4], float t, float out[4]) {
+    float dot = qa[0]*qb[0] + qa[1]*qb[1] + qa[2]*qb[2] + qa[3]*qb[3];
+    float qb2[4] = {qb[0], qb[1], qb[2], qb[3]};
+    if (dot < 0.0f) {
+        // Flip qb to take the shorter arc
+        dot = -dot;
+        qb2[0] = -qb2[0]; qb2[1] = -qb2[1]; qb2[2] = -qb2[2]; qb2[3] = -qb2[3];
+    }
+    if (dot > 0.9995f) {
+        // Quaternions nearly identical — linear lerp to avoid division by zero
+        out[0] = qa[0] + t*(qb2[0]-qa[0]);
+        out[1] = qa[1] + t*(qb2[1]-qa[1]);
+        out[2] = qa[2] + t*(qb2[2]-qa[2]);
+        out[3] = qa[3] + t*(qb2[3]-qa[3]);
+        float len = sqrtf(out[0]*out[0]+out[1]*out[1]+out[2]*out[2]+out[3]*out[3]);
+        if (len > 1e-8f) { out[0]/=len; out[1]/=len; out[2]/=len; out[3]/=len; }
+        return;
+    }
+    float theta0 = acosf(dot);
+    float theta  = theta0 * t;
+    float sinT0  = sinf(theta0);
+    float sinT   = sinf(theta);
+    float s0 = cosf(theta) - dot * sinT / sinT0;
+    float s1 = sinT / sinT0;
+    out[0] = s0*qa[0] + s1*qb2[0];
+    out[1] = s0*qa[1] + s1*qb2[1];
+    out[2] = s0*qa[2] + s1*qb2[2];
+    out[3] = s0*qa[3] + s1*qb2[3];
+}
+
+// Build a 4×4 matrix (column-major) from TRS components.
+// Quaternion rotation is in xyzw order.
+void PB3D::pb3dMat4FromTRS(const float t[3], const float r[4], const float s[3], float out[16]) {
+    float qx = r[0], qy = r[1], qz = r[2], qw = r[3];
+    float x2 = qx+qx, y2 = qy+qy, z2 = qz+qz;
+    float xx = qx*x2, xy = qx*y2, xz = qx*z2;
+    float yy = qy*y2, yz = qy*z2, zz = qz*z2;
+    float wx = qw*x2, wy = qw*y2, wz = qw*z2;
+
+    // Column 0
+    out[0]  = (1.0f - (yy+zz)) * s[0];
+    out[1]  = (xy + wz)         * s[0];
+    out[2]  = (xz - wy)         * s[0];
+    out[3]  = 0.0f;
+    // Column 1
+    out[4]  = (xy - wz)         * s[1];
+    out[5]  = (1.0f - (xx+zz)) * s[1];
+    out[6]  = (yz + wx)         * s[1];
+    out[7]  = 0.0f;
+    // Column 2
+    out[8]  = (xz + wy)         * s[2];
+    out[9]  = (yz - wx)         * s[2];
+    out[10] = (1.0f - (xx+yy)) * s[2];
+    out[11] = 0.0f;
+    // Column 3
+    out[12] = t[0];
+    out[13] = t[1];
+    out[14] = t[2];
+    out[15] = 1.0f;
+}
+
+// Multiply two column-major 4×4 matrices: out = a * b
+void PB3D::pb3dMat4Mul(const float a[16], const float b[16], float out[16]) {
+    for (int col = 0; col < 4; col++) {
+        for (int row = 0; row < 4; row++) {
+            out[col*4+row] = a[0*4+row]*b[col*4+0]
+                           + a[1*4+row]*b[col*4+1]
+                           + a[2*4+row]*b[col*4+2]
+                           + a[3*4+row]*b[col*4+3];
+        }
+    }
+}
+
+// Compute final skinning matrices for all bones in a clip at a given time.
+// outMatrices is laid out as [bone0_mat16, bone1_mat16, ...] column-major.
+void PB3D::pb3dComputeBoneMatrices(const st3DSkeleton& skel, const st3DAnimClip& clip,
+                                    float time, float outMatrices[PB3D_MAX_BONES * 16]) {
+    int numBones = (int)skel.bones.size();
+    if (numBones > PB3D_MAX_BONES) numBones = PB3D_MAX_BONES;
+
+    // Stack-allocated scratch buffers (safe for concurrent calls)
+    float localMatrices[PB3D_MAX_BONES * 16];
+    float worldMatrices[PB3D_MAX_BONES * 16];
+
+    // Evaluate each bone's animated TRS (fall back to rest pose if no channel)
+    // Build per-bone lookup: channel index for T/R/S
+    // (For small bone counts a linear search per bone is fast enough)
+    for (int bi = 0; bi < numBones; bi++) {
+        const st3DBone& bone = skel.bones[bi];
+        float T[3], R[4], S[3];
+
+        // Start from rest pose
+        memcpy(T, bone.restTranslation, 12);
+        memcpy(R, bone.restRotation,    16);
+        memcpy(S, bone.restScale,       12);
+
+        // Override with animation channels if present
+        for (const auto& ch : clip.channels) {
+            if (ch.boneIndex != bi) continue;
+            float val[4] = {0,0,0,1};
+            pb3dSkelEvalChannel(ch, time, val);
+            switch (ch.type) {
+                case ANIM_CHANNEL_TRANSLATION:
+                    T[0]=val[0]; T[1]=val[1]; T[2]=val[2]; break;
+                case ANIM_CHANNEL_ROTATION:
+                    R[0]=val[0]; R[1]=val[1]; R[2]=val[2]; R[3]=val[3]; break;
+                case ANIM_CHANNEL_SCALE:
+                    S[0]=val[0]; S[1]=val[1]; S[2]=val[2]; break;
+            }
+        }
+
+        pb3dMat4FromTRS(T, R, S, localMatrices + bi * 16);
+    }
+
+    // Forward pass: compute global (world) transforms via hierarchy
+    for (int bi = 0; bi < numBones; bi++) {
+        int parent = skel.bones[bi].parentIndex;
+        if (parent < 0 || parent >= numBones) {
+            memcpy(worldMatrices + bi*16, localMatrices + bi*16, 64);
+        } else {
+            pb3dMat4Mul(worldMatrices + parent*16, localMatrices + bi*16,
+                        worldMatrices + bi*16);
+        }
+    }
+
+    // Skinning matrix = worldMatrix * inverseBindMatrix
+    for (int bi = 0; bi < numBones; bi++) {
+        pb3dMat4Mul(worldMatrices + bi*16, skel.bones[bi].inverseBindMatrix,
+                    outMatrices + bi*16);
+    }
 }

@@ -49,6 +49,22 @@ PBOGLES::PBOGLES() {
     m_3dPosAttrib        = -1;
     m_3dNormalAttrib     = -1;
     m_3dTexCoordAttrib   = -1;
+
+    // Skinned 3D shader state
+    m_3dSkinnedShaderProgram = 0;
+    m_3dSk_MVPUniform      = -1;
+    m_3dSk_ModelUniform    = -1;
+    m_3dSk_LightDirUniform = -1;
+    m_3dSk_LightColUniform = -1;
+    m_3dSk_AmbientUniform  = -1;
+    m_3dSk_CameraEyeUniform= -1;
+    m_3dSk_AlphaUniform    = -1;
+    m_3dSk_BonesUniform    = -1;
+    m_3dSk_PosAttrib       = -1;
+    m_3dSk_NormalAttrib    = -1;
+    m_3dSk_TexCoordAttrib  = -1;
+    m_3dSk_JointsAttrib    = -1;
+    m_3dSk_WeightsAttrib   = -1;
 }
 
 PBOGLES::~PBOGLES() {
@@ -789,6 +805,17 @@ void PBOGLES::ogl3dSetSceneUniforms(float lightDirX, float lightDirY, float ligh
     glUniform3f(m_3dCameraEyeUniform,  eyeX,      eyeY,      eyeZ);
 }
 
+// Upload scene-level uniforms for the skinned shader pass.
+void PBOGLES::ogl3dSetSkinnedSceneUniforms(float lightDirX, float lightDirY, float lightDirZ,
+                                            float lightColR, float lightColG, float lightColB,
+                                            float ambR,      float ambG,      float ambB,
+                                            float eyeX,      float eyeY,      float eyeZ) {
+    glUniform3f(m_3dSk_LightDirUniform,  lightDirX, lightDirY, lightDirZ);
+    glUniform3f(m_3dSk_LightColUniform,  lightColR, lightColG, lightColB);
+    glUniform3f(m_3dSk_AmbientUniform,   ambR,      ambG,      ambB);
+    glUniform3f(m_3dSk_CameraEyeUniform, eyeX,      eyeY,      eyeZ);
+}
+
 // Upload per-instance uniforms: MVP matrix, model matrix, and alpha.
 // Call once per instance before drawing its meshes.
 void PBOGLES::ogl3dSetInstanceUniforms(const float mvp[16], const float modelMat[16], float alpha) {
@@ -815,4 +842,138 @@ void PBOGLES::ogl3dDrawMeshPrimitive(unsigned int vao, unsigned int textureId, u
     glBindTexture(GL_TEXTURE_2D, (GLuint)textureId);
     glDrawElements(GL_TRIANGLES, (GLsizei)indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
+}
+
+// ============================================================================
+// Skinned-mesh shader support
+// ============================================================================
+
+// Compile the skinned 3D shader (vertex shader must include uBones[] array).
+bool PBOGLES::ogl3dInitSkinnedShader(const char* vertSrc, const char* fragSrc) {
+    m_3dSkinnedShaderProgram = oglCreateProgram(vertSrc, fragSrc);
+    if (m_3dSkinnedShaderProgram == 0) return false;
+
+    m_3dSk_MVPUniform       = glGetUniformLocation(m_3dSkinnedShaderProgram, "uMVP");
+    m_3dSk_ModelUniform     = glGetUniformLocation(m_3dSkinnedShaderProgram, "uModel");
+    m_3dSk_LightDirUniform  = glGetUniformLocation(m_3dSkinnedShaderProgram, "uLightDir");
+    m_3dSk_LightColUniform  = glGetUniformLocation(m_3dSkinnedShaderProgram, "uLightColor");
+    m_3dSk_AmbientUniform   = glGetUniformLocation(m_3dSkinnedShaderProgram, "uAmbientColor");
+    m_3dSk_CameraEyeUniform = glGetUniformLocation(m_3dSkinnedShaderProgram, "uCameraEye");
+    m_3dSk_AlphaUniform     = glGetUniformLocation(m_3dSkinnedShaderProgram, "uAlpha");
+    m_3dSk_BonesUniform     = glGetUniformLocation(m_3dSkinnedShaderProgram, "uBones");
+
+    m_3dSk_PosAttrib        = glGetAttribLocation(m_3dSkinnedShaderProgram, "aPosition");
+    m_3dSk_NormalAttrib     = glGetAttribLocation(m_3dSkinnedShaderProgram, "aNormal");
+    m_3dSk_TexCoordAttrib   = glGetAttribLocation(m_3dSkinnedShaderProgram, "aTexCoord");
+    m_3dSk_JointsAttrib     = glGetAttribLocation(m_3dSkinnedShaderProgram, "aJoints");
+    m_3dSk_WeightsAttrib    = glGetAttribLocation(m_3dSkinnedShaderProgram, "aWeights");
+
+    return (m_3dSk_PosAttrib >= 0);
+}
+
+// Delete the skinned 3D shader program and reset cached locations.
+void PBOGLES::ogl3dDestroySkinnedShader() {
+    if (m_3dSkinnedShaderProgram) {
+        glDeleteProgram(m_3dSkinnedShaderProgram);
+        m_3dSkinnedShaderProgram = 0;
+        m_3dSk_MVPUniform       = -1;
+        m_3dSk_ModelUniform     = -1;
+        m_3dSk_LightDirUniform  = -1;
+        m_3dSk_LightColUniform  = -1;
+        m_3dSk_AmbientUniform   = -1;
+        m_3dSk_CameraEyeUniform = -1;
+        m_3dSk_AlphaUniform     = -1;
+        m_3dSk_BonesUniform     = -1;
+        m_3dSk_PosAttrib        = -1;
+        m_3dSk_NormalAttrib     = -1;
+        m_3dSk_TexCoordAttrib   = -1;
+        m_3dSk_JointsAttrib     = -1;
+        m_3dSk_WeightsAttrib    = -1;
+    }
+}
+
+// Upload skinned vertex data to the GPU.
+// Vertex layout (stride = 16 floats):
+//   [posX posY posZ  normX normY normZ  u v  j0 j1 j2 j3  w0 w1 w2 w3]
+// The joints (j0..j3) are stored as floats; the shader casts them to int.
+bool PBOGLES::ogl3dCreateSkinnedMesh(const float* vertData, size_t vertFloatCount,
+                                      const unsigned int* idxData, size_t idxCount,
+                                      unsigned int& outVao, unsigned int& outVbo, unsigned int& outEbo) {
+    GLuint vao = 0, vbo = 0, ebo = 0;
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+
+    glBindVertexArray(vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(vertFloatCount * sizeof(float)), vertData, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(idxCount * sizeof(unsigned int)), idxData, GL_STATIC_DRAW);
+
+    GLsizei stride = 16 * sizeof(float);
+    if (m_3dSk_PosAttrib >= 0) {
+        glEnableVertexAttribArray(m_3dSk_PosAttrib);
+        glVertexAttribPointer(m_3dSk_PosAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+    }
+    if (m_3dSk_NormalAttrib >= 0) {
+        glEnableVertexAttribArray(m_3dSk_NormalAttrib);
+        glVertexAttribPointer(m_3dSk_NormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+    }
+    if (m_3dSk_TexCoordAttrib >= 0) {
+        glEnableVertexAttribArray(m_3dSk_TexCoordAttrib);
+        glVertexAttribPointer(m_3dSk_TexCoordAttrib, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
+    }
+    if (m_3dSk_JointsAttrib >= 0) {
+        glEnableVertexAttribArray(m_3dSk_JointsAttrib);
+        glVertexAttribPointer(m_3dSk_JointsAttrib, 4, GL_FLOAT, GL_FALSE, stride, (void*)(8 * sizeof(float)));
+    }
+    if (m_3dSk_WeightsAttrib >= 0) {
+        glEnableVertexAttribArray(m_3dSk_WeightsAttrib);
+        glVertexAttribPointer(m_3dSk_WeightsAttrib, 4, GL_FLOAT, GL_FALSE, stride, (void*)(12 * sizeof(float)));
+    }
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    outVao = (unsigned int)vao;
+    outVbo = (unsigned int)vbo;
+    outEbo = (unsigned int)ebo;
+    return true;
+}
+
+// Begin the skinned 3D rendering pass: enable depth testing, bind skinned shader.
+void PBOGLES::ogl3dBeginSkinnedPass() {
+    glDepthMask(GL_TRUE);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    if (!m_depthTestEnabled) { glEnable(GL_DEPTH_TEST);  m_depthTestEnabled = true; }
+    glDepthFunc(GL_LEQUAL);
+    if (m_cullFaceEnabled)   { glDisable(GL_CULL_FACE);  m_cullFaceEnabled  = false; }
+    glUseProgram(m_3dSkinnedShaderProgram);
+}
+
+// Switch between static and skinned shader programs mid-frame without
+// re-clearing the depth buffer.  Scene uniforms must already be uploaded.
+void PBOGLES::ogl3dActivateStaticShader() {
+    glUseProgram(m_3dShaderProgram);
+}
+void PBOGLES::ogl3dActivateSkinnedShader() {
+    if (m_3dSkinnedShaderProgram) {
+        glUseProgram(m_3dSkinnedShaderProgram);
+    }
+}
+
+// Upload per-instance uniforms for the skinned pass (MVP, model, alpha, bone matrices).
+void PBOGLES::ogl3dSetSkinnedInstanceUniforms(const float mvp[16], const float modelMat[16],
+                                               float alpha,
+                                               const float* boneMatrices, int numBones) {
+    glUniformMatrix4fv(m_3dSk_MVPUniform,   1, GL_FALSE, mvp);
+    glUniformMatrix4fv(m_3dSk_ModelUniform, 1, GL_FALSE, modelMat);
+    glUniform1f(m_3dSk_AlphaUniform, alpha);
+    if (m_3dSk_BonesUniform >= 0 && boneMatrices && numBones > 0) {
+        glUniformMatrix4fv(m_3dSk_BonesUniform, numBones, GL_FALSE, boneMatrices);
+    }
 }
