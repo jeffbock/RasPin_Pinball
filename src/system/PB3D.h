@@ -15,8 +15,21 @@
 #include <vector>
 #include <string>
 
-// Maximum bones per skinned mesh uploaded to the GPU shader
-#define PB3D_MAX_BONES 64
+// Maximum bones per skinned mesh uploaded to the GPU shader.
+// Must match the uBones[] array size declared in vertexShader3DSkinnedSource.
+//
+// Hardware budget: GLES 3.0 guarantees GL_MAX_VERTEX_UNIFORM_VECTORS >= 256.
+// Each mat4 costs 4 vectors, so the spec-safe cap is (256 - ~20 other uniforms) / 4 = ~59.
+// In practice the Pi 4 VideoCore VI and Pi 5 VideoCore VII report far higher limits.
+// pb3dInit() queries the actual hardware value at startup and logs a warning if
+// PB3D_MAX_BONES exceeds what the current GPU can support.
+//
+// crystalwing.glb has 2 skins totalling ~154 unique joints after deduplication,
+// so 160 is the minimum value that allows it to animate fully.  If the Pi driver
+// reports a limit that cannot fit 160 bones, reduce this value and either simplify
+// the asset (use pb3dutil --simplify-bones) or split it into two models.
+#define PB3D_MAX_BONES 160
+#define PB3D_MAX_BONES 160
 
 // Path for 3D model resources
 #define PB3D_MODEL_PATH "src/user/resources/3d/"
@@ -68,6 +81,13 @@ struct st3DBone {
     float restTranslation[3];    // rest-pose translation from glTF node
     float restRotation[4];       // rest-pose rotation quaternion xyzw from glTF node
     float restScale[3];          // rest-pose scale from glTF node
+    // World transform of the first non-joint ancestor of this bone (i.e. the
+    // cumulative transform of all scene/armature nodes above this joint that
+    // are NOT themselves joints in any skin).  For bones whose immediate parent
+    // IS a joint, this is identity and parentIndex handles the hierarchy.
+    // For root bones whose parent is an armature object or scene node, this
+    // encodes the missing transform so worldMatrix = parentOffsetMatrix * localTRS.
+    float parentOffsetMatrix[16];
 };
 
 // Skeleton: bone hierarchy + all animation clips for a model
@@ -120,7 +140,9 @@ struct st3DMesh {
     unsigned int indexCount;
     unsigned int textureId;
     unsigned int materialIndex;
-    bool isSkinned;  // true when JOINTS_0/WEIGHTS_0 were present (uses skinned VAO layout)
+    bool isSkinned;           // true when JOINTS_0/WEIGHTS_0 were present (uses skinned VAO layout)
+    bool needsBlend;          // true when material alpha_mode is BLEND or MASK (transparent areas)
+    float materialBaseAlpha;  // base_color_factor[3] from glTF PBR material (1.0 when absent)
 };
 
 struct st3DModel {
@@ -129,6 +151,8 @@ struct st3DModel {
     std::string name;
     bool isLoaded;
     bool hasSkeleton;    // true when skin + bone hierarchy was loaded from the glTF
+    float normScale;     // 1 / max_model_extent — the global normalization factor applied to vertex positions
+    float normCX, normCY, normCZ;  // bounding-box centre used by the normalization (pre-normalization space)
     st3DSkeleton skeleton;
 };
 
@@ -221,7 +245,11 @@ public:
     // -----------------------------------------------------------------------
     // Model loading
     // -----------------------------------------------------------------------
-    unsigned int pb3dLoadModel(const char* glbFilePath);
+    // forceStatic: when true, JOINTS_0/WEIGHTS_0 are ignored and all primitives are
+    // uploaded using the 8-float static VAO layout and rendered with the static shader.
+    // Use this for debugging geometry without skinning, or for models whose skin data
+    // is not needed (e.g. static decorative objects authored with a rig).
+    unsigned int pb3dLoadModel(const char* glbFilePath, bool forceStatic = false);
     bool         pb3dUnloadModel(unsigned int modelId);
 
     // -----------------------------------------------------------------------
@@ -243,6 +271,7 @@ public:
     void pb3dSetInstanceScale(unsigned int instanceId, float scale);   // 1.0 = native size
     void pb3dSetInstanceAlpha(unsigned int instanceId, float alpha);   // 0.0 – 1.0
     void pb3dSetInstanceVisible(unsigned int instanceId, bool visible);
+    bool pb3dGetInstanceVisible(unsigned int instanceId) const;
 
     // -----------------------------------------------------------------------
     // Lighting  (direction is in normalised world-space, colors are 0.0–1.0)

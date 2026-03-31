@@ -13,7 +13,7 @@
 //                    (informational; does not modify the file)
 //
 // Options:
-//   --max-bones N    Maximum bones to keep (default: 64)
+//   --max-bones N    Maximum bones to keep (default: 160, matching PB3D_MAX_BONES)
 //   --threshold F    Minimum total weight for a bone to be retained (default: 0.01)
 //   --help           Print this help message
 
@@ -310,19 +310,68 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold) {
     std::cout << "Bone simplification analysis for: " << path << "\n";
     std::cout << "  max-bones  = " << maxBones  << "\n";
     std::cout << "  threshold  = " << threshold << " (minimum total weight per bone)\n";
+    std::cout << "  skins      = " << data->skins_count << "\n";
     printSeparator();
 
-    const cgltf_skin* skin = &data->skins[0];
-    size_t numBones = skin->joints_count;
-    std::cout << "Total bones: " << numBones << "\n";
+    // Build unified node->globalBoneIndex map across all skins (same dedup logic as PB3D.cpp).
+    // Also build per-skin local->global index remapping so per-mesh weight accumulation
+    // translates skin-local joint indices to the unified global index correctly.
+    std::map<const cgltf_node*, int>              nodeToGlobal;
+    std::map<const cgltf_skin*, std::vector<int>> skinLocalToGlobal;
+    std::vector<const cgltf_node*>                globalIndexToNode;  // reverse map for names
 
-    // Accumulate total weight per bone across all skinned primitives
-    std::vector<double> totalWeight(numBones, 0.0);
+    for (cgltf_size si = 0; si < data->skins_count; si++) {
+        const cgltf_skin* skin = &data->skins[si];
+        std::vector<int>& l2g = skinLocalToGlobal[skin];
+        l2g.resize(skin->joints_count, 0);
+        for (cgltf_size ji = 0; ji < skin->joints_count; ji++) {
+            const cgltf_node* jn = skin->joints[ji];
+            auto it = nodeToGlobal.find(jn);
+            if (it != nodeToGlobal.end()) {
+                l2g[ji] = it->second;
+            } else {
+                int idx = (int)nodeToGlobal.size();
+                nodeToGlobal[jn] = idx;
+                globalIndexToNode.push_back(jn);
+                l2g[ji] = idx;
+            }
+        }
+    }
+
+    int numBones = (int)globalIndexToNode.size();
+    std::cout << "Total unique bones (across " << data->skins_count << " skin(s)): " << numBones << "\n";
+    for (cgltf_size si = 0; si < data->skins_count; si++) {
+        const cgltf_skin* skin = &data->skins[si];
+        std::cout << "  Skin[" << si << "]: \"" << (skin->name ? skin->name : "(unnamed)")
+                  << "\"  " << skin->joints_count << " joints\n";
+    }
+
+    // Build mesh->skin map so we know which skin's l2g to use per primitive
+    std::map<const cgltf_mesh*, const cgltf_skin*> meshToSkin;
+    for (cgltf_size ni = 0; ni < data->nodes_count; ni++) {
+        const cgltf_node* nd = &data->nodes[ni];
+        if (nd->mesh && nd->skin) meshToSkin[nd->mesh] = nd->skin;
+    }
+
+    // Accumulate total weight per global bone index across all skinned primitives
+    std::vector<double> totalWeight((size_t)numBones, 0.0);
     size_t totalVertices = 0;
 
     for (cgltf_size mi = 0; mi < data->meshes_count; mi++) {
-        for (cgltf_size pi = 0; pi < data->meshes[mi].primitives_count; pi++) {
-            const cgltf_primitive* prim = &data->meshes[mi].primitives[pi];
+        const cgltf_mesh* mesh = &data->meshes[mi];
+        const cgltf_skin* meshSkin = nullptr;
+        {
+            auto sit = meshToSkin.find(mesh);
+            if (sit != meshToSkin.end()) meshSkin = sit->second;
+        }
+        const std::vector<int>* l2g = nullptr;
+        if (meshSkin) {
+            auto lit = skinLocalToGlobal.find(meshSkin);
+            if (lit != skinLocalToGlobal.end()) l2g = &lit->second;
+        }
+
+        for (cgltf_size pi = 0; pi < mesh->primitives_count; pi++) {
+            const cgltf_primitive* prim = &mesh->primitives[pi];
             const cgltf_accessor* jointsAcc  = nullptr;
             const cgltf_accessor* weightsAcc = nullptr;
             const cgltf_accessor* posAcc     = nullptr;
@@ -347,9 +396,11 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold) {
                 cgltf_accessor_read_float(jointsAcc,  vi, joints,  4);
                 cgltf_accessor_read_float(weightsAcc, vi, weights, 4);
                 for (int j = 0; j < 4; j++) {
-                    int boneIdx = (int)joints[j];
-                    if (boneIdx >= 0 && boneIdx < (int)numBones) {
-                        totalWeight[(size_t)boneIdx] += (double)weights[j];
+                    int localIdx = (int)joints[j];
+                    int globalIdx = (l2g && localIdx < (int)l2g->size())
+                                    ? (*l2g)[localIdx] : localIdx;
+                    if (globalIdx >= 0 && globalIdx < numBones) {
+                        totalWeight[(size_t)globalIdx] += (double)weights[j];
                     }
                 }
             }
@@ -358,9 +409,9 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold) {
 
     std::cout << "Total skinned vertices: " << totalVertices << "\n\n";
 
-    // Report bones below threshold and those exceeding maxBones limit
+    // Report bones below/above threshold
     std::vector<int> bonesAbove, bonesBelow;
-    for (int bi = 0; bi < (int)numBones; bi++) {
+    for (int bi = 0; bi < numBones; bi++) {
         double normalised = (totalVertices > 0) ? totalWeight[(size_t)bi] / (double)totalVertices : 0.0;
         if (normalised >= (double)threshold)
             bonesAbove.push_back(bi);
@@ -370,7 +421,7 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold) {
 
     std::cout << "Bones with weight >= threshold (" << bonesAbove.size() << "):\n";
     for (int bi : bonesAbove) {
-        const cgltf_node* jn = skin->joints[bi];
+        const cgltf_node* jn = globalIndexToNode[(size_t)bi];
         double w = (totalVertices > 0) ? totalWeight[(size_t)bi] / (double)totalVertices : 0.0;
         std::cout << "  [" << std::setw(3) << bi << "] \""
                   << (jn->name ? jn->name : "(unnamed)")
@@ -380,7 +431,7 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold) {
     if (!bonesBelow.empty()) {
         std::cout << "\nBones below threshold - candidates for removal (" << bonesBelow.size() << "):\n";
         for (int bi : bonesBelow) {
-            const cgltf_node* jn = skin->joints[bi];
+            const cgltf_node* jn = globalIndexToNode[(size_t)bi];
             double w = (totalVertices > 0) ? totalWeight[(size_t)bi] / (double)totalVertices : 0.0;
             std::cout << "  [" << std::setw(3) << bi << "] \""
                       << (jn->name ? jn->name : "(unnamed)")
@@ -390,19 +441,18 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold) {
         std::cout << "\nNo bones below threshold - no simplification recommended.\n";
     }
 
-    // Report if bone count exceeds max-bones
-    if ((int)numBones > maxBones) {
-        std::cout << "\nWARNING: Model has " << numBones << " bones but max-bones is " << maxBones
+    // Report if unified bone count exceeds max-bones
+    if (numBones > maxBones) {
+        std::cout << "\nWARNING: Model has " << numBones << " unique bones but max-bones is " << maxBones
                   << ". Lowest-weight bones to cut:\n";
-        // Sort by ascending weight, take first (numBones - maxBones)
         std::vector<std::pair<double,int>> sorted;
-        for (int bi = 0; bi < (int)numBones; bi++)
+        for (int bi = 0; bi < numBones; bi++)
             sorted.emplace_back(totalWeight[(size_t)bi], bi);
         std::sort(sorted.begin(), sorted.end());
-        int toCut = (int)numBones - maxBones;
+        int toCut = numBones - maxBones;
         for (int k = 0; k < toCut; k++) {
             int bi = sorted[k].second;
-            const cgltf_node* jn = skin->joints[bi];
+            const cgltf_node* jn = globalIndexToNode[(size_t)bi];
             double w = (totalVertices > 0) ? sorted[k].first / (double)totalVertices : 0.0;
             std::cout << "  [" << std::setw(3) << bi << "] \""
                       << (jn->name ? jn->name : "(unnamed)")
@@ -432,7 +482,7 @@ static void printHelp(const char* argv0) {
               << "  --info           Print full model info (meshes, materials, textures, bones, clips)\n"
               << "  --list-clips     List animation clips with name, duration, and channel count\n"
               << "  --simplify-bones Analyse which bones are candidates for removal\n"
-              << "                   --max-bones N   Maximum bone count target (default: 64)\n"
+              << "                   --max-bones N   Maximum bone count target (default: 160)\n"
               << "                   --threshold F   Min normalised weight to keep bone (default: 0.01)\n"
               << "  --help           Print this help message\n\n"
               << "Supported formats: GLB (glTF 2.0 binary)\n";
@@ -477,7 +527,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         const char* filePath  = argv[2];
-        int   maxBones  = 64;
+        int   maxBones  = 160;
         float threshold = 0.01f;
 
         for (int i = 3; i < argc; i++) {

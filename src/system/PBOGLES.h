@@ -126,9 +126,7 @@ protected:
     // Per-instance uniform upload for skinned path (adds bone matrices array)
     void         ogl3dSetSkinnedInstanceUniforms(const float mvp[16], const float modelMat[16],
                                                  float alpha,
-                                                 const float* boneMatrices, int numBones);
-
-    // Blend state helper
+                                                  const float* boneMatrices, int numBones);
     void         ogl3dSetBlend(bool enable);
 
     // Draw one mesh primitive (VAO + texture already bound by caller)

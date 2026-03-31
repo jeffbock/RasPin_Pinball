@@ -9,6 +9,7 @@
 #include "3rdparty/cgltf.h"
 #include "3rdparty/linmath.h"
 #include "3rdparty/stb_image.h"
+#include <algorithm>
 #include <cstring>
 #include <cmath>
 #include <random>
@@ -57,7 +58,7 @@ const char* PB3D::fragmentShader3DSource = R"(#version 300 es
         vec3 halfDir = normalize(lightDir + viewDir);
         float spec = pow(max(dot(norm, halfDir), 0.0), 32.0);
         vec3 finalColor = texColor.rgb * (uAmbientColor + diffuse * uLightColor)
-                        + spec * 0.4 * uLightColor;
+                        + spec * 0.1 * uLightColor;
         fragColor = vec4(finalColor, texColor.a * uAlpha);
     }
 )";
@@ -74,7 +75,7 @@ const char* PB3D::vertexShader3DSkinnedSource = R"(#version 300 es
     in vec4 aWeights;  // blend weights (sum to 1.0)
     uniform mat4 uMVP;
     uniform mat4 uModel;
-    uniform mat4 uBones[64];
+    uniform mat4 uBones[160];
     out vec2 vTexCoord;
     out vec3 vNormal;
     out vec3 vWorldPos;
@@ -154,6 +155,25 @@ bool PB3D::pb3dInit() {
         pb3dSendConsole("PB3D: WARNING - Failed to create skinned 3D shader; skeleton animation disabled");
         // Non-fatal: models without skins still work
     }
+
+    // Query the hardware uniform vector budget and warn if PB3D_MAX_BONES may exceed it.
+    // GLES 3.0 spec guarantees GL_MAX_VERTEX_UNIFORM_VECTORS >= 256 (each mat4 costs 4 vectors).
+    // This does NOT mean 256 is the actual limit on a given GPU — Pi4/Pi5 report much higher —
+    // but it tells us immediately if something will break at runtime on the target device.
+    // Formula: we need at least (PB3D_MAX_BONES * 4 + 20) vectors (20 = all other uniforms).
+    GLint maxUniformVectors = 0;
+    glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS, &maxUniformVectors);
+    int bonesNeeded         = PB3D_MAX_BONES * 4 + 20;
+    pb3dSendConsole("PB3D: GL_MAX_VERTEX_UNIFORM_VECTORS = " + std::to_string(maxUniformVectors)
+                    + "  (need " + std::to_string(bonesNeeded)
+                    + " for " + std::to_string(PB3D_MAX_BONES) + " bones)");
+    if (bonesNeeded > maxUniformVectors) {
+        pb3dSendConsole("PB3D: WARNING - PB3D_MAX_BONES (" + std::to_string(PB3D_MAX_BONES)
+                        + ") exceeds GPU uniform budget! Max safe bone count on this GPU: "
+                        + std::to_string((maxUniformVectors - 20) / 4)
+                        + ". Skinned meshes with more bones will render incorrectly.");
+    }
+
     return true;
 }
 
@@ -168,7 +188,7 @@ static void cgltf_accessor_read_float_buffer(const cgltf_accessor* accessor, flo
     }
 }
 
-unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
+unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
     cgltf_options options = {};
     cgltf_data* data = nullptr;
 
@@ -191,6 +211,8 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
     model.name = glbFilePath;
     model.isLoaded = true;
     model.hasSkeleton = false;
+    model.normScale  = 1.0f;
+    model.normCX = model.normCY = model.normCZ = 0.0f;
 
     // --- Pass 1: compute the combined bounding box over ALL triangle primitives ---
     // Uses accessor-level min/max when available (O(1) per accessor); falls back
@@ -245,10 +267,54 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
     if (maxGlobalExt < 1e-6f) maxGlobalExt = 1.0f;
     float normScale = 1.0f / maxGlobalExt;
 
+    // Store normalization data in the model for the skinned-render MVP correction
+    model.normScale = normScale;
+    model.normCX    = normCX;
+    model.normCY    = normCY;
+    model.normCZ    = normCZ;
+
     // Local texture deduplication cache (cgltf_image* → GPU texture handle).
     // Keyed on image pointer for identity comparison within this load session.
     // nullptr key is reserved for the shared 1×1 white fallback texture.
     std::map<const cgltf_image*, unsigned int> localTexCache;
+
+    // -----------------------------------------------------------------------
+    // Multi-skin joint unification: scan nodes to find which skin each mesh
+    // uses, then build a unified node→globalBoneIndex map, deduplicating joints
+    // that appear in more than one skin.  VBO joint indices are remapped from
+    // skin-local to global during Pass 2.  The maps are also used during
+    // skeleton/animation loading so animation channels targeting any skin's
+    // joints are all correctly captured.
+    // -----------------------------------------------------------------------
+    std::map<const cgltf_mesh*, const cgltf_skin*> meshToSkin;
+    for (cgltf_size ni = 0; ni < data->nodes_count; ni++) {
+        const cgltf_node* nd = &data->nodes[ni];
+        if (nd->mesh && nd->skin) meshToSkin[nd->mesh] = nd->skin;
+    }
+    // For each skin, build a local-index→globalBoneIndex vector, deduplicating
+    // by cgltf_node* so joints shared across skins occupy a single global slot.
+    std::map<const cgltf_node*, int>              nodeToGlobalBone;
+    std::map<const cgltf_skin*, std::vector<int>> skinLocalToGlobal;
+    for (cgltf_size si = 0; si < data->skins_count; si++) {
+        const cgltf_skin* skin = &data->skins[si];
+        std::vector<int>& l2g = skinLocalToGlobal[skin];
+        l2g.resize(skin->joints_count, 0);
+        for (cgltf_size ji = 0; ji < skin->joints_count; ji++) {
+            const cgltf_node* jn = skin->joints[ji];
+            auto existing = nodeToGlobalBone.find(jn);
+            if (existing != nodeToGlobalBone.end()) {
+                l2g[ji] = existing->second;  // shared joint — reuse existing global slot
+            } else {
+                int globalIdx = (int)nodeToGlobalBone.size();
+                if (globalIdx < PB3D_MAX_BONES) {
+                    nodeToGlobalBone[jn] = globalIdx;
+                    l2g[ji] = globalIdx;
+                } else {
+                    l2g[ji] = PB3D_MAX_BONES - 1;  // overflow: clamp to last slot
+                }
+            }
+        }
+    }
 
     // --- Pass 2: build GPU resources for each triangle primitive ---
     for (cgltf_size mi = 0; mi < data->meshes_count; mi++) {
@@ -357,26 +423,59 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
             }
 
             // Read JOINTS_0 and WEIGHTS_0 for skinned meshes
-            bool hasSkinData = (jointsAccessor != nullptr && weightsAccessor != nullptr);
+            // forceStatic overrides skin data so all primitives use the static 8-float path.
+            bool hasSkinData = !forceStatic && (jointsAccessor != nullptr && weightsAccessor != nullptr);
             std::vector<float> joints(vertexCount * 4, 0.0f);
             std::vector<float> weights(vertexCount * 4, 0.0f);
             if (hasSkinData) {
                 // Joints may be UNSIGNED_BYTE or UNSIGNED_SHORT — cgltf_accessor_read_float normalizes
                 cgltf_accessor_read_float_buffer(jointsAccessor, joints.data(), 4);
                 cgltf_accessor_read_float_buffer(weightsAccessor, weights.data(), 4);
+                // Remap skin-local joint indices to unified global bone indices.
+                // glTF joint indices are relative to the skin the node uses; we unify
+                // all skins into one bone array, so each mesh's indices must be
+                // translated to their correct global slot.
+                const cgltf_skin* primSkin = nullptr;
+                {
+                    auto skinIt = meshToSkin.find(mesh);
+                    if (skinIt != meshToSkin.end()) primSkin = skinIt->second;
+                }
+                const std::vector<int>* l2g = nullptr;
+                if (primSkin) {
+                    auto l2gIt = skinLocalToGlobal.find(primSkin);
+                    if (l2gIt != skinLocalToGlobal.end()) l2g = &l2gIt->second;
+                }
+                for (cgltf_size v = 0; v < vertexCount; v++) {
+                    for (int c = 0; c < 4; c++) {
+                        int localIdx = (int)joints[v*4+c];
+                        int globalIdx = (l2g && localIdx < (int)l2g->size())
+                                        ? (*l2g)[localIdx] : localIdx;
+                        if (globalIdx < 0 || globalIdx >= PB3D_MAX_BONES)
+                            globalIdx = PB3D_MAX_BONES - 1;
+                        joints[v*4+c] = (float)globalIdx;
+                    }
+                }
             }
 
-            // Apply global normalization: all primitives share the same center and scale
-            // so that their relative positions within the model are preserved.
-            for (cgltf_size v = 0; v < vertexCount; v++) {
-                positions[v*3+0] = (positions[v*3+0] - normCX) * normScale;
-                positions[v*3+1] = (positions[v*3+1] - normCY) * normScale;
-                positions[v*3+2] = (positions[v*3+2] - normCZ) * normScale;
-            }
+            // Vertex positions are stored as raw model-space coordinates.
+            // The model matrix at render time folds in normScale and normCenter
+            // so IBMs work correctly in the skinned path.
 
             // Create GPU resources via PBOGLES (no direct GL calls in PB3D)
             st3DMesh gpuMesh = {};
-            gpuMesh.isSkinned = hasSkinData;
+            gpuMesh.isSkinned         = hasSkinData;
+            gpuMesh.needsBlend        = false;
+            gpuMesh.materialBaseAlpha = 1.0f;
+            if (prim->material) {
+                cgltf_alpha_mode am = prim->material->alpha_mode;
+                gpuMesh.needsBlend = (am == cgltf_alpha_mode_blend ||
+                                      am == cgltf_alpha_mode_mask);
+                if (prim->material->has_pbr_metallic_roughness) {
+                    // Read base_color_factor alpha — often < 1 for transparent/glass materials
+                    gpuMesh.materialBaseAlpha =
+                        prim->material->pbr_metallic_roughness.base_color_factor[3];
+                }
+            }
 
             if (hasSkinData) {
                 // Skinned layout: [posX, posY, posZ, normX, normY, normZ, u, v, j0, j1, j2, j3, w0, w1, w2, w3]
@@ -487,85 +586,154 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
                 }
             }
 
+            // Diagnostic: confirm each primitive loaded and surface any material issues.
+            {
+                // True when the material has a PBR base-color texture that was actually loaded.
+                bool hasRealTex = (prim->material
+                                && prim->material->has_pbr_metallic_roughness
+                                && prim->material->pbr_metallic_roughness.base_color_texture.texture != nullptr
+                                && prim->material->pbr_metallic_roughness.base_color_texture.texture->image != nullptr);
+                std::string matName = (prim->material && prim->material->name)
+                                    ? std::string(prim->material->name) : "(no material)";
+                // Note when the material base_color_factor carries an alpha the shader doesn't apply.
+                // Alpha transparency must come from the texture's alpha channel.
+                if (prim->material && prim->material->has_pbr_metallic_roughness) {
+                    const float* bcf = prim->material->pbr_metallic_roughness.base_color_factor;
+                    if (bcf[3] < 0.99f) {
+                        pb3dSendConsole("PB3D:   NOTE - Mesh[" + std::to_string(mi) + "] mat '" + matName
+                                        + "' base_color_factor alpha=" + std::to_string(bcf[3])
+                                        + " (not applied by shader; use texture alpha)");
+                    }
+                }
+                pb3dSendConsole("PB3D:   Mesh[" + std::to_string(mi) + "] Prim[" + std::to_string(pi) + "]"
+                                + " '" + (mesh->name ? std::string(mesh->name) : "?") + "'"
+                                + " v=" + std::to_string(vertexCount)
+                                + " idx=" + std::to_string(gpuMesh.indexCount)
+                                + (gpuMesh.isSkinned ? " [SKINNED]" : " [STATIC]")
+                                + " tex=" + std::to_string(gpuMesh.textureId) + (hasRealTex ? "" : " [FALLBACK]")
+                                + " mat='" + matName + "'"
+                                + (gpuMesh.needsBlend ? " [BLEND]" : " [OPAQUE]"));
+            }
+
             model.meshes.push_back(gpuMesh);
         }
     }
 
+    // Sort mesh list so opaque primitives render before transparent ones.
+    // Transparent geometry must composite over fully-rendered opaque surfaces;
+    // drawing it first produces incorrect blending against whatever is already
+    // in the framebuffer rather than against the finished opaque geometry.
+    std::stable_sort(model.meshes.begin(), model.meshes.end(),
+        [](const st3DMesh& a, const st3DMesh& b) {
+            bool aBlend = a.needsBlend || (a.materialBaseAlpha < 0.999f);
+            bool bBlend = b.needsBlend || (b.materialBaseAlpha < 0.999f);
+            return !aBlend && bBlend;  // opaque (false) sorts before transparent (true)
+        });
+
+    pb3dSendConsole("PB3D: '" + std::string(glbFilePath) + "' loaded: "
+                    + std::to_string(model.meshes.size()) + " mesh primitive(s), "
+                    + std::to_string(model.ownedTextures.size()) + " unique texture(s)");
+
     // -----------------------------------------------------------------------
-    // Skeleton loading: read skin 0 if present, then load animations
+    // Skeleton loading: unify ALL skins into a single bone array using the
+    // nodeToGlobalBone map built in the pre-pass above.  Animation channels
+    // from all clips are mapped via the same unified index so every skin's
+    // joints are animated correctly.
     // -----------------------------------------------------------------------
     if (data->skins_count > 0) {
-        cgltf_skin* skin = &data->skins[0];
+        int totalBones = (int)nodeToGlobalBone.size();
+        if (totalBones > PB3D_MAX_BONES) totalBones = PB3D_MAX_BONES;
+        pb3dSendConsole("PB3D: Loading " + std::to_string(data->skins_count) + " skin(s), "
+                        + std::to_string(totalBones) + " unique joints from: "
+                        + std::string(glbFilePath));
 
-        // Build map from cgltf_node* -> boneIndex for parent resolution
-        std::map<const cgltf_node*, int> nodeToJoint;
-        for (cgltf_size ji = 0; ji < skin->joints_count; ji++) {
-            nodeToJoint[skin->joints[ji]] = (int)ji;
-        }
+        model.skeleton.bones.resize(totalBones);
 
-        // Read inverse bind matrices (one per joint, column-major 4×4)
-        std::vector<float> ibmBuffer;
-        if (skin->inverse_bind_matrices) {
-            size_t ibmCount = skin->inverse_bind_matrices->count;
-            ibmBuffer.resize(ibmCount * 16, 0.0f);
-            for (cgltf_size ji = 0; ji < ibmCount; ji++) {
-                cgltf_accessor_read_float(skin->inverse_bind_matrices, ji,
-                                          ibmBuffer.data() + ji * 16, 16);
+        for (cgltf_size si = 0; si < data->skins_count; si++) {
+            const cgltf_skin* skin = &data->skins[si];
+            const std::vector<int>& l2g = skinLocalToGlobal.at(skin);
+
+            // Read inverse bind matrices for this skin
+            std::vector<float> ibmBuffer;
+            if (skin->inverse_bind_matrices) {
+                cgltf_size ibmCount = skin->inverse_bind_matrices->count;
+                ibmBuffer.resize(ibmCount * 16, 0.0f);
+                for (cgltf_size ji = 0; ji < ibmCount; ji++) {
+                    cgltf_accessor_read_float(skin->inverse_bind_matrices, ji,
+                                              ibmBuffer.data() + ji * 16, 16);
+                }
+            }
+
+            for (cgltf_size ji = 0; ji < skin->joints_count; ji++) {
+                int globalIdx = l2g[ji];
+                if (globalIdx < 0 || globalIdx >= totalBones) continue;
+
+                st3DBone& bone = model.skeleton.bones[globalIdx];
+                if (!bone.name.empty()) continue;  // already filled by an earlier skin (shared joint)
+
+                const cgltf_node* jn = skin->joints[ji];
+                bone.name = jn->name ? jn->name : ("bone_" + std::to_string(globalIdx));
+
+                // Parent index — look up through the unified map
+                bone.parentIndex = -1;
+                if (jn->parent) {
+                    auto parentIt = nodeToGlobalBone.find(jn->parent);
+                    if (parentIt != nodeToGlobalBone.end()) bone.parentIndex = parentIt->second;
+                }
+
+                // parentOffsetMatrix: identity for all bones.
+                // For root bones whose parent is a non-joint armature node the IBM
+                // already encodes the full bind-world transform, so at rest pose
+                // skinMatrix = localTRS * IBM ≈ identity and vertices render correctly.
+                // Explicitly computing the armature offset via mat4x4_invert(IBM) is
+                // numerically unreliable when any bone has a near-zero scale component
+                // (idet → Inf), sending all descendants to infinity.
+                memset(bone.parentOffsetMatrix, 0, 64);
+                bone.parentOffsetMatrix[0]  = 1.0f;
+                bone.parentOffsetMatrix[5]  = 1.0f;
+                bone.parentOffsetMatrix[10] = 1.0f;
+                bone.parentOffsetMatrix[15] = 1.0f;
+
+                // Inverse bind matrix
+                if (!ibmBuffer.empty() && ji < ibmBuffer.size() / 16) {
+                    memcpy(bone.inverseBindMatrix, ibmBuffer.data() + ji * 16, 64);
+                } else {
+                    memset(bone.inverseBindMatrix, 0, 64);
+                    bone.inverseBindMatrix[0]  = 1.0f;
+                    bone.inverseBindMatrix[5]  = 1.0f;
+                    bone.inverseBindMatrix[10] = 1.0f;
+                    bone.inverseBindMatrix[15] = 1.0f;
+                }
+
+                // Rest pose TRS from glTF node
+                if (jn->has_translation) {
+                    bone.restTranslation[0] = jn->translation[0];
+                    bone.restTranslation[1] = jn->translation[1];
+                    bone.restTranslation[2] = jn->translation[2];
+                } else {
+                    bone.restTranslation[0] = bone.restTranslation[1] = bone.restTranslation[2] = 0.0f;
+                }
+                if (jn->has_rotation) {
+                    bone.restRotation[0] = jn->rotation[0];
+                    bone.restRotation[1] = jn->rotation[1];
+                    bone.restRotation[2] = jn->rotation[2];
+                    bone.restRotation[3] = jn->rotation[3];
+                } else {
+                    bone.restRotation[0] = bone.restRotation[1] = bone.restRotation[2] = 0.0f;
+                    bone.restRotation[3] = 1.0f;
+                }
+                if (jn->has_scale) {
+                    bone.restScale[0] = jn->scale[0];
+                    bone.restScale[1] = jn->scale[1];
+                    bone.restScale[2] = jn->scale[2];
+                } else {
+                    bone.restScale[0] = bone.restScale[1] = bone.restScale[2] = 1.0f;
+                }
             }
         }
 
-        for (cgltf_size ji = 0; ji < skin->joints_count && ji < (cgltf_size)PB3D_MAX_BONES; ji++) {
-            const cgltf_node* jointNode = skin->joints[ji];
-            st3DBone bone;
-            bone.name = jointNode->name ? jointNode->name : ("bone_" + std::to_string(ji));
-
-            // Parent index: find whether this joint's parent is also a joint
-            bone.parentIndex = -1;
-            if (jointNode->parent) {
-                auto parentIt = nodeToJoint.find(jointNode->parent);
-                if (parentIt != nodeToJoint.end()) bone.parentIndex = parentIt->second;
-            }
-
-            // Inverse bind matrix
-            if (!ibmBuffer.empty() && ji < ibmBuffer.size() / 16) {
-                memcpy(bone.inverseBindMatrix, ibmBuffer.data() + ji * 16, 64);
-            } else {
-                memset(bone.inverseBindMatrix, 0, 64);
-                bone.inverseBindMatrix[0]  = 1.0f;
-                bone.inverseBindMatrix[5]  = 1.0f;
-                bone.inverseBindMatrix[10] = 1.0f;
-                bone.inverseBindMatrix[15] = 1.0f;
-            }
-
-            // Rest pose TRS from glTF node
-            if (jointNode->has_translation) {
-                bone.restTranslation[0] = jointNode->translation[0];
-                bone.restTranslation[1] = jointNode->translation[1];
-                bone.restTranslation[2] = jointNode->translation[2];
-            } else {
-                bone.restTranslation[0] = bone.restTranslation[1] = bone.restTranslation[2] = 0.0f;
-            }
-            if (jointNode->has_rotation) {
-                bone.restRotation[0] = jointNode->rotation[0]; // x
-                bone.restRotation[1] = jointNode->rotation[1]; // y
-                bone.restRotation[2] = jointNode->rotation[2]; // z
-                bone.restRotation[3] = jointNode->rotation[3]; // w
-            } else {
-                bone.restRotation[0] = bone.restRotation[1] = bone.restRotation[2] = 0.0f;
-                bone.restRotation[3] = 1.0f;
-            }
-            if (jointNode->has_scale) {
-                bone.restScale[0] = jointNode->scale[0];
-                bone.restScale[1] = jointNode->scale[1];
-                bone.restScale[2] = jointNode->scale[2];
-            } else {
-                bone.restScale[0] = bone.restScale[1] = bone.restScale[2] = 1.0f;
-            }
-
-            model.skeleton.bones.push_back(bone);
-        }
-
-        // Load animation clips
+        // Load animation clips — use nodeToGlobalBone so channels targeting ANY
+        // skin's joints are captured (not just skin 0's 8 joints).
         for (cgltf_size ai = 0; ai < data->animations_count; ai++) {
             const cgltf_animation* anim = &data->animations[ai];
             st3DAnimClip clip;
@@ -577,8 +745,8 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
                 const cgltf_animation_sampler*  smp = ch->sampler;
                 if (!ch->target_node || !smp || !smp->input || !smp->output) continue;
 
-                auto jointIt = nodeToJoint.find(ch->target_node);
-                if (jointIt == nodeToJoint.end()) continue;
+                auto jointIt = nodeToGlobalBone.find(ch->target_node);
+                if (jointIt == nodeToGlobalBone.end()) continue;
 
                 int boneIdx = jointIt->second;
                 if (boneIdx >= PB3D_MAX_BONES) continue;
@@ -634,10 +802,11 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath) {
 
         model.hasSkeleton = !model.skeleton.bones.empty();
         if (model.hasSkeleton) {
-            pb3dSendConsole("PB3D: Skeleton loaded: " +
-                            std::to_string(model.skeleton.bones.size()) + " bones, " +
-                            std::to_string(model.skeleton.clips.size()) + " clips from: " +
-                            std::string(glbFilePath));
+            pb3dSendConsole("PB3D: Skeleton loaded: "
+                            + std::to_string(model.skeleton.bones.size()) + " bones (unified from "
+                            + std::to_string(data->skins_count) + " skin(s)), "
+                            + std::to_string(model.skeleton.clips.size()) + " clips from: "
+                            + std::string(glbFilePath));
         }
     }
 
@@ -700,11 +869,10 @@ unsigned int PB3D::pb3dCreateInstance(unsigned int modelId) {
     instance.skelState.isPlaying       = false;
     instance.skelState.lastUpdateTick  = 0;
     memset(instance.skelState.boneMatrices, 0, sizeof(instance.skelState.boneMatrices));
-    // Default bone matrices to identity so a rest-pose model renders correctly
-    const st3DModel& mdl = m_3dModelList.at(modelId);
-    int numBones = (int)mdl.skeleton.bones.size();
-    if (numBones > PB3D_MAX_BONES) numBones = PB3D_MAX_BONES;
-    for (int bi = 0; bi < numBones; bi++) {
+    // Initialize ALL bone matrix slots to identity, not just the loaded bone count.
+    // Slots beyond the loaded skeleton size must be identity (pass-through) rather
+    // than zero, which would collapse all weighted vertices to the origin.
+    for (int bi = 0; bi < PB3D_MAX_BONES; bi++) {
         float* m = instance.skelState.boneMatrices + bi * 16;
         m[0] = m[5] = m[10] = m[15] = 1.0f;
     }
@@ -756,6 +924,12 @@ void PB3D::pb3dSetInstanceVisible(unsigned int instanceId, bool visible) {
     if (it != m_3dInstanceList.end()) {
         it->second.visible = visible;
     }
+}
+
+bool PB3D::pb3dGetInstanceVisible(unsigned int instanceId) const {
+    auto it = m_3dInstanceList.find(instanceId);
+    if (it == m_3dInstanceList.end()) return false;
+    return it->second.visible;
 }
 
 // --- Public pixel-space position setter ---
@@ -902,11 +1076,18 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
         renderY += (wyZ - inst.anchorBaseY);
     }
 
-    // Build model matrix: translate * rotY * rotX * rotZ * scale
-    mat4x4 model, identMat;
-    mat4x4_identity(identMat);  // initialized once; reused for all three rotation builds
+    // Build model matrix.
+    // Vertex positions in VBOs are raw model-space coordinates (not normalized).
+    // We fold the normalization (center + scale) into the matrix chain so that
+    // the model displays at a consistent unit size regardless of original authoring
+    // scale, and so that IBMs work correctly in the skinned path:
+    //   world = T * R * S_user * S_norm * translate(-center) * P_original
+    const st3DModel& model3d = modelIt->second;
 
-    // Translation
+    mat4x4 model, identMat;
+    mat4x4_identity(identMat);
+
+    // Translation (world position)
     mat4x4 translateMat;
     mat4x4_translate(translateMat, renderX, renderY, inst.posZ);
 
@@ -922,19 +1103,25 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
     mat4x4 rotZ;
     mat4x4_rotate_Z(rotZ, identMat, inst.rotZ * 3.14159265f / 180.0f);
 
-    // Scale matrix
+    // Combined scale = user scale * model normalization scale
+    float effectiveScale = inst.scale * model3d.normScale;
     mat4x4 scaleMat;
     mat4x4_identity(scaleMat);
-    scaleMat[0][0] = inst.scale;
-    scaleMat[1][1] = inst.scale;
-    scaleMat[2][2] = inst.scale;
+    scaleMat[0][0] = effectiveScale;
+    scaleMat[1][1] = effectiveScale;
+    scaleMat[2][2] = effectiveScale;
 
-    // Combine: model = translate * rotY * rotX * rotZ * scale
-    mat4x4 rotYX, rotYXZ, rotYXZS;
-    mat4x4_mul(rotYX, rotY, rotX);
-    mat4x4_mul(rotYXZ, rotYX, rotZ);
-    mat4x4_mul(rotYXZS, rotYXZ, scaleMat);
-    mat4x4_mul(model, translateMat, rotYXZS);
+    // Pre-center translate: moves model origin to its bounding-box center before scale/rotate
+    mat4x4 centerMat;
+    mat4x4_translate(centerMat, -model3d.normCX, -model3d.normCY, -model3d.normCZ);
+
+    // Combine: model = T * rotYXZ * scale * preCenterTranslate
+    mat4x4 rotYX, rotYXZ, rotYXZS, rotYXZSC;
+    mat4x4_mul(rotYX,    rotY,     rotX);
+    mat4x4_mul(rotYXZ,   rotYX,    rotZ);
+    mat4x4_mul(rotYXZS,  rotYXZ,   scaleMat);
+    mat4x4_mul(rotYXZSC, rotYXZS,  centerMat);
+    mat4x4_mul(model,    translateMat, rotYXZSC);
 
     // Compute MVP = projection * view * model
     mat4x4 view, proj, viewModel, mvp;
@@ -944,38 +1131,75 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
     mat4x4_mul(mvp, proj, viewModel);
 
     // Set per-instance uniforms and transparency blend state
-    const st3DModel& model3d = modelIt->second;
-    bool needSkinned = model3d.hasSkeleton && (inst.skelState.clipIndex >= 0);
+    //
+    // A skinned mesh VAO is built with attribute pointers keyed to the SKINNED
+    // shader's attribute locations (m_3dSk_PosAttrib etc.).  If we switch to the
+    // static shader for the same VAO, the static shader's attribute locations may
+    // differ, causing the GPU to misread vertex data entirely.
+    //
+    // Rule: a mesh is drawn with the skinned shader whenever it was uploaded as a
+    // skinned VAO (mesh.isSkinned == true), regardless of whether an animation clip
+    // is currently playing.  When no clip is active, identity bone matrices are used,
+    // which trivially produces skinnedPos == rawPos (weights sum to 1 × identity).
+    //
+    // needSkinned only gates BONE MATRIX COMPUTATION, not shader selection.
+    bool hasActiveClip = model3d.hasSkeleton && (inst.skelState.clipIndex >= 0);
 
-    // Switch shader if needed (without re-clearing the depth buffer)
-    if (needSkinned && !m_skinnedShaderActive) {
-        ogl3dActivateSkinnedShader();
-        m_skinnedShaderActive = true;
-    } else if (!needSkinned && m_skinnedShaderActive) {
-        ogl3dActivateStaticShader();
-        m_skinnedShaderActive = false;
+    // Prepare bone matrices: use instance's bone matrices if a clip is active,
+    // otherwise a local identity array so the shader gets valid data.
+    static float s_identityBones[PB3D_MAX_BONES * 16] = {};
+    static bool  s_identityBonesInit = false;
+    if (!s_identityBonesInit) {
+        for (int bi = 0; bi < PB3D_MAX_BONES; bi++) {
+            float* m = s_identityBones + bi * 16;
+            m[0] = m[5] = m[10] = m[15] = 1.0f;
+        }
+        s_identityBonesInit = true;
     }
+    const float* activeBones   = hasActiveClip ? inst.skelState.boneMatrices : s_identityBones;
+    int          activeBoneCount = (int)model3d.skeleton.bones.size();
+    if (activeBoneCount > PB3D_MAX_BONES) activeBoneCount = PB3D_MAX_BONES;
 
-    bool blendEnabled = (inst.alpha < 1.0f);
-    ogl3dSetBlend(blendEnabled);
+    bool currentBlend = (inst.alpha < 1.0f);
+    ogl3dSetBlend(currentBlend);
 
-    if (needSkinned) {
-        // Skinned path: upload MVP, model, alpha, and bone matrices
-        int numBones = (int)model3d.skeleton.bones.size();
-        if (numBones > PB3D_MAX_BONES) numBones = PB3D_MAX_BONES;
-        ogl3dSetSkinnedInstanceUniforms((const float*)mvp, (const float*)model,
-                                        inst.alpha, inst.skelState.boneMatrices, numBones);
-    } else {
-        // Static path: upload MVP, model, alpha
-        ogl3dSetInstanceUniforms((const float*)mvp, (const float*)model, inst.alpha);
-    }
-
-    // Render each mesh primitive via PBOGLES
     for (auto& mesh : model3d.meshes) {
+        // Effective alpha = instance alpha × material base_color_factor alpha.
+        // This honours per-material transparency (e.g. glass with materialBaseAlpha < 1)
+        // independently of any animation or instance-level alpha fade.
+        float effectiveAlpha = inst.alpha * mesh.materialBaseAlpha;
+        bool meshBlend = (effectiveAlpha < 1.0f) || mesh.needsBlend;
+
+        // Use skinned shader for skinned VAOs, static shader for non-skinned VAOs.
+        // This must match how each VAO's attribute pointers were originally set up.
+        if (mesh.isSkinned && !m_skinnedShaderActive) {
+            ogl3dActivateSkinnedShader();
+            m_skinnedShaderActive = true;
+        } else if (!mesh.isSkinned && m_skinnedShaderActive) {
+            ogl3dActivateStaticShader();
+            m_skinnedShaderActive = false;
+        }
+
+        // Switch blend state if it differs from current
+        if (meshBlend != currentBlend) {
+            ogl3dSetBlend(meshBlend);
+            currentBlend = meshBlend;
+        }
+
+        // Upload per-mesh uniforms with the effective alpha for this mesh.
+        // Always upload so that effectiveAlpha (which can vary per mesh) is current.
+        if (m_skinnedShaderActive) {
+            ogl3dSetSkinnedInstanceUniforms((const float*)mvp, (const float*)model,
+                                            effectiveAlpha, activeBones, activeBoneCount);
+        } else {
+            ogl3dSetInstanceUniforms((const float*)mvp, (const float*)model, effectiveAlpha);
+        }
+
         ogl3dDrawMeshPrimitive(mesh.vao, mesh.textureId, mesh.indexCount);
     }
 
-    if (blendEnabled) {
+    // Ensure blend is disabled after this instance so the next draw call is clean
+    if (currentBlend) {
         ogl3dSetBlend(false);
     }
 }
@@ -1403,7 +1627,10 @@ bool PB3D::pb3dPlayAnimClip(unsigned int instanceId, int clipIndex, bool loop) {
 bool PB3D::pb3dStopAnimClip(unsigned int instanceId) {
     auto instIt = m_3dInstanceList.find(instanceId);
     if (instIt == m_3dInstanceList.end()) return false;
-    instIt->second.skelState.isPlaying = false;
+    st3DSkelState& ss = instIt->second.skelState;
+    ss.isPlaying   = false;
+    ss.clipIndex   = -1;  // Reset to -1 so hasActiveClip becomes false and identity
+    ss.currentTime = 0.0f; // matrices are used, returning the model to its bind pose.
     return true;
 }
 
@@ -1585,9 +1812,11 @@ void PB3D::pb3dComputeBoneMatrices(const st3DSkeleton& skel, const st3DAnimClip&
     // Stack-allocated scratch buffers (safe for concurrent calls)
     float localMatrices[PB3D_MAX_BONES * 16];
     float worldMatrices[PB3D_MAX_BONES * 16];
+    // Zero-init worldMatrices so unvisited slots are identity-neutral for the
+    // second pass rather than uninitialized stack garbage.
+    memset(worldMatrices, 0, sizeof(worldMatrices));
 
     // Evaluate each bone's animated TRS (fall back to rest pose if no channel)
-    // Build per-bone lookup: channel index for T/R/S
     // (For small bone counts a linear search per bone is fast enough)
     for (int bi = 0; bi < numBones; bi++) {
         const st3DBone& bone = skel.bones[bi];
@@ -1616,11 +1845,56 @@ void PB3D::pb3dComputeBoneMatrices(const st3DSkeleton& skel, const st3DAnimClip&
         pb3dMat4FromTRS(T, R, S, localMatrices + bi * 16);
     }
 
-    // Forward pass: compute global (world) transforms via hierarchy
-    for (int bi = 0; bi < numBones; bi++) {
+    // Forward pass: compute global (world) transforms via hierarchy.
+    // The unified bone array merges multiple glTF skins, so parent indices can
+    // point to bones that appear LATER in the array (violating topological order).
+    // A naive single forward pass reads uninitialized parent world matrices for
+    // those bones.  Two passes fixes one level of disorder but not chains
+    // (e.g. wingtip→wingmid→wingroot all from Skin[0] whose wingroot's parent
+    // is in Skin[1]).
+    //
+    // Solution: build a topological order (parent before child) via iterative DFS,
+    // then do a single pass in that order.  No heap allocation — all working
+    // memory is stack-allocated.
+    int  topoOrder[PB3D_MAX_BONES];
+    int  topoCount = 0;
+    bool visited[PB3D_MAX_BONES]  = {};
+    bool inStack[PB3D_MAX_BONES]  = {};
+    int  dfsStack[PB3D_MAX_BONES];
+    int  dfsTop = 0;
+
+    for (int root = 0; root < numBones; root++) {
+        if (visited[root]) continue;
+        dfsStack[dfsTop++] = root;
+        inStack[root] = true;
+        while (dfsTop > 0) {
+            int bi     = dfsStack[dfsTop - 1];
+            int parent = skel.bones[bi].parentIndex;
+            if (parent >= 0 && parent < numBones && !visited[parent] && !inStack[parent]) {
+                // Parent not yet processed — visit parent first
+                dfsStack[dfsTop++] = parent;
+                inStack[parent] = true;
+            } else {
+                // All ancestors processed (or no parent): record this bone
+                dfsTop--;
+                if (!visited[bi]) {
+                    visited[bi] = true;
+                    topoOrder[topoCount++] = bi;
+                }
+            }
+        }
+    }
+
+    // Single pass in topological order — parent world matrix is always ready
+    for (int ti = 0; ti < topoCount; ti++) {
+        int bi     = topoOrder[ti];
         int parent = skel.bones[bi].parentIndex;
         if (parent < 0 || parent >= numBones) {
-            memcpy(worldMatrices + bi*16, localMatrices + bi*16, 64);
+            // Root bone: fold in the non-joint ancestor world transform.
+            // parentOffsetMatrix is identity for true world roots, or the
+            // armature/scene-node world transform for armature-parented roots.
+            pb3dMat4Mul(skel.bones[bi].parentOffsetMatrix, localMatrices + bi*16,
+                        worldMatrices + bi*16);
         } else {
             pb3dMat4Mul(worldMatrices + parent*16, localMatrices + bi*16,
                         worldMatrices + bi*16);

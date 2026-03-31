@@ -495,6 +495,11 @@ public:
     unsigned int m_sandboxD20ModelId;
     unsigned int m_sandboxDiceInstance[4];
     bool m_sandboxDiceLoaded;
+
+    // Crystalwing animated 3D model test
+    unsigned int m_sandboxWingModelId;
+    unsigned int m_sandboxWingInstance;
+    bool m_sandboxWingLoaded;
     
     // NeoPixel animation variables for sandbox test
     bool m_sandboxNeoPixelAnimActive;    // Animation is running
