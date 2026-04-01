@@ -500,6 +500,7 @@ public:
     unsigned int m_sandboxWingModelId;
     unsigned int m_sandboxWingInstance;
     bool m_sandboxWingLoaded;
+    int  m_sandboxWingTestState;  // 0=static, 1..N=clip index 0..N-1
     
     // NeoPixel animation variables for sandbox test
     bool m_sandboxNeoPixelAnimActive;    // Animation is running

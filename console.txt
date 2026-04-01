@@ -1,0 +1,59 @@
+RasPin Pinball Engine v0.5.1006
+RasPin: Confirmed correct working directory: C:\Users\jeffd\PInballProj\PInball
+OpenGL ES: Initialize
+PB3D: GL_MAX_VERTEX_UNIFORM_VECTORS = 4095  (need 660 for 160 bones)
+OpenGL ES: Successful
+Screen Width: 1920 Screen Height: 1080
+RasPin: Loading system font
+RasPin: System font ready
+RasPin: Setting up I/O
+RasPin: Input definitions initialized successfully
+RasPin: Output definitions initialized successfully
+RasPin: I2C scan: Hardware not present - peripheral scan skipped, using simulated devices
+RasPin: I2C scan - IO (TCA9555): Simulated
+RasPin: I2C scan - LED (TLC59116): Simulated
+RasPin: I2C scan - Amp (MAX9744): Simulated
+RasPin: Validating I/O configuration
+RasPin: Total Inputs: 22
+RasPin: Total Outputs: 21
+RasPin: Intializing Inputs
+RasPin: Intializing Outputs
+RasPin: Sending programmed outputs to pins (LED and IO)
+RasPin: Initializing amplifier
+RasPin: Loaded settings and score file
+RasPin: Set amplifier volume to 100%
+RasPin: Starting main menu music
+RasPin: Starting main processing loop
+RasPin: Loading default background resources
+RasPin: Loading boot screen resources
+PBVideo Config: Video: h264 software decoder
+PB3D: WARNING - no normals in model 'src/user/resources/3d/diceset.glb' (mesh=0 prim=0), computing flat face normals
+PB3D:   Mesh[0] Prim[0] 'Object.1-Mesh' v=485 idx=1980 [STATIC] tex=7 mat='02_-_Default' [OPAQUE]
+PB3D: 'src/user/resources/3d/diceset.glb' loaded: 1 mesh primitive(s), 1 unique texture(s)
+PB3D:   Mesh[0] Prim[0] 'chestback_Dragon_Model_Mooneater_stage3_body_0' v=208 idx=576 [SKINNED] tex=8 mat='Dragon_Model_Mooneater_stage3_body' [OPAQUE]
+PB3D:   Mesh[1] Prim[0] 'glass_Dragon_Model_Mooneater_stage3_glass_0' v=162 idx=864 [STATIC] tex=9 [FALLBACK] mat='Dragon_Model_Mooneater_stage3_glass' [OPAQUE]
+PB3D:   Mesh[2] Prim[0] 'model_Fx_Dragon_Model_lv3_Basecolor_0' v=31171 idx=143298 [SKINNED] tex=8 mat='Fx_Dragon_Model_lv3_Basecolor' [OPAQUE]
+PB3D: 'src/user/resources/3d/crystalwing.glb' loaded: 3 mesh primitive(s), 2 unique texture(s)
+PB3D: Loading 2 skin(s), 154 unique joints from: src/user/resources/3d/crystalwing.glb
+PB3D: Skin[0] mesh node 'Object_13' local diag=(1.0000,1.0000,1.0000) — correcting IBMs
+PB3D: Skin[1] mesh node 'Object_17' local diag=(1.0000,1.0000,1.0000) — correcting IBMs
+PB3D BINDWARN bone[0] "Bone100_0187" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
+PB3D BINDWARN bone[1] "Bone098_0185" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
+PB3D BINDWARN bone[2] "Bone096_0183" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
+PB3D BINDWARN bone[3] "Bone094_0181" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
+PB3D BINDWARN bone[4] "Bone096(mirrored)_0184" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
+PB3D BINDWARN bone[5] "Bone100(mirrored)_0188" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
+PB3D BINDWARN bone[6] "Bone098(mirrored)_0186" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
+PB3D BINDWARN bone[7] "Bone094(mirrored)_0182" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
+PB3D: 154/154 bones: non-identity bind-pose skinMatrix
+PB3D: Skeleton loaded: 154 bones (unified from 2 skin(s)), 4 clips from: src/user/resources/3d/crystalwing.glb
+CrystalWing clip[0]: lv3_born
+CrystalWing clip[1]: lv2_show
+CrystalWing clip[2]: lv2_idle
+CrystalWing clip[3]: lv3_lvup
+Wing: clip[0] "lv3_born"
+Wing: clip[1] "lv2_show"
+Wing: clip[2] "lv2_idle"
+Wing: clip[3] "lv3_lvup"
+Wing: static bind pose
+Wing: clip[0] "lv3_born"

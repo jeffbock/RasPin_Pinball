@@ -471,16 +471,271 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold) {
 // Help
 // ============================================================================
 
+// ============================================================================
+// --dump-bones command
+// Builds the same unified bone array as PB3D.cpp and prints:
+//   - For every bone: global idx, skin source, name, parent global idx, restT, restR
+//   - For root bones (parentIndex==-1): non-joint parent node TRS, IBM translation col,
+//     and the product [restLocalTRS × IBM] to check if it is identity at bind pose.
+// ============================================================================
+static void mat4TRS(float tx, float ty, float tz,
+                    float qx, float qy, float qz, float qw,
+                    float sx, float sy, float sz,
+                    float m[16]) {
+    m[0]  = sx*(1 - 2*(qy*qy+qz*qz));
+    m[1]  = sx*(2*(qx*qy+qw*qz));
+    m[2]  = sx*(2*(qx*qz-qw*qy));
+    m[3]  = 0.f;
+    m[4]  = sy*(2*(qx*qy-qw*qz));
+    m[5]  = sy*(1 - 2*(qx*qx+qz*qz));
+    m[6]  = sy*(2*(qy*qz+qw*qx));
+    m[7]  = 0.f;
+    m[8]  = sz*(2*(qx*qz+qw*qy));
+    m[9]  = sz*(2*(qy*qz-qw*qx));
+    m[10] = sz*(1 - 2*(qx*qx+qy*qy));
+    m[11] = 0.f;
+    m[12] = tx; m[13] = ty; m[14] = tz; m[15] = 1.f;
+}
+static void mat4Mul(const float A[16], const float B[16], float C[16]) {
+    for (int col = 0; col < 4; col++)
+        for (int row = 0; row < 4; row++) {
+            float s = 0.f;
+            for (int k = 0; k < 4; k++) s += A[k*4+row] * B[col*4+k];
+            C[col*4+row] = s;
+        }
+}
+static bool mat4IsIdentity(const float m[16], float eps = 0.001f) {
+    for (int i = 0; i < 16; i++) {
+        float expected = ((i%5) == 0) ? 1.f : 0.f;
+        if (fabsf(m[i]-expected) > eps) return false;
+    }
+    return true;
+}
+static int cmdDumpBones(const char* path) {
+    cgltf_data* data = loadGLB(path);
+    if (!data) return 1;
+
+    // Build unified nodeToGlobalBone map identical to PB3D.cpp logic
+    std::map<const cgltf_node*, int>              nodeToGlobal;
+    std::map<const cgltf_skin*, std::vector<int>> skinL2G;
+    for (cgltf_size si = 0; si < data->skins_count; si++) {
+        const cgltf_skin* skin = &data->skins[si];
+        auto& l2g = skinL2G[skin];
+        l2g.resize(skin->joints_count, 0);
+        for (cgltf_size ji = 0; ji < skin->joints_count; ji++) {
+            const cgltf_node* jn = skin->joints[ji];
+            auto it = nodeToGlobal.find(jn);
+            if (it != nodeToGlobal.end()) {
+                l2g[ji] = it->second;
+            } else {
+                int g = (int)nodeToGlobal.size();
+                nodeToGlobal[jn] = g;
+                l2g[ji] = g;
+            }
+        }
+    }
+
+    // Per-bone data storage
+    struct BoneInfo {
+        std::string name;
+        int         skinSrc   = -1;
+        int         parentIdx = -1;
+        float       restT[3]  = {0,0,0};
+        float       restR[4]  = {0,0,0,1};
+        float       restS[3]  = {1,1,1};
+        float       ibm[16]   = {};
+        bool        ibmPresent = false;
+        // For root bones: non-joint parent
+        bool            hasNonJointParent = false;
+        std::string     parentNodeName;
+        const cgltf_node* parentNodePtr = nullptr;  // for cgltf_node_transform_world call
+        float       parentT[3] = {0,0,0};
+        float       parentR[4] = {0,0,0,1};
+        float       parentS[3] = {1,1,1};
+        bool        parentHasT = false, parentHasR = false, parentHasS = false;
+    };
+    int totalBones = (int)nodeToGlobal.size();
+    std::vector<BoneInfo> bones(totalBones);
+
+    for (cgltf_size si = 0; si < data->skins_count; si++) {
+        const cgltf_skin* skin = &data->skins[si];
+        auto& l2g = skinL2G.at(skin);
+
+        // Read IBM buffer
+        std::vector<float> ibmBuf;
+        if (skin->inverse_bind_matrices) {
+            cgltf_size cnt = skin->inverse_bind_matrices->count;
+            ibmBuf.resize(cnt * 16, 0.0f);
+            for (cgltf_size ji = 0; ji < cnt; ji++)
+                cgltf_accessor_read_float(skin->inverse_bind_matrices, ji, ibmBuf.data() + ji*16, 16);
+        }
+
+        for (cgltf_size ji = 0; ji < skin->joints_count; ji++) {
+            int gi = l2g[ji];
+            if (gi < 0 || gi >= totalBones) continue;
+            BoneInfo& b = bones[gi];
+            if (!b.name.empty()) continue;  // already filled
+
+            const cgltf_node* jn = skin->joints[ji];
+            b.name = jn->name ? jn->name : ("bone_" + std::to_string(gi));
+            b.skinSrc = (int)si;
+
+            // Parent index
+            if (jn->parent) {
+                auto pit = nodeToGlobal.find(jn->parent);
+                if (pit != nodeToGlobal.end()) {
+                    b.parentIdx = pit->second;
+                } else {
+                    // Non-joint parent node
+                    b.hasNonJointParent = true;
+                    const cgltf_node* pn = jn->parent;
+                    b.parentNodePtr  = pn;
+                    b.parentNodeName = pn->name ? pn->name : "?";
+                    b.parentHasT = pn->has_translation;
+                    b.parentHasR = pn->has_rotation;
+                    b.parentHasS = pn->has_scale;
+                    if (pn->has_translation) { b.parentT[0]=pn->translation[0]; b.parentT[1]=pn->translation[1]; b.parentT[2]=pn->translation[2]; }
+                    if (pn->has_rotation)    { b.parentR[0]=pn->rotation[0]; b.parentR[1]=pn->rotation[1]; b.parentR[2]=pn->rotation[2]; b.parentR[3]=pn->rotation[3]; }
+                    if (pn->has_scale)       { b.parentS[0]=pn->scale[0]; b.parentS[1]=pn->scale[1]; b.parentS[2]=pn->scale[2]; }
+                }
+            }
+
+            if (jn->has_translation) { b.restT[0]=jn->translation[0]; b.restT[1]=jn->translation[1]; b.restT[2]=jn->translation[2]; }
+            if (jn->has_rotation)    { b.restR[0]=jn->rotation[0]; b.restR[1]=jn->rotation[1]; b.restR[2]=jn->rotation[2]; b.restR[3]=jn->rotation[3]; }
+            if (jn->has_scale)       { b.restS[0]=jn->scale[0]; b.restS[1]=jn->scale[1]; b.restS[2]=jn->scale[2]; }
+
+            if (!ibmBuf.empty() && ji < ibmBuf.size()/16) {
+                memcpy(b.ibm, ibmBuf.data() + ji*16, 64);
+                b.ibmPresent = true;
+            } else {
+                // Identity IBM
+                memset(b.ibm, 0, 64);
+                b.ibm[0]=b.ibm[5]=b.ibm[10]=b.ibm[15]=1.f;
+                b.ibmPresent = false;
+            }
+        }
+    }
+
+    printSeparator();
+    std::cout << "Bone dump: " << path << "  (" << totalBones << " unified bones)\n";
+    printSeparator();
+
+    // Print root bones first with full detail
+    std::cout << "\n--- ROOT BONES (parentIdx == -1) ---\n";
+    for (int gi = 0; gi < totalBones; gi++) {
+        const auto& b = bones[gi];
+        if (b.parentIdx >= 0) continue;
+        std::cout << "\nBone[" << gi << "] skin[" << b.skinSrc << "] \"" << b.name << "\"\n";
+        std::cout << "  restT: " << b.restT[0] << ", " << b.restT[1] << ", " << b.restT[2] << "\n";
+        std::cout << "  restR: " << b.restR[0] << ", " << b.restR[1] << ", " << b.restR[2] << ", " << b.restR[3] << "\n";
+        std::cout << "  restS: " << b.restS[0] << ", " << b.restS[1] << ", " << b.restS[2] << "\n";
+        if (b.hasNonJointParent) {
+            std::cout << "  parentNode: \"" << b.parentNodeName << "\"\n";
+            std::cout << "  parentT: " << b.parentT[0] << ", " << b.parentT[1] << ", " << b.parentT[2]
+                      << (b.parentHasT ? "" : " (default)") << "\n";
+            std::cout << "  parentR: " << b.parentR[0] << ", " << b.parentR[1] << ", " << b.parentR[2] << ", " << b.parentR[3]
+                      << (b.parentHasR ? "" : " (default)") << "\n";
+            std::cout << "  parentS: " << b.parentS[0] << ", " << b.parentS[1] << ", " << b.parentS[2]
+                      << (b.parentHasS ? "" : " (default)") << "\n";
+        } else {
+            std::cout << "  (no parent node at all)\n";
+        }
+        if (b.ibmPresent) {
+            std::cout << "  IBM col3 (translation): " << b.ibm[12] << ", " << b.ibm[13] << ", " << b.ibm[14] << "\n";
+            // Compute restTRS × IBM and check if identity
+            float trs[16], prod[16];
+            mat4TRS(b.restT[0], b.restT[1], b.restT[2],
+                    b.restR[0], b.restR[1], b.restR[2], b.restR[3],
+                    b.restS[0], b.restS[1], b.restS[2], trs);
+            mat4Mul(trs, b.ibm, prod);
+            std::cout << "  restTRS×IBM: T=[" << prod[12] << "," << prod[13] << "," << prod[14] << "]"
+                      << "  diag=[" << prod[0] << "," << prod[5] << "," << prod[10] << "," << prod[15] << "]"
+                      << (mat4IsIdentity(prod) ? "  --> IDENTITY (ok)" : "  --> NOT identity (armature offset missing!)") << "\n";
+            // KEY VERIFICATION: compute cgltf_node_transform_world(parentNode) × restTRS × IBM
+            // This is exactly what PB3D.cpp computes as worldMatrix×IBM at bind pose.
+            // If = identity, the parentOffsetMatrix=cgltf_node_transform_world fix is correct.
+            if (b.parentNodePtr) {
+                float parentWorld[16];
+                cgltf_node_transform_world(b.parentNodePtr, parentWorld);
+                float worldMat[16], skinMat[16];
+                mat4Mul(parentWorld, trs, worldMat);   // worldMatrix = parentWorld × restTRS
+                mat4Mul(worldMat, b.ibm, skinMat);     // skinMatrix  = worldMatrix × IBM
+                // Print full parentWorld matrix
+                std::cout << "  parentWorld (full matrix, row-major display):\n";
+                for (int r = 0; r < 4; r++) {
+                    std::cout << "    [" << parentWorld[r] << ", " << parentWorld[4+r]
+                              << ", " << parentWorld[8+r] << ", " << parentWorld[12+r] << "]\n";
+                }
+                // Print full IBM matrix
+                std::cout << "  IBM (full matrix, row-major display):\n";
+                for (int r = 0; r < 4; r++) {
+                    std::cout << "    [" << b.ibm[r] << ", " << b.ibm[4+r]
+                              << ", " << b.ibm[8+r] << ", " << b.ibm[12+r] << "]\n";
+                }
+                // Print column magnitudes of parentWorld 3×3 block (reveal scale)
+                float cMag0 = sqrtf(parentWorld[0]*parentWorld[0]+parentWorld[1]*parentWorld[1]+parentWorld[2]*parentWorld[2]);
+                float cMag1 = sqrtf(parentWorld[4]*parentWorld[4]+parentWorld[5]*parentWorld[5]+parentWorld[6]*parentWorld[6]);
+                float cMag2 = sqrtf(parentWorld[8]*parentWorld[8]+parentWorld[9]*parentWorld[9]+parentWorld[10]*parentWorld[10]);
+                std::cout << "  parentWorld col-magnitudes: " << cMag0 << ", " << cMag1 << ", " << cMag2 << "\n";
+                // Check if parent node has any grandparent
+                if (b.parentNodePtr->parent) {
+                    const cgltf_node* gp = b.parentNodePtr->parent;
+                    std::cout << "  grandparent: \"" << (gp->name ? gp->name : "?") << "\""
+                              << "  has_matrix=" << (gp->has_matrix ? "true" : "false")
+                              << "  has_T=" << (gp->has_translation ? "true" : "false") << "\n";
+                    if (gp->has_translation)
+                        std::cout << "    gpT=[" << gp->translation[0] << "," << gp->translation[1] << "," << gp->translation[2] << "]\n";
+                    if (gp->has_rotation)
+                        std::cout << "    gpR=[" << gp->rotation[0] << "," << gp->rotation[1] << "," << gp->rotation[2] << "," << gp->rotation[3] << "]\n";
+                    if (gp->has_scale)
+                        std::cout << "    gpS=[" << gp->scale[0] << "," << gp->scale[1] << "," << gp->scale[2] << "]\n";
+                } else {
+                    std::cout << "  parentNode has no grandparent (is at scene root)\n";
+                }
+                std::cout << "  parentWorld×restTRS×IBM: T=[" << skinMat[12] << "," << skinMat[13] << "," << skinMat[14] << "]"
+                          << "  diag=[" << skinMat[0] << "," << skinMat[5] << "," << skinMat[10] << "," << skinMat[15] << "]\n";
+                std::cout << "  --> " << (mat4IsIdentity(skinMat) ? "IDENTITY (fix is correct!)" : "NOT identity (mismatch in coordinate spaces!)") << "\n";
+            }
+        }
+    }
+
+    // Summary: show all bones with parent info
+    std::cout << "\n--- ALL BONES ---\n";
+    std::cout << std::left
+              << std::setw(6)  << "GIdx"
+              << std::setw(5)  << "Skin"
+              << std::setw(6)  << "Par"
+              << std::setw(36) << "Name"
+              << "RestTranslation\n";
+    printSeparator();
+    for (int gi = 0; gi < totalBones; gi++) {
+        const auto& b = bones[gi];
+        std::cout << std::left
+                  << std::setw(6) << gi
+                  << std::setw(5) << b.skinSrc
+                  << std::setw(6) << b.parentIdx
+                  << std::setw(36) << b.name.substr(0, 35)
+                  << std::fixed << std::setprecision(3)
+                  << b.restT[0] << ", " << b.restT[1] << ", " << b.restT[2] << "\n";
+    }
+
+    cgltf_free(data);
+    printSeparator();
+    return 0;
+}
+
 static void printHelp(const char* argv0) {
     std::cout << "pb3dutil - 3D model analysis and utility tool for RasPin Pinball\n\n"
               << "Usage:\n"
               << "  " << argv0 << " --info        <file.glb>\n"
               << "  " << argv0 << " --list-clips  <file.glb>\n"
+              << "  " << argv0 << " --dump-bones  <file.glb>\n"
               << "  " << argv0 << " --simplify-bones <file.glb> [--max-bones N] [--threshold F]\n"
               << "  " << argv0 << " --help\n\n"
               << "Commands:\n"
               << "  --info           Print full model info (meshes, materials, textures, bones, clips)\n"
               << "  --list-clips     List animation clips with name, duration, and channel count\n"
+              << "  --dump-bones     Dump unified bone hierarchy and check bind-pose correctness\n"
               << "  --simplify-bones Analyse which bones are candidates for removal\n"
               << "                   --max-bones N   Maximum bone count target (default: 160)\n"
               << "                   --threshold F   Min normalised weight to keep bone (default: 0.01)\n"
@@ -519,6 +774,14 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         return cmdListClips(argv[2]);
+    }
+
+    if (cmd == "--dump-bones") {
+        if (argc < 3) {
+            std::cerr << "Error: --dump-bones requires a file path\n";
+            return 1;
+        }
+        return cmdDumpBones(argv[2]);
     }
 
     if (cmd == "--simplify-bones") {

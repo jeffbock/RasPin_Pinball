@@ -8,6 +8,7 @@
 #include "PBDevice.h"
 #include <cmath>
 #include <algorithm>
+#include <fstream>
 #ifdef ENABLE_PINBALL_HARDWARE
 #include <unistd.h>  // for close() used by pbeScanI2CBus probe fds
 #endif
@@ -95,6 +96,7 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_sandboxWingModelId = 0;
     m_sandboxWingInstance = 0;
     m_sandboxWingLoaded = false;
+    m_sandboxWingTestState = 0;
     
     // Initialize NeoPixel animation variables
     m_sandboxNeoPixelAnimActive = false;
@@ -347,6 +349,16 @@ void PBEngine::pbeSendConsole(std::string output){
 
     // If we have too many lines, remove the oldest
     if (m_consoleQueue.size() > m_maxConsoleLines) m_consoleQueue.erase(m_consoleQueue.begin());
+
+#ifdef PB_CONSOLE_LOG_TO_FILE
+    static std::ofstream s_consoleLogFile;
+    if (!s_consoleLogFile.is_open())
+        s_consoleLogFile.open("console.txt", std::ios::out | std::ios::trunc);
+    if (s_consoleLogFile.is_open()) {
+        s_consoleLogFile << output << "\n";
+        s_consoleLogFile.flush();
+    }
+#endif
 }
 
 void PBEngine::pbeClearConsole(){
@@ -2717,19 +2729,29 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     }
                 }
                 
-                // Right Activate - Toggle crystalwing between static bind pose and animation.
-                // First press: start animation (rotate to animated orientation).
-                // Second press: stop animation, restore static bind-pose orientation.
+                // Right Activate - Cycle through: static bind pose, then each animation clip.
+                // State 0 = static. State 1..N = clip index 0..N-1. Wraps back to static.
                 if (inputMessage.inputId == IDI_RACTIVATE) {
                     if (m_sandboxWingLoaded) {
-                        if (!pb3dIsAnimClipPlaying(m_sandboxWingInstance)) {
-                            // Enter animated mode
-                            pb3dSetInstanceRotation(m_sandboxWingInstance, 0.0f, 45.0f, -90.0f);
-                            pb3dPlayAnimClip(m_sandboxWingInstance, 2, true);
-                        } else {
-                            // Return to static bind-pose mode
+                        auto wingClipNames = pb3dListAnimClips(m_sandboxWingModelId);
+                        int clipCount = (int)wingClipNames.size();
+
+                        // Advance state
+                        m_sandboxWingTestState++;
+                        if (m_sandboxWingTestState > clipCount) m_sandboxWingTestState = 0;
+
+                        if (m_sandboxWingTestState == 0) {
+                            // Static bind-pose
                             pb3dStopAnimClip(m_sandboxWingInstance);
                             pb3dSetInstanceRotation(m_sandboxWingInstance, -75.0f, 0.0f, 0.0f);
+                            pbeSendConsole("Wing: static bind pose");
+                        } else {
+                            // Animated — clip index is state-1
+                            int clipIdx = m_sandboxWingTestState - 1;
+                            std::string clipName = (clipIdx < clipCount) ? wingClipNames[clipIdx] : "?";
+                            pb3dSetInstanceRotation(m_sandboxWingInstance, 0.0f, 45.0f, 0.0f);
+                            pb3dPlayAnimClip(m_sandboxWingInstance, clipIdx, true);
+                            pbeSendConsole("Wing: clip[" + std::to_string(clipIdx) + "] \"" + clipName + "\"");
                         }
                     }
                 }

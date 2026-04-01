@@ -83,7 +83,15 @@
 // #define ENABLE_IDLE_SLEEP
 
 // =============================================================================
-// SECTION 5: VIDEO DECODE
+// SECTION 5: DEBUG OPTIONS
+// =============================================================================
+// Uncomment to mirror every pbeSendConsole() call to console.txt in the
+// working directory.  The file is (re)created fresh each launch so it always
+// contains output from the most recent run only.
+#define PB_CONSOLE_LOG_TO_FILE
+
+// =============================================================================
+// SECTION 6: VIDEO DECODE
 // =============================================================================
 // Enable hardware video decoding (requires V4L2 M2M support).
 // This is independent of ENABLE_PINBALL_HARDWARE — simulators may also have
