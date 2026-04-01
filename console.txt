@@ -1,7 +1,7 @@
-RasPin Pinball Engine v0.5.1006
-RasPin: Confirmed correct working directory: C:\Users\jeffd\PInballProj\PInball
+RasPin Pinball Engine v0.5.1011
+RasPin: Confirmed correct working directory: /home/AZVMjbock/JBockDev/RasPin_Pinball
 OpenGL ES: Initialize
-PB3D: GL_MAX_VERTEX_UNIFORM_VECTORS = 4095  (need 660 for 160 bones)
+PB3D: GL_MAX_VERTEX_UNIFORM_VECTORS = 4096  (need 660 for 160 bones)
 OpenGL ES: Successful
 Screen Width: 1920 Screen Height: 1080
 RasPin: Loading system font
@@ -34,19 +34,20 @@ PB3D:   Mesh[0] Prim[0] 'chestback_Dragon_Model_Mooneater_stage3_body_0' v=208 i
 PB3D:   Mesh[1] Prim[0] 'glass_Dragon_Model_Mooneater_stage3_glass_0' v=162 idx=864 [STATIC] tex=9 [FALLBACK] mat='Dragon_Model_Mooneater_stage3_glass' [OPAQUE]
 PB3D:   Mesh[2] Prim[0] 'model_Fx_Dragon_Model_lv3_Basecolor_0' v=31171 idx=143298 [SKINNED] tex=8 mat='Fx_Dragon_Model_lv3_Basecolor' [OPAQUE]
 PB3D: 'src/user/resources/3d/crystalwing.glb' loaded: 3 mesh primitive(s), 2 unique texture(s)
-PB3D: Loading 2 skin(s), 154 unique joints from: src/user/resources/3d/crystalwing.glb
-PB3D: Skin[0] mesh node 'Object_13' local diag=(1.0000,1.0000,1.0000) — correcting IBMs
-PB3D: Skin[1] mesh node 'Object_17' local diag=(1.0000,1.0000,1.0000) — correcting IBMs
-PB3D BINDWARN bone[0] "Bone100_0187" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
-PB3D BINDWARN bone[1] "Bone098_0185" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
-PB3D BINDWARN bone[2] "Bone096_0183" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
-PB3D BINDWARN bone[3] "Bone094_0181" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
-PB3D BINDWARN bone[4] "Bone096(mirrored)_0184" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
-PB3D BINDWARN bone[5] "Bone100(mirrored)_0188" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
-PB3D BINDWARN bone[6] "Bone098(mirrored)_0186" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
-PB3D BINDWARN bone[7] "Bone094(mirrored)_0182" diag=(1.0000,0.0000,0.0000) t=(0.000,-0.00,-0.00)
-PB3D: 154/154 bones: non-identity bind-pose skinMatrix
-PB3D: Skeleton loaded: 154 bones (unified from 2 skin(s)), 4 clips from: src/user/resources/3d/crystalwing.glb
+PB3D: Virtual bone[154] 'Bip001_04' (animated ancestor)
+PB3D: Virtual bone[155] 'Bip001 L Clavicle_030' (animated ancestor)
+PB3D: Virtual bone[156] 'Bip001 R Clavicle_0106' (animated ancestor)
+PB3D: Loading 2 skin(s), 157 bones (incl. virtual) from: src/user/resources/3d/crystalwing.glb
+PB3D BINDWARN bone[100] "Bone018_0142" diag=(1.0709,1.0102,0.9271) t=(0.059,-0.02,0.134)
+PB3D BINDWARN bone[101] "Bone023_0149" diag=(1.0173,1.0071,0.9735) t=(-0.00,-0.01,0.015)
+PB3D BINDWARN bone[102] "Bone028_0152" diag=(1.0075,1.0163,0.9729) t=(0.025,-0.01,-0.00)
+PB3D BINDWARN bone[103] "Bone015_0138" diag=(1.0112,1.0062,0.9793) t=(-0.00,-0.01,0.010)
+PB3D BINDWARN bone[104] "Bone024_0150" diag=(1.0125,1.0085,0.9789) t=(-0.00,-0.01,0.007)
+PB3D BINDWARN bone[106] "Bone016_0139" diag=(1.0119,1.0080,0.9789) t=(-0.02,-0.02,0.024)
+PB3D BINDWARN bone[107] "Bone019_0143" diag=(1.0696,1.0222,0.9179) t=(0.049,0.025,0.126)
+PB3D BINDWARN bone[108] "Bone020_0144" diag=(1.0672,1.0299,0.9143) t=(0.090,0.061,0.046)
+PB3D: 16/154 bones: non-identity bind-pose skinMatrix
+PB3D: Skeleton loaded: 157 bones (unified from 2 skin(s)), 4 clips from: src/user/resources/3d/crystalwing.glb
 CrystalWing clip[0]: lv3_born
 CrystalWing clip[1]: lv2_show
 CrystalWing clip[2]: lv2_idle
@@ -54,6 +55,3 @@ CrystalWing clip[3]: lv3_lvup
 Wing: clip[0] "lv3_born"
 Wing: clip[1] "lv2_show"
 Wing: clip[2] "lv2_idle"
-Wing: clip[3] "lv3_lvup"
-Wing: static bind pose
-Wing: clip[0] "lv3_born"

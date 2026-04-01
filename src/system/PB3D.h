@@ -29,7 +29,6 @@
 // reports a limit that cannot fit 160 bones, reduce this value and either simplify
 // the asset (use pb3dutil --simplify-bones) or split it into two models.
 #define PB3D_MAX_BONES 160
-#define PB3D_MAX_BONES 160
 
 // Path for 3D model resources
 #define PB3D_MODEL_PATH "src/user/resources/3d/"
@@ -77,23 +76,28 @@ struct st3DAnimClip {
 struct st3DBone {
     std::string name;
     int parentIndex;             // -1 for root bone(s)
-    float inverseBindMatrix[16]; // column-major 4×4 — transforms from model to bone space
+    int skinIndex;               // index of the skin this bone belongs to, -1 for virtual bones
+    float inverseBindMatrix[16]; // column-major 4×4 — as read from glTF (NOT corrected)
     float restTranslation[3];    // rest-pose translation from glTF node
     float restRotation[4];       // rest-pose rotation quaternion xyzw from glTF node
     float restScale[3];          // rest-pose scale from glTF node
-    // World transform of the first non-joint ancestor of this bone (i.e. the
-    // cumulative transform of all scene/armature nodes above this joint that
-    // are NOT themselves joints in any skin).  For bones whose immediate parent
-    // IS a joint, this is identity and parentIndex handles the hierarchy.
-    // For root bones whose parent is an armature object or scene node, this
-    // encodes the missing transform so worldMatrix = parentOffsetMatrix * localTRS.
+    // Transform between this bone and its parent in the unified hierarchy.
+    // For bones whose immediate glTF parent IS another bone in the array,
+    // this is identity.  For bones with non-joint intermediate ancestors
+    // (armature nodes, etc.) this captures the accumulated static transform
+    // of those intermediates so the hierarchy chain remains correct.
     float parentOffsetMatrix[16];
 };
+
+// Maximum skins we track meshNodeGlobalInv for (typical models have 1-3)
+#define PB3D_MAX_SKINS 8
 
 // Skeleton: bone hierarchy + all animation clips for a model
 struct st3DSkeleton {
     std::vector<st3DBone>    bones;
     std::vector<st3DAnimClip> clips;
+    int    skinCount;                                     // number of skins in this model
+    float  meshNodeGlobalInv[PB3D_MAX_SKINS][16];         // inv(meshNodeWorldTransform) per skin
 };
 
 // Per-instance skeleton animation playback state
@@ -372,6 +376,7 @@ private:
     void  pb3dSkelEvalChannel(const st3DAnimChannel& ch, float time, float out[4]);
     void  pb3dMat4Mul(const float a[16], const float b[16], float out[16]);
     void  pb3dMat4FromTRS(const float t[3], const float r[4], const float s[3], float out[16]);
+    bool  pb3dMat4InvertAffine(const float m[16], float out[16]);
 
     // 3D Shader source code
     static const char* vertexShader3DSource;

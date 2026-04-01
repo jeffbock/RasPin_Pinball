@@ -13,6 +13,7 @@
 #include <cstring>
 #include <cmath>
 #include <random>
+#include <set>
 
 // ============================================================================
 // 3D Shader Sources (GLSL ES 3.0)
@@ -639,21 +640,113 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
     // nodeToGlobalBone map built in the pre-pass above.  Animation channels
     // from all clips are mapped via the same unified index so every skin's
     // joints are animated correctly.
+    //
+    // New approach (generic glTF spec-compliant):
+    //  1. IBMs are used AS-IS from the file (no correction applied).
+    //  2. Per-skin meshNodeGlobalInv = inv(meshNode world transform) is stored
+    //     and multiplied into the final skinning matrix at animation time.
+    //  3. Non-joint ancestor nodes that have animation channels are promoted
+    //     to "virtual bones" so their animation propagates to children.
+    //  4. parentOffsetMatrix captures intermediate non-joint nodes between
+    //     a bone and its parent in the unified hierarchy (walked fully to
+    //     scene root — no early stop at non-unit-scale nodes).
     // -----------------------------------------------------------------------
     if (data->skins_count > 0) {
+        // --- Step 1: Compute meshNodeGlobalInv for each skin ---
+        model.skeleton.skinCount = (int)data->skins_count;
+        if (model.skeleton.skinCount > PB3D_MAX_SKINS)
+            model.skeleton.skinCount = PB3D_MAX_SKINS;
+        for (int si2 = 0; si2 < PB3D_MAX_SKINS; si2++) {
+            float* m = model.skeleton.meshNodeGlobalInv[si2];
+            memset(m, 0, 64);
+            m[0] = m[5] = m[10] = m[15] = 1.0f;  // default: identity
+        }
+        for (cgltf_size si = 0; si < data->skins_count && (int)si < PB3D_MAX_SKINS; si++) {
+            const cgltf_skin* skin = &data->skins[si];
+            // Find the mesh node that references this skin
+            for (cgltf_size ni = 0; ni < data->nodes_count; ni++) {
+                const cgltf_node* nd = &data->nodes[ni];
+                if (nd->skin != skin || !nd->mesh) continue;
+                float meshGlobal[16];
+                cgltf_node_transform_world(nd, meshGlobal);
+                if (!pb3dMat4InvertAffine(meshGlobal, model.skeleton.meshNodeGlobalInv[si])) {
+                    pb3dSendConsole("PB3D: WARNING — Skin[" + std::to_string(si)
+                        + "] mesh node '" + std::string(nd->name ? nd->name : "?")
+                        + "' has singular world transform; using identity");
+                }
+                break;  // first mesh node for this skin
+            }
+        }
+
+        // --- Step 2: Pre-scan animations for non-joint ancestor nodes (virtual bones) ---
+        // Build a set of all nodes that ARE ancestors of any joint and that have
+        // animation channels, then add them to nodeToGlobalBone as virtual bones.
+        {
+            // Collect all joint nodes for fast ancestry checking
+            std::set<const cgltf_node*> jointNodes;
+            for (auto& kv : nodeToGlobalBone) jointNodes.insert(kv.first);
+
+            // Collect all animated nodes (nodes targeted by any animation channel)
+            std::set<const cgltf_node*> animatedNodes;
+            for (cgltf_size ai = 0; ai < data->animations_count; ai++) {
+                const cgltf_animation* anim = &data->animations[ai];
+                for (cgltf_size ci = 0; ci < anim->channels_count; ci++) {
+                    if (anim->channels[ci].target_node)
+                        animatedNodes.insert(anim->channels[ci].target_node);
+                }
+            }
+
+            // For each animated node not already in nodeToGlobalBone, check if it's
+            // an ancestor of any joint.  An ancestor is found by walking UP from every
+            // joint — but it's more efficient to walk UP from the animated node and
+            // see if any joint is a descendant.  However, glTF only stores parent
+            // pointers, so we check by walking up from each joint to see if the
+            // animated node appears in its ancestor chain.
+            std::set<const cgltf_node*> virtualBoneNodes;
+            for (const cgltf_node* animNode : animatedNodes) {
+                if (nodeToGlobalBone.count(animNode)) continue;  // already a joint
+                // Check: is animNode an ancestor of any joint?
+                bool isAncestor = false;
+                for (const cgltf_node* jn : jointNodes) {
+                    const cgltf_node* cur = jn->parent;
+                    while (cur != nullptr) {
+                        if (cur == animNode) { isAncestor = true; break; }
+                        cur = cur->parent;
+                    }
+                    if (isAncestor) break;
+                }
+                if (isAncestor) virtualBoneNodes.insert(animNode);
+            }
+
+            // Add virtual bones to nodeToGlobalBone
+            for (const cgltf_node* vbn : virtualBoneNodes) {
+                int globalIdx = (int)nodeToGlobalBone.size();
+                if (globalIdx >= PB3D_MAX_BONES) {
+                    pb3dSendConsole("PB3D: WARNING — virtual bone '"
+                        + std::string(vbn->name ? vbn->name : "?")
+                        + "' exceeds PB3D_MAX_BONES, skipping");
+                    continue;
+                }
+                nodeToGlobalBone[vbn] = globalIdx;
+                pb3dSendConsole("PB3D: Virtual bone[" + std::to_string(globalIdx) + "] '"
+                    + std::string(vbn->name ? vbn->name : "?") + "' (animated ancestor)");
+            }
+        }
+
         int totalBones = (int)nodeToGlobalBone.size();
         if (totalBones > PB3D_MAX_BONES) totalBones = PB3D_MAX_BONES;
         pb3dSendConsole("PB3D: Loading " + std::to_string(data->skins_count) + " skin(s), "
-                        + std::to_string(totalBones) + " unique joints from: "
+                        + std::to_string(totalBones) + " bones (incl. virtual) from: "
                         + std::string(glbFilePath));
 
         model.skeleton.bones.resize(totalBones);
 
+        // --- Step 3: Fill bone data from each skin's joints ---
         for (cgltf_size si = 0; si < data->skins_count; si++) {
             const cgltf_skin* skin = &data->skins[si];
             const std::vector<int>& l2g = skinLocalToGlobal.at(skin);
 
-            // Read inverse bind matrices for this skin
+            // Read inverse bind matrices for this skin (used AS-IS, no correction)
             std::vector<float> ibmBuffer;
             if (skin->inverse_bind_matrices) {
                 cgltf_size ibmCount = skin->inverse_bind_matrices->count;
@@ -661,69 +754,6 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                 for (cgltf_size ji = 0; ji < ibmCount; ji++) {
                     cgltf_accessor_read_float(skin->inverse_bind_matrices, ji,
                                               ibmBuffer.data() + ji * 16, 16);
-                }
-            }
-
-            // Correct for mesh node transform baked into IBMs.
-            //
-            // glTF exporters define IBM_i = inv(jointWorldBind_i) × meshNodeWorldBind.
-            // Our renderer applies: skinMat = jointWorldMatrix × IBM (no mesh node factor).
-            // At bind pose this leaves skinMat = meshNodeWorldBind ≠ identity, causing the
-            // animated mesh to appear rotated/offset vs the static bind-pose mesh.
-            //
-            // Fix: post-multiply every IBM by inv(meshNodeLocalTransform) so the mesh
-            // node's contribution cancels when the joint world matrix is applied.
-            // We use the LOCAL transform of the mesh node only — the scale ancestor
-            // (the exporter root with scale=0.0075) cancels algebraically because both
-            // the joint chain and the mesh node share that ancestor.
-            if (!ibmBuffer.empty()) {
-                for (cgltf_size ni = 0; ni < data->nodes_count; ni++) {
-                    const cgltf_node* nd = &data->nodes[ni];
-                    if (nd->skin != skin || !nd->mesh) continue;
-
-                    float meshMat[16];
-                    cgltf_node_transform_local(nd, meshMat);
-
-                    // Compute scale magnitudes from each column of meshMat
-                    float s0 = sqrtf(meshMat[0]*meshMat[0] + meshMat[1]*meshMat[1] + meshMat[2]*meshMat[2]);
-                    float s1 = sqrtf(meshMat[4]*meshMat[4] + meshMat[5]*meshMat[5] + meshMat[6]*meshMat[6]);
-                    float s2 = sqrtf(meshMat[8]*meshMat[8] + meshMat[9]*meshMat[9] + meshMat[10]*meshMat[10]);
-                    float is02 = (s0 > 1e-8f) ? 1.0f/(s0*s0) : 0.0f;
-                    float is12 = (s1 > 1e-8f) ? 1.0f/(s1*s1) : 0.0f;
-                    float is22 = (s2 > 1e-8f) ? 1.0f/(s2*s2) : 0.0f;
-
-                    // Build inv(meshMat): column-major TRS inverse.
-                    // inv[j*4+i] = meshMat[i*4+j] / s_i^2  (scaled transpose of 3x3)
-                    // Translation: -inv3x3 * t
-                    float tx = meshMat[12], ty = meshMat[13], tz = meshMat[14];
-                    float meshMatInv[16] = {
-                        // col 0
-                        meshMat[0]*is02,  meshMat[4]*is12,  meshMat[8]*is22,  0.0f,
-                        // col 1
-                        meshMat[1]*is02,  meshMat[5]*is12,  meshMat[9]*is22,  0.0f,
-                        // col 2
-                        meshMat[2]*is02,  meshMat[6]*is12,  meshMat[10]*is22, 0.0f,
-                        // col 3 (translation: -inv3x3 * t)
-                        -(meshMat[0]*is02*tx + meshMat[4]*is12*ty + meshMat[8]*is22*tz),
-                        -(meshMat[1]*is02*tx + meshMat[5]*is12*ty + meshMat[9]*is22*tz),
-                        -(meshMat[2]*is02*tx + meshMat[6]*is12*ty + meshMat[10]*is22*tz),
-                        1.0f
-                    };
-
-                    pb3dSendConsole("PB3D: Skin[" + std::to_string(si) + "] mesh node '"
-                        + std::string(nd->name ? nd->name : "?") + "' local diag=("
-                        + std::to_string(meshMat[0]).substr(0,6) + ","
-                        + std::to_string(meshMat[5]).substr(0,6) + ","
-                        + std::to_string(meshMat[10]).substr(0,6)
-                        + ") — correcting IBMs");
-
-                    // Post-multiply each IBM: correctedIBM = IBM × inv(meshMat)
-                    for (size_t ji2 = 0; ji2 < ibmBuffer.size() / 16; ji2++) {
-                        float tmp[16];
-                        pb3dMat4Mul(ibmBuffer.data() + ji2*16, meshMatInv, tmp);
-                        memcpy(ibmBuffer.data() + ji2*16, tmp, 64);
-                    }
-                    break;  // only need the first mesh node for this skin
                 }
             }
 
@@ -736,29 +766,27 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
 
                 const cgltf_node* jn = skin->joints[ji];
                 bone.name = jn->name ? jn->name : ("bone_" + std::to_string(globalIdx));
+                bone.skinIndex = (int)si;
 
-                // Parent index — look up through the unified map
+                // Parent index — look up through the unified map (includes virtual bones)
                 bone.parentIndex = -1;
                 if (jn->parent) {
                     auto parentIt = nodeToGlobalBone.find(jn->parent);
-                    if (parentIt != nodeToGlobalBone.end()) bone.parentIndex = parentIt->second;
+                    if (parentIt != nodeToGlobalBone.end())
+                        bone.parentIndex = parentIt->second;
                 }
 
-                // parentOffsetMatrix: compose the LOCAL TRS of any non-joint nodes that sit
-                // between this bone and its nearest joint (or armature root) ancestor.
+                // parentOffsetMatrix: compose the LOCAL TRS of any non-joint nodes that
+                // sit between this bone and its nearest registered ancestor (joint or
+                // virtual bone) in the unified hierarchy.
                 //
-                // Walk up the parent chain collecting non-joint nodes.  Stop when:
-                //   (a) we hit a node that IS a joint (already in nodeToGlobalBone) — then
-                //       re-parent this bone to that joint and bake the non-joint chain as an
-                //       offset so the bone animates with its true skeleton parent, or
-                //   (b) we hit a node with non-unit scale — this is the exporter scene-root
-                //       (e.g. Object_11 with scale=0.0075 for unit conversion).  The IBM was
-                //       computed WITHOUT this node, so we must not include it.
-                //
-                // Only applies when the direct parent was not a joint (parentIndex still -1),
-                // OR when there are intermediate non-joint nodes above a joint parent.
+                // Walk up from the glTF parent node.  For each node:
+                //  - If it's in nodeToGlobalBone: stop, re-parent to it.
+                //  - Otherwise: prepend its local transform into chainMat and continue up.
+                //  - Stop if we hit a node with non-unit scale (exporter scene-root with
+                //    unit-conversion scale like 0.0075).  IBMs are computed by the exporter
+                //    WITHOUT this scale, so we must not include it.
                 {
-                    // Initialize parentOffsetMatrix to identity
                     memset(bone.parentOffsetMatrix, 0, 64);
                     bone.parentOffsetMatrix[0]  = 1.0f;
                     bone.parentOffsetMatrix[5]  = 1.0f;
@@ -766,38 +794,26 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                     bone.parentOffsetMatrix[15] = 1.0f;
 
                     if (bone.parentIndex < 0 && jn->parent != nullptr) {
-                        // Walk up, collecting non-joint local transforms into chainMat.
-                        // chainMat accumulates: outermost-non-joint × ... × innermost-non-joint
-                        // so that worldMatrix = worldMatrix[jointAnc] × chainMat × localTRS
                         const cgltf_node* cur = jn->parent;
                         int jointAncIdx = -1;
-                        // Temporary accumulator, built inside-out (closest ancestor first)
-                        // then prepend each new ancestor.
                         float chainMat[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
                         float tmp[16];
                         while (cur != nullptr) {
-                            // Check if this node is a joint
                             auto it = nodeToGlobalBone.find(cur);
                             if (it != nodeToGlobalBone.end()) {
                                 jointAncIdx = it->second;
-                                break;  // stop: joint found
+                                break;
                             }
-                            // Check for non-unit scale (exporter root — stop; don't include)
+                            // Stop at non-unit-scale nodes (exporter scene root)
                             bool hasNonUnitScale = cur->has_scale &&
                                 (fabsf(cur->scale[0] - 1.0f) > 0.001f ||
                                  fabsf(cur->scale[1] - 1.0f) > 0.001f ||
                                  fabsf(cur->scale[2] - 1.0f) > 0.001f);
-                            if (hasNonUnitScale) break;  // stop: exporter root
-                            // Incorporate this node's local TRS (prepend: curLocal × chainMat)
+                            if (hasNonUnitScale) break;
+                            // Prepend this node's local transform: chainMat = curLocal × chainMat
                             cgltf_node_transform_local(cur, tmp);
                             float newChain[16];
-                            for (int col = 0; col < 4; col++)
-                                for (int row = 0; row < 4; row++) {
-                                    newChain[col*4+row] = tmp[0*4+row]*chainMat[col*4+0]
-                                                        + tmp[1*4+row]*chainMat[col*4+1]
-                                                        + tmp[2*4+row]*chainMat[col*4+2]
-                                                        + tmp[3*4+row]*chainMat[col*4+3];
-                                }
+                            pb3dMat4Mul(tmp, chainMat, newChain);
                             memcpy(chainMat, newChain, 64);
                             cur = cur->parent;
                         }
@@ -806,7 +822,7 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                     }
                 }
 
-                // Inverse bind matrix
+                // Inverse bind matrix (used AS-IS from glTF)
                 if (!ibmBuffer.empty() && ji < ibmBuffer.size() / 16) {
                     memcpy(bone.inverseBindMatrix, ibmBuffer.data() + ji * 16, 64);
                 } else {
@@ -818,34 +834,169 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                 }
 
                 // Rest pose TRS from glTF node
-                if (jn->has_translation) {
-                    bone.restTranslation[0] = jn->translation[0];
-                    bone.restTranslation[1] = jn->translation[1];
-                    bone.restTranslation[2] = jn->translation[2];
+                if (jn->has_matrix && !jn->has_translation && !jn->has_rotation && !jn->has_scale) {
+                    // Matrix-only node: decompose into TRS for animation system
+                    float localMat[16];
+                    cgltf_node_transform_local(jn, localMat);
+                    // Extract translation from column 3
+                    bone.restTranslation[0] = localMat[12];
+                    bone.restTranslation[1] = localMat[13];
+                    bone.restTranslation[2] = localMat[14];
+                    // Extract scale from column magnitudes
+                    bone.restScale[0] = sqrtf(localMat[0]*localMat[0] + localMat[1]*localMat[1] + localMat[2]*localMat[2]);
+                    bone.restScale[1] = sqrtf(localMat[4]*localMat[4] + localMat[5]*localMat[5] + localMat[6]*localMat[6]);
+                    bone.restScale[2] = sqrtf(localMat[8]*localMat[8] + localMat[9]*localMat[9] + localMat[10]*localMat[10]);
+                    // Extract rotation: normalize the 3x3 columns, then convert to quaternion
+                    float is0 = (bone.restScale[0] > 1e-8f) ? 1.0f/bone.restScale[0] : 0.0f;
+                    float is1 = (bone.restScale[1] > 1e-8f) ? 1.0f/bone.restScale[1] : 0.0f;
+                    float is2 = (bone.restScale[2] > 1e-8f) ? 1.0f/bone.restScale[2] : 0.0f;
+                    float r00=localMat[0]*is0, r10=localMat[1]*is0, r20=localMat[2]*is0;
+                    float r01=localMat[4]*is1, r11=localMat[5]*is1, r21=localMat[6]*is1;
+                    float r02=localMat[8]*is2, r12=localMat[9]*is2, r22=localMat[10]*is2;
+                    float trace = r00 + r11 + r22;
+                    if (trace > 0.0f) {
+                        float s = sqrtf(trace + 1.0f) * 2.0f;
+                        bone.restRotation[3] = 0.25f * s;
+                        bone.restRotation[0] = (r21 - r12) / s;
+                        bone.restRotation[1] = (r02 - r20) / s;
+                        bone.restRotation[2] = (r10 - r01) / s;
+                    } else if (r00 > r11 && r00 > r22) {
+                        float s = sqrtf(1.0f + r00 - r11 - r22) * 2.0f;
+                        bone.restRotation[3] = (r21 - r12) / s;
+                        bone.restRotation[0] = 0.25f * s;
+                        bone.restRotation[1] = (r01 + r10) / s;
+                        bone.restRotation[2] = (r02 + r20) / s;
+                    } else if (r11 > r22) {
+                        float s = sqrtf(1.0f + r11 - r00 - r22) * 2.0f;
+                        bone.restRotation[3] = (r02 - r20) / s;
+                        bone.restRotation[0] = (r01 + r10) / s;
+                        bone.restRotation[1] = 0.25f * s;
+                        bone.restRotation[2] = (r12 + r21) / s;
+                    } else {
+                        float s = sqrtf(1.0f + r22 - r00 - r11) * 2.0f;
+                        bone.restRotation[3] = (r10 - r01) / s;
+                        bone.restRotation[0] = (r02 + r20) / s;
+                        bone.restRotation[1] = (r12 + r21) / s;
+                        bone.restRotation[2] = 0.25f * s;
+                    }
                 } else {
-                    bone.restTranslation[0] = bone.restTranslation[1] = bone.restTranslation[2] = 0.0f;
-                }
-                if (jn->has_rotation) {
-                    bone.restRotation[0] = jn->rotation[0];
-                    bone.restRotation[1] = jn->rotation[1];
-                    bone.restRotation[2] = jn->rotation[2];
-                    bone.restRotation[3] = jn->rotation[3];
-                } else {
-                    bone.restRotation[0] = bone.restRotation[1] = bone.restRotation[2] = 0.0f;
-                    bone.restRotation[3] = 1.0f;
-                }
-                if (jn->has_scale) {
-                    bone.restScale[0] = jn->scale[0];
-                    bone.restScale[1] = jn->scale[1];
-                    bone.restScale[2] = jn->scale[2];
-                } else {
-                    bone.restScale[0] = bone.restScale[1] = bone.restScale[2] = 1.0f;
+                    // Standard TRS extraction
+                    if (jn->has_translation) {
+                        bone.restTranslation[0] = jn->translation[0];
+                        bone.restTranslation[1] = jn->translation[1];
+                        bone.restTranslation[2] = jn->translation[2];
+                    } else {
+                        bone.restTranslation[0] = bone.restTranslation[1] = bone.restTranslation[2] = 0.0f;
+                    }
+                    if (jn->has_rotation) {
+                        bone.restRotation[0] = jn->rotation[0];
+                        bone.restRotation[1] = jn->rotation[1];
+                        bone.restRotation[2] = jn->rotation[2];
+                        bone.restRotation[3] = jn->rotation[3];
+                    } else {
+                        bone.restRotation[0] = bone.restRotation[1] = bone.restRotation[2] = 0.0f;
+                        bone.restRotation[3] = 1.0f;
+                    }
+                    if (jn->has_scale) {
+                        bone.restScale[0] = jn->scale[0];
+                        bone.restScale[1] = jn->scale[1];
+                        bone.restScale[2] = jn->scale[2];
+                    } else {
+                        bone.restScale[0] = bone.restScale[1] = bone.restScale[2] = 1.0f;
+                    }
                 }
             }
         }
 
-        // Load animation clips — use nodeToGlobalBone so channels targeting ANY
-        // skin's joints are captured (not just skin 0's 8 joints).
+        // --- Step 4: Fill virtual bone data ---
+        // Virtual bones are in nodeToGlobalBone but not in any skin's joints array.
+        // They have globalIdx >= original joint count.
+        for (auto& kv : nodeToGlobalBone) {
+            const cgltf_node* vbn = kv.first;
+            int globalIdx = kv.second;
+            if (globalIdx < 0 || globalIdx >= totalBones) continue;
+            st3DBone& bone = model.skeleton.bones[globalIdx];
+            if (!bone.name.empty()) continue;  // already filled (was a real joint)
+
+            bone.name = vbn->name ? vbn->name : ("vbone_" + std::to_string(globalIdx));
+            bone.skinIndex = -1;  // not associated with any skin
+
+            // Identity IBM (virtual bones don't receive vertex weights)
+            memset(bone.inverseBindMatrix, 0, 64);
+            bone.inverseBindMatrix[0]  = 1.0f;
+            bone.inverseBindMatrix[5]  = 1.0f;
+            bone.inverseBindMatrix[10] = 1.0f;
+            bone.inverseBindMatrix[15] = 1.0f;
+
+            // Parent index — walk up to find nearest registered ancestor
+            bone.parentIndex = -1;
+            {
+                memset(bone.parentOffsetMatrix, 0, 64);
+                bone.parentOffsetMatrix[0]  = 1.0f;
+                bone.parentOffsetMatrix[5]  = 1.0f;
+                bone.parentOffsetMatrix[10] = 1.0f;
+                bone.parentOffsetMatrix[15] = 1.0f;
+
+                if (vbn->parent != nullptr) {
+                    auto directParent = nodeToGlobalBone.find(vbn->parent);
+                    if (directParent != nodeToGlobalBone.end()) {
+                        bone.parentIndex = directParent->second;
+                    } else {
+                        // Walk up collecting non-registered locals
+                        const cgltf_node* cur = vbn->parent;
+                        float chainMat[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+                        float tmp[16];
+                        while (cur != nullptr) {
+                            auto it = nodeToGlobalBone.find(cur);
+                            if (it != nodeToGlobalBone.end()) {
+                                bone.parentIndex = it->second;
+                                break;
+                            }
+                            // Stop at non-unit-scale nodes (exporter scene root)
+                            bool hasNonUnitScale = cur->has_scale &&
+                                (fabsf(cur->scale[0] - 1.0f) > 0.001f ||
+                                 fabsf(cur->scale[1] - 1.0f) > 0.001f ||
+                                 fabsf(cur->scale[2] - 1.0f) > 0.001f);
+                            if (hasNonUnitScale) break;
+                            cgltf_node_transform_local(cur, tmp);
+                            float newChain[16];
+                            pb3dMat4Mul(tmp, chainMat, newChain);
+                            memcpy(chainMat, newChain, 64);
+                            cur = cur->parent;
+                        }
+                        memcpy(bone.parentOffsetMatrix, chainMat, 64);
+                    }
+                }
+            }
+
+            // Rest pose TRS
+            if (vbn->has_translation) {
+                bone.restTranslation[0] = vbn->translation[0];
+                bone.restTranslation[1] = vbn->translation[1];
+                bone.restTranslation[2] = vbn->translation[2];
+            } else {
+                bone.restTranslation[0] = bone.restTranslation[1] = bone.restTranslation[2] = 0.0f;
+            }
+            if (vbn->has_rotation) {
+                bone.restRotation[0] = vbn->rotation[0];
+                bone.restRotation[1] = vbn->rotation[1];
+                bone.restRotation[2] = vbn->rotation[2];
+                bone.restRotation[3] = vbn->rotation[3];
+            } else {
+                bone.restRotation[0] = bone.restRotation[1] = bone.restRotation[2] = 0.0f;
+                bone.restRotation[3] = 1.0f;
+            }
+            if (vbn->has_scale) {
+                bone.restScale[0] = vbn->scale[0];
+                bone.restScale[1] = vbn->scale[1];
+                bone.restScale[2] = vbn->scale[2];
+            } else {
+                bone.restScale[0] = bone.restScale[1] = bone.restScale[2] = 1.0f;
+            }
+        }
+
+        // Load animation clips — nodeToGlobalBone now includes virtual bones,
+        // so channels targeting non-joint ancestor nodes are captured.
         for (cgltf_size ai = 0; ai < data->animations_count; ai++) {
             const cgltf_animation* anim = &data->animations[ai];
             st3DAnimClip clip;
@@ -912,9 +1063,10 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
             }
         }
 
-        // Bind-pose verification: compute skinMatrix = worldMatrix(restTRS) × IBM for each
-        // bone and flag any that deviate from identity.  This confirms whether
-        // parentOffsetMatrix was built correctly for all root/re-parented bones.
+        // Bind-pose verification: for each bone compute
+        //   skinMatrix = meshNodeGlobalInv[skinIdx] × worldMatrix(restTRS) × IBM
+        // and verify it approximates identity.  Virtual bones (skinIndex=-1) are
+        // skipped since they have identity IBMs and no skin association.
         {
             const st3DSkeleton& vskel = model.skeleton;
             int nbv = (int)vskel.bones.size();
@@ -959,9 +1111,20 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                     }
                 }
                 int badCnt = 0;
+                int checkedCnt = 0;
                 for (int bi = 0; bi < nbv; bi++) {
-                    float sm[16];
-                    pb3dMat4Mul(vworld + bi*16, vskel.bones[bi].inverseBindMatrix, sm);
+                    // Skip virtual bones (skinIndex == -1) — they have identity IBMs
+                    if (vskel.bones[bi].skinIndex < 0) continue;
+                    checkedCnt++;
+                    // skinMatrix = meshNodeGlobalInv × worldMatrix × IBM
+                    int si = vskel.bones[bi].skinIndex;
+                    float tmp1[16], sm[16];
+                    pb3dMat4Mul(vworld + bi*16, vskel.bones[bi].inverseBindMatrix, tmp1);
+                    if (si >= 0 && si < vskel.skinCount) {
+                        pb3dMat4Mul(vskel.meshNodeGlobalInv[si], tmp1, sm);
+                    } else {
+                        memcpy(sm, tmp1, 64);
+                    }
                     bool ok = fabsf(sm[0]-1.f)<0.02f && fabsf(sm[5]-1.f)<0.02f &&
                               fabsf(sm[10]-1.f)<0.02f && fabsf(sm[15]-1.f)<0.02f &&
                               fabsf(sm[12])<0.02f && fabsf(sm[13])<0.02f && fabsf(sm[14])<0.02f;
@@ -981,10 +1144,12 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                 }
                 if (badCnt > 0)
                     pb3dSendConsole("PB3D: " + std::to_string(badCnt) + "/"
-                        + std::to_string(nbv) + " bones: non-identity bind-pose skinMatrix");
+                        + std::to_string(checkedCnt) + " bones: non-identity bind-pose skinMatrix");
                 else
                     pb3dSendConsole("PB3D: bind-pose verification OK ("
-                        + std::to_string(nbv) + " bones)");
+                        + std::to_string(checkedCnt) + " bones, "
+                        + std::to_string(nbv - checkedCnt) + " virtual)");
+
             }
         }
 
@@ -1990,6 +2155,49 @@ void PB3D::pb3dMat4Mul(const float a[16], const float b[16], float out[16]) {
     }
 }
 
+// Invert an affine 4×4 matrix (column-major).
+// Works for any combination of rotation, scale, and translation (non-singular 3×3 part).
+// Returns false if the matrix is singular (det ≈ 0).
+bool PB3D::pb3dMat4InvertAffine(const float m[16], float out[16]) {
+    // Extract 3×3 upper-left (column-major: col0=[0,1,2], col1=[4,5,6], col2=[8,9,10])
+    float a00 = m[0], a01 = m[4], a02 = m[8];
+    float a10 = m[1], a11 = m[5], a12 = m[9];
+    float a20 = m[2], a21 = m[6], a22 = m[10];
+    float tx  = m[12], ty = m[13], tz = m[14];
+
+    // Cofactors for 3×3 inverse
+    float c00 = a11*a22 - a12*a21;
+    float c01 = a12*a20 - a10*a22;
+    float c02 = a10*a21 - a11*a20;
+    float c10 = a02*a21 - a01*a22;
+    float c11 = a00*a22 - a02*a20;
+    float c12 = a01*a20 - a00*a21;
+    float c20 = a01*a12 - a02*a11;
+    float c21 = a02*a10 - a00*a12;
+    float c22 = a00*a11 - a01*a10;
+
+    float det = a00*c00 + a01*c01 + a02*c02;
+    if (fabsf(det) < 1e-12f) return false;
+    float invDet = 1.0f / det;
+
+    // inv(A) = cofactorMatrix^T / det  (note: cofactors above are already transposed)
+    float i00 = c00*invDet, i01 = c10*invDet, i02 = c20*invDet;
+    float i10 = c01*invDet, i11 = c11*invDet, i12 = c21*invDet;
+    float i20 = c02*invDet, i21 = c12*invDet, i22 = c22*invDet;
+
+    // Translation: -inv(A) * t
+    float itx = -(i00*tx + i01*ty + i02*tz);
+    float ity = -(i10*tx + i11*ty + i12*tz);
+    float itz = -(i20*tx + i21*ty + i22*tz);
+
+    // Column-major output
+    out[0]  = i00;  out[1]  = i10;  out[2]  = i20;  out[3]  = 0.0f;
+    out[4]  = i01;  out[5]  = i11;  out[6]  = i21;  out[7]  = 0.0f;
+    out[8]  = i02;  out[9]  = i12;  out[10] = i22;  out[11] = 0.0f;
+    out[12] = itx;  out[13] = ity;  out[14] = itz;  out[15] = 1.0f;
+    return true;
+}
+
 // Compute final skinning matrices for all bones in a clip at a given time.
 // outMatrices is laid out as [bone0_mat16, bone1_mat16, ...] column-major.
 void PB3D::pb3dComputeBoneMatrices(const st3DSkeleton& skel, const st3DAnimClip& clip,
@@ -2093,9 +2301,19 @@ void PB3D::pb3dComputeBoneMatrices(const st3DSkeleton& skel, const st3DAnimClip&
         }
     }
 
-    // Skinning matrix = worldMatrix * inverseBindMatrix
+    // Skinning matrix = meshNodeGlobalInv[skinIndex] × worldMatrix × IBM
+    // glTF spec: IBM = inv(jointWorldBind) × meshNodeWorldBind, so
+    //   jointWorldBind × IBM = meshNodeWorldBind (a rotation/axis-swap).
+    // Multiplying by meshNodeGlobalInv cancels this, yielding identity at bind pose.
+    // Virtual bones (skinIndex < 0) use just worldMatrix × IBM (identity IBM).
     for (int bi = 0; bi < numBones; bi++) {
-        pb3dMat4Mul(worldMatrices + bi*16, skel.bones[bi].inverseBindMatrix,
-                    outMatrices + bi*16);
+        float wib[16];
+        pb3dMat4Mul(worldMatrices + bi*16, skel.bones[bi].inverseBindMatrix, wib);
+        int si = skel.bones[bi].skinIndex;
+        if (si >= 0 && si < skel.skinCount) {
+            pb3dMat4Mul(skel.meshNodeGlobalInv[si], wib, outMatrices + bi*16);
+        } else {
+            memcpy(outMatrices + bi*16, wib, 64);
+        }
     }
 }
