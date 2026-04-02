@@ -11,13 +11,13 @@
 //   --info           Print full model info: meshes, materials, textures, bones, clips
 //   --list-clips     List available animation clips (name, duration, channel count)
 //   --dump-bones     Dump unified bone hierarchy and check bind-pose correctness
-//   --simplify-bones Analyse which bones could be removed based on weight threshold.
-//                    Use --output <file> to save the keep/remove bone list to a text file.
+//   --simplify-bones Analyse bone weight contributions and save a keep/remove list.
+//                    Output is auto-saved to <stem>_<N>bones.txt (or use --output <file>).
 //
 // Options:
-//   --max-bones N    Maximum bones to keep (default: 160, matching PB3D_MAX_BONES)
+//   --max-bones N    Maximum bones to keep (default: 1024, matching PB3D_MAX_BONES on Pi 5)
 //   --threshold F    Minimum total weight for a bone to be retained (default: 0.01)
-//   --output <file>  (--simplify-bones only) Save the keep/remove bone list to a file
+//   --output <file>  (--simplify-bones only) Override the auto-generated output filename
 //   --help           Print this help message
 
 // Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons
@@ -466,11 +466,24 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold, con
         std::cout << "\nBone count (" << numBones << ") is within max-bones limit (" << maxBones << ").\n";
     }
 
-    // Write analysis list to file if requested
-    if (outFile) {
-        std::ofstream ofs(outFile);
+    // Write analysis list to file — auto-generate name if --output was not given:
+    //   <stem>_<N>bones.txt  where N = number of bones kept after simplification.
+    std::string autoOutPath;
+    const char* effectiveOutFile = outFile;
+    if (!effectiveOutFile) {
+        std::string p(path);
+        size_t lastSep = p.find_last_of("/\\");
+        std::string base = (lastSep != std::string::npos) ? p.substr(lastSep + 1) : p;
+        size_t dot = base.rfind('.');
+        std::string stem = (dot != std::string::npos) ? base.substr(0, dot) : base;
+        int resultBones = (numBones > maxBones) ? maxBones : (int)bonesAbove.size();
+        autoOutPath = stem + "_" + std::to_string(resultBones) + "bones.txt";
+        effectiveOutFile = autoOutPath.c_str();
+    }
+    {
+        std::ofstream ofs(effectiveOutFile);
         if (!ofs.is_open()) {
-            std::cerr << "Error: could not open output file: " << outFile << "\n";
+            std::cerr << "Error: could not open output file: " << effectiveOutFile << "\n";
             cgltf_free(data);
             return 1;
         }
@@ -495,7 +508,7 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold, con
                 << (jn->name ? jn->name : "(unnamed)") << "\n";
         }
         ofs.close();
-        std::cout << "\nAnalysis saved to: " << outFile << "\n";
+        std::cout << "\nAnalysis saved to: " << effectiveOutFile << "\n";
     }
 
     cgltf_free(data);
@@ -772,10 +785,11 @@ static void printHelp(const char* argv0) {
               << "  --info           Print full model info (meshes, materials, textures, bones, clips)\n"
               << "  --list-clips     List animation clips with name, duration, and channel count\n"
               << "  --dump-bones     Dump unified bone hierarchy and check bind-pose correctness\n"
-              << "  --simplify-bones Analyse which bones are candidates for removal\n"
-              << "                   --max-bones N   Maximum bone count target (default: 160)\n"
+              << "  --simplify-bones Analyse bone weight contributions and save a keep/remove list.\n"
+              << "                   Auto-saves to <stem>_<N>bones.txt unless --output is given.\n"
+              << "                   --max-bones N   Maximum bone count target (default: 1024)\n"
               << "                   --threshold F   Min normalised weight to keep bone (default: 0.01)\n"
-              << "                   --output <file> Save keep/remove bone list to a text file\n"
+              << "                   --output <file> Override the auto-generated output filename\n"
               << "  --help           Print this help message\n\n"
               << "Supported formats: GLB (glTF 2.0 binary)\n";
 }
@@ -827,7 +841,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         const char* filePath  = argv[2];
-        int   maxBones  = 160;
+        int   maxBones  = 1024;
         float threshold = 0.01f;
         const char* outFile = nullptr;
 

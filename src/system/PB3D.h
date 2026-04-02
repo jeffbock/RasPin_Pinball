@@ -18,17 +18,11 @@
 // Maximum bones per skinned mesh uploaded to the GPU shader.
 // Must match the uBones[] array size declared in vertexShader3DSkinnedSource.
 //
-// Hardware budget: GLES 3.0 guarantees GL_MAX_VERTEX_UNIFORM_VECTORS >= 256.
-// Each mat4 costs 4 vectors, so the spec-safe cap is (256 - ~20 other uniforms) / 4 = ~59.
-// In practice the Pi 4 VideoCore VI and Pi 5 VideoCore VII report far higher limits.
+// The Raspberry Pi 5 VideoCore VII reports GL_MAX_VERTEX_UNIFORM_VECTORS = 4096.
+// Each mat4 bone costs 4 vectors, so the Pi 5 supports up to 4096 / 4 = 1024 bones.
 // pb3dInit() queries the actual hardware value at startup and logs a warning if
 // PB3D_MAX_BONES exceeds what the current GPU can support.
-//
-// crystalwing.glb has 2 skins totalling ~154 unique joints after deduplication,
-// so 160 is the minimum value that allows it to animate fully.  If the Pi driver
-// reports a limit that cannot fit 160 bones, reduce this value and either simplify
-// the asset (use pb3dutil --simplify-bones) or split it into two models.
-#define PB3D_MAX_BONES 160
+#define PB3D_MAX_BONES 1024
 
 // Path for 3D model resources
 #define PB3D_MODEL_PATH "src/user/resources/3d/"

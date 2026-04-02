@@ -261,7 +261,7 @@ Animations: 3
 
 **Use this command to:**
 - Confirm whether a model has skin data (needed to know if it will use the skinned rendering path)
-- Count total bones — compare against `PB3D_MAX_BONES` (default 160) before loading
+- Count total bones — compare against `PB3D_MAX_BONES` (default 1024 on Pi 5) before loading
 - Inspect vertex attributes to ensure POSITION, NORMAL, TEXCOORD_0 are present
 - See all animation clip names and their durations before coding against them
 
@@ -328,16 +328,18 @@ GIdx  Skin Par   Name                               RestTranslation
 
 ### --simplify-bones
 
-Analyses per-bone weight contributions across all skinned primitives and reports which bones are candidates for removal.  Useful when a model's bone count exceeds `PB3D_MAX_BONES` or when targeting the Raspberry Pi 5's GPU budget.  Use `--output` to save the keep/remove bone list to a file for reference when editing the model.
+Analyses per-bone weight contributions across all skinned primitives and reports which bones are candidates for removal.  Useful when a model's bone count exceeds `PB3D_MAX_BONES` or when targeting the Raspberry Pi 5's GPU budget.
+
+The analysis is **always saved to a file** automatically.  When no `--output` path is given, the file is named `<stem>_<N>bones.txt` (where N is the resulting kept bone count), placed in the current working directory.  Use `--output` to specify a different path.
 
 ```bash
-# Basic analysis with defaults (max-bones=160 target, threshold=0.01)
+# Basic analysis — saves to character_88bones.txt automatically
 pb3dutil --simplify-bones src/user/resources/3d/character.glb
 
-# Tighter budget — target 32 bones, only keep bones affecting at least 2% of vertices
+# Tighter budget — target 32 bones; saves to character_32bones.txt
 pb3dutil --simplify-bones src/user/resources/3d/character.glb --max-bones 32 --threshold 0.02
 
-# Save the keep/remove list to a file for use in Blender
+# Specify a custom output path
 pb3dutil --simplify-bones src/user/resources/3d/character.glb --output bone_list.txt
 ```
 
@@ -345,14 +347,14 @@ pb3dutil --simplify-bones src/user/resources/3d/character.glb --output bone_list
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--max-bones N` | 160 | Target maximum bone count (matches `PB3D_MAX_BONES`).  Bones beyond this limit are flagged for removal in order of ascending weight. |
+| `--max-bones N` | 1024 | Target maximum bone count (matches `PB3D_MAX_BONES` on Pi 5).  Bones beyond this limit are flagged for removal in order of ascending weight. |
 | `--threshold F` | 0.01 | Minimum normalised average weight for a bone to be retained.  A value of `0.01` means bones that affect less than 1% of the model's vertices (by weight) are candidates for removal. |
-| `--output <file>` | _(none)_ | Save the keep/remove bone list to a text file.  The file lists all KEEP bones (above threshold) followed by all REMOVE bones (below threshold), each with its average normalised weight and name.  Use this list as a reference when removing bones in Blender or Maya before re-exporting. |
+| `--output <file>` | _auto_ | Override the auto-generated output filename.  By default the file is saved as `<stem>_<N>bones.txt` in the current directory. |
 
 **Example output:**
 ```
 Bone simplification analysis for: src/user/resources/3d/character.glb
-  max-bones  = 160
+  max-bones  = 1024
   threshold  = 0.01
 ------------------------------------------------------------
 Total bones: 88
@@ -368,17 +370,17 @@ Bones below threshold — candidates for removal (26):
   [ 43] "ring_tip_L"     avg weight: 0.0004
   ...
 
-Bone count (88) is within max-bones limit (160).
+Bone count (88) is within max-bones limit (1024).
 
-Analysis saved to: bone_list.txt
+Analysis saved to: character_62bones.txt
 ------------------------------------------------------------
 ```
 
-**Example saved file (`bone_list.txt`):**
+**Example saved file (`character_62bones.txt`):**
 ```
 # pb3dutil --simplify-bones output
 # file:      src/user/resources/3d/character.glb
-# max-bones: 160
+# max-bones: 1024
 # threshold: 0.0100
 # total-bones: 88
 
@@ -395,7 +397,7 @@ REMOVE 26
 
 **Use this command to:**
 - Identify low-influence bones that can be removed to reduce total bone count toward `PB3D_MAX_BONES`
-- Save the keep/remove list with `--output` and use it as a reference when removing bones in Blender or Maya
+- Use the auto-saved `_<N>bones.txt` file as a reference when removing bones in Blender or Maya
 - After removing bones in your 3D editor and re-exporting, re-run `--info` to confirm the reduced count
 
 ---

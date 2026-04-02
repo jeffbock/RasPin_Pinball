@@ -122,11 +122,11 @@ The following defines in `PB3D.h` control the skeleton animation limits:
 
 | Define | Default | Description |
 |--------|---------|-------------|
-| `PB3D_MAX_BONES` | 160 | Maximum number of bones uploaded to the GPU per frame.  Must match the `uBones[]` array size in the skinned vertex shader.  Models with more bones must be simplified with `pb3dutil --simplify-bones` or split into multiple models. |
+| `PB3D_MAX_BONES` | 1024 | Maximum number of bones uploaded to the GPU per frame.  Must match the `uBones[]` array size in the skinned vertex shader.  Models with more bones must be simplified with `pb3dutil --simplify-bones` or split into multiple models. |
 | `PB3D_MAX_SKINS` | 8 | Maximum number of skins tracked per model (the normal case is 1; only multi-skin exports from some DCCs need more). |
 | `PB3D_MODEL_PATH` | `"src/user/resources/3d/"` | Default path prefix for model files.  Use with `pb3dLoadModel(PB3D_MODEL_PATH "file.glb")` for consistent cross-platform paths. |
 
-> **Hardware note:** GLES 3.0 guarantees `GL_MAX_VERTEX_UNIFORM_VECTORS >= 256`.  Each `mat4` costs 4 vectors, which means the spec-safe cap is approximately 59 bones.  In practice the Raspberry Pi 4/5 VideoCore drivers report far higher limits and easily handle 160 bones.  `pb3dInit()` queries the actual hardware value at startup and logs a warning if `PB3D_MAX_BONES` exceeds what the GPU can support.
+> **Hardware note:** The Raspberry Pi 5 VideoCore VII reports `GL_MAX_VERTEX_UNIFORM_VECTORS = 4096`.  Each `mat4` bone costs 4 vectors, so the Pi 5 supports up to 4096 / 4 = 1024 bones, matching `PB3D_MAX_BONES`.  `pb3dInit()` queries the actual hardware value at startup and logs a warning if `PB3D_MAX_BONES` exceeds what the GPU can support.
 
 ---
 
@@ -872,7 +872,7 @@ pb3dCreateAnimation(anim, true);
 - **No shadows** — shadow mapping is not implemented.  Use ambient + directional tuning to fake depth cues.
 - **Single transform animation per instance** — each instance supports one active transform animation at a time.  `replaceExisting = true` in `pb3dCreateAnimation()` replaces a running animation.
 - **Single skeleton clip per instance** — calling `pb3dPlayAnimClip()` replaces any currently playing clip.
-- **Bone limit** — skinned models are capped at `PB3D_MAX_BONES` (160) bones per frame.  Models with more bones must be simplified using `pb3dutil --simplify-bones` or split into multiple models.  Use `pb3dutil --info` to check bone counts before loading.
+- **Bone limit** — skinned models are capped at `PB3D_MAX_BONES` (1024) bones per frame.  Models with more bones must be simplified using `pb3dutil --simplify-bones` or split into multiple models.  Use `pb3dutil --info` to check bone counts before loading.
 - **Model normalisation** — all models are centred and normalised on load.  The `scale` property (via `pb3dSetInstanceScale`) controls final display size in world units.
 - **Model path convention** — use `PB3D_MODEL_PATH` (`"src/user/resources/3d/"`) for all model paths to keep them consistent and cross-platform.
 - **Interpolation support** — LINEAR, STEP, and CUBICSPLINE glTF animation keyframe types are all supported.  Cubicspline uses the value knot only (tangents are not used).

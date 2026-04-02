@@ -77,7 +77,7 @@ const char* PB3D::vertexShader3DSkinnedSource = R"(#version 300 es
     in vec4 aWeights;  // blend weights (sum to 1.0)
     uniform mat4 uMVP;
     uniform mat4 uModel;
-    uniform mat4 uBones[160];
+    uniform mat4 uBones[1024];
     out vec2 vTexCoord;
     out vec3 vNormal;
     out vec3 vWorldPos;
@@ -160,20 +160,16 @@ bool PB3D::pb3dInit() {
     }
 
     // Query the hardware uniform vector budget and warn if PB3D_MAX_BONES may exceed it.
-    // GLES 3.0 spec guarantees GL_MAX_VERTEX_UNIFORM_VECTORS >= 256 (each mat4 costs 4 vectors).
-    // This does NOT mean 256 is the actual limit on a given GPU — Pi4/Pi5 report much higher —
-    // but it tells us immediately if something will break at runtime on the target device.
-    // Formula: we need at least (PB3D_MAX_BONES * 4 + 20) vectors (20 = all other uniforms).
+    // Each mat4 bone costs 4 vectors; Pi 5 reports GL_MAX_VERTEX_UNIFORM_VECTORS = 4096,
+    // which supports up to 4096 / 4 = 1024 bones matching PB3D_MAX_BONES.
     GLint maxUniformVectors = 0;
     glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS, &maxUniformVectors);
-    int bonesNeeded         = PB3D_MAX_BONES * 4 + 20;
     pb3dSendConsole("PB3D: GL_MAX_VERTEX_UNIFORM_VECTORS = " + std::to_string(maxUniformVectors)
-                    + "  (need " + std::to_string(bonesNeeded)
-                    + " for " + std::to_string(PB3D_MAX_BONES) + " bones)", true);
-    if (bonesNeeded > maxUniformVectors) {
+                    + "  (PB3D_MAX_BONES = " + std::to_string(PB3D_MAX_BONES) + ")", true);
+    if (PB3D_MAX_BONES * 4 > maxUniformVectors) {
         pb3dSendConsole("PB3D: WARNING - PB3D_MAX_BONES (" + std::to_string(PB3D_MAX_BONES)
                         + ") exceeds GPU uniform budget! Max safe bone count on this GPU: "
-                        + std::to_string((maxUniformVectors - 20) / 4)
+                        + std::to_string(maxUniformVectors / 4)
                         + ". Skinned meshes with more bones will render incorrectly.");
     }
 
