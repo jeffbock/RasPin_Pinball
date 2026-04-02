@@ -2,7 +2,7 @@
 
 ## Overview
 
-The RasPin framework includes several command-line utilities to help with font generation, hardware diagnostics, and amplifier control. This guide covers all available utilities, their purposes, and how to use them.
+The RasPin framework includes several command-line utilities to help with font generation, 3D model analysis, hardware diagnostics, and amplifier control. This guide covers all available utilities, their purposes, and how to use them.
 
 ---
 
@@ -11,6 +11,7 @@ The RasPin framework includes several command-line utilities to help with font g
 | Utility | Platform Support | Description |
 |---------|------------------|-------------|
 | **FontGen** | Windows & Raspberry Pi | Converts TrueType fonts to texture atlases for text rendering |
+| **pb3dutil** | Windows & Raspberry Pi | Analyzes and inspects 3D model files (.glb) — bone counts, animation clips, simplification advice |
 | **pblistdevices** | Raspberry Pi only | Scans I2C bus and lists all connected hardware devices |
 | **pbsetamp** | Raspberry Pi only | Controls MAX9744 amplifier volume settings |
 
@@ -161,6 +162,187 @@ gfxRenderString(myFontId, "HELLO WORLD",
                2,               // character spacing
                GFX_TEXTCENTER); // justification
 ```
+
+---
+
+# pb3dutil - 3D Model Analysis Utility
+
+**Platform:** Windows & Raspberry Pi
+
+**Purpose:** Inspects glTF binary (`.glb`) 3D model files and provides analysis useful before importing models into the RasPin engine.  This is particularly helpful for understanding skeleton complexity and available animation clips before tuning `PB3D_MAX_BONES` or calling `pb3dLoadModel()`.
+
+`pb3dutil` is read-only — it never modifies files.
+
+## Building pb3dutil
+
+pb3dutil requires no OpenGL or hardware libraries and can be built on any platform that has a C++17 compiler.
+
+### Windows Build
+
+**VS Code Task:** `Windows: pb3dutil Build`
+
+Or manually:
+```bash
+cl.exe /Zi /EHsc /nologo /std:c++17 ^
+  /Febuild/windows/debug/pb3dutil.exe ^
+  src/3rdparty/cgltf.cpp ^
+  src/PButils/pb3dutil.cpp
+```
+
+**Output:** `build/windows/debug/pb3dutil.exe`
+
+### Raspberry Pi Build
+
+**VS Code Task:** `Raspberry Pi: pb3dutil Build`
+
+Or manually:
+```bash
+g++ -std=c++17 -g \
+  -o build/raspi/debug/pb3dutil \
+  src/3rdparty/cgltf.cpp \
+  src/PButils/pb3dutil.cpp \
+  -lpthread
+```
+
+**Output:** `build/raspi/debug/pb3dutil`
+
+## Using pb3dutil
+
+### Command Syntax
+
+```
+pb3dutil --info        <file.glb>
+pb3dutil --list-clips  <file.glb>
+pb3dutil --simplify-bones <file.glb> [--max-bones N] [--threshold F]
+pb3dutil --help
+```
+
+---
+
+### --info
+
+Prints a full summary of the model: scene/node counts, mesh and primitive details (vertex count, index count, vertex attributes), materials, textures/images, skin hierarchy with bone parent indices, and all animation clips with durations.
+
+```bash
+pb3dutil --info src/user/resources/3d/character.glb
+```
+
+**Example output:**
+```
+------------------------------------------------------------
+FILE: src/user/resources/3d/character.glb
+------------------------------------------------------------
+Scenes   : 1
+Nodes    : 42
+Meshes   : 3  (4 primitives)
+Materials: 2
+Textures : 2
+Images   : 2
+Has skin data: YES
+
+Mesh detail:
+  Mesh[0]: "Body"
+    Prim[0]: 2145 verts, 8760 indices, attrs: POSITION NORMAL TEXCOORD_0 JOINTS_0 WEIGHTS_0, material: "BodyMat"
+  Mesh[1]: "Hair"
+    Prim[0]: 860 verts, 3420 indices, attrs: POSITION NORMAL TEXCOORD_0 JOINTS_0 WEIGHTS_0, material: "HairMat"
+
+Skins: 1
+  Skin[0]: "Armature"  28 joints
+    Joint[ 0]: "root"       parent: -1
+    Joint[ 1]: "spine_01"   parent: 0
+    Joint[ 2]: "spine_02"   parent: 1
+    ...
+
+Animations: 3
+  Clip[0]: "Idle"    duration: 2.000s  channels: 56
+  Clip[1]: "Walk"    duration: 0.800s  channels: 84
+  Clip[2]: "Attack"  duration: 1.200s  channels: 42
+------------------------------------------------------------
+```
+
+**Use this command to:**
+- Confirm whether a model has skin data (needed to know if it will use the skinned rendering path)
+- Count total bones — compare against `PB3D_MAX_BONES` (default 160) before loading
+- Inspect vertex attributes to ensure POSITION, NORMAL, TEXCOORD_0 are present
+- See all animation clip names and their durations before coding against them
+
+---
+
+### --list-clips
+
+Lists animation clips in a compact table format with per-channel detail.
+
+```bash
+pb3dutil --list-clips src/user/resources/3d/character.glb
+```
+
+**Example output:**
+```
+Animation clips in: src/user/resources/3d/character.glb
+------------------------------------------------------------
+Idx Name                            Duration   Channels  Interpolations
+------------------------------------------------------------
+0   Idle                            2000ms     56        LINEAR
+       translation -> "spine_01"  LINEAR  60 keyframes
+       rotation    -> "spine_01"  LINEAR  60 keyframes
+       ...
+1   Walk                            800ms      84        LINEAR
+2   Attack                          1200ms     42        LINEAR/STEP
+------------------------------------------------------------
+```
+
+**Use this command to:**
+- Get exact clip names to pass to `pb3dPlayAnimClip()` — names are case-sensitive
+- Confirm clip durations for synchronisation with game logic timers
+- See which interpolation types are used (LINEAR is fastest at runtime; CUBICSPLINE is smoother but heavier)
+
+---
+
+### --simplify-bones
+
+Analyses per-bone weight contributions across all skinned primitives and reports which bones are candidates for removal.  Useful when a model's bone count exceeds `PB3D_MAX_BONES` or when targeting the Raspberry Pi 5's GPU budget.
+
+```bash
+# Basic analysis with defaults (max-bones=64 target, threshold=0.01)
+pb3dutil --simplify-bones src/user/resources/3d/character.glb
+
+# Tighter budget — target 32 bones, only keep bones affecting at least 2% of vertices
+pb3dutil --simplify-bones src/user/resources/3d/character.glb --max-bones 32 --threshold 0.02
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--max-bones N` | 64 | Target maximum bone count.  Bones beyond this limit are flagged for removal in order of ascending weight. |
+| `--threshold F` | 0.01 | Minimum normalised average weight for a bone to be retained.  A value of `0.01` means bones that affect less than 1% of the model's vertices (by weight) are candidates for removal. |
+
+**Example output:**
+```
+Bone simplification analysis for: src/user/resources/3d/character.glb
+  max-bones  = 64
+  threshold  = 0.01
+------------------------------------------------------------
+Total bones: 88
+Total skinned vertices: 3005
+
+Bones with weight >= threshold (62):
+  [  0] "root"           avg weight: 0.0240
+  [  1] "spine_01"       avg weight: 0.1520
+  ...
+
+Bones below threshold — candidates for removal (26):
+  [ 42] "pinky_tip_L"    avg weight: 0.0003
+  [ 43] "ring_tip_L"     avg weight: 0.0004
+  ...
+
+WARNING: Model has 88 bones but max-bones is 64. Lowest-weight bones to cut:
+  [ 42] "pinky_tip_L"    avg weight: 0.0003
+  ...
+------------------------------------------------------------
+```
+
+**Note:** `--simplify-bones` is **informational only** — it does not modify the file.  Use the output as a guide when editing the model in Blender or Maya to remove the flagged bones and re-export.
 
 ---
 
@@ -457,13 +639,13 @@ grep CRON /var/log/syslog
 
 **Windows:**
 ```bash
-# Build only FontGen (pblistdevices and pbsetamp require wiringPi)
+# FontGen and pb3dutil (pblistdevices and pbsetamp require wiringPi)
 ```
 **VS Code Task:** `Windows: Build All PBUtils`
 
 **Raspberry Pi:**
 ```bash
-# Build all three utilities
+# Build all four utilities
 ```
 **VS Code Task:** `Raspberry Pi: Build All PBUtils`
 
@@ -471,15 +653,16 @@ grep CRON /var/log/syslog
 
 **Windows:**
 ```bash
-# Only FontGen is available on Windows
 cd build/windows/debug
 FontGen.exe
+pb3dutil.exe
 ```
 
 **Raspberry Pi:**
 ```bash
 cd build/raspi/debug
 ./FontGen
+./pb3dutil
 ./pblistdevices
 ./pbsetamp
 ```
@@ -493,6 +676,12 @@ cd build/raspi/debug
 - Use appropriate buffer sizes to avoid "not enough space" errors
 - Keep font files organized in `src/resources/fonts/`
 - Always use `GFX_TEXTMAP` when loading fonts in code
+
+### pb3dutil
+- Run `--info` on every new model before writing any loading code to confirm bone counts, clip names, and vertex attributes
+- Copy exact clip names from `--list-clips` output directly into source code — names are case-sensitive and must match exactly
+- Run `--simplify-bones` before raising `PB3D_MAX_BONES` if a model is unexpectedly large; simplifying the asset is better than raising the GPU uniform budget
+- Use `--threshold 0.02` for Raspberry Pi 5 targets where GPU uniform space is still plentiful but you want to keep the skinning loop tight
 
 ### pblistdevices
 - Run after initial hardware setup to verify all connections
@@ -555,6 +744,11 @@ All utilities are designed to work alongside the main RasPin engine:
 - Generate fonts once, use forever in your game
 - Fonts referenced in code via sprite loading
 
+**pb3dutil:**
+- Run before adding a new 3D model to the game to understand its structure
+- Use `--list-clips` to get exact animation clip names before writing `pb3dPlayAnimClip()` calls
+- Use `--simplify-bones` to diagnose why a model is rendering incorrectly or why `pb3dInit()` logs a bone count warning
+
 **pblistdevices:**
 - Run independently for diagnostics
 - Can be used in shell scripts for pre-flight checks
@@ -568,6 +762,7 @@ All utilities are designed to work alongside the main RasPin engine:
 
 ## See Also
 
+- **[PB3D API](PB3D_API.md)** - Complete 3D rendering API including skeleton animation
 - **[Game Creation API](Game_Creation_API.md)** - Complete guide to PBGfx class and text rendering
 - **[I/O Processing API](IO_Processing_API.md)** - Hardware I2C communication details
 - **[How To Build](HowToBuild.md)** - Build instructions for all utilities
