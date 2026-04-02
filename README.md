@@ -14,7 +14,7 @@ Prototype hardware shown, full machine in development.
 - Intended to be a hobby level, low cost system for creating full feature, half scale pinball machines with Raspberry Pi hardware
 - Cross platform VS Code environment for Linux (Linux via Debian / Raspberry Pi) and Windows - All OSes support simulator mode, while Raspberry Pi supports full pinball hardware.  Other Linux versions would likely work as well, but not tested.
 - Pinball HW mode supports a primary Pinball HDMI screen, plus 2nd monitor support for ease of debug / development
-- Built on OpenGL ES for graphics rendering, with sprite, 3D (glTF/GLB), animation and text rendering support all in simple screen space.
+- Built on OpenGL ES for graphics rendering, with sprite, 3D (glTF/GLB), animation and text rendering support all in simple screen space.  3D rendering supports both static and skinned (skeleton-animated) models — play named animation clips directly from `.glb` files with a single API call.
 - Video playback through FFMPEG integrated into sprite / rendering system
 - Simplified HW architecture for easy debug, understanding and implemention
 - Message based input and output processing utilizing Raspberry Pi, and TI I2C IO and LED expanders optimized to decrease latency and minimize HW traffic
@@ -59,12 +59,13 @@ Prototype hardware shown, full machine in development.
   - **[PBDevice API](documentation/PBDevice_API.md)** - Device management framework for complex pinball mechanisms
   - **[Platform Init API](documentation/Platform_Init_API.md)** - Platform initialization, main loop, and configuration
   - **[Game Creation API](documentation/Game_Creation_API.md)** - Graphics (PBGfx), sound (PBSound), video playback (PBVideoPlayer), sprites, animations, and screen management
-  - **[3D Rendering API](documentation/PB3D_API.md)** - 3D model loading (glTF/GLB), instance management, lighting, perspective animation, and coordinate system
+  - **[3D Rendering API](documentation/PB3D_API.md)** - 3D model loading (glTF/GLB), instance management, lighting, perspective animation, coordinate system, and **skeleton animation** — load skinned models, list/play/stop named animation clips, and combine bone deformation with transform animations
 
 - **[Dragons of Destiny Table Spec](documentation/DoDTable.md)** - Full specification for the *Dragons of Destiny* example table: gameplay overview, all state machines with transition diagrams, I/O pin assignments, per-player data structures, screen-manager system, and AI prompt templates for each mode
 
 - **[Utilities Guide](documentation/Utilities_Guide.md)** - Complete guide for all RasPin utilities:
   - **FontGen** (Windows & Raspberry Pi) - Converts TrueType fonts to texture atlases for text rendering
+  - **pb3dutil** (Windows & Raspberry Pi) - Analyzes 3D model files (`.glb`): inspect mesh/bone/clip data (`--info`), list animation clips (`--list-clips`), and identify bones that can be removed to meet GPU budgets (`--simplify-bones`)
   - **pblistdevices** (Raspberry Pi only) - Scans I2C bus and lists all connected hardware devices
   - **pbsetamp** (Raspberry Pi only) - Controls MAX9744 amplifier volume settings
   - **pblaunch** (Linux / Rasberry Pi Only) - A GUI based utility to find/launch/stop the EXE without the development environment.
