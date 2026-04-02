@@ -1244,13 +1244,16 @@ unsigned int PB3D::pb3dCreateInstance(unsigned int modelId) {
     instance.skelState.looping         = false;
     instance.skelState.isPlaying       = false;
     instance.skelState.lastUpdateTick  = 0;
-    memset(instance.skelState.boneMatrices, 0, sizeof(instance.skelState.boneMatrices));
-    // Initialize ALL bone matrix slots to identity, not just the loaded bone count.
-    // Slots beyond the loaded skeleton size must be identity (pass-through) rather
-    // than zero, which would collapse all weighted vertices to the origin.
-    for (int bi = 0; bi < PB3D_MAX_BONES; bi++) {
-        float* m = instance.skelState.boneMatrices + bi * 16;
-        m[0] = m[5] = m[10] = m[15] = 1.0f;
+    // Only allocate bone matrix storage for skinned models.
+    const st3DModel& model = m_3dModelList.at(modelId);
+    if (model.hasSkeleton) {
+        // Initialize ALL bone matrix slots to identity (pass-through).
+        // Zero matrices would collapse all weighted vertices to the origin.
+        instance.skelState.boneMatrices.assign(PB3D_MAX_BONES * 16, 0.0f);
+        for (int bi = 0; bi < PB3D_MAX_BONES; bi++) {
+            float* m = instance.skelState.boneMatrices.data() + bi * 16;
+            m[0] = m[5] = m[10] = m[15] = 1.0f;
+        }
     }
 
     unsigned int instanceId = m_next3dInstanceId++;
@@ -1532,7 +1535,7 @@ void PB3D::pb3dRenderInstance(unsigned int instanceId) {
         }
         s_identityBonesInit = true;
     }
-    const float* activeBones   = hasActiveClip ? inst.skelState.boneMatrices : s_identityBones;
+    const float* activeBones   = hasActiveClip ? inst.skelState.boneMatrices.data() : s_identityBones;
     int          activeBoneCount = (int)model3d.skeleton.bones.size();
     if (activeBoneCount > PB3D_MAX_BONES) activeBoneCount = PB3D_MAX_BONES;
 
@@ -2058,7 +2061,7 @@ void PB3D::pb3dUpdateSkelState(st3DInstance& inst, const st3DSkeleton& skel, uns
     }
     ss.lastUpdateTick = currentTick;
 
-    pb3dComputeBoneMatrices(skel, skel.clips[ss.clipIndex], ss.currentTime, ss.boneMatrices);
+    pb3dComputeBoneMatrices(skel, skel.clips[ss.clipIndex], ss.currentTime, ss.boneMatrices.data());
 }
 
 // Evaluate a single animation channel at the given time; writes 3 or 4 floats to out[].
@@ -2224,7 +2227,7 @@ bool PB3D::pb3dMat4InvertAffine(const float m[16], float out[16]) {
 // Compute final skinning matrices for all bones in a clip at a given time.
 // outMatrices is laid out as [bone0_mat16, bone1_mat16, ...] column-major.
 void PB3D::pb3dComputeBoneMatrices(const st3DSkeleton& skel, const st3DAnimClip& clip,
-                                    float time, float outMatrices[PB3D_MAX_BONES * 16]) {
+                                    float time, float* outMatrices) {
     int numBones = (int)skel.bones.size();
     if (numBones > PB3D_MAX_BONES) numBones = PB3D_MAX_BONES;
 

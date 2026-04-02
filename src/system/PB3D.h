@@ -107,7 +107,7 @@ struct st3DSkelState {
     bool  looping;
     bool  isPlaying;
     unsigned int lastUpdateTick;                   // millisecond tick of last update
-    float boneMatrices[PB3D_MAX_BONES * 16];       // final skinning matrices (flattened column-major)
+    std::vector<float> boneMatrices;               // final skinning matrices (flattened column-major); allocated only for skinned models
 };
 
 // 3D Animation Property Masks
@@ -370,7 +370,7 @@ private:
     // Skeleton animation helpers
     void  pb3dUpdateSkelState(st3DInstance& inst, const st3DSkeleton& skel, unsigned int currentTick);
     void  pb3dComputeBoneMatrices(const st3DSkeleton& skel, const st3DAnimClip& clip,
-                                  float time, float outMatrices[PB3D_MAX_BONES * 16]);
+                                  float time, float* outMatrices);
     float pb3dSkelInterpolateFloat(float a, float b, float t);
     void  pb3dSkelSlerpQuat(const float qa[4], const float qb[4], float t, float out[4]);
     void  pb3dSkelEvalChannel(const st3DAnimChannel& ch, float time, float out[4]);

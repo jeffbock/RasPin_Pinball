@@ -33,8 +33,8 @@
 //   - SIMULATOR_SMALL_WINDOW option is available (see Section 3).
 
 #if !defined(EXE_MODE_WINDOWS) && !defined(EXE_MODE_DEBIAN) && !defined(EXE_MODE_RASPI)
-#define EXE_MODE_WINDOWS
-#define EXE_MODE_DEBIAN
+//#define EXE_MODE_WINDOWS
+//#define EXE_MODE_DEBIAN
 #define EXE_MODE_RASPI
 #endif
 
@@ -43,7 +43,7 @@
 #endif
 
 // To build for a real pinball machine, uncomment the line below:
-// #define ENABLE_PINBALL_HARDWARE
+#define ENABLE_PINBALL_HARDWARE
 
 #if defined(ENABLE_PINBALL_HARDWARE) && !defined(EXE_MODE_RASPI)
 #error "ENABLE_PINBALL_HARDWARE requires EXE_MODE_RASPI"
