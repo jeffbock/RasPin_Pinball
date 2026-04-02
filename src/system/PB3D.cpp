@@ -10,6 +10,7 @@
 #include "3rdparty/linmath.h"
 #include "3rdparty/stb_image.h"
 #include <algorithm>
+#include <climits>
 #include <cstring>
 #include <cmath>
 #include <random>
@@ -371,10 +372,21 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                                 + "), computing flat face normals");
                 if (prim->indices && prim->indices->count >= 3) {
                     cgltf_size triCount = prim->indices->count / 3;
+                    bool warnedBadIndex = false;
                     for (cgltf_size t = 0; t < triCount; t++) {
                         unsigned int i0 = (unsigned int)cgltf_accessor_read_index(prim->indices, t*3+0);
                         unsigned int i1 = (unsigned int)cgltf_accessor_read_index(prim->indices, t*3+1);
                         unsigned int i2 = (unsigned int)cgltf_accessor_read_index(prim->indices, t*3+2);
+                        // Guard against malformed index data
+                        if (i0 >= vertexCount || i1 >= vertexCount || i2 >= vertexCount) {
+                            if (!warnedBadIndex) {
+                                pb3dSendConsole("PB3D: WARNING - malformed index in '" + std::string(glbFilePath)
+                                                + "' (mesh=" + std::to_string(mi)
+                                                + " prim=" + std::to_string(pi) + "), skipping bad triangle(s)");
+                                warnedBadIndex = true;
+                            }
+                            continue;
+                        }
                         // Edge vectors
                         float e1x = positions[i1*3+0] - positions[i0*3+0];
                         float e1y = positions[i1*3+1] - positions[i0*3+1];
@@ -526,9 +538,12 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                     for (cgltf_size ii = 0; ii < vertexCount; ii++) indices[ii] = (unsigned int)ii;
                 }
 
-                ogl3dCreateSkinnedMesh(interleavedData.data(), interleavedData.size(),
+                if (!ogl3dCreateSkinnedMesh(interleavedData.data(), interleavedData.size(),
                                        indices.data(), indices.size(),
-                                       gpuMesh.vao, gpuMesh.vboVertices, gpuMesh.eboIndices);
+                                       gpuMesh.vao, gpuMesh.vboVertices, gpuMesh.eboIndices)) {
+                    pb3dSendConsole("PB3D: ERROR - GPU skinned mesh creation failed (out of GPU memory?)");
+                    continue;
+                }
                 gpuMesh.indexCount = (unsigned int)indices.size();
             } else {
                 // Static layout: [posX, posY, posZ, normX, normY, normZ, u, v]
@@ -555,9 +570,12 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                     for (cgltf_size ii = 0; ii < vertexCount; ii++) indices[ii] = (unsigned int)ii;
                 }
 
-                ogl3dCreateMesh(interleavedData.data(), interleavedData.size(),
+                if (!ogl3dCreateMesh(interleavedData.data(), interleavedData.size(),
                                 indices.data(), indices.size(),
-                                gpuMesh.vao, gpuMesh.vboVertices, gpuMesh.eboIndices);
+                                gpuMesh.vao, gpuMesh.vboVertices, gpuMesh.eboIndices)) {
+                    pb3dSendConsole("PB3D: ERROR - GPU mesh creation failed (out of GPU memory?)");
+                    continue;
+                }
                 gpuMesh.indexCount = (unsigned int)indices.size();
             }
 
@@ -1217,6 +1235,16 @@ bool PB3D::pb3dUnloadModel(unsigned int modelId) {
     }
 
     m_3dModelList.erase(it);
+
+    // Remove any instances that were referencing this model to prevent stale modelId references
+    for (auto instIt = m_3dInstanceList.begin(); instIt != m_3dInstanceList.end(); ) {
+        if (instIt->second.modelId == modelId) {
+            m_3dAnimateList.erase(instIt->first); // safe no-op if no animation entry exists
+            instIt = m_3dInstanceList.erase(instIt);
+        } else {
+            ++instIt;
+        }
+    }
     return true;
 }
 
@@ -1677,6 +1705,11 @@ bool PB3D::pb3dAnimateInstance(unsigned int instanceId, unsigned int currentTick
 }
 
 void PB3D::pb3dProcessAnimation(st3DAnimateData& anim, unsigned int currentTick) {
+    // If startTick is the sentinel value (UINT_MAX from pb3dAnimateRestart), snap to currentTick
+    // so the animation begins from now rather than t=0 which would be many seconds into the future.
+    if (anim.startTick == UINT_MAX) {
+        anim.startTick = currentTick;
+    }
     // Guard against tick underflow (e.g. startTick set in future or wrap-around)
     float timeSinceStart = (currentTick >= anim.startTick)
                            ? (currentTick - anim.startTick) / 1000.0f
@@ -1895,15 +1928,15 @@ void PB3D::pb3dAnimateClear(unsigned int instanceId) {
 void PB3D::pb3dAnimateRestart(unsigned int instanceId) {
     if (instanceId == 0) {
         for (auto& pair : m_3dAnimateList) {
-            pair.second.isActive = true;
-            pair.second.startTick = 0; // Will be set on next animate call
+            pair.second.isActive  = true;
+            pair.second.startTick = UINT_MAX; // Sentinel: will be set to currentTick on first process call
         }
         return;
     }
     auto it = m_3dAnimateList.find(instanceId);
     if (it != m_3dAnimateList.end()) {
-        it->second.isActive = true;
-        it->second.startTick = 0;
+        it->second.isActive  = true;
+        it->second.startTick = UINT_MAX; // Sentinel: will be set to currentTick on first process call
     }
 }
 

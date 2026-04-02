@@ -307,6 +307,8 @@ GLuint PBOGLES::oglCreateProgram(const char* vertexSource, const char* fragmentS
             glGetProgramInfoLog(program, logLen, nullptr, &log[0]);
             std::cout << "Shader link error:\n" << log << std::endl;
         }
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
         glDeleteProgram(program);
         return 0;
     }
@@ -575,8 +577,6 @@ GLuint PBOGLES::oglLoadPNGTexture (const char* filename, unsigned int* width, un
     *width = texWidth;
     *height = texHeight;
     return texture;
-
-    return (0);
 }
 
 // Create an empty texture for video playback (will be updated dynamically)
@@ -945,10 +945,14 @@ bool PBOGLES::ogl3dCreateSkinnedMesh(const float* vertData, size_t vertFloatCoun
     return true;
 }
 
-// Begin the skinned 3D rendering pass: enable depth testing, bind skinned shader.
+// NOTE: ogl3dBeginSkinnedPass() is intentionally NOT used mid-frame.
+// Use ogl3dActivateSkinnedShader() instead — it switches shader programs
+// without clearing the depth buffer.  ogl3dBeginSkinnedPass() clears the
+// depth buffer (appropriate only at frame start) and is reserved for a
+// potential future "skinned-only frame" path.
 void PBOGLES::ogl3dBeginSkinnedPass() {
     glDepthMask(GL_TRUE);
-    glClear(GL_DEPTH_BUFFER_BIT);
+    glClear(GL_DEPTH_BUFFER_BIT);   // WARNING: clears depth — only call at frame start
     if (!m_depthTestEnabled) { glEnable(GL_DEPTH_TEST);  m_depthTestEnabled = true; }
     glDepthFunc(GL_LEQUAL);
     if (m_cullFaceEnabled)   { glDisable(GL_CULL_FACE);  m_cullFaceEnabled  = false; }
