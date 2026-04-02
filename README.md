@@ -3,8 +3,10 @@ A half-scale pinball homebrew project using Raspberry Pi hardware.  The goal is 
 
 <img width="400" alt="Main" src="https://github.com/user-attachments/assets/4cca1044-11f2-49b0-9a04-07f01f3636d4" />
 <img width="400" alt="Settings" src="https://github.com/user-attachments/assets/ae7a281d-bd2e-4194-bca6-df9027b6d494" />
+<img width="400" alt="DoD3DRendering" src="https://github.com/user-attachments/assets/aef7398c-c1c0-4167-bb4d-61d1309689ee" />
 <img width="400" alt="StartScreen" src="https://github.com/user-attachments/assets/b516174f-b142-4b0e-9c75-2702062400b2" />
 <img width="400"alt="Game" src="https://github.com/user-attachments/assets/429c6e0d-82e5-4d91-80c3-b7df7e8f1e19" />
+<img width="400" alt="DoDGameplay" src="https://github.com/user-attachments/assets/90de2266-e139-420d-99b1-296fa11ac9a2" />
 <img width="400" alt="NeoPixelHW" src="https://github.com/user-attachments/assets/6943b0b3-35fb-4170-a80e-49459dd16450" />
 <img width="400" alt="BaseHW" src="https://github.com/user-attachments/assets/989e1e88-8786-43c8-bf0c-c8ffe9036ce2" />
 
