@@ -3,18 +3,21 @@
 // Usage:
 //   pb3dutil --info        <file.glb>  [options]
 //   pb3dutil --list-clips  <file.glb>
-//   pb3dutil --simplify-bones <file.glb> [--max-bones N] [--threshold F]
+//   pb3dutil --dump-bones  <file.glb>
+//   pb3dutil --simplify-bones <file.glb> [--max-bones N] [--threshold F] [--output <file>]
 //   pb3dutil --help
 //
 // Commands:
 //   --info           Print full model info: meshes, materials, textures, bones, clips
 //   --list-clips     List available animation clips (name, duration, channel count)
-//   --simplify-bones Analyse which bones could be removed based on weight threshold
-//                    (informational; does not modify the file)
+//   --dump-bones     Dump unified bone hierarchy and check bind-pose correctness
+//   --simplify-bones Analyse which bones could be removed based on weight threshold.
+//                    Use --output <file> to save the keep/remove bone list to a text file.
 //
 // Options:
 //   --max-bones N    Maximum bones to keep (default: 160, matching PB3D_MAX_BONES)
 //   --threshold F    Minimum total weight for a bone to be retained (default: 0.01)
+//   --output <file>  (--simplify-bones only) Save the keep/remove bone list to a file
 //   --help           Print this help message
 
 // Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons
@@ -22,6 +25,7 @@
 
 #include "../3rdparty/cgltf.h"
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <string>
 #include <vector>
@@ -297,7 +301,7 @@ static int cmdListClips(const char* path) {
 // --simplify-bones command
 // ============================================================================
 
-static int cmdSimplifyBones(const char* path, int maxBones, float threshold) {
+static int cmdSimplifyBones(const char* path, int maxBones, float threshold, const char* outFile) {
     cgltf_data* data = loadGLB(path);
     if (!data) return 1;
 
@@ -460,6 +464,38 @@ static int cmdSimplifyBones(const char* path, int maxBones, float threshold) {
         }
     } else {
         std::cout << "\nBone count (" << numBones << ") is within max-bones limit (" << maxBones << ").\n";
+    }
+
+    // Write analysis list to file if requested
+    if (outFile) {
+        std::ofstream ofs(outFile);
+        if (!ofs.is_open()) {
+            std::cerr << "Error: could not open output file: " << outFile << "\n";
+            cgltf_free(data);
+            return 1;
+        }
+        ofs << "# pb3dutil --simplify-bones output\n"
+            << "# file:      " << path      << "\n"
+            << "# max-bones: " << maxBones  << "\n"
+            << "# threshold: " << threshold << "\n"
+            << "# total-bones: " << numBones << "\n\n";
+
+        ofs << "KEEP " << bonesAbove.size() << "\n";
+        for (int bi : bonesAbove) {
+            const cgltf_node* jn = globalIndexToNode[(size_t)bi];
+            double w = (totalVertices > 0) ? totalWeight[(size_t)bi] / (double)totalVertices : 0.0;
+            ofs << std::fixed << std::setprecision(4) << w << " "
+                << (jn->name ? jn->name : "(unnamed)") << "\n";
+        }
+        ofs << "\nREMOVE " << bonesBelow.size() << "\n";
+        for (int bi : bonesBelow) {
+            const cgltf_node* jn = globalIndexToNode[(size_t)bi];
+            double w = (totalVertices > 0) ? totalWeight[(size_t)bi] / (double)totalVertices : 0.0;
+            ofs << std::fixed << std::setprecision(4) << w << " "
+                << (jn->name ? jn->name : "(unnamed)") << "\n";
+        }
+        ofs.close();
+        std::cout << "\nAnalysis saved to: " << outFile << "\n";
     }
 
     cgltf_free(data);
@@ -730,7 +766,7 @@ static void printHelp(const char* argv0) {
               << "  " << argv0 << " --info        <file.glb>\n"
               << "  " << argv0 << " --list-clips  <file.glb>\n"
               << "  " << argv0 << " --dump-bones  <file.glb>\n"
-              << "  " << argv0 << " --simplify-bones <file.glb> [--max-bones N] [--threshold F]\n"
+              << "  " << argv0 << " --simplify-bones <file.glb> [--max-bones N] [--threshold F] [--output <file>]\n"
               << "  " << argv0 << " --help\n\n"
               << "Commands:\n"
               << "  --info           Print full model info (meshes, materials, textures, bones, clips)\n"
@@ -739,6 +775,7 @@ static void printHelp(const char* argv0) {
               << "  --simplify-bones Analyse which bones are candidates for removal\n"
               << "                   --max-bones N   Maximum bone count target (default: 160)\n"
               << "                   --threshold F   Min normalised weight to keep bone (default: 0.01)\n"
+              << "                   --output <file> Save keep/remove bone list to a text file\n"
               << "  --help           Print this help message\n\n"
               << "Supported formats: GLB (glTF 2.0 binary)\n";
 }
@@ -792,6 +829,7 @@ int main(int argc, char* argv[]) {
         const char* filePath  = argv[2];
         int   maxBones  = 160;
         float threshold = 0.01f;
+        const char* outFile = nullptr;
 
         for (int i = 3; i < argc; i++) {
             std::string opt = argv[i];
@@ -809,10 +847,12 @@ int main(int argc, char* argv[]) {
                     std::cerr << "Error: invalid value for --threshold: " << argv[i] << "\n";
                     return 1;
                 }
+            } else if ((opt == "--output") && i + 1 < argc) {
+                outFile = argv[++i];
             }
         }
 
-        return cmdSimplifyBones(filePath, maxBones, threshold);
+        return cmdSimplifyBones(filePath, maxBones, threshold, outFile);
     }
 
     std::cerr << "Unknown command: " << cmd << "\n";

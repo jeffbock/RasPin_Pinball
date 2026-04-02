@@ -169,9 +169,7 @@ gfxRenderString(myFontId, "HELLO WORLD",
 
 **Platform:** Windows & Raspberry Pi
 
-**Purpose:** Inspects glTF binary (`.glb`) 3D model files and provides analysis useful before importing models into the RasPin engine.  This is particularly helpful for understanding skeleton complexity and available animation clips before tuning `PB3D_MAX_BONES` or calling `pb3dLoadModel()`.
-
-`pb3dutil` is read-only — it never modifies files.
+**Purpose:** Inspects glTF binary (`.glb`) 3D model files and provides analysis useful before importing models into the RasPin engine.  This is particularly helpful for understanding skeleton complexity and available animation clips before tuning `PB3D_MAX_BONES` or calling `pb3dLoadModel()`.  The `--simplify-bones` command can also save its bone keep/remove analysis to a file for use as a reference when editing the model in Blender or Maya.
 
 ## Building pb3dutil
 
@@ -213,7 +211,8 @@ g++ -std=c++17 -g \
 ```
 pb3dutil --info        <file.glb>
 pb3dutil --list-clips  <file.glb>
-pb3dutil --simplify-bones <file.glb> [--max-bones N] [--threshold F]
+pb3dutil --dump-bones  <file.glb>
+pb3dutil --simplify-bones <file.glb> [--max-bones N] [--threshold F] [--output <file>]
 pb3dutil --help
 ```
 
@@ -298,29 +297,62 @@ Idx Name                            Duration   Channels  Interpolations
 
 ---
 
-### --simplify-bones
+### --dump-bones
 
-Analyses per-bone weight contributions across all skinned primitives and reports which bones are candidates for removal.  Useful when a model's bone count exceeds `PB3D_MAX_BONES` or when targeting the Raspberry Pi 5's GPU budget.
+Dumps the unified global bone hierarchy that PB3D builds at load time. For each bone it shows: global index, skin source, parent global index, name, and rest-pose translation. For root bones it also prints the non-joint parent node's TRS, the inverse bind matrix (IBM) translation column, and verifies that `restLocalTRS × IBM` is identity at bind pose — a useful sanity check when diagnosing skeleton misalignment issues.
 
 ```bash
-# Basic analysis with defaults (max-bones=64 target, threshold=0.01)
+pb3dutil --dump-bones src/user/resources/3d/character.glb
+```
+
+**Example output:**
+```
+------------------------------------------------------------
+Unified bone count: 28
+GIdx  Skin Par   Name                               RestTranslation
+------------------------------------------------------------
+0     0    -1    root                               0.000, 0.000, 0.000
+1     0     0    spine_01                           0.000, 0.097, 0.000
+2     0     1    spine_02                           0.000, 0.093, 0.000
+3     0     2    chest                              0.000, 0.102, 0.000
+...
+------------------------------------------------------------
+```
+
+**Use this command to:**
+- Verify that the bone parent hierarchy matches what you designed in Blender
+- Diagnose skeleton misalignment — any bone where `restLocalTRS × IBM ≠ identity` will be flagged
+- Count unique global bones (after deduplication across multiple skins) before setting `PB3D_MAX_BONES`
+
+---
+
+### --simplify-bones
+
+Analyses per-bone weight contributions across all skinned primitives and reports which bones are candidates for removal.  Useful when a model's bone count exceeds `PB3D_MAX_BONES` or when targeting the Raspberry Pi 5's GPU budget.  Use `--output` to save the keep/remove bone list to a file for reference when editing the model.
+
+```bash
+# Basic analysis with defaults (max-bones=160 target, threshold=0.01)
 pb3dutil --simplify-bones src/user/resources/3d/character.glb
 
 # Tighter budget — target 32 bones, only keep bones affecting at least 2% of vertices
 pb3dutil --simplify-bones src/user/resources/3d/character.glb --max-bones 32 --threshold 0.02
+
+# Save the keep/remove list to a file for use in Blender
+pb3dutil --simplify-bones src/user/resources/3d/character.glb --output bone_list.txt
 ```
 
 **Options:**
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--max-bones N` | 64 | Target maximum bone count.  Bones beyond this limit are flagged for removal in order of ascending weight. |
+| `--max-bones N` | 160 | Target maximum bone count (matches `PB3D_MAX_BONES`).  Bones beyond this limit are flagged for removal in order of ascending weight. |
 | `--threshold F` | 0.01 | Minimum normalised average weight for a bone to be retained.  A value of `0.01` means bones that affect less than 1% of the model's vertices (by weight) are candidates for removal. |
+| `--output <file>` | _(none)_ | Save the keep/remove bone list to a text file.  The file lists all KEEP bones (above threshold) followed by all REMOVE bones (below threshold), each with its average normalised weight and name.  Use this list as a reference when removing bones in Blender or Maya before re-exporting. |
 
 **Example output:**
 ```
 Bone simplification analysis for: src/user/resources/3d/character.glb
-  max-bones  = 64
+  max-bones  = 160
   threshold  = 0.01
 ------------------------------------------------------------
 Total bones: 88
@@ -336,13 +368,35 @@ Bones below threshold — candidates for removal (26):
   [ 43] "ring_tip_L"     avg weight: 0.0004
   ...
 
-WARNING: Model has 88 bones but max-bones is 64. Lowest-weight bones to cut:
-  [ 42] "pinky_tip_L"    avg weight: 0.0003
-  ...
+Bone count (88) is within max-bones limit (160).
+
+Analysis saved to: bone_list.txt
 ------------------------------------------------------------
 ```
 
-**Note:** `--simplify-bones` is **informational only** — it does not modify the file.  Use the output as a guide when editing the model in Blender or Maya to remove the flagged bones and re-export.
+**Example saved file (`bone_list.txt`):**
+```
+# pb3dutil --simplify-bones output
+# file:      src/user/resources/3d/character.glb
+# max-bones: 160
+# threshold: 0.0100
+# total-bones: 88
+
+KEEP 62
+0.0240 root
+0.1520 spine_01
+...
+
+REMOVE 26
+0.0003 pinky_tip_L
+0.0004 ring_tip_L
+...
+```
+
+**Use this command to:**
+- Identify low-influence bones that can be removed to reduce total bone count toward `PB3D_MAX_BONES`
+- Save the keep/remove list with `--output` and use it as a reference when removing bones in Blender or Maya
+- After removing bones in your 3D editor and re-exporting, re-run `--info` to confirm the reduced count
 
 ---
 
