@@ -77,7 +77,7 @@ const char* PB3D::vertexShader3DSkinnedSource = R"(#version 300 es
     in vec4 aWeights;  // blend weights (sum to 1.0)
     uniform mat4 uMVP;
     uniform mat4 uModel;
-    uniform mat4 uBones[1024];
+    uniform mat4 uBones[512];
     out vec2 vTexCoord;
     out vec3 vNormal;
     out vec3 vWorldPos;
@@ -160,8 +160,8 @@ bool PB3D::pb3dInit() {
     }
 
     // Query the hardware uniform vector budget and warn if PB3D_MAX_BONES may exceed it.
-    // Each mat4 bone costs 4 vectors; Pi 5 reports GL_MAX_VERTEX_UNIFORM_VECTORS = 4096,
-    // which supports up to 4096 / 4 = 1024 bones matching PB3D_MAX_BONES.
+    // Each mat4 bone costs 4 vectors; we target 2048 vectors / 4 = 512 bones
+    // as a safe cross-platform maximum.
     GLint maxUniformVectors = 0;
     glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS, &maxUniformVectors);
     pb3dSendConsole("PB3D: GL_MAX_VERTEX_UNIFORM_VECTORS = " + std::to_string(maxUniformVectors)

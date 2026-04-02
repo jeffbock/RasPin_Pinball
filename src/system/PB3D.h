@@ -18,11 +18,12 @@
 // Maximum bones per skinned mesh uploaded to the GPU shader.
 // Must match the uBones[] array size declared in vertexShader3DSkinnedSource.
 //
-// The Raspberry Pi 5 VideoCore VII reports GL_MAX_VERTEX_UNIFORM_VECTORS = 4096.
-// Each mat4 bone costs 4 vectors, so the Pi 5 supports up to 4096 / 4 = 1024 bones.
+// GL_MAX_VERTEX_UNIFORM_VECTORS varies by GPU (e.g. 4096 on Pi 5, 4095 on
+// some Windows/ANGLE drivers).  Each mat4 bone costs 4 vectors, so we target
+// 2048 vectors / 4 = 512 bones as a safe cross-platform maximum.
 // pb3dInit() queries the actual hardware value at startup and logs a warning if
 // PB3D_MAX_BONES exceeds what the current GPU can support.
-#define PB3D_MAX_BONES 1024
+#define PB3D_MAX_BONES 512
 
 // Path for 3D model resources
 #define PB3D_MODEL_PATH "src/user/resources/3d/"

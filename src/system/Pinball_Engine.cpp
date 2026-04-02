@@ -1379,7 +1379,7 @@ bool PBEngine::pbeLoadTestSandbox(){
         if (m_sandboxWingModelId != 0) {
             m_sandboxWingInstance = pb3dCreateInstance(m_sandboxWingModelId);
             // Position: center screen shifted right 25px, up 50px
-            pb3dSetInstancePositionPx(m_sandboxWingInstance, 985.0f, 670.0f, 0.0f);
+            pb3dSetInstancePositionPx(m_sandboxWingInstance, 985.0f, 795.0f, 0.0f);
             pb3dSetInstanceScale(m_sandboxWingInstance, 1.5f);
             // -90 X faces camera, +15 X tilts nose slightly downward toward viewer
             pb3dSetInstanceRotation(m_sandboxWingInstance, -75.0f, 0.0f, 0.0f);
