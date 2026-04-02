@@ -33,9 +33,9 @@
 //   - SIMULATOR_SMALL_WINDOW option is available (see Section 3).
 
 #if !defined(EXE_MODE_WINDOWS) && !defined(EXE_MODE_DEBIAN) && !defined(EXE_MODE_RASPI)
-// #define EXE_MODE_WINDOWS
+#define EXE_MODE_WINDOWS
 #define EXE_MODE_DEBIAN
-//#define EXE_MODE_RASPI
+#define EXE_MODE_RASPI
 #endif
 
 #if (defined(EXE_MODE_WINDOWS) + defined(EXE_MODE_DEBIAN) + defined(EXE_MODE_RASPI)) != 1
@@ -59,7 +59,7 @@
 // (half width, half height).  Useful for RDP / remote-desktop performance.
 // Comment out to use full native resolution.
 #ifndef ENABLE_PINBALL_HARDWARE
-#define SIMULATOR_SMALL_WINDOW
+// #define SIMULATOR_SMALL_WINDOW
 #endif
 
 // =============================================================================
@@ -89,6 +89,11 @@
 // working directory.  The file is (re)created fresh each launch so it always
 // contains output from the most recent run only.
 #define PB_CONSOLE_LOG_TO_FILE
+
+// Uncomment to allow debug-flagged console messages to be output.
+// When commented out, calls to pbeSendConsole(..., true) are silently dropped.
+// Non-debug calls (default) are always shown regardless of this setting.
+// #define PB_ENABLE_DEBUG_CONSOLE
 
 // =============================================================================
 // SECTION 6: VIDEO DECODE

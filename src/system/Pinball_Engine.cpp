@@ -97,6 +97,7 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_sandboxWingInstance = 0;
     m_sandboxWingLoaded = false;
     m_sandboxWingTestState = 0;
+    m_sandboxWingRotY = 0.0f;
     
     // Initialize NeoPixel animation variables
     m_sandboxNeoPixelAnimActive = false;
@@ -343,7 +344,11 @@ bool PBEngine::pbeSaveFile(){
 }
 
 // Console functions - basically put strings into the queue
-void PBEngine::pbeSendConsole(std::string output){
+void PBEngine::pbeSendConsole(std::string output, bool debug){
+
+#ifndef PB_ENABLE_DEBUG_CONSOLE
+    if (debug) return;
+#endif
 
     m_consoleQueue.push_back(output);
 
@@ -1379,11 +1384,6 @@ bool PBEngine::pbeLoadTestSandbox(){
             // -90 X faces camera, +15 X tilts nose slightly downward toward viewer
             pb3dSetInstanceRotation(m_sandboxWingInstance, -75.0f, 0.0f, 0.0f);
             pb3dSetInstanceVisible(m_sandboxWingInstance, true);  // visible immediately for static debug render
-            // Log available animation clips so the right clip name can be identified
-            auto wingClips = pb3dListAnimClips(m_sandboxWingModelId);
-            for (size_t ci = 0; ci < wingClips.size(); ci++) {
-                pbeSendConsole("CrystalWing clip[" + std::to_string(ci) + "]: " + wingClips[ci]);
-            }
             m_sandboxWingLoaded = true;
         }
     }
@@ -1502,8 +1502,18 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     gfxSetColor(m_defaultFontSpriteId, 64, 192, 255, 255);
     gfxRenderShadowString(m_defaultFontSpriteId, "Right Activate" + raState + ":", centerX - 200, startY + (3.5 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
     gfxSetColor(m_defaultFontSpriteId, 255, 255, 255, 255);
-    std::string wingAnimStatus = (m_sandboxWingLoaded && pb3dIsAnimClipPlaying(m_sandboxWingInstance)) ? "PLAYING" : "STOPPED";
-    gfxRenderShadowString(m_defaultFontSpriteId, "Animated 3D Test - " + wingAnimStatus, centerX + 50, startY + (3.5 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    {
+        std::string wingLabel;
+        if (!m_sandboxWingLoaded || m_sandboxWingTestState == 0) {
+            wingLabel = "3D Model - Static";
+        } else {
+            auto wclips = pb3dListAnimClips(m_sandboxWingModelId);
+            int cidx = m_sandboxWingTestState - 1;
+            std::string cname = (cidx >= 0 && cidx < (int)wclips.size()) ? wclips[cidx] : "?";
+            wingLabel = "3D Model - " + cname;
+        }
+        gfxRenderShadowString(m_defaultFontSpriteId, wingLabel, centerX + 50, startY + (3.5 * lineSpacing), 1, GFX_TEXTLEFT, 0, 0, 0, 255, 2);
+    }
     
     // Reset scale
     gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
@@ -1601,6 +1611,18 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
     // Render crystalwing animated 3D model (center screen, 2/3 down)
     // Only render when visible
     if (m_sandboxWingLoaded && pb3dGetInstanceVisible(m_sandboxWingInstance)) {
+        // Slowly rotate around Y axis (both static and animated)
+        if (m_sandboxWingLoaded) {
+            float deltaSec = (currentTick - lastTick) / 1000.0f;
+            m_sandboxWingRotY += 30.0f * deltaSec;  // 30 degrees/sec
+            if (m_sandboxWingRotY >= 360.0f) m_sandboxWingRotY -= 360.0f;
+            if (m_sandboxWingTestState == 0) {
+                // Static: just Y rotation, keep original X tilt
+                pb3dSetInstanceRotation(m_sandboxWingInstance, -90.0f, m_sandboxWingRotY, 0.0f);
+            } else {
+                pb3dSetInstanceRotation(m_sandboxWingInstance, -75.0f, m_sandboxWingRotY, -45.0f);
+            }
+        }
         pb3dBegin();
         pb3dRenderInstance(m_sandboxWingInstance);
         pb3dEnd();
@@ -2742,6 +2764,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 
                         if (m_sandboxWingTestState == 0) {
                             // Static bind-pose
+                            m_sandboxWingRotY = 0.0f;
                             pb3dStopAnimClip(m_sandboxWingInstance);
                             pb3dSetInstanceRotation(m_sandboxWingInstance, -75.0f, 0.0f, 0.0f);
                             pbeSendConsole("Wing: static bind pose");
@@ -2749,9 +2772,8 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                             // Animated — clip index is state-1
                             int clipIdx = m_sandboxWingTestState - 1;
                             std::string clipName = (clipIdx < clipCount) ? wingClipNames[clipIdx] : "?";
-                            pb3dSetInstanceRotation(m_sandboxWingInstance, 0.0f, 45.0f, 0.0f);
+                            pb3dSetInstanceRotation(m_sandboxWingInstance, -90.0f, 0.0f, -45.0f);
                             pb3dPlayAnimClip(m_sandboxWingInstance, clipIdx, true);
-                            pbeSendConsole("Wing: clip[" + std::to_string(clipIdx) + "] \"" + clipName + "\"");
                         }
                     }
                 }

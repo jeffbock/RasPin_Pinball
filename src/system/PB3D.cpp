@@ -136,7 +136,8 @@ PB3D::~PB3D() {
 // Console output
 // ============================================================================
 
-void PB3D::pb3dSendConsole(const std::string& msg) {
+void PB3D::pb3dSendConsole(const std::string& msg, bool debug) {
+    (void)debug;  // standalone path has no suppress mechanism; always print
     std::cout << msg << std::endl;
 }
 
@@ -167,7 +168,7 @@ bool PB3D::pb3dInit() {
     int bonesNeeded         = PB3D_MAX_BONES * 4 + 20;
     pb3dSendConsole("PB3D: GL_MAX_VERTEX_UNIFORM_VECTORS = " + std::to_string(maxUniformVectors)
                     + "  (need " + std::to_string(bonesNeeded)
-                    + " for " + std::to_string(PB3D_MAX_BONES) + " bones)");
+                    + " for " + std::to_string(PB3D_MAX_BONES) + " bones)", true);
     if (bonesNeeded > maxUniformVectors) {
         pb3dSendConsole("PB3D: WARNING - PB3D_MAX_BONES (" + std::to_string(PB3D_MAX_BONES)
                         + ") exceeds GPU uniform budget! Max safe bone count on this GPU: "
@@ -458,6 +459,20 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                 }
             }
 
+            // Skip unskinned primitives in a model that has skeleton/skin data.
+            // Such primitives sit at their static model-space position regardless of
+            // bone animation — at rest they may hide inside the body, but once bones
+            // move they pop out as floating artifacts (e.g. white glass panel).
+            // Mesh nodes that genuinely have no skin reference and need to render
+            // as static props should be in a separate model file.
+            // Use forceStatic=true to load everything without animation.
+            if (!forceStatic && !hasSkinData && data->skins_count > 0) {
+                pb3dSendConsole("PB3D: WARNING - Mesh[" + std::to_string(mi) + "] Prim[" + std::to_string(pi) + "]"
+                    + " '" + (mesh->name ? std::string(mesh->name) : "?") + "'"
+                    + " has no skin weights in a skinned model - skipped");
+                continue;
+            }
+
             // Vertex positions are stored as raw model-space coordinates.
             // The model matrix at render time folds in normScale and normCenter
             // so IBMs work correctly in the skinned path.
@@ -603,7 +618,7 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                     if (bcf[3] < 0.99f) {
                         pb3dSendConsole("PB3D:   NOTE - Mesh[" + std::to_string(mi) + "] mat '" + matName
                                         + "' base_color_factor alpha=" + std::to_string(bcf[3])
-                                        + " (not applied by shader; use texture alpha)");
+                                        + " (not applied by shader; use texture alpha)", true);
                     }
                 }
                 pb3dSendConsole("PB3D:   Mesh[" + std::to_string(mi) + "] Prim[" + std::to_string(pi) + "]"
@@ -613,7 +628,15 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                                 + (gpuMesh.isSkinned ? " [SKINNED]" : " [STATIC]")
                                 + " tex=" + std::to_string(gpuMesh.textureId) + (hasRealTex ? "" : " [FALLBACK]")
                                 + " mat='" + matName + "'"
-                                + (gpuMesh.needsBlend ? " [BLEND]" : " [OPAQUE]"));
+                                + (gpuMesh.needsBlend ? " [BLEND]" : " [OPAQUE]"), true);
+                // Always-visible warning: skinned primitive with no real texture will render as solid white.
+                // This identifies the source mesh for "white poly" artifacts in animated models.
+                if (gpuMesh.isSkinned && !hasRealTex) {
+                    pb3dSendConsole("PB3D: WARNING - Mesh[" + std::to_string(mi) + "] Prim[" + std::to_string(pi) + "]"
+                                    + " '" + (mesh->name ? std::string(mesh->name) : "?") + "'"
+                                    + " is SKINNED with no texture (mat='" + matName + "',"
+                                    + " v=" + std::to_string(vertexCount) + ") - will render white");
+                }
             }
 
             model.meshes.push_back(gpuMesh);
@@ -633,7 +656,7 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
 
     pb3dSendConsole("PB3D: '" + std::string(glbFilePath) + "' loaded: "
                     + std::to_string(model.meshes.size()) + " mesh primitive(s), "
-                    + std::to_string(model.ownedTextures.size()) + " unique texture(s)");
+                    + std::to_string(model.ownedTextures.size()) + " unique texture(s)", true);
 
     // -----------------------------------------------------------------------
     // Skeleton loading: unify ALL skins into a single bone array using the
@@ -729,7 +752,7 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                 }
                 nodeToGlobalBone[vbn] = globalIdx;
                 pb3dSendConsole("PB3D: Virtual bone[" + std::to_string(globalIdx) + "] '"
-                    + std::string(vbn->name ? vbn->name : "?") + "' (animated ancestor)");
+                    + std::string(vbn->name ? vbn->name : "?") + "' (animated ancestor)", true);
             }
         }
 
@@ -737,7 +760,7 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
         if (totalBones > PB3D_MAX_BONES) totalBones = PB3D_MAX_BONES;
         pb3dSendConsole("PB3D: Loading " + std::to_string(data->skins_count) + " skin(s), "
                         + std::to_string(totalBones) + " bones (incl. virtual) from: "
-                        + std::string(glbFilePath));
+                        + std::string(glbFilePath), true);
 
         model.skeleton.bones.resize(totalBones);
 
@@ -1138,17 +1161,17 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                                 + std::to_string(sm[10]).substr(0,6) + ") t=("
                                 + std::to_string(sm[12]).substr(0,5) + ","
                                 + std::to_string(sm[13]).substr(0,5) + ","
-                                + std::to_string(sm[14]).substr(0,5) + ")");
+                                + std::to_string(sm[14]).substr(0,5) + ")", true);
                         }
                     }
                 }
                 if (badCnt > 0)
                     pb3dSendConsole("PB3D: " + std::to_string(badCnt) + "/"
-                        + std::to_string(checkedCnt) + " bones: non-identity bind-pose skinMatrix");
+                        + std::to_string(checkedCnt) + " bones: non-identity bind-pose skinMatrix", true);
                 else
                     pb3dSendConsole("PB3D: bind-pose verification OK ("
                         + std::to_string(checkedCnt) + " bones, "
-                        + std::to_string(nbv - checkedCnt) + " virtual)");
+                        + std::to_string(nbv - checkedCnt) + " virtual)", true);
 
             }
         }
@@ -1159,7 +1182,7 @@ unsigned int PB3D::pb3dLoadModel(const char* glbFilePath, bool forceStatic) {
                             + std::to_string(model.skeleton.bones.size()) + " bones (unified from "
                             + std::to_string(data->skins_count) + " skin(s)), "
                             + std::to_string(model.skeleton.clips.size()) + " clips from: "
-                            + std::string(glbFilePath));
+                            + std::string(glbFilePath), true);
         }
     }
 

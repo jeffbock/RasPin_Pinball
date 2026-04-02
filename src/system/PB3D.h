@@ -324,7 +324,7 @@ public:
 
 protected:
     // Console output — default uses stdout; overridden in PBEngine to route to the on-screen console
-    virtual void pb3dSendConsole(const std::string& msg);
+    virtual void pb3dSendConsole(const std::string& msg, bool debug = false);
 
 private:
     // Data storage
