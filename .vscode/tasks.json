@@ -396,6 +396,40 @@
             "detail": "Windows: FontGen Build (Debug)"
         },
 
+        // Windows: pb3dutil Build
+        {
+            "type": "cppbuild",
+            "label": "Windows: pb3dutil Build (Debug)",
+            "command": "cl.exe",
+            "args": [
+                "/Zi",
+                "/EHsc",
+                "/nologo",
+                "/Fo${workspaceFolder}/build/windows/debug/",
+                "/Fe${workspaceFolder}/build/windows/debug/pb3dutil.exe",
+                "/Fd${workspaceFolder}/build/windows/debug/pb3dutil.pdb",
+                "${workspaceFolder}/src/3rdparty/cgltf.cpp",
+                "${workspaceFolder}/src/PButils/pb3dutil.cpp",
+                "/I${workspaceFolder}/src/3rdparty",
+                "/link",
+                "/LIBPATH:C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64",
+                "kernel32.lib",
+                "user32.lib",
+                "/machine:x64"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$msCompile"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "Windows: pb3dutil 3D model analysis utility"
+        },
+
         // Raspberry Pi: FontGen Build
         {
             "type": "cppbuild",
@@ -425,6 +459,34 @@
                 "isDefault": false
             },
             "detail": "Raspberry Pi: FontGen Build (Debug)"
+        },
+
+        // Raspberry Pi: pb3dutil Build
+        {
+            "type": "cppbuild",
+            "label": "Raspberry Pi: pb3dutil Build (Debug)",
+            "command": "/usr/bin/g++",
+            "args": [
+                "-g",
+                "-o",
+                "${workspaceFolder}/build/raspi/debug/pb3dutil",
+                "${workspaceFolder}/src/3rdparty/cgltf.cpp",
+                "${workspaceFolder}/src/PButils/pb3dutil.cpp",
+                "-I${workspaceFolder}/src/3rdparty",
+                "-lpthread",
+                "-lm"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "Raspberry Pi: pb3dutil 3D model analysis utility"
         },
 
         // Raspberry Pi: pblistdevices Build
@@ -505,7 +567,8 @@
         {
             "label": "Windows: Build All PBUtils (Debug)",
             "dependsOn": [
-                "Windows: FontGen Build (Debug)"
+                "Windows: FontGen Build (Debug)",
+                "Windows: pb3dutil Build (Debug)"
             ],
             "dependsOrder": "sequence",
             "problemMatcher": [],
@@ -513,7 +576,7 @@
                 "kind": "build",
                 "isDefault": false
             },
-            "detail": "Build all PBUtils executables for Windows (FontGen only - pblistdevices and pbsetamp require wiringPi)"
+            "detail": "Build all PBUtils executables for Windows (FontGen, pb3dutil - pblistdevices/pbsetamp/pblaunch require wiringPi/GTK4)"
         },
 
         // Raspberry Pi: Build All PBUtils
@@ -521,6 +584,7 @@
             "label": "Raspberry Pi: Build All PBUtils (Debug)",
             "dependsOn": [
                 "Raspberry Pi: FontGen Build (Debug)",
+                "Raspberry Pi: pb3dutil Build (Debug)",
                 "Raspberry Pi: pblistdevices Build (Debug)",
                 "Raspberry Pi: pbsetamp Build (Debug)",
                 "Raspberry Pi: pblaunch Build (Debug)"

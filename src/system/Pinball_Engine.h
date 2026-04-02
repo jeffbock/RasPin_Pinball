@@ -301,8 +301,8 @@ public:
     bool pbeLoadGameScreen (PBMainState state);
 
     // Console functions
-    void pbeSendConsole(std::string output);
-    void pb3dSendConsole(const std::string& msg) override { pbeSendConsole(msg); }
+    void pbeSendConsole(std::string output, bool debug = false);
+    void pb3dSendConsole(const std::string& msg, bool debug = false) override { pbeSendConsole(msg, debug); }
     void pbeClearConsole();
     void pbeRenderConsole(unsigned int startingX, unsigned int startingY, unsigned int startLine);
 
@@ -495,6 +495,13 @@ public:
     unsigned int m_sandboxD20ModelId;
     unsigned int m_sandboxDiceInstance[4];
     bool m_sandboxDiceLoaded;
+
+    // Crystalwing animated 3D model test
+    unsigned int m_sandboxWingModelId;
+    unsigned int m_sandboxWingInstance;
+    bool m_sandboxWingLoaded;
+    int   m_sandboxWingTestState;  // 0=static, 1..N=clip index 0..N-1
+    float m_sandboxWingRotY;         // current Y rotation for animated model (degrees)
     
     // NeoPixel animation variables for sandbox test
     bool m_sandboxNeoPixelAnimActive;    // Animation is running

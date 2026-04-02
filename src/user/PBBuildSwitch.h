@@ -34,7 +34,7 @@
 
 #if !defined(EXE_MODE_WINDOWS) && !defined(EXE_MODE_DEBIAN) && !defined(EXE_MODE_RASPI)
 //#define EXE_MODE_WINDOWS
-// #define EXE_MODE_DEBIAN
+//#define EXE_MODE_DEBIAN
 #define EXE_MODE_RASPI
 #endif
 
@@ -83,7 +83,20 @@
 // #define ENABLE_IDLE_SLEEP
 
 // =============================================================================
-// SECTION 5: VIDEO DECODE
+// SECTION 5: DEBUG OPTIONS
+// =============================================================================
+// Uncomment to mirror every pbeSendConsole() call to console.txt in the
+// working directory.  The file is (re)created fresh each launch so it always
+// contains output from the most recent run only.
+#define PB_CONSOLE_LOG_TO_FILE
+
+// Uncomment to allow debug-flagged console messages to be output.
+// When commented out, calls to pbeSendConsole(..., true) are silently dropped.
+// Non-debug calls (default) are always shown regardless of this setting.
+// #define PB_ENABLE_DEBUG_CONSOLE
+
+// =============================================================================
+// SECTION 6: VIDEO DECODE
 // =============================================================================
 // Enable hardware video decoding (requires V4L2 M2M support).
 // This is independent of ENABLE_PINBALL_HARDWARE — simulators may also have

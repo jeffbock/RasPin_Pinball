@@ -15,8 +15,94 @@
 #include <vector>
 #include <string>
 
+// Maximum bones per skinned mesh uploaded to the GPU shader.
+// Must match the uBones[] array size declared in vertexShader3DSkinnedSource.
+//
+// The Raspberry Pi 5 VideoCore VII reports GL_MAX_VERTEX_UNIFORM_VECTORS = 4096.
+// Each mat4 bone costs 4 vectors, so the Pi 5 supports up to 4096 / 4 = 1024 bones.
+// pb3dInit() queries the actual hardware value at startup and logs a warning if
+// PB3D_MAX_BONES exceeds what the current GPU can support.
+#define PB3D_MAX_BONES 1024
+
 // Path for 3D model resources
 #define PB3D_MODEL_PATH "src/user/resources/3d/"
+
+// ============================================================================
+// Skeleton Animation Data Structures
+// ============================================================================
+
+// Interpolation type for animation keyframes (mirrors glTF interpolation types)
+enum e3DInterpolationType {
+    ANIM_INTERP_LINEAR      = 0,
+    ANIM_INTERP_STEP        = 1,
+    ANIM_INTERP_CUBICSPLINE = 2
+};
+
+// Target property for an animation channel
+enum e3DAnimChannelType {
+    ANIM_CHANNEL_TRANSLATION = 0,
+    ANIM_CHANNEL_ROTATION    = 1,
+    ANIM_CHANNEL_SCALE       = 2
+};
+
+// A single keyframe value: xyz0 for translation/scale, xyzw quaternion for rotation
+struct st3DAnimKeyframe {
+    float time;      // seconds from start of clip
+    float value[4];  // translation: xyz0  |  rotation: xyzw quat  |  scale: xyz0
+};
+
+// One animation channel drives a single property on a single bone
+struct st3DAnimChannel {
+    int boneIndex;
+    e3DAnimChannelType type;
+    e3DInterpolationType interpolation;
+    std::vector<st3DAnimKeyframe> keyframes;
+};
+
+// One named animation clip (corresponds to one glTF animation)
+struct st3DAnimClip {
+    std::string name;
+    float duration;   // seconds (max input sampler time)
+    std::vector<st3DAnimChannel> channels;
+};
+
+// One bone in the skeleton hierarchy
+struct st3DBone {
+    std::string name;
+    int parentIndex;             // -1 for root bone(s)
+    int skinIndex;               // index of the skin this bone belongs to, -1 for virtual bones
+    float inverseBindMatrix[16]; // column-major 4×4 — as read from glTF (NOT corrected)
+    float restTranslation[3];    // rest-pose translation from glTF node
+    float restRotation[4];       // rest-pose rotation quaternion xyzw from glTF node
+    float restScale[3];          // rest-pose scale from glTF node
+    // Transform between this bone and its parent in the unified hierarchy.
+    // For bones whose immediate glTF parent IS another bone in the array,
+    // this is identity.  For bones with non-joint intermediate ancestors
+    // (armature nodes, etc.) this captures the accumulated static transform
+    // of those intermediates so the hierarchy chain remains correct.
+    float parentOffsetMatrix[16];
+};
+
+// Maximum skins we track meshNodeGlobalInv for (typical models have 1-3)
+#define PB3D_MAX_SKINS 8
+
+// Skeleton: bone hierarchy + all animation clips for a model
+struct st3DSkeleton {
+    std::vector<st3DBone>    bones;
+    std::vector<st3DAnimClip> clips;
+    int    skinCount;                                     // number of skins in this model
+    float  meshNodeGlobalInv[PB3D_MAX_SKINS][16];         // inv(meshNodeWorldTransform) per skin
+};
+
+// Per-instance skeleton animation playback state
+struct st3DSkelState {
+    int   clipIndex;                               // index into model's skeleton.clips, -1 = none
+    float currentTime;                             // playback position in seconds
+    bool  looping;
+    bool  isPlaying;
+    unsigned int lastUpdateTick;                   // millisecond tick of last update
+    std::vector<float> boneMatrices;               // final skinning matrices (flattened column-major); allocated only for skinned models
+};
 
 // 3D Animation Property Masks
 #define ANIM3D_POSX_MASK   0x001
@@ -52,6 +138,9 @@ struct st3DMesh {
     unsigned int indexCount;
     unsigned int textureId;
     unsigned int materialIndex;
+    bool isSkinned;           // true when JOINTS_0/WEIGHTS_0 were present (uses skinned VAO layout)
+    bool needsBlend;          // true when material alpha_mode is BLEND or MASK (transparent areas)
+    float materialBaseAlpha;  // base_color_factor[3] from glTF PBR material (1.0 when absent)
 };
 
 struct st3DModel {
@@ -59,6 +148,10 @@ struct st3DModel {
     std::set<unsigned int> ownedTextures;  // unique GPU texture handles owned by this model (ref-safe cleanup)
     std::string name;
     bool isLoaded;
+    bool hasSkeleton;    // true when skin + bone hierarchy was loaded from the glTF
+    float normScale;     // 1 / max_model_extent — the global normalization factor applied to vertex positions
+    float normCX, normCY, normCZ;  // bounding-box centre used by the normalization (pre-normalization space)
+    st3DSkeleton skeleton;
 };
 
 struct st3DInstance {
@@ -74,6 +167,8 @@ struct st3DInstance {
     bool  hasPixelAnchor;
     float anchorPixelX, anchorPixelY;   // screen pixels — the intended screen position
     float anchorBaseX,  anchorBaseY;    // world X/Y computed at Z=0 (reference frame)
+    // Skeleton animation state (only meaningful when the model has a skeleton)
+    st3DSkelState skelState;
 };
 
 struct st3DCamera {
@@ -148,7 +243,11 @@ public:
     // -----------------------------------------------------------------------
     // Model loading
     // -----------------------------------------------------------------------
-    unsigned int pb3dLoadModel(const char* glbFilePath);
+    // forceStatic: when true, JOINTS_0/WEIGHTS_0 are ignored and all primitives are
+    // uploaded using the 8-float static VAO layout and rendered with the static shader.
+    // Use this for debugging geometry without skinning, or for models whose skin data
+    // is not needed (e.g. static decorative objects authored with a rig).
+    unsigned int pb3dLoadModel(const char* glbFilePath, bool forceStatic = false);
     bool         pb3dUnloadModel(unsigned int modelId);
 
     // -----------------------------------------------------------------------
@@ -170,6 +269,7 @@ public:
     void pb3dSetInstanceScale(unsigned int instanceId, float scale);   // 1.0 = native size
     void pb3dSetInstanceAlpha(unsigned int instanceId, float alpha);   // 0.0 – 1.0
     void pb3dSetInstanceVisible(unsigned int instanceId, bool visible);
+    bool pb3dGetInstanceVisible(unsigned int instanceId) const;
 
     // -----------------------------------------------------------------------
     // Lighting  (direction is in normalised world-space, colors are 0.0–1.0)
@@ -187,7 +287,22 @@ public:
     void pb3dRenderAll();
 
     // -----------------------------------------------------------------------
-    // Animation
+    // Skeleton animation API
+    // -----------------------------------------------------------------------
+    // Query available clips for a loaded model (returns empty vector if none)
+    std::vector<std::string> pb3dListAnimClips(unsigned int modelId);
+    int  pb3dFindAnimClip(unsigned int modelId, const std::string& clipName);
+
+    // Play a skeleton animation clip on an instance (-1 clipIndex or unknown name stops)
+    bool pb3dPlayAnimClip(unsigned int instanceId, const std::string& clipName, bool loop = true);
+    bool pb3dPlayAnimClip(unsigned int instanceId, int clipIndex, bool loop = true);
+    bool pb3dStopAnimClip(unsigned int instanceId);
+    bool pb3dIsAnimClipPlaying(unsigned int instanceId) const;
+    float pb3dGetAnimClipTime(unsigned int instanceId) const;  // current playback time in seconds
+    bool pb3dSetAnimClipTime(unsigned int instanceId, float timeSec);
+
+    // -----------------------------------------------------------------------
+    // Animation (high-level transform animation — position/rotation/scale/alpha)
     // -----------------------------------------------------------------------
     bool pb3dCreateAnimation(st3DAnimateData anim, bool replaceExisting);
     bool pb3dAnimateInstance(unsigned int instanceId, unsigned int currentTick);
@@ -203,7 +318,7 @@ public:
 
 protected:
     // Console output — default uses stdout; overridden in PBEngine to route to the on-screen console
-    virtual void pb3dSendConsole(const std::string& msg);
+    virtual void pb3dSendConsole(const std::string& msg, bool debug = false);
 
 private:
     // Data storage
@@ -226,6 +341,9 @@ private:
     // Dirty flag: set whenever camera or lighting changes; cleared after upload in pb3dBegin()
     bool m_sceneDirty;
 
+    // Tracks whether the skinned shader is currently active (for mid-frame switching)
+    bool m_skinnedShaderActive;
+
     // Animation handlers
     void pb3dProcessAnimation(st3DAnimateData& anim, unsigned int currentTick);
     void pb3dAnimateNormal(st3DAnimateData& anim, unsigned int currentTick, float timeSinceStart, float percentComplete);
@@ -243,9 +361,21 @@ private:
     // Random number generation for animation
     float pb3dGetRandomFloat(float min, float max);
 
+    // Skeleton animation helpers
+    void  pb3dUpdateSkelState(st3DInstance& inst, const st3DSkeleton& skel, unsigned int currentTick);
+    void  pb3dComputeBoneMatrices(const st3DSkeleton& skel, const st3DAnimClip& clip,
+                                  float time, float* outMatrices);
+    float pb3dSkelInterpolateFloat(float a, float b, float t);
+    void  pb3dSkelSlerpQuat(const float qa[4], const float qb[4], float t, float out[4]);
+    void  pb3dSkelEvalChannel(const st3DAnimChannel& ch, float time, float out[4]);
+    void  pb3dMat4Mul(const float a[16], const float b[16], float out[16]);
+    void  pb3dMat4FromTRS(const float t[3], const float r[4], const float s[3], float out[16]);
+    bool  pb3dMat4InvertAffine(const float m[16], float out[16]);
+
     // 3D Shader source code
     static const char* vertexShader3DSource;
     static const char* fragmentShader3DSource;
+    static const char* vertexShader3DSkinnedSource;  // skinned-mesh variant (adds bone matrices)
 };
 
 #endif // PB3D_h
