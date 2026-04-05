@@ -180,10 +180,10 @@ bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTic
                 
                 // Display "Player X - New High Score!" label, pushed up from normal position
                 gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255); // Gold
-                gfxSetScaleFactor(m_StartMenuFontId, 0.5, false);
+                gfxSetScaleFactor(m_StartMenuFontId, 0.625, false);
                 std::string playerLabel = "Player " + std::to_string(qualifier.playerIndex + 1) + " - New High Score!";
                 gfxRenderShadowString(m_StartMenuFontId, playerLabel, 
-                    (ACTIVEDISPX + (1024/3)), ACTIVEDISPY + 250, 5, GFX_TEXTCENTER,
+                    (ACTIVEDISPX + (1024/3)), ACTIVEDISPY + 240, 5, GFX_TEXTCENTER,
                     0, 0, 0, 255, 2);
                 
                 // Display the score in large font, pushed up from normal center position
