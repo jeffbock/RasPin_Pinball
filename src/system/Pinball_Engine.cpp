@@ -701,6 +701,8 @@ bool PBEngine::pbeRenderStartMenu(unsigned long currentTick, unsigned long lastT
         m_RestartMenu = false;
         gfxSetScaleFactor(m_StartMenuSwordId, 0.9, false);
         gfxSetRotateDegrees(m_StartMenuSwordId, 0.0f, false);
+        // Disable auto outputs whenever we enter/return to the main menu
+        SetAutoOutputEnable(false);
         // Restart the menu music when returning to main menu
         m_soundSystem.pbsPlayMusic(SOUNDMENUTHEME);
     } 
@@ -801,7 +803,7 @@ bool PBEngine::pbeRenderTestMode(unsigned long currentTick, unsigned long lastTi
             gfxSetColor(m_defaultFontSpriteId, 255,255, 255, 255);
             temp = "OFF";
         };
-        gfxRenderString(m_defaultFontSpriteId, temp, 230 + ((i / 24) * 220), 60 + ((i % 24) * 26), 1, GFX_TEXTLEFT);
+        gfxRenderString(m_defaultFontSpriteId, temp, 260 + ((i / 24) * 220), 60 + ((i % 24) * 26), 1, GFX_TEXTLEFT);
     }
     
     return (true);   
