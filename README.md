@@ -22,7 +22,7 @@ Prototype hardware shown, full machine in development.
 - Message based input and output processing utilizing Raspberry Pi, and TI I2C IO and LED expanders optimized to decrease latency and minimize HW traffic
 - Timer system with dedicated watchdog timer and user timers for timed game events
 - Automatic LED control and sequence animation for dynamic lighting effects
-- NeoPixel (SK6812/WS2812B) RGB LED strip support with multiple timing methods (clock_gettime, NOP, SPI, PWM), sequence animation, and full color control
+- NeoPixel (SK6812/WS2812B) RGB LED strip supported via SPI, with sequence animation, and full color control
 - Easy to use music and sound effect system with multiple channels
 - Full setup / control and diagnostics menus and capability, along with straight-forward ability to add / expand for your own personalize machine.
 - Mode and gameplay framework with a multi-mode state machine, mode sub-states, screen display priority management with and a structured game flow skeleton ready for building full pinball table rules

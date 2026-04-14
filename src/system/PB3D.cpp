@@ -164,7 +164,7 @@ bool PB3D::pb3dInit() {
     // as a safe cross-platform maximum.
     GLint maxUniformVectors = 0;
     glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS, &maxUniformVectors);
-    pb3dSendConsole("PB3D: GL_MAX_VERTEX_UNIFORM_VECTORS = " + std::to_string(maxUniformVectors)
+    pb3dSendConsole("OpenGL ES: GL_MAX_VERTEX_UNIFORM_VECTORS = " + std::to_string(maxUniformVectors)
                     + "  (PB3D_MAX_BONES = " + std::to_string(PB3D_MAX_BONES) + ")", true);
     if (PB3D_MAX_BONES * 4 > maxUniformVectors) {
         pb3dSendConsole("PB3D: WARNING - PB3D_MAX_BONES (" + std::to_string(PB3D_MAX_BONES)

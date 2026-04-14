@@ -27,5 +27,5 @@ Protect input / output queues with mutex and make them multi-thread?  Doesn't se
 Expand sprites to have animated sprites - eg: UV maps within a sprite with different images - base is there but need example to integrate.
     -  Is there some standard sprite format / program that can be used?
     -  Or add basic capability to animate more automatically between different sprites / loop / etc..
-Expand 3D models to support skeleton / animation, currently only static models with full model animation.
 Actually checkout the CMAKE flow - I don't use it a lot right now
+BUG: Debian doesn't render / light the dragon model properly
