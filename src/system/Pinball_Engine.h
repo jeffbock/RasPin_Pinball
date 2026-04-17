@@ -548,6 +548,11 @@ public:
     unsigned int m_PBTBLCharacterCircle256Id, m_PBTBLDungeon256Id, m_PBTBLShield256Id, m_PBTBLSword256Id, m_PBTBLTreasure256Id;
     unsigned int m_PBTBLDungeonEyesBlinkId;
     unsigned long m_dungeonBlinkNextTick;
+    unsigned int m_PBTBLDragonCoinSmallId;
+    unsigned int m_PBTBLDragonCoinSmallInstId[4];
+    bool m_coinDropActive[4];
+    unsigned long m_coinDropStartTick[4];
+    int m_coinDropXOffset[4];
     unsigned int m_PBTBLArcherHeadshot256Id, m_PBTBLKnightHeadshot256Id, m_PBTBLWolfHeadshot256Id;
     
     // Extra ball screen variables

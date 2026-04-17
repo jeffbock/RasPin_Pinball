@@ -49,7 +49,17 @@ bool PBEngine::pbeLoadMainScreen(){
     m_PBTBLTreasure256Id = gfxLoadSprite("Treasure256", "src/user/resources/textures/Treasure256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLTreasure256Id, 255, 255, 255, 255);
     gfxSetScaleFactor(m_PBTBLTreasure256Id, 0.42, false);
-    
+
+    // Load the small dragon coin sprite (GFX_CENTER so rotation pivots on the coin's center)
+    m_PBTBLDragonCoinSmallId = gfxLoadSprite("DragonCoinSmall", "src/user/resources/textures/dragoncoinsmall.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    gfxSetColor(m_PBTBLDragonCoinSmallId, 255, 255, 255, 255);
+    for (int i = 0; i < 4; i++) {
+        m_PBTBLDragonCoinSmallInstId[i] = gfxInstanceSprite(m_PBTBLDragonCoinSmallId);
+        m_coinDropActive[i] = false;
+        m_coinDropStartTick[i] = 0;
+        m_coinDropXOffset[i] = 0;
+    }
+
     // Load the headshot sprites
     m_PBTBLArcherHeadshot256Id = gfxLoadSprite("ArcherHeadshot256", "src/user/resources/textures/ArcherHeadshot256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLArcherHeadshot256Id, 255, 255, 255, 255);
@@ -597,6 +607,31 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
     }
     // Render resource icons
     gfxRenderSprite(m_PBTBLTreasure256Id, treasureX, treasureY);
+
+    // Render dropping coin animations in front of the chest
+    {
+        static const float COIN_DROP_MS   = 400.0f;
+        static const float COIN_DROP_DIST = 60.0f;
+        static const float COIN_SCALE     = 0.25f;
+        // Chest is 256px wide at scale 0.42 → ~107px; center is at +53 from treasureX
+        const int chestCenterX = treasureX + (int)(256 * 0.42f / 2.0f) + 10;
+        const int coinStartY   = treasureY - 10;
+
+        for (int i = 0; i < 4; i++) {
+            if (!m_coinDropActive[i]) continue;
+            float elapsed = (float)(currentTick - m_coinDropStartTick[i]);
+            if (elapsed >= COIN_DROP_MS) {
+                m_coinDropActive[i] = false;
+                continue;
+            }
+            float t        = elapsed / COIN_DROP_MS;
+            int   coinX    = chestCenterX + m_coinDropXOffset[i];
+            int   coinY    = coinStartY + (int)(t * COIN_DROP_DIST);
+            float rotation = t * 360.0f;
+            gfxRenderSprite(m_PBTBLDragonCoinSmallInstId[i], coinX, coinY, COIN_SCALE, rotation);
+        }
+    }
+
     gfxRenderSprite(m_PBTBLSword256Id, swordX, swordY);
     gfxRenderSprite(m_PBTBLShield256Id, shieldX, shieldY);
     gfxRenderSprite(m_PBTBLDungeon256Id, dungeonX, dungeonY);
@@ -703,6 +738,15 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
             addPlayerScore(50);
             pbGameState& ps = m_playerStates[m_currentPlayer];
             ps.goldValue++;
+            // Activate next free coin-drop slot (cap at 4 simultaneous coins)
+            for (int i = 0; i < 4; i++) {
+                if (!m_coinDropActive[i]) {
+                    m_coinDropActive[i] = true;
+                    m_coinDropStartTick[i] = GetTickCountGfx();
+                    m_coinDropXOffset[i] = (rand() % 41) - 20;
+                    break;
+                }
+            }
         }
     }
 
