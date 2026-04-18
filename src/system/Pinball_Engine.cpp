@@ -208,6 +208,17 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_gameEndLoaded = false;
     m_playerEndLoaded = false;
     
+    // Sword/shield ramp animation state initialization
+    m_swordFireAnimActive     = false;
+    m_swordFireAnimStartTick  = 0;
+    m_shieldShakeAnimActive   = false;
+    m_shieldShakeAnimStartTick  = 0;
+    m_shieldShakeLastChangeTick = 0;
+    m_shieldShakeOffsetX      = 0;
+    m_shieldShakeOffsetY      = 0;
+    m_shieldDentOffsetX       = 0;
+    m_shieldDentOffsetY       = 0;
+    
     // Game End mode state initialization
     m_gameEndInitialized = false;
     m_gameEndCurrentQualifierIdx = 0;

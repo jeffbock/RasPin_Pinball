@@ -74,5 +74,7 @@
   {"id":"IDI_INN3","name":"Inn3","key":"P","msg":"SENSOR","pin":5,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
   {"id":"IDI_KEY1","name":"Key1","key":"T","msg":"TARGET","pin":6,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
   {"id":"IDI_KEY2","name":"Key2","key":"Y","msg":"TARGET","pin":7,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
-  {"id":"IDI_KEY3","name":"Key3","key":"U","msg":"TARGET","pin":8,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false}
+  {"id":"IDI_KEY3","name":"Key3","key":"U","msg":"TARGET","pin":8,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
+  {"id":"IDI_SWORDRAMP","name":"SwordRamp","key":"J","msg":"SENSOR","pin":12,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
+  {"id":"IDI_SHIELDRAMP","name":"ShieldRamp","key":"K","msg":"SENSOR","pin":13,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false}
 ]}

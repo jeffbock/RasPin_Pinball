@@ -72,7 +72,17 @@ bool PBEngine::pbeLoadMainScreen(){
     m_PBTBLWolfHeadshot256Id = gfxLoadSprite("WolfHeadshot256", "src/user/resources/textures/WolfHeadshot256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLWolfHeadshot256Id, 255, 255, 255, 255);
     gfxSetScaleFactor(m_PBTBLWolfHeadshot256Id, 0.5, false);
-    
+
+    // Load fire small sprites for sword ramp animation
+    m_PBTBLFireSmall1Id = gfxLoadSprite("FireSmall1", "src/user/resources/textures/firesmall1.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLFireSmall1Id, 255, 200, 100, 255);
+    m_PBTBLFireSmall2Id = gfxLoadSprite("FireSmall2", "src/user/resources/textures/firesmall2.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLFireSmall2Id, 255, 200, 100, 255);
+    m_PBTBLFireSmall3Id = gfxLoadSprite("FireSmall3", "src/user/resources/textures/firesmall3.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLFireSmall3Id, 255, 200, 100, 255);
+    m_PBTBLFireSmall4Id = gfxLoadSprite("FireSmall4", "src/user/resources/textures/firesmall4.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLFireSmall4Id, 255, 200, 100, 255);
+
     // Start the main screen music
     m_soundSystem.pbsPlayMusic(SOUNDMAINTHEME);
 
@@ -632,8 +642,59 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
         }
     }
 
+    // Sword ramp fire animation: cycle firesmall1-4, alpha ramps 50%→75% over 800ms (drawn under sword)
+    if (m_swordFireAnimActive) {
+        float fireElapsed = (float)(currentTick - m_swordFireAnimStartTick);
+        static const float FIRE_TOTAL_MS = 800.0f;
+        if (fireElapsed >= FIRE_TOTAL_MS) {
+            m_swordFireAnimActive = false;
+        } else {
+            int frame = (int)(fireElapsed / 200.0f);
+            if (frame > 3) frame = 3;
+            unsigned int fireAlpha = (unsigned int)(153.0f + (fireElapsed / FIRE_TOTAL_MS) * 89.0f);
+            unsigned int* fireFrameIds[4] = { &m_PBTBLFireSmall1Id, &m_PBTBLFireSmall2Id,
+                                               &m_PBTBLFireSmall3Id, &m_PBTBLFireSmall4Id };
+            gfxSetScaleFactor(*fireFrameIds[frame], 1.0f, false);
+            gfxSetColor(*fireFrameIds[frame], 255, 200, 100, fireAlpha);
+            gfxRenderSprite(*fireFrameIds[frame], swordX - 12, swordY - 17);
+        }
+    }
+
+    if (m_swordFireAnimActive) {
+        gfxSetColor(m_PBTBLSword256Id, 255, 255, 255, 128);
+    } else {
+        gfxSetColor(m_PBTBLSword256Id, 255, 255, 255, 255);
+    }
     gfxRenderSprite(m_PBTBLSword256Id, swordX, swordY);
-    gfxRenderSprite(m_PBTBLShield256Id, shieldX, shieldY);
+
+    // Shield ramp: shake for 500ms
+    {
+        static const float SHAKE_TOTAL_MS    = 500.0f;
+        static const unsigned long SHAKE_INTERVAL_MS = 80UL;
+
+        int renderShieldX = shieldX;
+        int renderShieldY = shieldY;
+
+        if (m_shieldShakeAnimActive) {
+            float shakeElapsed = (float)(currentTick - m_shieldShakeAnimStartTick);
+            if (shakeElapsed >= SHAKE_TOTAL_MS) {
+                m_shieldShakeAnimActive = false;
+            } else {
+                if ((currentTick - m_shieldShakeLastChangeTick) >= SHAKE_INTERVAL_MS) {
+                    int signX = (rand() % 2) ? 1 : -1;
+                    int signY = (rand() % 2) ? 1 : -1;
+                    m_shieldShakeOffsetX = signX * (4 + rand() % 5);
+                    m_shieldShakeOffsetY = signY * (4 + rand() % 5);
+                    m_shieldShakeLastChangeTick = currentTick;
+                }
+                renderShieldX = shieldX + m_shieldShakeOffsetX;
+                renderShieldY = shieldY + m_shieldShakeOffsetY;
+            }
+        }
+
+        gfxSetColor(m_PBTBLShield256Id, 255, 255, 255, 255);
+        gfxRenderSprite(m_PBTBLShield256Id, renderShieldX, renderShieldY);
+    }
     gfxRenderSprite(m_PBTBLDungeon256Id, dungeonX, dungeonY);
 
     // Eye-blink: visible for 1 second, then hidden for a random 1-15 second interval.
@@ -943,12 +1004,33 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
         }
     }
 
+    // Sword ramp: +1 attack, trigger fire animation if not already active
+    if (inputMessage.inputMsg == PB_IMSG_SENSOR && inputMessage.inputState == PB_ON &&
+        inputMessage.inputId == IDI_SWORDRAMP) {
+        m_playerStates[m_currentPlayer].attackValue++;
+        if (!m_swordFireAnimActive) {
+            m_swordFireAnimActive    = true;
+            m_swordFireAnimStartTick = GetTickCountGfx();
+        }
+    }
+
+    // Shield ramp: +1 defense, trigger shake animation if not already active
+    if (inputMessage.inputMsg == PB_IMSG_SENSOR && inputMessage.inputState == PB_ON &&
+        inputMessage.inputId == IDI_SHIELDRAMP) {
+        m_playerStates[m_currentPlayer].defenseValue++;
+        if (!m_shieldShakeAnimActive) {
+            m_shieldShakeAnimActive     = true;
+            m_shieldShakeAnimStartTick  = GetTickCountGfx();
+            m_shieldShakeLastChangeTick = GetTickCountGfx();
+            m_shieldShakeOffsetX        = 0;
+            m_shieldShakeOffsetY        = 0;
+        }
+    }
+
     // Update mode system (screen manager, mode state machine)
     pbeUpdateModeSystem(inputMessage, GetTickCountGfx());
 }
 
-// ========================================================================
-// MODE SYSTEM IMPLEMENTATION
 // ========================================================================
 
 // Helper function to update mode system - reduces code duplication

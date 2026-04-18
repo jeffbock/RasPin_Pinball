@@ -554,6 +554,21 @@ public:
     unsigned long m_coinDropStartTick[4];
     int m_coinDropXOffset[4];
     unsigned int m_PBTBLArcherHeadshot256Id, m_PBTBLKnightHeadshot256Id, m_PBTBLWolfHeadshot256Id;
+
+    // Sword ramp fire animation sprites and state
+    unsigned int m_PBTBLFireSmall1Id, m_PBTBLFireSmall2Id, m_PBTBLFireSmall3Id, m_PBTBLFireSmall4Id;
+    bool m_swordFireAnimActive;
+    unsigned long m_swordFireAnimStartTick;
+
+    // Shield ramp shake + dent animation sprites and state
+    unsigned int m_PBTBLDentId;
+    bool m_shieldShakeAnimActive;
+    unsigned long m_shieldShakeAnimStartTick;
+    unsigned long m_shieldShakeLastChangeTick;
+    int m_shieldShakeOffsetX;
+    int m_shieldShakeOffsetY;
+    int m_shieldDentOffsetX;
+    int m_shieldDentOffsetY;
     
     // Extra ball screen variables
     PBVideoPlayer* m_extraBallVideoPlayer;

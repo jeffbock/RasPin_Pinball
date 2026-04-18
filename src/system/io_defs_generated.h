@@ -52,6 +52,8 @@
 #define IDI_KEY1           19
 #define IDI_KEY2           20
 #define IDI_KEY3           21
-#define NUM_INPUTS         22
+#define IDI_SWORDRAMP      22
+#define IDI_SHIELDRAMP     23
+#define NUM_INPUTS         24
 
 #endif // IO_DEFS_GENERATED_H
