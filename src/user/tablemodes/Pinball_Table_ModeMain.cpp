@@ -106,10 +106,12 @@ bool PBEngine::pbeRenderMainScreenBase(unsigned long currentTick, unsigned long 
     // Clear to black background
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
      
-    // Render all player scores (skip main score during ball saved, inn open, and key obtained screens)
+    // Render all player scores (skip main score during ball saved, inn open, key obtained, and in-tower screens)
     {
         PBTBLMainScreenState curState = static_cast<PBTBLMainScreenState>(pbeGetCurrentSubScreenState());
-        bool hideMain = (curState == PBTBLMainScreenState::MAIN_BALLSAVED ||
+        bool inTower = (m_tableState == PBTableState::PBTBL_INTOWER);
+        bool hideMain = (inTower ||
+                         curState == PBTBLMainScreenState::MAIN_BALLSAVED ||
                          curState == PBTBLMainScreenState::MAIN_INN_OPEN ||
                          curState == PBTBLMainScreenState::MAIN_KEY_OBTAINED);
         if (!hideMain) {

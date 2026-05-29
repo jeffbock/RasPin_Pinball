@@ -2992,8 +2992,25 @@ bool PBEngine::pbeSetupIO()
     // Validation checks for input/output definitions
     // These checks verify the configuration is valid after initialization
     g_PBEngine.pbeSendConsole("RasPin: Validating I/O configuration");
-    g_PBEngine.pbeSendConsole("RasPin: Total Inputs: " + std::to_string(NUM_INPUTS));
-    g_PBEngine.pbeSendConsole("RasPin: Total Outputs: " + std::to_string(NUM_OUTPUTS));
+    {
+        int raspiInputs = 0, stdInputs = 0;
+        for (int i = 0; i < NUM_INPUTS; i++) {
+            if (g_inputDef[i].boardType == PB_RASPI) raspiInputs++;
+            else if (g_inputDef[i].boardType == PB_IO) stdInputs++;
+        }
+        g_PBEngine.pbeSendConsole("RasPin: Total Inputs: " + std::to_string(NUM_INPUTS) +
+            " (" + std::to_string(raspiInputs) + " RasPi, " + std::to_string(stdInputs) + " STD)");
+    }
+    {
+        int raspiOutputs = 0, stdOutputs = 0, ledOutputs = 0;
+        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            if (g_outputDef[i].boardType == PB_RASPI) raspiOutputs++;
+            else if (g_outputDef[i].boardType == PB_IO) stdOutputs++;
+            else if (g_outputDef[i].boardType == PB_LED) ledOutputs++;
+        }
+        g_PBEngine.pbeSendConsole("RasPin: Total Outputs: " + std::to_string(NUM_OUTPUTS) +
+            " (" + std::to_string(raspiOutputs) + " RasPi, " + std::to_string(stdOutputs) + " STD, " + std::to_string(ledOutputs) + " LED)");
+    }
     
     // Check for duplicate board/pin assignments in inputs
     for (int i = 0; i < NUM_INPUTS; i++) {
