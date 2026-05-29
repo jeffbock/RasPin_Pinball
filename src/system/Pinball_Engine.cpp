@@ -207,6 +207,7 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_resetLoaded = false;
     m_gameEndLoaded = false;
     m_playerEndLoaded = false;
+    m_inTowerLoaded = false;
     
     // Sword/shield ramp animation state initialization
     m_swordFireAnimActive     = false;
@@ -847,6 +848,7 @@ std::string PBEngine::TableStateToString(PBTableState state) {
         case PBTableState::PBTBL_RESET: return "RESET";
         case PBTableState::PBTBL_GAMEEND: return "GAMEEND";
         case PBTableState::PBTBL_PLAYEREND: return "PLAYEREND";
+        case PBTableState::PBTBL_INTOWER: return "INTOWER";
         case PBTableState::PBTBL_END: return "END";
         default: return "UNKNOWN";
     }
@@ -902,6 +904,14 @@ std::string PBEngine::TableScreenStateToString(PBTableState tableState, int subS
                 default: return "PLAYEREND_UNKNOWN";
             }
         }
+        case PBTableState::PBTBL_INTOWER: {
+            PBTBLInTowerScreenState inTowerScreenState = static_cast<PBTBLInTowerScreenState>(subScreenState);
+            switch (inTowerScreenState) {
+                case PBTBLInTowerScreenState::INTOWER_SCREEN_ACTIVE: return "INTOWER_ACTIVE";
+                case PBTBLInTowerScreenState::INTOWER_SCREEN_END:    return "INTOWER_END";
+                default: return "INTOWER_UNKNOWN";
+            }
+        }
         default:
             return "UNKNOWN";
     }
@@ -911,6 +921,7 @@ std::string PBEngine::TableModeToString(PBTableMode mode) {
     switch (mode) {
         case PBTableMode::MODE_NORMAL_PLAY: return "NORMAL_PLAY";
         case PBTableMode::MODE_MULTIBALL: return "MULTIBALL";
+        case PBTableMode::MODE_INTOWER: return "INTOWER";
         case PBTableMode::MODE_END: return "MODE_END";
         default: return "MODE_UNKNOWN";
     }
@@ -933,6 +944,15 @@ std::string PBEngine::MultiballStateToString(PBMultiballState state) {
         case PBMultiballState::MULTIBALL_ENDING: return "ENDING";
         case PBMultiballState::MULTIBALL_END: return "MULTIBALL_END";
         default: return "MULTIBALL_UNKNOWN";
+    }
+}
+
+std::string PBEngine::InTowerStateToString(PBInTowerState state) {
+    switch (state) {
+        case PBInTowerState::INTOWER_IDLE:     return "IDLE";
+        case PBInTowerState::INTOWER_RUNNING:  return "RUNNING";
+        case PBInTowerState::INTOWER_COMPLETE: return "COMPLETE";
+        default: return "INTOWER_UNKNOWN";
     }
 }
 
@@ -967,6 +987,8 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
         subModeStr = "NormalPlay: " + NormalPlayStateToString(modeState.normalPlayState);
     } else if (modeState.currentMode == PBTableMode::MODE_MULTIBALL) {
         subModeStr = "Multiball: " + MultiballStateToString(modeState.multiballState);
+    } else if (modeState.currentMode == PBTableMode::MODE_INTOWER) {
+        subModeStr = "InTower: " + InTowerStateToString(modeState.inTowerState);
     } else {
         subModeStr = "SubMode: N/A";
     }

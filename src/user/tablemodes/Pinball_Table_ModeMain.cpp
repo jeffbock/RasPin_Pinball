@@ -1027,6 +1027,15 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
         }
     }
 
+    // Tower sensor: ball has entered the tower lock area → enter INTOWER mode
+    if (inputMessage.inputMsg == PB_IMSG_SENSOR && inputMessage.inputState == PB_ON &&
+        inputMessage.inputId == IDI_TOWER) {
+        ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
+        pbeExitMode(modeState.currentMode, GetTickCountGfx());
+        pbeEnterMode(PBTableMode::MODE_INTOWER, GetTickCountGfx());
+        m_tableState = PBTableState::PBTBL_INTOWER;
+    }
+
     // Update mode system (screen manager, mode state machine)
     pbeUpdateModeSystem(inputMessage, GetTickCountGfx());
 }
@@ -1049,6 +1058,9 @@ void PBEngine::pbeUpdateModeSystem(stInputMessage inputMessage, unsigned long cu
             break;
         case PBTableMode::MODE_MULTIBALL:
             pbeUpdateMultiballMode(inputMessage, currentTick);
+            break;
+        case PBTableMode::MODE_INTOWER:
+            pbeUpdateInTowerMode(inputMessage, currentTick);
             break;
         default:
             break;
@@ -1140,6 +1152,29 @@ void PBEngine::pbeUpdateModeState(unsigned long currentTick) {
             break;
         }
         
+        case PBTableMode::MODE_INTOWER: {
+            // Update InTower mode sub-states
+            switch (modeState.inTowerState) {
+                case PBInTowerState::INTOWER_IDLE:
+                    // Transition to running immediately on entry
+                    modeState.inTowerState = PBInTowerState::INTOWER_RUNNING;
+                    modeState.inTowerStateStartTick = currentTick;
+                    break;
+                    
+                case PBInTowerState::INTOWER_RUNNING:
+                    // No exit condition yet; will be added later
+                    break;
+                    
+                case PBInTowerState::INTOWER_COMPLETE:
+                    // Awaiting mode exit trigger
+                    break;
+                    
+                default:
+                    break;
+            }
+            break;
+        }
+        
         default:
             break;
     }
@@ -1167,6 +1202,11 @@ bool PBEngine::pbeCheckModeTransition(unsigned long currentTick) {
         
         case PBTableMode::MODE_MULTIBALL: {
             // Multiball handles its own exit in pbeUpdateModeState
+            break;
+        }
+        
+        case PBTableMode::MODE_INTOWER: {
+            // No automatic transition out of InTower; exit will be triggered externally
             break;
         }
         
@@ -1209,6 +1249,15 @@ void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
                              ScreenPriority::PRIORITY_LOW, 0, true);
             break;
             
+        case PBTableMode::MODE_INTOWER:
+            modeState.inTowerState = PBInTowerState::INTOWER_IDLE;
+            modeState.inTowerStateStartTick = currentTick;
+            
+            // Request the InTower screen
+            pbeRequestScreen(PBTableState::PBTBL_INTOWER, static_cast<int>(PBTBLInTowerScreenState::INTOWER_SCREEN_ACTIVE),
+                             ScreenPriority::PRIORITY_LOW, 0, true);
+            break;
+            
         default:
             break;
     }
@@ -1228,6 +1277,11 @@ void PBEngine::pbeExitMode(PBTableMode exitingMode, unsigned long currentTick) {
             // Reset multiball state
             modeState.multiballQualified = false;
             modeState.multiballCount = 1;
+            break;
+            
+        case PBTableMode::MODE_INTOWER:
+            // Reset InTower state
+            modeState.inTowerState = PBInTowerState::INTOWER_IDLE;
             break;
             
         default:
@@ -1276,4 +1330,12 @@ bool PBEngine::pbeCheckMultiballQualified() {
     // Example qualification: Score over 50,000 points
     // In a real game, this would check specific targets, combos, etc.
     return (m_playerStates[m_currentPlayer].score > 50000);
+}
+
+// Update InTower mode with input
+void PBEngine::pbeUpdateInTowerMode(stInputMessage inputMessage, unsigned long currentTick) {
+    // No input handling yet; the mode has no exit condition currently.
+    // Exit logic will be added in a future task.
+    (void)inputMessage;
+    (void)currentTick;
 }
