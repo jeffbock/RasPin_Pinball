@@ -27,7 +27,9 @@
 #define IDO_KEY1LED        18
 #define IDO_KEY2LED        19
 #define IDO_KEY3LED        20
-#define NUM_OUTPUTS        21
+#define IDO_TOWERIN        21
+#define IDO_TOWEROUT       22
+#define NUM_OUTPUTS        23
 
 // --- Input definitions (IDI_*) ---
 #define IDI_LFLIP          0
@@ -54,6 +56,7 @@
 #define IDI_KEY3           21
 #define IDI_SWORDRAMP      22
 #define IDI_SHIELDRAMP     23
-#define NUM_INPUTS         24
+#define IDI_TOWER          24
+#define NUM_INPUTS         25
 
 #endif // IO_DEFS_GENERATED_H
