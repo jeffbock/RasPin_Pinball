@@ -546,6 +546,7 @@ public:
     
     // Main screen variables
     unsigned int m_PBTBLMainScreenBGId;
+    unsigned int m_PBTBLStarBackgroundId;
     unsigned int m_PBTBLCharacterCircle256Id, m_PBTBLDungeon256Id, m_PBTBLShield256Id, m_PBTBLSword256Id, m_PBTBLTreasure256Id;
     unsigned int m_PBTBLDungeonEyesBlinkId;
     unsigned long m_dungeonBlinkNextTick;
@@ -593,6 +594,9 @@ public:
     int m_ScreenBeforeResetSubState;   // Subscreen state to restore if reset is cancelled
     bool m_hasScreenBeforeReset;       // Track if we have a saved screen to restore
     unsigned int m_PBTBLResetSpriteId; // Sprite ID for reset screen background
+
+    // InTower mode sprite IDs
+    unsigned int m_TowerClimbId;       // Sprite ID for towerclimb.png
 
     // Multi-player game state
     pbGameState m_playerStates[4];    // Array of 4 player states

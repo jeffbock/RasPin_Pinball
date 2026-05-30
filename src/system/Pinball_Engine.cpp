@@ -152,6 +152,7 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
     m_PBTBLMainScreenBGId=0;
     m_PBTBLResetSpriteId=0;
+    m_TowerClimbId=0;
     m_RestartTable = true;
     
     // Extra ball video variables

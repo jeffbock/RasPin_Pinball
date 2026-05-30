@@ -23,6 +23,9 @@ bool PBEngine::pbeLoadInTower() {
     // InTower reuses the main screen background resources; ensure they are loaded
     if (!pbeLoadMainScreen()) return (false);
 
+    m_TowerClimbId = gfxLoadSprite("TowerClimb", "src/user/resources/textures/towerclimb.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    gfxSetColor(m_TowerClimbId, 80, 80, 160, 255);
+
     m_inTowerLoaded = true;
     return (true);
 }
@@ -44,16 +47,14 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
         return (false);
     }
 
-    // Render tower lock content in the main status/scoring area
-    int contentX = ACTIVEDISPX + (1024 / 3);  // Same center X as normal scoring
-    int contentY = ACTIVEDISPY + 350;          // Same Y as normal scoring
-
-    gfxSetColor(m_StartMenuFontId, 255, 200, 0, 255);  // Gold color
-    gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
-    gfxRenderString(m_StartMenuFontId, "Tower Lock!", contentX, contentY, 5, GFX_TEXTCENTER);
+    // Render towerclimb image centered in the main score area
+    gfxRenderSprite(m_TowerClimbId, ACTIVEDISPX + (1024 / 3), ACTIVEDISPY + 350);
 
     // Render divider bars on top, same as pbeRenderMainScreen
     gfxRenderSprite(m_PBTBLMainScreenBGId, ACTIVEDISPX, ACTIVEDISPY);
+
+    // Re-render ball text and status text above the tower image and overlay
+    pbeRenderStatusText(currentTick, lastTick);
 
     return (true);
 }

@@ -19,6 +19,10 @@ bool PBEngine::pbeLoadMainScreen(){
     
     if (m_mainScreenLoaded) return (true);
 
+    // Load the star background (rendered first at 50% alpha)
+    m_PBTBLStarBackgroundId = gfxLoadSprite("StarBackground", "src/user/resources/textures/starbackground.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLStarBackgroundId, 9, 51, 141, 191);
+
     // Load the main screen background
     m_PBTBLMainScreenBGId = gfxLoadSprite("MainScreenBG", "src/user/resources/textures/MainScreenBG.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLMainScreenBGId, 255, 255, 255, 255);
@@ -105,7 +109,10 @@ bool PBEngine::pbeRenderMainScreenBase(unsigned long currentTick, unsigned long 
 
     // Clear to black background
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-     
+
+    // Render star background at 50% alpha
+    gfxRenderSprite(m_PBTBLStarBackgroundId, ACTIVEDISPX, ACTIVEDISPY);
+
     // Render all player scores (skip main score during ball saved, inn open, key obtained, and in-tower screens)
     {
         PBTBLMainScreenState curState = static_cast<PBTBLMainScreenState>(pbeGetCurrentSubScreenState());
@@ -1234,7 +1241,11 @@ void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
         case PBTableMode::MODE_NORMAL_PLAY:
             modeState.normalPlayState = PBNormalPlayState::NORMAL_ACTIVE;
             modeState.normalPlayStateStartTick = currentTick;
-            
+
+            // Restore default status text
+            pbeSetStatusText(0, "Welcome to Dragons of Destiny Pinball");
+            pbeSetStatusText(1, "Collect gold with the bumpers, hire heroes at the Inn");
+
             // Request normal play screen
             pbeRequestScreen(PBTableState::PBTBL_MAIN, static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL),
                              ScreenPriority::PRIORITY_LOW, 0, true);
@@ -1254,7 +1265,11 @@ void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
         case PBTableMode::MODE_INTOWER:
             modeState.inTowerState = PBInTowerState::INTOWER_IDLE;
             modeState.inTowerStateStartTick = currentTick;
-            
+
+            // Set InTower-specific status text
+            pbeSetStatusText(0, "Climb the Tower! ");
+            pbeSetStatusText(1, "Use flippers to select room");
+
             // Request the InTower screen
             pbeRequestScreen(PBTableState::PBTBL_INTOWER, static_cast<int>(PBTBLInTowerScreenState::INTOWER_SCREEN_ACTIVE),
                              ScreenPriority::PRIORITY_LOW, 0, true);
