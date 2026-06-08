@@ -73,7 +73,7 @@ Prototype hardware shown, full machine in development.
   - **pblaunch** (Linux / Rasberry Pi Only) - A GUI based utility to find/launch/stop the EXE without the development environment.
 
 # Design and Development guidelines
--  Actual machine based on Raspberry Pi 5 and PiOS for ease of development and debug.  Full power of Linux OS.  
+-  Actual machine based on Raspberry Pi 5 (or Pi 4B) and PiOS for ease of development and debug.  Full power of Linux OS.  
 -  Cross platform support via VS Code: Shared code between Linux/PiOS and Windows - using Windows for high power development / simulation, although could do this with a full Linux PC as well.
 -  Keep the structure and coding straightfoward so that intermediate level coders and utilize the system and build new tables.
 -  Modular / HAL based graphics engine - allow for easy upgrade to other APIs if desired (currently OGL 3.1 ES, but maybe Vulkan later?)
