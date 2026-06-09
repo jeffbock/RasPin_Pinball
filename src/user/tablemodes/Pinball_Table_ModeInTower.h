@@ -28,4 +28,37 @@ enum class PBInTowerState {
     INTOWER_COMPLETE = 2  // Mode complete, returning to normal play
 };
 
+// ========================================================================
+// DUNGEON GRID DATA STRUCTURES
+// ========================================================================
+
+// State of a single door cell in the dungeon grid
+enum class DoorState {
+    DOOR_NONE    = 0,  // Location not part of this dungeon layout
+    DOOR_OPEN    = 1,  // Door has been opened by the player
+    DOOR_CLOSED  = 2   // Door exists but has not been opened
+};
+
+// A single door cell in the dungeon grid
+// [row][col], row 0 = bottom floor (ground), row 4 = top floor
+struct DoorCell {
+    DoorState state;    // Current door state
+    bool hasLadder;     // Ladder leading up to the row above from this cell
+    bool isDragonLair;  // This is the final dragon lair door (top floor)
+    bool hasTorch;      // Wall to the right uses doorwall1 (torch); false = doorwall2
+
+    // --- Future room metadata (add fields here as needed) ---
+    // int monsterCount;
+    // int roomType;
+    // int treasureValue;
+
+    DoorCell() : state(DoorState::DOOR_NONE), hasLadder(false), isDragonLair(false), hasTorch(false) {}
+};
+
+// The full 5-row × 3-column dungeon grid for one player
+struct TowerDungeonGrid {
+    DoorCell cells[5][3]; // [row][col]
+    TowerDungeonGrid() {} // DoorCell default-constructor zeros all entries
+};
+
 #endif // Pinball_Table_ModeInTower_h

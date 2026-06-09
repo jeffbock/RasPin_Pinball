@@ -228,6 +228,7 @@ bool PBEngine::pbeTryAddPlayer(){
     
     // Enable and initialize the new player
     m_playerStates[nextPlayerIdx].reset(m_saveFileData.ballsPerGame);
+    pbeInitDungeonGrid(nextPlayerIdx, 1);  // Seed dungeon grid at level 1 for new player
     m_playerStates[nextPlayerIdx].enabled = true;
     m_playerStates[nextPlayerIdx].inGame  = true;
     

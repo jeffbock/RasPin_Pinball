@@ -597,6 +597,16 @@ public:
 
     // InTower mode sprite IDs
     unsigned int m_TowerClimbId;       // Sprite ID for towerclimb.png
+    unsigned int m_DoorOpenId;         // Sprite ID for dooropen.png
+    unsigned int m_DoorClosedId;       // Sprite ID for doorclosed.png
+    unsigned int m_DoorBlockedId;      // Sprite ID for doorblocked.png
+    unsigned int m_DoorWall1Id;        // Sprite ID for doorwall1.png (hallway with torch)
+    unsigned int m_DoorWall2Id;        // Sprite ID for doorwall2.png (hallway without torch)
+    unsigned int m_DoorLadderId;       // Sprite ID for doorladder.png
+
+    // InTower dungeon grid zoom-in animation state
+    unsigned long m_dungeonGridAnimStartTick;  // Tick when zoom-in animation started
+    bool          m_dungeonGridAnimPending;    // True = reset animation on next render call
 
     // Multi-player game state
     pbGameState m_playerStates[4];    // Array of 4 player states
@@ -741,6 +751,8 @@ private:
     bool pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderPlayerEnd(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderInTower(unsigned long currentTick, unsigned long lastTick);
+    void pbeRenderDungeonGrid(float scale, int centerX, int centerY, bool animate, unsigned long currentTick, unsigned long lastTick);
+    void pbeInitDungeonGrid(int playerNum, int level);
 
     // Load functions for the pinball game table
     bool pbeLoadInitScreen(); // Load the init screen for the pinball game

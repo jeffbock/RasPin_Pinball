@@ -205,6 +205,9 @@ public:
     bool bInnOpen;                    // All 3 inn lanes completed (Inn is open)
     bool bKeyObtained;                // All 3 key targets hit (Key obtained)
 
+    // Dungeon door grid (initialized by pbeInitDungeonGrid)
+    TowerDungeonGrid dungeonGrid;
+
     // Constructor
     pbGameState() {
         reset(3); // Default to 3 balls
@@ -247,6 +250,7 @@ public:
         dungeonLevel = 1;
         bInnOpen = false;
         bKeyObtained = false;
+        dungeonGrid = TowerDungeonGrid();
     }
 };
 
