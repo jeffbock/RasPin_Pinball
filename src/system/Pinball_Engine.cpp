@@ -220,6 +220,11 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_shieldShakeOffsetY      = 0;
     m_shieldDentOffsetX       = 0;
     m_shieldDentOffsetY       = 0;
+    m_shieldSlashActive       = false;
+    m_shieldSlashStartTick    = 0;
+    m_shieldSlashIndex        = 0;
+    m_shieldSlashOffsetX      = 0;
+    m_shieldSlashOffsetY      = 0;
     
     // Game End mode state initialization
     m_gameEndInitialized = false;

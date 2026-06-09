@@ -571,6 +571,14 @@ public:
     int m_shieldShakeOffsetY;
     int m_shieldDentOffsetX;
     int m_shieldDentOffsetY;
+
+    // Shield slash overlay sprites and fade state
+    unsigned int m_PBTBLSlash1Id, m_PBTBLSlash2Id, m_PBTBLSlashClawId;
+    bool m_shieldSlashActive;
+    unsigned long m_shieldSlashStartTick;
+    int m_shieldSlashIndex;
+    int m_shieldSlashOffsetX;
+    int m_shieldSlashOffsetY;
     
     // Extra ball screen variables
     PBVideoPlayer* m_extraBallVideoPlayer;
