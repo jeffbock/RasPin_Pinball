@@ -45,6 +45,14 @@ bool PBEngine::pbeLoadMainScreen(){
     m_PBTBLShield256Id = gfxLoadSprite("Shield256", "src/user/resources/textures/Shield256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLShield256Id, 255, 255, 255, 255);
     gfxSetScaleFactor(m_PBTBLShield256Id, 0.42, false);
+
+    // Load slash overlay sprites (128x128 scaled to 0.84 to match the shield's ~107px rendered size)
+    m_PBTBLSlash1Id = gfxLoadSprite("Slash1", "src/user/resources/textures/slash1.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetScaleFactor(m_PBTBLSlash1Id, 0.84f, false);
+    m_PBTBLSlash2Id = gfxLoadSprite("Slash2", "src/user/resources/textures/slash2.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetScaleFactor(m_PBTBLSlash2Id, 0.84f, false);
+    m_PBTBLSlashClawId = gfxLoadSprite("SlashClaw", "src/user/resources/textures/slashclaw.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetScaleFactor(m_PBTBLSlashClawId, 0.84f, false);
     
     m_PBTBLSword256Id = gfxLoadSprite("Sword256", "src/user/resources/textures/Sword256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLSword256Id, 255, 255, 255, 255);
@@ -703,6 +711,22 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
 
         gfxSetColor(m_PBTBLShield256Id, 255, 255, 255, 255);
         gfxRenderSprite(m_PBTBLShield256Id, renderShieldX, renderShieldY);
+
+        // Draw slash overlay: fades from 90% to 0% alpha over 0.5s
+        if (m_shieldSlashActive) {
+            static const float SLASH_TOTAL_MS = 500.0f;
+            float slashElapsed = (float)(currentTick - m_shieldSlashStartTick);
+            if (slashElapsed >= SLASH_TOTAL_MS) {
+                m_shieldSlashActive = false;
+            } else {
+                float t = slashElapsed / SLASH_TOTAL_MS;
+                unsigned int slashAlpha = (unsigned int)((1.0f - t) * 229.0f);  // 229 ≈ 90% of 255
+                unsigned int* slashIds[3] = { &m_PBTBLSlash1Id, &m_PBTBLSlash2Id, &m_PBTBLSlashClawId };
+                unsigned int slashId = *slashIds[m_shieldSlashIndex];
+                gfxSetColor(slashId, 255, 255, 255, slashAlpha);
+                gfxRenderSprite(slashId, shieldX + m_shieldSlashOffsetX, shieldY + m_shieldSlashOffsetY);
+            }
+        }
     }
     gfxRenderSprite(m_PBTBLDungeon256Id, dungeonX, dungeonY);
 
@@ -1033,6 +1057,12 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
             m_shieldShakeLastChangeTick = GetTickCountGfx();
             m_shieldShakeOffsetX        = 0;
             m_shieldShakeOffsetY        = 0;
+            // Pick a random slash image and randomize its position within ±8px
+            m_shieldSlashIndex          = rand() % 3;
+            m_shieldSlashOffsetX        = (rand() % 17) - 8;  // -8 to +8
+            m_shieldSlashOffsetY        = (rand() % 17) - 8;
+            m_shieldSlashActive         = true;
+            m_shieldSlashStartTick      = GetTickCountGfx();
         }
     }
 
