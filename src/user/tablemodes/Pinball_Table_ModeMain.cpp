@@ -19,6 +19,10 @@ bool PBEngine::pbeLoadMainScreen(){
     
     if (m_mainScreenLoaded) return (true);
 
+    // Load the star background (rendered first at 50% alpha)
+    m_PBTBLStarBackgroundId = gfxLoadSprite("StarBackground", "src/user/resources/textures/starbackground.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetColor(m_PBTBLStarBackgroundId, 9, 51, 141, 191);
+
     // Load the main screen background
     m_PBTBLMainScreenBGId = gfxLoadSprite("MainScreenBG", "src/user/resources/textures/MainScreenBG.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLMainScreenBGId, 255, 255, 255, 255);
@@ -41,6 +45,14 @@ bool PBEngine::pbeLoadMainScreen(){
     m_PBTBLShield256Id = gfxLoadSprite("Shield256", "src/user/resources/textures/Shield256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLShield256Id, 255, 255, 255, 255);
     gfxSetScaleFactor(m_PBTBLShield256Id, 0.42, false);
+
+    // Load slash overlay sprites (128x128 scaled to 0.6)
+    m_PBTBLSlash1Id = gfxLoadSprite("Slash1", "src/user/resources/textures/slash1.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetScaleFactor(m_PBTBLSlash1Id, 0.6f, false);
+    m_PBTBLSlash2Id = gfxLoadSprite("Slash2", "src/user/resources/textures/slash2.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetScaleFactor(m_PBTBLSlash2Id, 0.6f, false);
+    m_PBTBLSlashClawId = gfxLoadSprite("SlashClaw", "src/user/resources/textures/slashclaw.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    gfxSetScaleFactor(m_PBTBLSlashClawId, 0.6f, false);
     
     m_PBTBLSword256Id = gfxLoadSprite("Sword256", "src/user/resources/textures/Sword256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLSword256Id, 255, 255, 255, 255);
@@ -105,11 +117,16 @@ bool PBEngine::pbeRenderMainScreenBase(unsigned long currentTick, unsigned long 
 
     // Clear to black background
     gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-     
-    // Render all player scores (skip main score during ball saved, inn open, and key obtained screens)
+
+    // Render star background at 50% alpha
+    gfxRenderSprite(m_PBTBLStarBackgroundId, ACTIVEDISPX, ACTIVEDISPY);
+
+    // Render all player scores (skip main score during ball saved, inn open, key obtained, and in-tower screens)
     {
         PBTBLMainScreenState curState = static_cast<PBTBLMainScreenState>(pbeGetCurrentSubScreenState());
-        bool hideMain = (curState == PBTBLMainScreenState::MAIN_BALLSAVED ||
+        bool inTower = (m_tableState == PBTableState::PBTBL_INTOWER);
+        bool hideMain = (inTower ||
+                         curState == PBTBLMainScreenState::MAIN_BALLSAVED ||
                          curState == PBTBLMainScreenState::MAIN_INN_OPEN ||
                          curState == PBTBLMainScreenState::MAIN_KEY_OBTAINED);
         if (!hideMain) {
@@ -694,6 +711,22 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
 
         gfxSetColor(m_PBTBLShield256Id, 255, 255, 255, 255);
         gfxRenderSprite(m_PBTBLShield256Id, renderShieldX, renderShieldY);
+
+        // Draw slash overlay: fades from 90% to 0% alpha over 0.5s
+        if (m_shieldSlashActive) {
+            static const float SLASH_TOTAL_MS = 500.0f;
+            float slashElapsed = (float)(currentTick - m_shieldSlashStartTick);
+            if (slashElapsed >= SLASH_TOTAL_MS) {
+                m_shieldSlashActive = false;
+            } else {
+                float t = slashElapsed / SLASH_TOTAL_MS;
+                unsigned int slashAlpha = (unsigned int)((1.0f - t) * 229.0f);  // 229 ≈ 90% of 255
+                unsigned int* slashIds[3] = { &m_PBTBLSlash1Id, &m_PBTBLSlash2Id, &m_PBTBLSlashClawId };
+                unsigned int slashId = *slashIds[m_shieldSlashIndex];
+                gfxSetColor(slashId, 255, 255, 255, slashAlpha);
+                gfxRenderSprite(slashId, shieldX + m_shieldSlashOffsetX, shieldY + m_shieldSlashOffsetY);
+            }
+        }
     }
     gfxRenderSprite(m_PBTBLDungeon256Id, dungeonX, dungeonY);
 
@@ -1024,7 +1057,22 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
             m_shieldShakeLastChangeTick = GetTickCountGfx();
             m_shieldShakeOffsetX        = 0;
             m_shieldShakeOffsetY        = 0;
+            // Pick a random slash image and randomize its position within ±8px
+            m_shieldSlashIndex          = rand() % 3;
+            m_shieldSlashOffsetX        = (rand() % 17) + 7;  // +2 to +18 (shifted right 10px)
+            m_shieldSlashOffsetY        = (rand() % 17) + 4;  // +2 to +18 (shifted down 10px)
+            m_shieldSlashActive         = true;
+            m_shieldSlashStartTick      = GetTickCountGfx();
         }
+    }
+
+    // Tower sensor: ball has entered the tower lock area → enter INTOWER mode
+    if (inputMessage.inputMsg == PB_IMSG_SENSOR && inputMessage.inputState == PB_ON &&
+        inputMessage.inputId == IDI_TOWER) {
+        ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
+        pbeExitMode(modeState.currentMode, GetTickCountGfx());
+        pbeEnterMode(PBTableMode::MODE_INTOWER, GetTickCountGfx());
+        m_tableState = PBTableState::PBTBL_INTOWER;
     }
 
     // Update mode system (screen manager, mode state machine)
@@ -1049,6 +1097,9 @@ void PBEngine::pbeUpdateModeSystem(stInputMessage inputMessage, unsigned long cu
             break;
         case PBTableMode::MODE_MULTIBALL:
             pbeUpdateMultiballMode(inputMessage, currentTick);
+            break;
+        case PBTableMode::MODE_INTOWER:
+            pbeUpdateInTowerMode(inputMessage, currentTick);
             break;
         default:
             break;
@@ -1140,6 +1191,29 @@ void PBEngine::pbeUpdateModeState(unsigned long currentTick) {
             break;
         }
         
+        case PBTableMode::MODE_INTOWER: {
+            // Update InTower mode sub-states
+            switch (modeState.inTowerState) {
+                case PBInTowerState::INTOWER_IDLE:
+                    // Transition to running immediately on entry
+                    modeState.inTowerState = PBInTowerState::INTOWER_RUNNING;
+                    modeState.inTowerStateStartTick = currentTick;
+                    break;
+                    
+                case PBInTowerState::INTOWER_RUNNING:
+                    // No exit condition yet; will be added later
+                    break;
+                    
+                case PBInTowerState::INTOWER_COMPLETE:
+                    // Awaiting mode exit trigger
+                    break;
+                    
+                default:
+                    break;
+            }
+            break;
+        }
+        
         default:
             break;
     }
@@ -1170,6 +1244,11 @@ bool PBEngine::pbeCheckModeTransition(unsigned long currentTick) {
             break;
         }
         
+        case PBTableMode::MODE_INTOWER: {
+            // No automatic transition out of InTower; exit will be triggered externally
+            break;
+        }
+        
         default:
             break;
     }
@@ -1192,7 +1271,11 @@ void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
         case PBTableMode::MODE_NORMAL_PLAY:
             modeState.normalPlayState = PBNormalPlayState::NORMAL_ACTIVE;
             modeState.normalPlayStateStartTick = currentTick;
-            
+
+            // Restore default status text
+            pbeSetStatusText(0, "Welcome to Dragons of Destiny Pinball");
+            pbeSetStatusText(1, "Collect gold with the bumpers, hire heroes at the Inn");
+
             // Request normal play screen
             pbeRequestScreen(PBTableState::PBTBL_MAIN, static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL),
                              ScreenPriority::PRIORITY_LOW, 0, true);
@@ -1206,6 +1289,19 @@ void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
             // Request normal main screen for multiball (no special multiball screen yet)
             // TODO: Create MAIN_MULTIBALL screen state if multiball needs its own display
             pbeRequestScreen(PBTableState::PBTBL_MAIN, static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL),
+                             ScreenPriority::PRIORITY_LOW, 0, true);
+            break;
+            
+        case PBTableMode::MODE_INTOWER:
+            modeState.inTowerState = PBInTowerState::INTOWER_IDLE;
+            modeState.inTowerStateStartTick = currentTick;
+
+            // Set InTower-specific status text
+            pbeSetStatusText(0, "Climb the Tower! ");
+            pbeSetStatusText(1, "Use flippers to select room");
+
+            // Request the InTower screen
+            pbeRequestScreen(PBTableState::PBTBL_INTOWER, static_cast<int>(PBTBLInTowerScreenState::INTOWER_SCREEN_ACTIVE),
                              ScreenPriority::PRIORITY_LOW, 0, true);
             break;
             
@@ -1228,6 +1324,11 @@ void PBEngine::pbeExitMode(PBTableMode exitingMode, unsigned long currentTick) {
             // Reset multiball state
             modeState.multiballQualified = false;
             modeState.multiballCount = 1;
+            break;
+            
+        case PBTableMode::MODE_INTOWER:
+            // Reset InTower state
+            modeState.inTowerState = PBInTowerState::INTOWER_IDLE;
             break;
             
         default:
@@ -1276,4 +1377,12 @@ bool PBEngine::pbeCheckMultiballQualified() {
     // Example qualification: Score over 50,000 points
     // In a real game, this would check specific targets, combos, etc.
     return (m_playerStates[m_currentPlayer].score > 50000);
+}
+
+// Update InTower mode with input
+void PBEngine::pbeUpdateInTowerMode(stInputMessage inputMessage, unsigned long currentTick) {
+    // No input handling yet; the mode has no exit condition currently.
+    // Exit logic will be added in a future task.
+    (void)inputMessage;
+    (void)currentTick;
 }

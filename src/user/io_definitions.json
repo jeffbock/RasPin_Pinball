@@ -51,7 +51,9 @@
   {"id":"IDO_INN3LED","name":"Inn3 LED","msg":"LED","pin":2,"board":"LED","boardIdx":1,"state":"OFF","onMs":100,"offMs":0,"neo":0},
   {"id":"IDO_KEY1LED","name":"Key1 LED","msg":"LED","pin":3,"board":"LED","boardIdx":1,"state":"OFF","onMs":100,"offMs":0,"neo":0},
   {"id":"IDO_KEY2LED","name":"Key2 LED","msg":"LED","pin":4,"board":"LED","boardIdx":1,"state":"OFF","onMs":100,"offMs":0,"neo":0},
-  {"id":"IDO_KEY3LED","name":"Key3 LED","msg":"LED","pin":5,"board":"LED","boardIdx":1,"state":"OFF","onMs":100,"offMs":0,"neo":0}
+  {"id":"IDO_KEY3LED","name":"Key3 LED","msg":"LED","pin":5,"board":"LED","boardIdx":1,"state":"OFF","onMs":100,"offMs":0,"neo":0},
+  {"id":"IDO_TOWERIN","name":"TowerIn","msg":"GENERIC_IO","pin":12,"board":"IO","boardIdx":0,"state":"OFF","onMs":200,"offMs":200,"neo":0},
+  {"id":"IDO_TOWEROUT","name":"TowerOut","msg":"GENERIC_IO","pin":13,"board":"IO","boardIdx":0,"state":"OFF","onMs":200,"offMs":200,"neo":0}
 ],"inputs":[
   {"id":"IDI_LFLIP","name":"LFlipper","key":"A","msg":"BUTTON","pin":27,"board":"RASPI","boardIdx":0,"state":"OFF","tick":0,"debMs":5,"auto":true,"autoOut":"IDO_LFLIP","autoState":"ON","autoPulse":false},
   {"id":"IDI_RFLIP","name":"RFlipper","key":"D","msg":"BUTTON","pin":17,"board":"RASPI","boardIdx":0,"state":"OFF","tick":0,"debMs":5,"auto":true,"autoOut":"IDO_RFLIP","autoState":"ON","autoPulse":false},
@@ -76,5 +78,6 @@
   {"id":"IDI_KEY2","name":"Key2","key":"Y","msg":"TARGET","pin":7,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
   {"id":"IDI_KEY3","name":"Key3","key":"U","msg":"TARGET","pin":8,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
   {"id":"IDI_SWORDRAMP","name":"SwordRamp","key":"J","msg":"SENSOR","pin":12,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
-  {"id":"IDI_SHIELDRAMP","name":"ShieldRamp","key":"K","msg":"SENSOR","pin":13,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false}
+  {"id":"IDI_SHIELDRAMP","name":"ShieldRamp","key":"K","msg":"SENSOR","pin":13,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false},
+  {"id":"IDI_TOWER","name":"Tower","key":"L","msg":"SENSOR","pin":14,"board":"IO","boardIdx":1,"state":"OFF","tick":0,"debMs":5,"auto":false,"autoOut":"","autoState":"OFF","autoPulse":false}
 ]}

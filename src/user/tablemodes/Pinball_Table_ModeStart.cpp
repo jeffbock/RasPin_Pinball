@@ -287,6 +287,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                     m_tableSubScreenState = static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL);
                     m_currentPlayer = 0;
                     m_playerStates[0].reset(m_saveFileData.ballsPerGame);
+                    pbeInitDungeonGrid(0, 1);  // Seed player 1 dungeon grid at level 1
                     m_playerStates[0].enabled = true;
                     m_playerStates[0].inGame  = true;
                     // Make sure other players are disabled

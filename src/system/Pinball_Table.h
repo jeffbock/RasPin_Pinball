@@ -32,6 +32,7 @@ enum class PBTableState {
     PBTBL_RESET = 3,
     PBTBL_GAMEEND = 4,
     PBTBL_PLAYEREND = 5,
+    PBTBL_INTOWER = 6,
     PBTBL_END
 };
 
@@ -44,6 +45,7 @@ enum class PBTableState {
 #include "tablemodes/Pinball_Table_ModeReset.h"
 #include "tablemodes/Pinball_Table_ModeGameEnd.h"
 #include "tablemodes/Pinball_Table_ModePlayerEnd.h"
+#include "tablemodes/Pinball_Table_ModeInTower.h"
 
 // Screen request priority levels
 enum class ScreenPriority {
@@ -87,6 +89,10 @@ struct ModeState {
     int multiballCount;                   // Number of balls in multiball
     bool multiballQualified;              // Is multiball qualified to start?
     
+    // InTower mode state
+    PBInTowerState inTowerState;
+    unsigned long inTowerStateStartTick;
+    
     // Mode transition tracking
     bool modeTransitionActive;
     unsigned long modeTransitionStartTick;
@@ -100,6 +106,8 @@ struct ModeState {
         multiballStateStartTick = 0;
         multiballCount = 1;
         multiballQualified = false;
+        inTowerState = PBInTowerState::INTOWER_IDLE;
+        inTowerStateStartTick = 0;
         modeTransitionActive = false;
         modeTransitionStartTick = 0;
     }
@@ -113,6 +121,8 @@ struct ModeState {
         multiballStateStartTick = 0;
         multiballCount = 1;
         multiballQualified = false;
+        inTowerState = PBInTowerState::INTOWER_IDLE;
+        inTowerStateStartTick = 0;
         modeTransitionActive = false;
         modeTransitionStartTick = 0;
     }
@@ -195,6 +205,9 @@ public:
     bool bInnOpen;                    // All 3 inn lanes completed (Inn is open)
     bool bKeyObtained;                // All 3 key targets hit (Key obtained)
 
+    // Dungeon door grid (initialized by pbeInitDungeonGrid)
+    TowerDungeonGrid dungeonGrid;
+
     // Constructor
     pbGameState() {
         reset(3); // Default to 3 balls
@@ -237,6 +250,7 @@ public:
         dungeonLevel = 1;
         bInnOpen = false;
         bKeyObtained = false;
+        dungeonGrid = TowerDungeonGrid();
     }
 };
 

@@ -51,6 +51,7 @@ enum class PBTBLMainScreenState {
 enum class PBTableMode {
     MODE_NORMAL_PLAY = 0,     // Normal play mode - main gameplay
     MODE_MULTIBALL = 1,       // Multiball mode - triggered by specific conditions
+    MODE_INTOWER = 2,         // InTower mode - ball locked in tower area
     MODE_END
 };
 

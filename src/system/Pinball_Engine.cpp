@@ -9,6 +9,7 @@
 #include <cmath>
 #include <algorithm>
 #include <fstream>
+#include <set>
 #ifdef ENABLE_PINBALL_HARDWARE
 #include <unistd.h>  // for close() used by pbeScanI2CBus probe fds
 #endif
@@ -152,6 +153,7 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_PBTBLStartDoorId=0; m_PBTBLFlame1Id=0; m_PBTBLFlame2Id=0; m_PBTBLFlame3Id=0;
     m_PBTBLMainScreenBGId=0;
     m_PBTBLResetSpriteId=0;
+    m_TowerClimbId=0;
     m_RestartTable = true;
     
     // Extra ball video variables
@@ -207,6 +209,7 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_resetLoaded = false;
     m_gameEndLoaded = false;
     m_playerEndLoaded = false;
+    m_inTowerLoaded = false;
     
     // Sword/shield ramp animation state initialization
     m_swordFireAnimActive     = false;
@@ -218,6 +221,11 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_shieldShakeOffsetY      = 0;
     m_shieldDentOffsetX       = 0;
     m_shieldDentOffsetY       = 0;
+    m_shieldSlashActive       = false;
+    m_shieldSlashStartTick    = 0;
+    m_shieldSlashIndex        = 0;
+    m_shieldSlashOffsetX      = 0;
+    m_shieldSlashOffsetY      = 0;
     
     // Game End mode state initialization
     m_gameEndInitialized = false;
@@ -847,6 +855,7 @@ std::string PBEngine::TableStateToString(PBTableState state) {
         case PBTableState::PBTBL_RESET: return "RESET";
         case PBTableState::PBTBL_GAMEEND: return "GAMEEND";
         case PBTableState::PBTBL_PLAYEREND: return "PLAYEREND";
+        case PBTableState::PBTBL_INTOWER: return "INTOWER";
         case PBTableState::PBTBL_END: return "END";
         default: return "UNKNOWN";
     }
@@ -902,6 +911,14 @@ std::string PBEngine::TableScreenStateToString(PBTableState tableState, int subS
                 default: return "PLAYEREND_UNKNOWN";
             }
         }
+        case PBTableState::PBTBL_INTOWER: {
+            PBTBLInTowerScreenState inTowerScreenState = static_cast<PBTBLInTowerScreenState>(subScreenState);
+            switch (inTowerScreenState) {
+                case PBTBLInTowerScreenState::INTOWER_SCREEN_ACTIVE: return "INTOWER_ACTIVE";
+                case PBTBLInTowerScreenState::INTOWER_SCREEN_END:    return "INTOWER_END";
+                default: return "INTOWER_UNKNOWN";
+            }
+        }
         default:
             return "UNKNOWN";
     }
@@ -911,6 +928,7 @@ std::string PBEngine::TableModeToString(PBTableMode mode) {
     switch (mode) {
         case PBTableMode::MODE_NORMAL_PLAY: return "NORMAL_PLAY";
         case PBTableMode::MODE_MULTIBALL: return "MULTIBALL";
+        case PBTableMode::MODE_INTOWER: return "INTOWER";
         case PBTableMode::MODE_END: return "MODE_END";
         default: return "MODE_UNKNOWN";
     }
@@ -933,6 +951,15 @@ std::string PBEngine::MultiballStateToString(PBMultiballState state) {
         case PBMultiballState::MULTIBALL_ENDING: return "ENDING";
         case PBMultiballState::MULTIBALL_END: return "MULTIBALL_END";
         default: return "MULTIBALL_UNKNOWN";
+    }
+}
+
+std::string PBEngine::InTowerStateToString(PBInTowerState state) {
+    switch (state) {
+        case PBInTowerState::INTOWER_IDLE:     return "IDLE";
+        case PBInTowerState::INTOWER_RUNNING:  return "RUNNING";
+        case PBInTowerState::INTOWER_COMPLETE: return "COMPLETE";
+        default: return "INTOWER_UNKNOWN";
     }
 }
 
@@ -967,6 +994,8 @@ bool PBEngine::pbeRenderOverlay(unsigned long currentTick, unsigned long lastTic
         subModeStr = "NormalPlay: " + NormalPlayStateToString(modeState.normalPlayState);
     } else if (modeState.currentMode == PBTableMode::MODE_MULTIBALL) {
         subModeStr = "Multiball: " + MultiballStateToString(modeState.multiballState);
+    } else if (modeState.currentMode == PBTableMode::MODE_INTOWER) {
+        subModeStr = "InTower: " + InTowerStateToString(modeState.inTowerState);
     } else {
         subModeStr = "SubMode: N/A";
     }
@@ -2970,9 +2999,44 @@ bool PBEngine::pbeSetupIO()
     // Validation checks for input/output definitions
     // These checks verify the configuration is valid after initialization
     g_PBEngine.pbeSendConsole("RasPin: Validating I/O configuration");
-    g_PBEngine.pbeSendConsole("RasPin: Total Inputs: " + std::to_string(NUM_INPUTS));
-    g_PBEngine.pbeSendConsole("RasPin: Total Outputs: " + std::to_string(NUM_OUTPUTS));
-    
+    {
+        int raspiInputs = 0, stdInputs = 0;
+        for (int i = 0; i < NUM_INPUTS; i++) {
+            if (g_inputDef[i].boardType == PB_RASPI) raspiInputs++;
+            else if (g_inputDef[i].boardType == PB_IO) stdInputs++;
+        }
+        g_PBEngine.pbeSendConsole("RasPin: Total Inputs: " + std::to_string(NUM_INPUTS) +
+            " (" + std::to_string(raspiInputs) + " RasPi, " + std::to_string(stdInputs) + " STD)");
+    }
+    {
+        int raspiOutputs = 0, stdOutputs = 0, ledOutputs = 0;
+        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            if (g_outputDef[i].boardType == PB_RASPI) raspiOutputs++;
+            else if (g_outputDef[i].boardType == PB_IO) stdOutputs++;
+            else if (g_outputDef[i].boardType == PB_LED) ledOutputs++;
+        }
+        g_PBEngine.pbeSendConsole("RasPin: Total Outputs: " + std::to_string(NUM_OUTPUTS) +
+            " (" + std::to_string(raspiOutputs) + " RasPi, " + std::to_string(stdOutputs) + " STD, " + std::to_string(ledOutputs) + " LED)");
+    }
+    {
+        // Collect unique NeoPixel board indices from output definitions
+        std::set<int> neoPixelIndices;
+        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            if (g_outputDef[i].boardType == PB_NEOPIXEL)
+                neoPixelIndices.insert(g_outputDef[i].boardIndex);
+        }
+        unsigned int numNeoPixelStrings = (unsigned int)neoPixelIndices.size();
+        unsigned int numNeoPixelSizes = sizeof(g_NeoPixelSize) / sizeof(g_NeoPixelSize[0]);
+        std::string neoDetail = "";
+        for (int idx : neoPixelIndices) {
+            if (!neoDetail.empty()) neoDetail += ", ";
+            unsigned int ledCount = (idx < (int)numNeoPixelSizes) ? g_NeoPixelSize[idx] : 0;
+            neoDetail += "String " + std::to_string(idx) + ": " + std::to_string(ledCount) + " LEDs";
+        }
+        g_PBEngine.pbeSendConsole("RasPin: NeoPixel Strings: " + std::to_string(numNeoPixelStrings) +
+            (neoDetail.empty() ? "" : " (" + neoDetail + ")"));
+    }
+
     // Check for duplicate board/pin assignments in inputs
     for (int i = 0; i < NUM_INPUTS; i++) {
         for (int j = i + 1; j < NUM_INPUTS; j++) {

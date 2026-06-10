@@ -9,6 +9,10 @@ None
 ** Gameplay tasks - will evolve as HW becomes more capable
 Add dungeon exploring and combat screens 
 Really make the game
+Other gameplay ideas:
+    All characters need ball save animations
+    One of the top door of the dungeon should have dragon eyes
+    Open doors should have rocks blocking them or the ladder inside
 
 ** Hardware enabling
 Create prototype cabinet

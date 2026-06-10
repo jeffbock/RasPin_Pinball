@@ -328,6 +328,7 @@ public:
     // Mode-specific state update functions
     void pbeUpdateNormalPlayMode(stInputMessage inputMessage, unsigned long currentTick);
     void pbeUpdateMultiballMode(stInputMessage inputMessage, unsigned long currentTick);
+    void pbeUpdateInTowerMode(stInputMessage inputMessage, unsigned long currentTick);
     
     // Mode qualification check functions
     bool pbeCheckMultiballQualified();
@@ -545,6 +546,7 @@ public:
     
     // Main screen variables
     unsigned int m_PBTBLMainScreenBGId;
+    unsigned int m_PBTBLStarBackgroundId;
     unsigned int m_PBTBLCharacterCircle256Id, m_PBTBLDungeon256Id, m_PBTBLShield256Id, m_PBTBLSword256Id, m_PBTBLTreasure256Id;
     unsigned int m_PBTBLDungeonEyesBlinkId;
     unsigned long m_dungeonBlinkNextTick;
@@ -569,6 +571,14 @@ public:
     int m_shieldShakeOffsetY;
     int m_shieldDentOffsetX;
     int m_shieldDentOffsetY;
+
+    // Shield slash overlay sprites and fade state
+    unsigned int m_PBTBLSlash1Id, m_PBTBLSlash2Id, m_PBTBLSlashClawId;
+    bool m_shieldSlashActive;
+    unsigned long m_shieldSlashStartTick;
+    int m_shieldSlashIndex;
+    int m_shieldSlashOffsetX;
+    int m_shieldSlashOffsetY;
     
     // Extra ball screen variables
     PBVideoPlayer* m_extraBallVideoPlayer;
@@ -592,6 +602,19 @@ public:
     int m_ScreenBeforeResetSubState;   // Subscreen state to restore if reset is cancelled
     bool m_hasScreenBeforeReset;       // Track if we have a saved screen to restore
     unsigned int m_PBTBLResetSpriteId; // Sprite ID for reset screen background
+
+    // InTower mode sprite IDs
+    unsigned int m_TowerClimbId;       // Sprite ID for towerclimb.png
+    unsigned int m_DoorOpenId;         // Sprite ID for dooropen.png
+    unsigned int m_DoorClosedId;       // Sprite ID for doorclosed.png
+    unsigned int m_DoorBlockedId;      // Sprite ID for doorblocked.png
+    unsigned int m_DoorWall1Id;        // Sprite ID for doorwall1.png (hallway with torch)
+    unsigned int m_DoorWall2Id;        // Sprite ID for doorwall2.png (hallway without torch)
+    unsigned int m_DoorLadderId;       // Sprite ID for doorladder.png
+
+    // InTower dungeon grid zoom-in animation state
+    unsigned long m_dungeonGridAnimStartTick;  // Tick when zoom-in animation started
+    bool          m_dungeonGridAnimPending;    // True = reset animation on next render call
 
     // Multi-player game state
     pbGameState m_playerStates[4];    // Array of 4 player states
@@ -637,6 +660,7 @@ private:
     std::string TableModeToString(PBTableMode mode);
     std::string NormalPlayStateToString(PBNormalPlayState state);
     std::string MultiballStateToString(PBMultiballState state);
+    std::string InTowerStateToString(PBInTowerState state);
 
     // Main table Variables, etc..
     bool m_PBTBLStartLoaded; 
@@ -658,6 +682,7 @@ private:
     bool m_playerEndLoaded;       // Whether PlayerEnd screen resources are loaded
     bool m_playerEndInitialized;  // Whether the PlayerEnd sub-state has been set up
     int  m_playerEndNextPlayer;   // Player index to activate after the countdown
+    bool m_inTowerLoaded;         // Whether InTower screen resources are loaded
 
     // Game End mode state tracking
     bool m_gameEndInitialized;                           // Whether high score qualifiers have been determined
@@ -717,6 +742,7 @@ private:
     void pbeUpdateStateReset(stInputMessage inputMessage);    // tablemodes/Pinball_Table_ModeReset.cpp
     void pbeUpdateStateGameEnd(stInputMessage inputMessage);  // tablemodes/Pinball_Table_ModeGameEnd.cpp
     void pbeUpdateStatePlayerEnd(stInputMessage inputMessage); // tablemodes/Pinball_Table_ModePlayerEnd.cpp
+    void pbeUpdateStateInTower(stInputMessage inputMessage);  // tablemodes/Pinball_Table_ModeInTower.cpp
     
     // Render functions for the pinball game table
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
@@ -732,6 +758,9 @@ private:
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderPlayerEnd(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderInTower(unsigned long currentTick, unsigned long lastTick);
+    void pbeRenderDungeonGrid(float scale, int centerX, int centerY, bool animate, unsigned long currentTick, unsigned long lastTick);
+    void pbeInitDungeonGrid(int playerNum, int level);
 
     // Load functions for the pinball game table
     bool pbeLoadInitScreen(); // Load the init screen for the pinball game
@@ -740,6 +769,7 @@ private:
     bool pbeLoadReset(); // Load the reset screen
     bool pbeLoadGameEnd(); // Load the game end screen
     bool pbeLoadPlayerEnd(); // Load the player end screen
+    bool pbeLoadInTower(); // Load the InTower screen
     
     // Table initialization
     bool pbeTableInit(); // Initialize table devices and state

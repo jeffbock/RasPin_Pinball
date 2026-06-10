@@ -43,6 +43,9 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
         case PBTableState::PBTBL_PLAYEREND:
             pbeRequestScreen(PBTableState::PBTBL_PLAYEREND, m_tableSubScreenState, ScreenPriority::PRIORITY_LOW, 0, true);
             break;
+        case PBTableState::PBTBL_INTOWER:
+            pbeRequestScreen(PBTableState::PBTBL_INTOWER, m_tableSubScreenState, ScreenPriority::PRIORITY_LOW, 0, true);
+            break;
         default:
             break;
     }
@@ -90,6 +93,10 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
 
         case PBTableState::PBTBL_PLAYEREND:
             success = pbeRenderPlayerEnd(currentTick, lastTick);
+            break;
+
+        case PBTableState::PBTBL_INTOWER:
+            success = pbeRenderInTower(currentTick, lastTick);
             break;
             
         default:
@@ -155,6 +162,9 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
         case PBTableState::PBTBL_PLAYEREND:
             pbeUpdateStatePlayerEnd(inputMessage);
             break;
+        case PBTableState::PBTBL_INTOWER:
+            pbeUpdateStateInTower(inputMessage);
+            break;
         default:
             break;
     }
@@ -172,6 +182,7 @@ void PBEngine::pbeTableReload() {
     m_resetLoaded = false;
     m_gameEndLoaded = false;
     m_playerEndLoaded = false;
+    m_inTowerLoaded = false;
     m_RestartTable = true;
     
     // Clean up extra ball video player
@@ -217,6 +228,7 @@ bool PBEngine::pbeTryAddPlayer(){
     
     // Enable and initialize the new player
     m_playerStates[nextPlayerIdx].reset(m_saveFileData.ballsPerGame);
+    pbeInitDungeonGrid(nextPlayerIdx, 1);  // Seed dungeon grid at level 1 for new player
     m_playerStates[nextPlayerIdx].enabled = true;
     m_playerStates[nextPlayerIdx].inGame  = true;
     
