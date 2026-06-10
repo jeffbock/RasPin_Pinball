@@ -262,34 +262,7 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
         colPositions[c] = centerX + (int)((c - centerColIdx) * colStep);
     }
 
-    // ---- Pass 1: Blocked corridor overlays (lowest layer) -------------
-    // For any open door without a ladder, render doorblocked.png in the
-    // gap above and/or below it to indicate those passages are impassable.
-    // The gap below is skipped when the door below has an open ladder into
-    // this row (a ladder already occupies that gap).
-    for (int r = 0; r < 5; r++) {
-        for (int c = 0; c < 3; c++) {
-            if (grid.cells[r][c].state == DoorState::DOOR_OPEN &&
-                !grid.cells[r][c].hasLadder) {
-                // Gap above: between this row and the row above
-                if (r < 4 && grid.cells[r + 1][c].state != DoorState::DOOR_NONE) {
-                    int blockedY = (rowPositions[r] + rowPositions[r + 1]) / 2 + 25;
-                    gfxRenderSprite(m_DoorBlockedId, colPositions[c] + 20, blockedY, renderScale * 0.7f, 0.0f);
-                }
-                // Gap below: skip if the door below has an open ladder leading up here
-                if (r > 0 && grid.cells[r - 1][c].state != DoorState::DOOR_NONE) {
-                    bool ladderInGap = (grid.cells[r - 1][c].hasLadder &&
-                                        grid.cells[r - 1][c].state == DoorState::DOOR_OPEN);
-                    if (!ladderInGap) {
-                        int blockedY = (rowPositions[r - 1] + rowPositions[r]) / 2 + 25;
-                        gfxRenderSprite(m_DoorBlockedId, colPositions[c] + 20, blockedY, renderScale * 0.7f, 0.0f);
-                    }
-                }
-            }
-        }
-    }
-
-    // ---- Pass 2: Walls -------------------------------------------------
+    // ---- Pass 1: Walls (lowest layer) ----------------------------------
     // Render wall horizontally between adjacent door columns on the same row.
     // Use doorwall1 (torch) if the left door has hasTorch set, else doorwall2.
     // Shifted 5 pixels left from the exact midpoint.
@@ -304,20 +277,39 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
         }
     }
 
+    // ---- Pass 2: Blocked overlays --------------------------------------
+    // Render doorblocked.png behind every open door at 0.8x scale.
+    // Both sprites use centre origin so the same colPositions[c] centres them.
+    for (int r = 0; r < 5; r++) {
+        for (int c = 0; c < 3; c++) {
+            if (grid.cells[r][c].state == DoorState::DOOR_OPEN) {
+                gfxRenderSprite(m_DoorBlockedId,
+                                colPositions[c],
+                                rowPositions[r],
+                                renderScale * 0.8f, 0.0f);
+            }
+        }
+    }
+
     // ---- Pass 3: Ladders -----------------------------------------------
     // Only draw a ladder when the door below it is OPEN (reveals the path up).
+    // Scale at 1.08x (20% up, then 10% back down) and anchor the top of the
+    // ladder (shift centre down by 10% of the base scaled height to compensate).
+    // Shifted 1 pixel to the right.
     for (int r = 0; r < 4; r++) {
         for (int c = 0; c < 3; c++) {
             if (grid.cells[r][c].hasLadder &&
                 grid.cells[r][c].state == DoorState::DOOR_OPEN &&
                 grid.cells[r + 1][c].state != DoorState::DOOR_NONE) {
-                int ladderY = (rowPositions[r] + rowPositions[r + 1]) / 2;
-                gfxRenderSprite(m_DoorLadderId, colPositions[c], ladderY, renderScale, 0.0f);
+                int ladderY      = (rowPositions[r] + rowPositions[r + 1]) / 2;
+                float ladderScale = renderScale * 1.08f;
+                int topAnchorAdj  = (int)(gfxGetBaseHeight(m_DoorLadderId) * renderScale * 0.1f);
+                gfxRenderSprite(m_DoorLadderId, colPositions[c] + 1, ladderY + topAnchorAdj + 19, ladderScale, 0.0f);
             }
         }
     }
 
-    // ---- Pass 4: Doors -------------------------------------------------
+    // ---- Pass 4: Doors (top layer) -------------------------------------
     for (int r = 0; r < 5; r++) {
         for (int c = 0; c < 3; c++) {
             if (grid.cells[r][c].state == DoorState::DOOR_NONE) continue;
