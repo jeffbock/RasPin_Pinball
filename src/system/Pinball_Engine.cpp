@@ -9,6 +9,7 @@
 #include <cmath>
 #include <algorithm>
 #include <fstream>
+#include <set>
 #ifdef ENABLE_PINBALL_HARDWARE
 #include <unistd.h>  // for close() used by pbeScanI2CBus probe fds
 #endif
@@ -3017,7 +3018,25 @@ bool PBEngine::pbeSetupIO()
         g_PBEngine.pbeSendConsole("RasPin: Total Outputs: " + std::to_string(NUM_OUTPUTS) +
             " (" + std::to_string(raspiOutputs) + " RasPi, " + std::to_string(stdOutputs) + " STD, " + std::to_string(ledOutputs) + " LED)");
     }
-    
+    {
+        // Collect unique NeoPixel board indices from output definitions
+        std::set<int> neoPixelIndices;
+        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            if (g_outputDef[i].boardType == PB_NEOPIXEL)
+                neoPixelIndices.insert(g_outputDef[i].boardIndex);
+        }
+        unsigned int numNeoPixelStrings = (unsigned int)neoPixelIndices.size();
+        unsigned int numNeoPixelSizes = sizeof(g_NeoPixelSize) / sizeof(g_NeoPixelSize[0]);
+        std::string neoDetail = "";
+        for (int idx : neoPixelIndices) {
+            if (!neoDetail.empty()) neoDetail += ", ";
+            unsigned int ledCount = (idx < (int)numNeoPixelSizes) ? g_NeoPixelSize[idx] : 0;
+            neoDetail += "String " + std::to_string(idx) + ": " + std::to_string(ledCount) + " LEDs";
+        }
+        g_PBEngine.pbeSendConsole("RasPin: NeoPixel Strings: " + std::to_string(numNeoPixelStrings) +
+            (neoDetail.empty() ? "" : " (" + neoDetail + ")"));
+    }
+
     // Check for duplicate board/pin assignments in inputs
     for (int i = 0; i < NUM_INPUTS; i++) {
         for (int j = i + 1; j < NUM_INPUTS; j++) {

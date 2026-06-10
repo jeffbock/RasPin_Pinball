@@ -46,13 +46,13 @@ bool PBEngine::pbeLoadMainScreen(){
     gfxSetColor(m_PBTBLShield256Id, 255, 255, 255, 255);
     gfxSetScaleFactor(m_PBTBLShield256Id, 0.42, false);
 
-    // Load slash overlay sprites (128x128 scaled to 0.84 to match the shield's ~107px rendered size)
+    // Load slash overlay sprites (128x128 scaled to 0.6)
     m_PBTBLSlash1Id = gfxLoadSprite("Slash1", "src/user/resources/textures/slash1.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
-    gfxSetScaleFactor(m_PBTBLSlash1Id, 0.84f, false);
+    gfxSetScaleFactor(m_PBTBLSlash1Id, 0.6f, false);
     m_PBTBLSlash2Id = gfxLoadSprite("Slash2", "src/user/resources/textures/slash2.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
-    gfxSetScaleFactor(m_PBTBLSlash2Id, 0.84f, false);
+    gfxSetScaleFactor(m_PBTBLSlash2Id, 0.6f, false);
     m_PBTBLSlashClawId = gfxLoadSprite("SlashClaw", "src/user/resources/textures/slashclaw.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
-    gfxSetScaleFactor(m_PBTBLSlashClawId, 0.84f, false);
+    gfxSetScaleFactor(m_PBTBLSlashClawId, 0.6f, false);
     
     m_PBTBLSword256Id = gfxLoadSprite("Sword256", "src/user/resources/textures/Sword256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLSword256Id, 255, 255, 255, 255);
@@ -1059,8 +1059,8 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
             m_shieldShakeOffsetY        = 0;
             // Pick a random slash image and randomize its position within ±8px
             m_shieldSlashIndex          = rand() % 3;
-            m_shieldSlashOffsetX        = (rand() % 17) - 8;  // -8 to +8
-            m_shieldSlashOffsetY        = (rand() % 17) - 8;
+            m_shieldSlashOffsetX        = (rand() % 17) + 7;  // +2 to +18 (shifted right 10px)
+            m_shieldSlashOffsetY        = (rand() % 17) + 4;  // +2 to +18 (shifted down 10px)
             m_shieldSlashActive         = true;
             m_shieldSlashStartTick      = GetTickCountGfx();
         }
