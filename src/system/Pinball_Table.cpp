@@ -183,6 +183,7 @@ void PBEngine::pbeTableReload() {
     m_gameEndLoaded = false;
     m_playerEndLoaded = false;
     m_inTowerLoaded = false;
+    m_inTowerD20Spinning = false;
     m_RestartTable = true;
     
     // Clean up extra ball video player
@@ -478,4 +479,3 @@ PBTableState PBEngine::pbeGetCurrentScreenState() {
 int PBEngine::pbeGetCurrentSubScreenState() {
     return m_currentDisplayedSubScreen;
 }
-

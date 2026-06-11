@@ -611,6 +611,18 @@ public:
     unsigned int m_DoorWall1Id;        // Sprite ID for doorwall1.png (hallway with torch)
     unsigned int m_DoorWall2Id;        // Sprite ID for doorwall2.png (hallway without torch)
     unsigned int m_DoorLadderId;       // Sprite ID for doorladder.png
+    unsigned int m_inTowerD20ModelId;  // 3D model ID for InTower d20
+    unsigned int m_inTowerD20InstanceId; // 3D instance ID for InTower d20
+    bool         m_inTowerD20Loaded;   // True when model+instance are ready
+    bool         m_inTowerD20Spinning; // True while 0.5s spin is active
+    unsigned long m_inTowerD20SpinStartTick; // Spin start tick
+    float        m_inTowerD20SpinBaseRotX; // Spin base rot X (degrees)
+    float        m_inTowerD20SpinBaseRotY; // Spin base rot Y (degrees)
+    float        m_inTowerD20SpinBaseRotZ; // Spin base rot Z (degrees)
+    float        m_inTowerD20RotX;     // Current rot X (degrees)
+    float        m_inTowerD20RotY;     // Current rot Y (degrees)
+    float        m_inTowerD20RotZ;     // Current rot Z (degrees)
+    int          m_inTowerD20Value;    // Face value currently facing the user
 
     // InTower dungeon grid zoom-in animation state
     unsigned long m_dungeonGridAnimStartTick;  // Tick when zoom-in animation started
@@ -761,6 +773,7 @@ private:
     bool pbeRenderInTower(unsigned long currentTick, unsigned long lastTick);
     void pbeRenderDungeonGrid(float scale, int centerX, int centerY, bool animate, unsigned long currentTick, unsigned long lastTick);
     void pbeInitDungeonGrid(int playerNum, int level);
+    void pbeUpdateInTowerD20(unsigned long currentTick);
 
     // Load functions for the pinball game table
     bool pbeLoadInitScreen(); // Load the init screen for the pinball game
