@@ -154,6 +154,18 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_PBTBLMainScreenBGId=0;
     m_PBTBLResetSpriteId=0;
     m_TowerClimbId=0;
+    m_inTowerD20ModelId = 0;
+    m_inTowerD20InstanceId = 0;
+    m_inTowerD20Loaded = false;
+    m_inTowerD20Spinning = false;
+    m_inTowerD20SpinStartTick = 0;
+    m_inTowerD20SpinBaseRotX = 0.0f;
+    m_inTowerD20SpinBaseRotY = 0.0f;
+    m_inTowerD20SpinBaseRotZ = 0.0f;
+    m_inTowerD20RotX = 0.0f;
+    m_inTowerD20RotY = 0.0f;
+    m_inTowerD20RotZ = 0.0f;
+    m_inTowerD20Value = 1;
     m_RestartTable = true;
     
     // Extra ball video variables
@@ -4430,7 +4442,5 @@ void PBEngine::neoPixelSnake(uint8_t baseR, uint8_t baseG, uint8_t baseB,
         }
     }
 }
-
-
 
 

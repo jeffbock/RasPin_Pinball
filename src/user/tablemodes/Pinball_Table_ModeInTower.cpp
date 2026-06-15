@@ -11,6 +11,89 @@
 #include "Pinball_Engine.h"
 #include "Pinball_Table.h"
 #include "PBDevice.h"
+#include <cmath>
+
+namespace {
+struct D20Vec3 {
+    float x, y, z;
+};
+
+static constexpr float kD20SpinDurationMs = 500.0f;
+static constexpr float kD20SpinSpeedXDegPerSec = 1800.0f;
+static constexpr float kD20SpinSpeedYDegPerSec = 2160.0f;
+static constexpr float kD20SpinSpeedZDegPerSec = 2520.0f;
+
+// Regular icosahedron face normals; value mapping is index+1 (1..20).
+static const D20Vec3 kD20FaceNormals[20] = {
+    { -0.57735027f,  0.57735027f,  0.57735027f },
+    {  0.00000000f,  0.93417236f,  0.35682209f },
+    {  0.00000000f,  0.93417236f, -0.35682209f },
+    { -0.57735027f,  0.57735027f, -0.57735027f },
+    { -0.93417236f,  0.35682209f,  0.00000000f },
+    {  0.57735027f,  0.57735027f,  0.57735027f },
+    { -0.35682209f,  0.00000000f,  0.93417236f },
+    { -0.93417236f, -0.35682209f,  0.00000000f },
+    { -0.35682209f,  0.00000000f, -0.93417236f },
+    {  0.57735027f,  0.57735027f, -0.57735027f },
+    {  0.57735027f, -0.57735027f,  0.57735027f },
+    {  0.00000000f, -0.93417236f,  0.35682209f },
+    {  0.00000000f, -0.93417236f, -0.35682209f },
+    {  0.57735027f, -0.57735027f, -0.57735027f },
+    {  0.93417236f, -0.35682209f,  0.00000000f },
+    {  0.35682209f,  0.00000000f,  0.93417236f },
+    { -0.57735027f, -0.57735027f,  0.57735027f },
+    { -0.57735027f, -0.57735027f, -0.57735027f },
+    {  0.35682209f,  0.00000000f, -0.93417236f },
+    {  0.93417236f,  0.35682209f,  0.00000000f }
+};
+
+static inline float d20DegToRad(float deg) { return deg * 0.01745329252f; }
+static inline float d20RadToDeg(float rad) { return rad * 57.29577951f; }
+
+// PB3D applies rotation as Ry * Rx * Rz.
+static D20Vec3 d20RotateYXZ(const D20Vec3& v, float rxDeg, float ryDeg, float rzDeg) {
+    float rx = d20DegToRad(rxDeg);
+    float ry = d20DegToRad(ryDeg);
+    float rz = d20DegToRad(rzDeg);
+    float cx = cosf(rx), sx = sinf(rx);
+    float cy = cosf(ry), sy = sinf(ry);
+    float cz = cosf(rz), sz = sinf(rz);
+
+    D20Vec3 out;
+    out.x = (cy * cz + sy * sx * sz) * v.x + (-cy * sz + sy * sx * cz) * v.y + (sy * cx) * v.z;
+    out.y = (cx * sz) * v.x + (cx * cz) * v.y + (-sx) * v.z;
+    out.z = (-sy * cz + cy * sx * sz) * v.x + (sy * sz + cy * sx * cz) * v.y + (cy * cx) * v.z;
+    return out;
+}
+
+static int d20FindFacingValue(float rxDeg, float ryDeg, float rzDeg) {
+    int bestIdx = 0;
+    float bestZ = -9999.0f;
+    for (int i = 0; i < 20; i++) {
+        D20Vec3 w = d20RotateYXZ(kD20FaceNormals[i], rxDeg, ryDeg, rzDeg);
+        if (w.z > bestZ) {
+            bestZ = w.z;
+            bestIdx = i;
+        }
+    }
+    return bestIdx + 1;
+}
+
+static void d20SnapFaceToScreen(int faceValue, float& outRxDeg, float& outRyDeg, float& outRzDeg) {
+    int idx = faceValue - 1;
+    if (idx < 0) idx = 0;
+    if (idx > 19) idx = 19;
+
+    const D20Vec3& n = kD20FaceNormals[idx];
+    outRxDeg = d20RadToDeg(atan2f(n.y, n.z));
+    float sx = sinf(d20DegToRad(outRxDeg));
+    float cx = cosf(d20DegToRad(outRxDeg));
+    float x1 = n.x;
+    float z1 = sx * n.y + cx * n.z;
+    outRyDeg = d20RadToDeg(atan2f(-x1, z1));
+    outRzDeg = 0.0f;
+}
+}
 
 // ========================================================================
 // PBTBL_INTOWER: Load Function
@@ -49,6 +132,21 @@ bool PBEngine::pbeLoadInTower() {
         m_DoorWall1Id == NOSPRITE || m_DoorWall2Id == NOSPRITE || m_DoorLadderId == NOSPRITE) {
         pbeSendConsole("ERROR: Failed to load InTower door sprites");
         return (false);
+    }
+
+    // Load the InTower d20 model once and keep a persistent instance.
+    if (!m_inTowerD20Loaded) {
+        m_inTowerD20ModelId = pb3dLoadModel("src/user/resources/3d/d20_intower.glb");
+        if (m_inTowerD20ModelId == 0) {
+            pbeSendConsole("WARNING: Failed to load d20_intower.glb");
+        } else {
+            m_inTowerD20InstanceId = pb3dCreateInstance(m_inTowerD20ModelId);
+            pb3dSetInstanceScale(m_inTowerD20InstanceId, 0.42f);
+            pb3dSetInstanceVisible(m_inTowerD20InstanceId, true);
+            pb3dSetInstanceRotation(m_inTowerD20InstanceId, m_inTowerD20RotX, m_inTowerD20RotY, m_inTowerD20RotZ);
+            m_inTowerD20Value = d20FindFacingValue(m_inTowerD20RotX, m_inTowerD20RotY, m_inTowerD20RotZ);
+            m_inTowerD20Loaded = true;
+        }
     }
 
     m_inTowerLoaded = true;
@@ -320,6 +418,33 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
     }
 }
 
+void PBEngine::pbeUpdateInTowerD20(unsigned long currentTick) {
+    if (!m_inTowerD20Loaded) return;
+
+    if (m_inTowerD20Spinning) {
+        float elapsedMs = (currentTick >= m_inTowerD20SpinStartTick)
+                        ? (float)(currentTick - m_inTowerD20SpinStartTick) : 0.0f;
+
+        if (elapsedMs < kD20SpinDurationMs) {
+            float t = elapsedMs / 1000.0f;
+            m_inTowerD20RotX = m_inTowerD20SpinBaseRotX + (kD20SpinSpeedXDegPerSec * t);
+            m_inTowerD20RotY = m_inTowerD20SpinBaseRotY + (kD20SpinSpeedYDegPerSec * t);
+            m_inTowerD20RotZ = m_inTowerD20SpinBaseRotZ + (kD20SpinSpeedZDegPerSec * t);
+            m_inTowerD20Value = d20FindFacingValue(m_inTowerD20RotX, m_inTowerD20RotY, m_inTowerD20RotZ);
+        } else {
+            // Stop spinning and snap so the closest face normal points straight out.
+            int faceValue = d20FindFacingValue(m_inTowerD20RotX, m_inTowerD20RotY, m_inTowerD20RotZ);
+            d20SnapFaceToScreen(faceValue, m_inTowerD20RotX, m_inTowerD20RotY, m_inTowerD20RotZ);
+            m_inTowerD20Value = faceValue;
+            m_inTowerD20Spinning = false;
+        }
+    } else {
+        m_inTowerD20Value = d20FindFacingValue(m_inTowerD20RotX, m_inTowerD20RotY, m_inTowerD20RotZ);
+    }
+
+    pb3dSetInstanceRotation(m_inTowerD20InstanceId, m_inTowerD20RotX, m_inTowerD20RotY, m_inTowerD20RotZ);
+}
+
 // ========================================================================
 // PBTBL_INTOWER: Render Function
 // ========================================================================
@@ -338,14 +463,33 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
     }
 
     // Render towerclimb image centered in the main score area
-    gfxRenderSprite(m_TowerClimbId, ACTIVEDISPX + (1024 / 3), ACTIVEDISPY + 350);
+    int towerCenterX = ACTIVEDISPX + (1024 / 3);
+    int towerCenterY = ACTIVEDISPY + 350;
+    gfxRenderSprite(m_TowerClimbId, towerCenterX, towerCenterY);
+
+    int towerHalfWidth  = (int)(gfxGetBaseWidth(m_TowerClimbId) / 2);
+    int towerHalfHeight = (int)(gfxGetBaseHeight(m_TowerClimbId) / 2);
+    int towerTopLeftX   = towerCenterX - towerHalfWidth;
+    int towerTopLeftY   = towerCenterY - towerHalfHeight;
+
+    // Update and render d20 in the upper-left area of the tower sprite.
+    if (m_inTowerD20Loaded) {
+        pbeUpdateInTowerD20(currentTick);
+        int diceX = towerTopLeftX + 150;
+        int diceY = towerTopLeftY + 130;
+        pb3dSetInstancePositionPx(m_inTowerD20InstanceId, (float)diceX, (float)diceY, 0.0f);
+        pb3dBegin();
+        pb3dRenderInstance(m_inTowerD20InstanceId);
+        pb3dEnd();
+
+        std::string diceText = "D20: " + std::to_string(m_inTowerD20Value);
+        gfxRenderShadowString(m_StartMenuFontId, diceText, diceX, diceY + 120, 3, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
+    }
 
     // Render dungeon door grid in the right half of the towerclimb image area
     {
-        int tcCenterX    = ACTIVEDISPX + (1024 / 3);
-        int tcHalfWidth  = (int)(gfxGetBaseWidth(m_TowerClimbId) / 2);
-        int gridCenterX  = tcCenterX + tcHalfWidth / 2 + 10;
-        int gridCenterY  = ACTIVEDISPY + 350;
+        int gridCenterX  = towerCenterX + towerHalfWidth / 2 + 10;
+        int gridCenterY  = towerCenterY;
         pbeRenderDungeonGrid(0.65f, gridCenterX, gridCenterY, true, currentTick, lastTick);
     }
 
@@ -381,6 +525,14 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
                         opened = true;
                     }
                 }
+            }
+
+            if (opened && m_inTowerD20Loaded) {
+                m_inTowerD20Spinning = true;
+                m_inTowerD20SpinStartTick = GetTickCountGfx();
+                m_inTowerD20SpinBaseRotX = m_inTowerD20RotX;
+                m_inTowerD20SpinBaseRotY = m_inTowerD20RotY;
+                m_inTowerD20SpinBaseRotZ = m_inTowerD20RotZ;
             }
         }
 

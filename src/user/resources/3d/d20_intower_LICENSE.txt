@@ -1,0 +1,9 @@
+InTower d20 model source and license
+===================================
+
+File: d20_intower.glb
+Source repository: https://github.com/vokimon/godot-dice-roller
+Source file URL: https://raw.githubusercontent.com/vokimon/godot-dice-roller/19a49f8a55f98d7c14fdadfcff8a6f5d279d184c/addons/dice_roller/dice/d20_dice/d20.glb
+
+License: GNU Affero General Public License v3.0 (AGPL-3.0)
+License reference: https://github.com/vokimon/godot-dice-roller/blob/19a49f8a55f98d7c14fdadfcff8a6f5d279d184c/LICENSE
