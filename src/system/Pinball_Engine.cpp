@@ -166,6 +166,9 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_inTowerD20RotY = 0.0f;
     m_inTowerD20RotZ = 0.0f;
     m_inTowerD20Value = 1;
+    m_inTowerDungeonPhase = 0;
+    m_inTowerShrinkAnimStartTick = 0;
+    m_inTowerDoorJustOpened = false;
     m_RestartTable = true;
     
     // Extra ball video variables

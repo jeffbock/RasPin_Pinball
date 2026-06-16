@@ -125,11 +125,11 @@ bool PBEngine::pbeLoadInTower() {
     m_DoorWall2Id = gfxLoadSprite("DoorWall2", "src/user/resources/textures/doorwall2.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
     gfxSetColor(m_DoorWall2Id, 255, 255, 255, 255);
 
-    m_DoorLadderId = gfxLoadSprite("DoorLadder", "src/user/resources/textures/doorladder.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
-    gfxSetColor(m_DoorLadderId, 255, 255, 255, 255);
+    m_DoorStairsId = gfxLoadSprite("DoorStairs", "src/user/resources/textures/doorstairs.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    gfxSetColor(m_DoorStairsId, 255, 255, 255, 255);
 
     if (m_DoorOpenId == NOSPRITE || m_DoorClosedId == NOSPRITE || m_DoorBlockedId == NOSPRITE ||
-        m_DoorWall1Id == NOSPRITE || m_DoorWall2Id == NOSPRITE || m_DoorLadderId == NOSPRITE) {
+        m_DoorWall1Id == NOSPRITE || m_DoorWall2Id == NOSPRITE || m_DoorStairsId == NOSPRITE) {
         pbeSendConsole("ERROR: Failed to load InTower door sprites");
         return (false);
     }
@@ -261,6 +261,10 @@ void PBEngine::pbeInitDungeonGrid(int playerNum, int level) {
 
     // Signal the render function to restart the zoom-in animation
     m_dungeonGridAnimPending = true;
+
+    // Return the dungeon to fullscreen presentation phase
+    m_inTowerDungeonPhase = 0;
+    m_inTowerDoorJustOpened = false;
 }
 
 // ========================================================================
@@ -314,8 +318,8 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
         float rawY  = sinf(angle) * offsetMag;
 
         // Never shift right of the final position — keeps the grid inside the tower image
-        float startShiftX = (1.0f - t) * 30.0f;  // +30 px right at t=0, fades to 0 at t=1
-        float startShiftY = (1.0f - t) * 20.0f;  // +20 px down  at t=0, fades to 0 at t=1
+        float startShiftX = (1.0f - t) * 210.0f;  // +210 px right at t=0, fades to 0 at t=1
+        float startShiftY = (1.0f - t) * -80.0f;  // -80 px up   at t=0, fades to 0 at t=1
         centerX += (int)(rawX < 0.0f ? rawX : 0.0f) + (int)startShiftX;
         centerY += (int)rawY + (int)startShiftY;
     }
@@ -324,7 +328,7 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
     int doorW  = (int)(gfxGetBaseWidth(m_DoorOpenId)  * renderScale);
     int doorH  = (int)(gfxGetBaseHeight(m_DoorOpenId) * renderScale);
 
-    int gapH    = doorH / 4;
+    int gapH    = (int)((doorH / 4 + 10) * 0.5625f);
     int rowStep = doorH + gapH;
 
     int wallNativeW  = (int)gfxGetBaseWidth(m_DoorWall1Id);
@@ -375,39 +379,28 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
         }
     }
 
-    // ---- Pass 2: Blocked overlays --------------------------------------
-    // Render doorblocked.png behind every open door at 0.8x scale.
-    // Both sprites use centre origin so the same colPositions[c] centres them.
+    // ---- Pass 2: Blocked/Stairs overlays --------------------------------
+    // For open doors, render doorstairs.png (shifted +6 px right) if the cell
+    // has a ladder; otherwise render doorblocked.png at the original position.
     for (int r = 0; r < 5; r++) {
         for (int c = 0; c < 3; c++) {
             if (grid.cells[r][c].state == DoorState::DOOR_OPEN) {
-                gfxRenderSprite(m_DoorBlockedId,
-                                colPositions[c],
-                                rowPositions[r],
-                                renderScale * 0.8f, 0.0f);
+                if (grid.cells[r][c].hasLadder) {
+                    gfxRenderSprite(m_DoorStairsId,
+                                    colPositions[c] + 6,
+                                    rowPositions[r],
+                                    renderScale * 0.8f, 0.0f);
+                } else {
+                    gfxRenderSprite(m_DoorBlockedId,
+                                    colPositions[c],
+                                    rowPositions[r],
+                                    renderScale * 0.8f, 0.0f);
+                }
             }
         }
     }
 
-    // ---- Pass 3: Ladders -----------------------------------------------
-    // Only draw a ladder when the door below it is OPEN (reveals the path up).
-    // Scale at 1.08x (20% up, then 10% back down) and anchor the top of the
-    // ladder (shift centre down by 10% of the base scaled height to compensate).
-    // Shifted 1 pixel to the right.
-    for (int r = 0; r < 4; r++) {
-        for (int c = 0; c < 3; c++) {
-            if (grid.cells[r][c].hasLadder &&
-                grid.cells[r][c].state == DoorState::DOOR_OPEN &&
-                grid.cells[r + 1][c].state != DoorState::DOOR_NONE) {
-                int ladderY      = (rowPositions[r] + rowPositions[r + 1]) / 2;
-                float ladderScale = renderScale * 1.08f;
-                int topAnchorAdj  = (int)(gfxGetBaseHeight(m_DoorLadderId) * renderScale * 0.1f);
-                gfxRenderSprite(m_DoorLadderId, colPositions[c] + 1, ladderY + topAnchorAdj + 19, ladderScale, 0.0f);
-            }
-        }
-    }
-
-    // ---- Pass 4: Doors (top layer) -------------------------------------
+    // ---- Pass 3: Doors (top layer) -------------------------------------
     for (int r = 0; r < 5; r++) {
         for (int c = 0; c < 3; c++) {
             if (grid.cells[r][c].state == DoorState::DOOR_NONE) continue;
@@ -472,25 +465,69 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
     int towerTopLeftX   = towerCenterX - towerHalfWidth;
     int towerTopLeftY   = towerCenterY - towerHalfHeight;
 
-    // Update and render d20 in the upper-left area of the tower sprite.
-    if (m_inTowerD20Loaded) {
-        pbeUpdateInTowerD20(currentTick);
-        int diceX = towerTopLeftX + 150;
-        int diceY = towerTopLeftY + 130;
-        pb3dSetInstancePositionPx(m_inTowerD20InstanceId, (float)diceX, (float)diceY, 0.0f);
-        pb3dBegin();
-        pb3dRenderInstance(m_inTowerD20InstanceId);
-        pb3dEnd();
+    // Dungeon grid layout constants
+    static constexpr float kDungeonFullscreenScale  = 0.8625f; // 0.75 * 1.15
+    static constexpr float kDungeonSmallScale       = 0.406f; // 0.325 * 1.25 — 25% bigger
+    static constexpr float kDungeonTransitionDurMs  = 500.0f;  // shrink and grow duration
 
-        std::string diceText = "D20: " + std::to_string(m_inTowerD20Value);
-        gfxRenderShadowString(m_StartMenuFontId, diceText, diceX, diceY + 120, 3, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
+    // Anchor points: fullscreen centred on towerclimb (shifted up 50 px); small in right half
+    int fullX  = towerCenterX;
+    int fullY  = towerCenterY - 30;
+    int smallX = towerCenterX + towerHalfWidth / 2 + 30;
+    int smallY = towerCenterY;
+
+    if (m_inTowerDungeonPhase == 0) {
+        // ---- Phase 0: dungeon fills the intower area; dice hidden -------
+        pbeRenderDungeonGrid(kDungeonFullscreenScale, fullX, fullY, true, currentTick, lastTick);
     }
+    else if (m_inTowerDungeonPhase == 1) {
+        // ---- Phase 1: shrink from fullscreen to small -------------------
+        float elapsedMs = (currentTick >= m_inTowerShrinkAnimStartTick)
+                          ? (float)(currentTick - m_inTowerShrinkAnimStartTick) : 0.0f;
+        float t = elapsedMs / kDungeonTransitionDurMs;
+        if (t >= 1.0f) {
+            t = 1.0f;
+            m_inTowerDungeonPhase = 2;  // Animation complete — show dice
+        }
+        // Smooth-step ease: t^2*(3-2t)
+        float tEase       = t * t * (3.0f - 2.0f * t);
+        float renderScale = kDungeonFullscreenScale + (kDungeonSmallScale - kDungeonFullscreenScale) * tEase;
+        int   renderX     = fullX + (int)((smallX - fullX) * tEase);
+        int   renderY     = fullY + (int)((smallY - fullY) * tEase);
+        pbeRenderDungeonGrid(renderScale, renderX, renderY, false, currentTick, lastTick);
+    }
+    else if (m_inTowerDungeonPhase == 2 || m_inTowerDungeonPhase == 3) {
+        // ---- Phase 2/3: dungeon at small position; dice visible ----------
+        pbeRenderDungeonGrid(kDungeonSmallScale, smallX, smallY, false, currentTick, lastTick);
 
-    // Render dungeon door grid in the right half of the towerclimb image area
-    {
-        int gridCenterX  = towerCenterX + towerHalfWidth / 2 + 10;
-        int gridCenterY  = towerCenterY;
-        pbeRenderDungeonGrid(0.65f, gridCenterX, gridCenterY, true, currentTick, lastTick);
+        if (m_inTowerD20Loaded) {
+            pbeUpdateInTowerD20(currentTick);
+            int diceX = towerTopLeftX + 150;
+            int diceY = towerTopLeftY + 130;
+            pb3dSetInstancePositionPx(m_inTowerD20InstanceId, (float)diceX, (float)diceY, 0.0f);
+            pb3dBegin();
+            pb3dRenderInstance(m_inTowerD20InstanceId);
+            pb3dEnd();
+
+            std::string diceText = "D20: " + std::to_string(m_inTowerD20Value);
+            gfxRenderShadowString(m_StartMenuFontId, diceText, diceX, diceY + 120, 3, GFX_TEXTCENTER, 0, 0, 0, 255, 2);
+        }
+    }
+    else {
+        // ---- Phase 4: grow from small back to fullscreen; dice hidden ----
+        float elapsedMs = (currentTick >= m_inTowerShrinkAnimStartTick)
+                          ? (float)(currentTick - m_inTowerShrinkAnimStartTick) : 0.0f;
+        float t = elapsedMs / kDungeonTransitionDurMs;
+        if (t >= 1.0f) {
+            t = 1.0f;
+            m_inTowerDungeonPhase = 0;  // Animation complete — back to fullscreen
+        }
+        // Smooth-step ease: t^2*(3-2t)
+        float tEase       = t * t * (3.0f - 2.0f * t);
+        float renderScale = kDungeonSmallScale + (kDungeonFullscreenScale - kDungeonSmallScale) * tEase;
+        int   renderX     = smallX + (int)((fullX - smallX) * tEase);
+        int   renderY     = smallY + (int)((fullY - smallY) * tEase);
+        pbeRenderDungeonGrid(renderScale, renderX, renderY, false, currentTick, lastTick);
     }
 
     // Render divider bars on top, same as pbeRenderMainScreen
@@ -511,29 +548,50 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
 
         // ------------------------------------------------------------
-        // Flippers: open the next available (non-NONE, non-OPEN) door
-        // in row-major order across the current player's dungeon grid
+        // Flippers: behaviour depends on current dungeon phase
         // ------------------------------------------------------------
         if (inputMessage.inputId == IDI_LFLIP || inputMessage.inputId == IDI_RFLIP) {
-            TowerDungeonGrid& grid = m_playerStates[m_currentPlayer].dungeonGrid;
-            bool opened = false;
-            for (int r = 0; r < 5 && !opened; r++) {
-                for (int c = 0; c < 3 && !opened; c++) {
-                    if (grid.cells[r][c].state != DoorState::DOOR_NONE &&
-                        grid.cells[r][c].state != DoorState::DOOR_OPEN) {
-                        grid.cells[r][c].state = DoorState::DOOR_OPEN;
-                        opened = true;
+
+            if (m_inTowerDungeonPhase == 0) {
+                if (!m_inTowerDoorJustOpened) {
+                    // First press: open the next available door; stay fullscreen
+                    TowerDungeonGrid& grid = m_playerStates[m_currentPlayer].dungeonGrid;
+                    for (int r = 0; r < 5; r++) {
+                        for (int c = 0; c < 3; c++) {
+                            if (grid.cells[r][c].state != DoorState::DOOR_NONE &&
+                                grid.cells[r][c].state != DoorState::DOOR_OPEN) {
+                                grid.cells[r][c].state = DoorState::DOOR_OPEN;
+                                m_inTowerDoorJustOpened = true;
+                                goto doorOpenDone;
+                            }
+                        }
                     }
+                    doorOpenDone:;
+                } else {
+                    // Second press: start shrink animation
+                    m_inTowerDoorJustOpened = false;
+                    m_inTowerShrinkAnimStartTick = GetTickCountGfx();
+                    m_inTowerDungeonPhase = 1;
                 }
             }
-
-            if (opened && m_inTowerD20Loaded) {
-                m_inTowerD20Spinning = true;
-                m_inTowerD20SpinStartTick = GetTickCountGfx();
-                m_inTowerD20SpinBaseRotX = m_inTowerD20RotX;
-                m_inTowerD20SpinBaseRotY = m_inTowerD20RotY;
-                m_inTowerD20SpinBaseRotZ = m_inTowerD20RotZ;
+            else if (m_inTowerDungeonPhase == 2) {
+                // Phase 2: roll the dice
+                if (m_inTowerD20Loaded) {
+                    m_inTowerD20Spinning      = true;
+                    m_inTowerD20SpinStartTick = GetTickCountGfx();
+                    m_inTowerD20SpinBaseRotX  = m_inTowerD20RotX;
+                    m_inTowerD20SpinBaseRotY  = m_inTowerD20RotY;
+                    m_inTowerD20SpinBaseRotZ  = m_inTowerD20RotZ;
+                }
+                m_inTowerDungeonPhase = 3;
             }
+            else if (m_inTowerDungeonPhase == 3) {
+                // Phase 3: hide dice and grow dungeon back to fullscreen
+                m_inTowerShrinkAnimStartTick = GetTickCountGfx();
+                m_inTowerDungeonPhase = 4;
+            }
+            // Phase 1/4 (animating): ignore flipper presses
+            // Phase 1 (animating): ignore flipper presses
         }
 
         // ------------------------------------------------------------

@@ -610,7 +610,7 @@ public:
     unsigned int m_DoorBlockedId;      // Sprite ID for doorblocked.png
     unsigned int m_DoorWall1Id;        // Sprite ID for doorwall1.png (hallway with torch)
     unsigned int m_DoorWall2Id;        // Sprite ID for doorwall2.png (hallway without torch)
-    unsigned int m_DoorLadderId;       // Sprite ID for doorladder.png
+    unsigned int m_DoorStairsId;       // Sprite ID for doorstairs.png (open door with stairs/ladder room)
     unsigned int m_inTowerD20ModelId;  // 3D model ID for InTower d20
     unsigned int m_inTowerD20InstanceId; // 3D instance ID for InTower d20
     bool         m_inTowerD20Loaded;   // True when model+instance are ready
@@ -627,6 +627,15 @@ public:
     // InTower dungeon grid zoom-in animation state
     unsigned long m_dungeonGridAnimStartTick;  // Tick when zoom-in animation started
     bool          m_dungeonGridAnimPending;    // True = reset animation on next render call
+
+    // InTower dungeon presentation phase
+    //   0 = fullscreen, no dice
+    //   1 = shrinking from fullscreen to small (door already opened)
+    //   2 = small + dice shown, waiting for roll
+    //   3 = small + dice rolling / settled, waiting for reset
+    int           m_inTowerDungeonPhase;
+    unsigned long m_inTowerShrinkAnimStartTick; // Tick when shrink animation began
+    bool          m_inTowerDoorJustOpened;      // True after door opened, waiting for shrink press
 
     // Multi-player game state
     pbGameState m_playerStates[4];    // Array of 4 player states
