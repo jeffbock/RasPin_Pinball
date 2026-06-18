@@ -184,6 +184,7 @@ void PBEngine::pbeTableReload() {
     m_playerEndLoaded = false;
     m_inTowerLoaded = false;
     m_inTowerD20Spinning = false;
+    m_inTowerD20RollState = 0;
     m_RestartTable = true;
     
     // Clean up extra ball video player

@@ -15,6 +15,17 @@
 #ifndef Pinball_Table_ModeInTower_h
 #define Pinball_Table_ModeInTower_h
 
+// ------------------------------------------------------------------------
+// D20 DICE CALIBRATION TOOL (developer-only)
+//   Uncomment to enable the InTower D20 dice calibration mode.  This is a
+//   fully self-contained tool used to generate the per-value face-orientation
+//   table (kD20Orient[]) in Pinball_Table_ModeInTower.cpp for a D20 model.
+//   When defined, press IDI_START while in the InTower screen to toggle it;
+//   the confirmed (value -> rx,ry,rz) tuples are logged to the pinball console
+//   (and console.txt) for pasting into the table.  Leave commented out for
+//   production builds.  Safe to remove this define and the calibration block.
+#define D20_CALIBRATION
+
 // Sub-states for the InTower game screen
 enum class PBTBLInTowerScreenState {
     INTOWER_SCREEN_ACTIVE = 0,   // Ball is locked in tower, mode is running

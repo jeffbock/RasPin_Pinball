@@ -166,6 +166,8 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_inTowerD20RotY = 0.0f;
     m_inTowerD20RotZ = 0.0f;
     m_inTowerD20Value = 1;
+    m_inTowerD20RollState = 0;
+    m_inTowerD20StopTick = 0;
     m_inTowerDungeonPhase = 0;
     m_inTowerShrinkAnimStartTick = 0;
     m_inTowerDoorJustOpened = false;
@@ -1750,8 +1752,9 @@ bool PBEngine::pbeRenderCredits(unsigned long currentTick, unsigned long lastTic
         gfxRenderShadowString(m_defaultFontSpriteId, "SDL https://github.com/libsdl-org/SDL", tempX, m_CreditsScrollY + (16*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "SDL Mixer https://github.com/libsdl-org/SDL_mixer", tempX, m_CreditsScrollY + (17*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxRenderShadowString(m_defaultFontSpriteId, "Characters developed at https://www.heroforge.com/", tempX, m_CreditsScrollY + (18*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Various images, sounds and music from https://pixabay.com/", tempX, m_CreditsScrollY + (19*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
-        gfxRenderShadowString(m_defaultFontSpriteId, "Microsoft Copilot AI tools utilized with art and code ", tempX, m_CreditsScrollY + (20*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Free D20 dice model from https://sketchfab.com, VertexDon", tempX, m_CreditsScrollY + (19*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Various images, sounds and music from https://pixabay.com/", tempX, m_CreditsScrollY + (20*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
+        gfxRenderShadowString(m_defaultFontSpriteId, "Microsoft Copilot AI tools utilized with art and code ", tempX, m_CreditsScrollY + (21*spacing) +2, 1, GFX_TEXTCENTER, 0,0,0,255,2);
         gfxSetScaleFactor(m_defaultFontSpriteId, 1.0, false);
     }
 

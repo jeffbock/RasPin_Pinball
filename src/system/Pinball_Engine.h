@@ -623,6 +623,10 @@ public:
     float        m_inTowerD20RotY;     // Current rot Y (degrees)
     float        m_inTowerD20RotZ;     // Current rot Z (degrees)
     int          m_inTowerD20Value;    // Face value currently facing the user
+    // Dice roll sub-state (within dungeon phase 2): flippers start then stop the
+    // spin, then advance.  0 = idle (ready to roll), 1 = spinning, 2 = stopped.
+    int          m_inTowerD20RollState;
+    unsigned long m_inTowerD20StopTick; // tick when the spin stopped (bounce settle)
 
     // InTower dungeon grid zoom-in animation state
     unsigned long m_dungeonGridAnimStartTick;  // Tick when zoom-in animation started
