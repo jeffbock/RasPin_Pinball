@@ -89,6 +89,11 @@ struct stSpriteInfo {
     unsigned int baseHeight;
     unsigned int glTextureId;
     bool isLoaded;
+
+    // Tile-mapped sprite metadata (GFX_SPRITEMAP only; zero for other types)
+    unsigned int tileWidth;
+    unsigned int tileHeight;
+    unsigned int tileCount;
 };
 
 // Holds the current rendering information of the sprite instance - all things that can change or be animated
@@ -104,6 +109,9 @@ struct stSpriteInstance {
     float scaleFactor;
     float rotateDegrees;
     bool updateBoundingBox;
+
+    // Tile-mapped sprite state (GFX_SPRITEMAP only)
+    unsigned int selectedTile;
 
     // These two will never be set by calling app
     // unsigned int glTextureId;
@@ -131,7 +139,8 @@ struct stSpriteMapData {
 #define ANIMATE_COLOR_MASK 0x20
 #define ANIMATE_SCALE_MASK 0x40
 #define ANIMATE_ROTATE_MASK 0x80
-#define ANIMATE_ALL_MASK 0xFF
+#define ANIMATE_TILE_MASK 0x100
+#define ANIMATE_ALL_MASK 0x1FF
 
 // Animation enums are defined in PB3D.h (included above)
 
@@ -222,6 +231,14 @@ public:
     stBoundingBox gfxGetBoundingBox(unsigned int spriteId);
     bool         gfxIsLoaded(unsigned int spriteId);
     unsigned int gfxGetTextHeight(unsigned int spriteId);
+
+    // Tile-mapped sprite functions (GFX_SPRITEMAP)
+    unsigned int gfxLoadTileSprite(const std::string& spriteName, const std::string& textureFileName,
+                                   gfxTexType textureType, gfxTexCenter textureCenter, bool keepResident,
+                                   unsigned int tileWidth, unsigned int tileHeight);
+    unsigned int gfxSetSelectedTile(unsigned int spriteId, unsigned int tileIndex);
+    unsigned int gfxGetSelectedTile(unsigned int spriteId);
+    unsigned int gfxGetTileCount(unsigned int spriteId);
 
     // Automatic Sprite Animation Functions
     bool          gfxCreateAnimation(stAnimateData animateData, bool replaceExisting);

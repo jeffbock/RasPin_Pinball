@@ -499,6 +499,13 @@ public:
     unsigned int m_sandboxDiceInstance[4];
     bool m_sandboxDiceLoaded;
 
+    // Tile-mapped sprite sandbox test variables
+    unsigned int m_sandboxTileSpriteId;
+    unsigned int m_sandboxTileAnimId;
+    unsigned int m_sandboxTileStartId;
+    unsigned int m_sandboxTileEndId;
+    bool m_sandboxTileLoaded;
+
     // Crystalwing animated 3D model test
     unsigned int m_sandboxWingModelId;
     unsigned int m_sandboxWingInstance;
