@@ -99,5 +99,5 @@ Prototype hardware shown, full machine in development.
 # License Guidelines
 -  TL;DR: The SW and all files are open source unless otherwise noted, and available to users for personal but not commercial projects.  Any contributions to the repo become available for all to use.  The original repo owner reserves the rights to use the code and all contributions for commercial use.  Hey - I might want to build and sell a few machines at some point... ;)  If you want to use the code for commercial purposes, then let's talk.
 
-- Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.  See more specific details and other license terms in the root of the project
+- Copyright (c) 2025-2026 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.  See more specific details and other license terms in the root of the project
 
