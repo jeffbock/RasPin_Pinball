@@ -471,9 +471,9 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId){
 
             renderU1 = (float)(col * tileW) / (float)baseW;
             renderU2 = (float)((col + 1) * tileW) / (float)baseW;
-            // OpenGL V is flipped: v2 is top (1-rowTop), v1 is bottom (1-rowBottom)
-            renderV2 = 1.0f - (float)(row * tileH) / (float)baseH;
-            renderV1 = 1.0f - (float)((row + 1) * tileH) / (float)baseH;
+            // Match default sprite convention: v1 is top (1-rowTop), v2 is bottom (1-rowBottom)
+            renderV1 = 1.0f - (float)(row * tileH) / (float)baseH;
+            renderV2 = 1.0f - (float)((row + 1) * tileH) / (float)baseH;
         }
 
         // Render the sprite quad

@@ -1422,33 +1422,18 @@ bool PBEngine::pbeLoadTestSandbox(){
     }
 
     // Load tile-mapped walking sprite
+    // Loading a sprite creates the base sprite plus its first instance (same id). We render
+    // and animate that instance directly by driving its selected tile each frame - no animation
+    // system is used (tile-specific animation routines will be added later).
     if (!m_sandboxTileLoaded) {
         m_sandboxTileSpriteId = gfxLoadTileSprite("WalkTiles", "src/user/resources/textures/walktiles.png",
                                                    GFX_PNG, GFX_UPPERLEFT, true, 32, 32);
         if (m_sandboxTileSpriteId != NOSPRITE) {
-            unsigned int tileCount = gfxGetTileCount(m_sandboxTileSpriteId);
-
-            // Create animated instance (replaces lower-right dice position)
-            m_sandboxTileAnimId = gfxInstanceSprite(m_sandboxTileSpriteId);
-            gfxSetXY(m_sandboxTileAnimId, 1750, 760, false);
-            gfxSetScaleFactor(m_sandboxTileAnimId, 3.0f, false);
-            gfxSetSelectedTile(m_sandboxTileAnimId, 0);
-
-            // Create start instance (tile 0) and end instance (last tile) for animation
-            m_sandboxTileStartId = gfxInstanceSprite(m_sandboxTileSpriteId);
-            gfxSetSelectedTile(m_sandboxTileStartId, 0);
-            gfxSetXY(m_sandboxTileStartId, 1750, 760, false);
-
-            m_sandboxTileEndId = gfxInstanceSprite(m_sandboxTileSpriteId);
-            gfxSetSelectedTile(m_sandboxTileEndId, tileCount > 0 ? tileCount - 1 : 0);
-            gfxSetXY(m_sandboxTileEndId, 1750, 760, false);
-
-            // Create tile animation: cycle through all tiles, 0.25s per tile, looping
-            stAnimateData tileAnim;
-            float totalTime = 0.25f * (float)tileCount;
-            gfxLoadAnimateDataShort(&tileAnim, m_sandboxTileAnimId, m_sandboxTileStartId, m_sandboxTileEndId,
-                                    ANIMATE_TILE_MASK, totalTime, false, GFX_RESTART, GFX_ANIM_NORMAL);
-            gfxCreateAnimation(tileAnim, true);
+            // Tile sprites anchor at the top-left corner, so place the top-left so the scaled
+            // 144px sprite (32px * 4.5) stays on-screen, centered in the lower-right quadrant.
+            gfxSetXY(m_sandboxTileSpriteId, 1583, 606, false);
+            gfxSetScaleFactor(m_sandboxTileSpriteId, 4.5f, false);
+            gfxSetSelectedTile(m_sandboxTileSpriteId, 0);
 
             m_sandboxTileLoaded = true;
         }
@@ -1493,11 +1478,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
 
         // Clean up tile-mapped sprite resources
         if (m_sandboxTileLoaded) {
-            gfxAnimateClear(m_sandboxTileAnimId);
             m_sandboxTileSpriteId = NOSPRITE;
-            m_sandboxTileAnimId = NOSPRITE;
-            m_sandboxTileStartId = NOSPRITE;
-            m_sandboxTileEndId = NOSPRITE;
             m_sandboxTileLoaded = false;
         }
 
@@ -1656,16 +1637,9 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
                     // Hide 3D dice when video stops
                     for (int i = 0; i < 3; i++)
                         pb3dSetInstanceVisible(m_sandboxDiceInstance[i], false);
-                    // Stop tile animation when video stops
-                    if (m_sandboxTileLoaded && gfxAnimateActive(m_sandboxTileAnimId)) {
-                        gfxAnimateClear(m_sandboxTileAnimId);
-                        // Recreate animation in inactive state for next play
-                        stAnimateData tileAnim;
-                        unsigned int tileCount = gfxGetTileCount(m_sandboxTileSpriteId);
-                        float totalTime = 0.25f * (float)tileCount;
-                        gfxLoadAnimateDataShort(&tileAnim, m_sandboxTileAnimId, m_sandboxTileStartId, m_sandboxTileEndId,
-                                                ANIMATE_TILE_MASK, totalTime, false, GFX_RESTART, GFX_ANIM_NORMAL);
-                        gfxCreateAnimation(tileAnim, true);
+                    // Reset walking sprite to its first tile when video stops
+                    if (m_sandboxTileLoaded) {
+                        gfxSetSelectedTile(m_sandboxTileSpriteId, 0);
                     }
                 } else {
                     // Fade out progress (1.0 to 0.0)
@@ -1704,12 +1678,12 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
 
             // Render tile-mapped walking sprite (lower-right, replaces dice 4)
             if (m_sandboxTileLoaded) {
-                // Start tile animation if not yet active
-                if (!gfxAnimateActive(m_sandboxTileAnimId)) {
-                    gfxAnimateRestart(m_sandboxTileAnimId, currentTick);
+                // Drive the walking animation directly: advance one tile every 250ms, looping.
+                unsigned int tileCount = gfxGetTileCount(m_sandboxTileSpriteId);
+                if (tileCount > 0) {
+                    gfxSetSelectedTile(m_sandboxTileSpriteId, (currentTick / 250) % tileCount);
                 }
-                gfxAnimateSprite(m_sandboxTileAnimId, currentTick);
-                gfxRenderSprite(m_sandboxTileAnimId);
+                gfxRenderSprite(m_sandboxTileSpriteId);
             }
             
             // Render video title over the video at the top, matching video alpha
@@ -2668,11 +2642,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
 
                     // Clean up tile-mapped sprite resources before exiting
                     if (m_sandboxTileLoaded) {
-                        gfxAnimateClear(m_sandboxTileAnimId);
                         m_sandboxTileSpriteId = NOSPRITE;
-                        m_sandboxTileAnimId = NOSPRITE;
-                        m_sandboxTileStartId = NOSPRITE;
-                        m_sandboxTileEndId = NOSPRITE;
                         m_sandboxTileLoaded = false;
                     }
 
