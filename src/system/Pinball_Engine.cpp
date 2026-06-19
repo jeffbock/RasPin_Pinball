@@ -1426,11 +1426,11 @@ bool PBEngine::pbeLoadTestSandbox(){
     // and animate that instance directly by driving its selected tile each frame - no animation
     // system is used (tile-specific animation routines will be added later).
     if (!m_sandboxTileLoaded) {
-        m_sandboxTileSpriteId = gfxLoadTileSprite("WalkTiles", "src/user/resources/textures/walktiles.png",
-                                                   GFX_PNG, GFX_UPPERLEFT, true, 32, 32);
+        m_sandboxTileSpriteId = gfxLoadTileSprite("GoblinTiles", "src/user/resources/textures/goblintilesmall.png",
+                                                   GFX_PNG, GFX_UPPERLEFT, true, 64, 64);
         if (m_sandboxTileSpriteId != NOSPRITE) {
             // Tile sprites anchor at the top-left corner, so place the top-left so the scaled
-            // 144px sprite (32px * 4.5) stays on-screen, centered in the lower-right quadrant.
+            // 288px sprite (64px * 4.5) stays on-screen, centered in the lower-right quadrant.
             gfxSetXY(m_sandboxTileSpriteId, 1583, 606, false);
             gfxSetScaleFactor(m_sandboxTileSpriteId, 4.5f, false);
             gfxSetSelectedTile(m_sandboxTileSpriteId, 0);
