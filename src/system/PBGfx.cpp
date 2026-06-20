@@ -471,9 +471,10 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId){
 
             renderU1 = (float)(col * tileW) / (float)baseW;
             renderU2 = (float)((col + 1) * tileW) / (float)baseW;
-            // Match default sprite convention: v1 is top (1-rowTop), v2 is bottom (1-rowBottom)
-            renderV1 = 1.0f - (float)(row * tileH) / (float)baseH;
-            renderV2 = 1.0f - (float)((row + 1) * tileH) / (float)baseH;
+            // V grows downward from the top of the texture (V=0 is the image top, matching the
+            // default full-sprite convention). Top edge -> V2 (top vertices), bottom edge -> V1.
+            renderV2 = (float)(row * tileH) / (float)baseH;
+            renderV1 = (float)((row + 1) * tileH) / (float)baseH;
         }
 
         // Render the sprite quad

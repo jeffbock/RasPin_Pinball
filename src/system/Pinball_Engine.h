@@ -649,6 +649,18 @@ public:
     int           m_inTowerDungeonPhase;
     unsigned long m_inTowerShrinkAnimStartTick; // Tick when shrink animation began
     bool          m_inTowerDoorJustOpened;      // True after door opened, waiting for shrink press
+    int           m_inTowerOpenedRow;           // Row of the door opened this visit (-1 = none)
+    int           m_inTowerOpenedCol;           // Col of the door opened this visit (-1 = none)
+
+    // InTower warrior enemy tile-sprites (drawn under the dice during the roll)
+    unsigned int  m_inTowerEnemyBaseId;         // Base tile sprite (warriortilesmall.png)
+    unsigned int  m_inTowerEnemyInstanceIds[20];// 20 renderable instances
+    bool          m_inTowerEnemyLoaded;         // True when sprite + instances are ready
+    bool          m_inTowerEnemiesActive;       // True while enemies should draw/animate
+    bool          m_inTowerEnemiesNeedSpawn;    // True = randomize positions/tiles next render
+    int           m_inTowerEnemyCount;          // Number of enemies to draw (0-20)
+    int           m_inTowerEnemyRemaining;      // Survivors after the roll (rest render as corpses)
+    unsigned long m_inTowerEnemyAnimTick;       // Tick of last 250ms animation step
 
     // Multi-player game state
     pbGameState m_playerStates[4];    // Array of 4 player states

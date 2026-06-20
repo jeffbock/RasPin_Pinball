@@ -178,6 +178,16 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_inTowerDungeonPhase = 0;
     m_inTowerShrinkAnimStartTick = 0;
     m_inTowerDoorJustOpened = false;
+    m_inTowerOpenedRow = -1;
+    m_inTowerOpenedCol = -1;
+    m_inTowerEnemyBaseId = NOSPRITE;
+    for (int i = 0; i < 20; i++) m_inTowerEnemyInstanceIds[i] = NOSPRITE;
+    m_inTowerEnemyLoaded = false;
+    m_inTowerEnemiesActive = false;
+    m_inTowerEnemiesNeedSpawn = false;
+    m_inTowerEnemyCount = 0;
+    m_inTowerEnemyRemaining = 0;
+    m_inTowerEnemyAnimTick = 0;
     m_RestartTable = true;
     
     // Extra ball video variables
@@ -1419,6 +1429,7 @@ bool PBEngine::pbeLoadTestSandbox(){
             
             m_sandboxDiceLoaded = true;
         }
+
     }
 
     // Load tile-mapped walking sprite
@@ -1426,14 +1437,21 @@ bool PBEngine::pbeLoadTestSandbox(){
     // and animate that instance directly by driving its selected tile each frame - no animation
     // system is used (tile-specific animation routines will be added later).
     if (!m_sandboxTileLoaded) {
-        m_sandboxTileSpriteId = gfxLoadTileSprite("GoblinTiles", "src/user/resources/textures/goblintilesmall.png",
-                                                   GFX_PNG, GFX_UPPERLEFT, true, 64, 64);
+        m_sandboxTileSpriteId = gfxLoadTileSprite("WarriorTiles", "src/user/resources/textures/warriortilesmall.png",
+                                                   GFX_PNG, GFX_UPPERLEFT, true, 256, 256);
         if (m_sandboxTileSpriteId != NOSPRITE) {
-            // Tile sprites anchor at the top-left corner, so place the top-left so the scaled
-            // 288px sprite (64px * 4.5) stays on-screen, centered in the lower-right quadrant.
-            gfxSetXY(m_sandboxTileSpriteId, 1583, 606, false);
-            gfxSetScaleFactor(m_sandboxTileSpriteId, 4.5f, false);
+            // Two 320px sprites (256px * 1.25) rendered side-by-side, equally spaced about the
+            // original X anchor (1563): the base instance (tiles 0-2) sits to the left and a
+            // second instance (tiles 3-5) to the right, with a small gap centered on 1563.
+            gfxSetXY(m_sandboxTileSpriteId, 1403, 606, false);
+            gfxSetScaleFactor(m_sandboxTileSpriteId, 1.25f, false);
             gfxSetSelectedTile(m_sandboxTileSpriteId, 0);
+
+            // Second instance renders the next row of tiles (3-5) just right of the old X anchor.
+            m_sandboxTileAnimId = gfxInstanceSprite(m_sandboxTileSpriteId);
+            gfxSetXY(m_sandboxTileAnimId, 1653, 606, false);
+            gfxSetScaleFactor(m_sandboxTileAnimId, 1.25f, false);
+            gfxSetSelectedTile(m_sandboxTileAnimId, 3);
 
             m_sandboxTileLoaded = true;
         }
@@ -1479,6 +1497,7 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
         // Clean up tile-mapped sprite resources
         if (m_sandboxTileLoaded) {
             m_sandboxTileSpriteId = NOSPRITE;
+            m_sandboxTileAnimId = NOSPRITE;
             m_sandboxTileLoaded = false;
         }
 
@@ -1637,9 +1656,10 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
                     // Hide 3D dice when video stops
                     for (int i = 0; i < 3; i++)
                         pb3dSetInstanceVisible(m_sandboxDiceInstance[i], false);
-                    // Reset walking sprite to its first tile when video stops
+                    // Reset walking sprites to their first tile when video stops
                     if (m_sandboxTileLoaded) {
                         gfxSetSelectedTile(m_sandboxTileSpriteId, 0);
+                        gfxSetSelectedTile(m_sandboxTileAnimId, 3);
                     }
                 } else {
                     // Fade out progress (1.0 to 0.0)
@@ -1676,14 +1696,14 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
                 gfxSetScaleFactor(m_defaultFontSpriteId, 1.0f, false);
             }
 
-            // Render tile-mapped walking sprite (lower-right, replaces dice 4)
+            // Render tile-mapped walking sprites (lower-right, replaces dice 4)
             if (m_sandboxTileLoaded) {
-                // Drive the walking animation directly: advance one tile every 250ms, looping.
-                unsigned int tileCount = gfxGetTileCount(m_sandboxTileSpriteId);
-                if (tileCount > 0) {
-                    gfxSetSelectedTile(m_sandboxTileSpriteId, (currentTick / 250) % tileCount);
-                }
+                // Drive both walking animations directly: each cycles its 3-tile set every 0.5s.
+                unsigned int frame = (currentTick / 500) % 3;
+                gfxSetSelectedTile(m_sandboxTileSpriteId, frame);       // tiles 0-2 (left)
                 gfxRenderSprite(m_sandboxTileSpriteId);
+                gfxSetSelectedTile(m_sandboxTileAnimId, 3 + frame);     // tiles 3-5 (right)
+                gfxRenderSprite(m_sandboxTileAnimId);
             }
             
             // Render video title over the video at the top, matching video alpha
@@ -2643,6 +2663,7 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                     // Clean up tile-mapped sprite resources before exiting
                     if (m_sandboxTileLoaded) {
                         m_sandboxTileSpriteId = NOSPRITE;
+                        m_sandboxTileAnimId = NOSPRITE;
                         m_sandboxTileLoaded = false;
                     }
 
