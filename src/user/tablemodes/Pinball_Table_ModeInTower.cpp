@@ -329,6 +329,14 @@ bool PBEngine::pbeLoadInTower() {
         }
     }
 
+    // Ensure the slash death-overlay sprites are resident.  These are loaded by
+    // the main table state; gfxLoadSprite is idempotent by name, so these calls
+    // just return the existing IDs (no new instances) when already loaded.
+    m_PBTBLSlash1Id = gfxLoadSprite("Slash1", "src/user/resources/textures/slash1.png",
+                                    GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    m_PBTBLSlash2Id = gfxLoadSprite("Slash2", "src/user/resources/textures/slash2.png",
+                                    GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+
     m_inTowerLoaded = true;
     return (true);
 }
@@ -830,7 +838,9 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
             for (int r = 5; r >= 1; r--) {
                 for (int i = 0; i < m_inTowerEnemyCount && i < 20; i++) {
                     if (kEnemyFillOrder[i].row == r && m_inTowerEnemyInstanceIds[i] != NOSPRITE) {
-                        if (i >= m_inTowerEnemyRemaining) {
+                        bool         dying = (i >= m_inTowerEnemyRemaining);
+                        unsigned int a     = 255;
+                        if (dying) {
                             gfxSetSelectedTile(m_inTowerEnemyInstanceIds[i], 5);
                             float fade = 1.0f;
                             if (currentTick >= m_inTowerD20StopTick) {
@@ -839,10 +849,33 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
                             }
                             // PNG sprites modulate alpha via the vertex colour, not
                             // textureAlpha, so fade through gfxSetColor.
-                            unsigned int a = (unsigned int)(fade * 255.0f);
+                            a = (unsigned int)(fade * 255.0f);
                             gfxSetColor(m_inTowerEnemyInstanceIds[i], 255, 255, 255, a);
                         }
                         gfxRenderSprite(m_inTowerEnemyInstanceIds[i]);
+
+                        // Slash overlay on dying enemies: draw the per-enemy slash
+                        // variant (slash1/slash2) over the corpse, fading at the
+                        // same rate.  Reuses the main-table base sprite IDs.
+                        if (dying) {
+                            unsigned int slashId = (m_inTowerEnemySlashType[i] == 0)
+                                                   ? m_PBTBLSlash1Id : m_PBTBLSlash2Id;
+                            if (slashId != NOSPRITE) {
+                                static constexpr float kSlashScale = 0.55f; // ~half the enemy size
+                                int ex, ey;
+                                cellXY(kEnemyFillOrder[i], ex, ey);
+                                // Enemy anchor is GFX_CENTER; slash anchor is
+                                // GFX_UPPERLEFT, so offset by half the scaled 128px
+                                // texture to centre it over the enemy.
+                                int half = (int)(128.0f * kSlashScale * 0.5f);
+                                gfxSetScaleFactor(slashId, kSlashScale, false);
+                                gfxSetColor(slashId, 255, 255, 255, a);
+                                gfxRenderSprite(slashId, ex - half, ey - half);
+                                // Restore the load-time scale so Main mode's shield
+                                // slash (same base sprite) renders unaffected.
+                                gfxSetScaleFactor(slashId, 0.6f, false);
+                            }
+                        }
                     }
                 }
             }
@@ -1023,6 +1056,11 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
                     int remaining = m_inTowerEnemyCount - m_inTowerD20Value;
                     if (remaining < 0) remaining = 0;
                     m_inTowerEnemyRemaining = remaining;
+                    // Pick a slash overlay variant (slash1/slash2) for each enemy
+                    // marked for death, fixed now so it doesn't flicker during fade.
+                    for (int i = remaining; i < m_inTowerEnemyCount && i < 20; i++) {
+                        m_inTowerEnemySlashType[i] = (unsigned int)(rand() % 2);
+                    }
                 }
                 else {
                     m_inTowerD20RollState        = 0;

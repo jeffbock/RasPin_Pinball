@@ -661,6 +661,7 @@ public:
     int           m_inTowerEnemyCount;          // Number of enemies to draw (0-20)
     int           m_inTowerEnemyRemaining;      // Survivors after the roll (rest render as corpses)
     unsigned long m_inTowerEnemyAnimTick;       // Tick of last 250ms animation step
+    unsigned int  m_inTowerEnemySlashType[20];  // Per-enemy slash variant (0=slash1,1=slash2) for the death overlay
 
     // Multi-player game state
     pbGameState m_playerStates[4];    // Array of 4 player states
