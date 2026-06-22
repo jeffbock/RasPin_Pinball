@@ -239,7 +239,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
                 }
                 
                 // Grand Champion score on next line in gold
-                std::string gcScoreText = std::to_string(m_saveFileData.highScores[0].highScore);
+                std::string gcScoreText = std::to_string(m_saveFileData.highScores[0].highScore) + " (L:" + std::to_string(m_saveFileData.highScores[0].dungeonLevel) + " F:" + std::to_string(m_saveFileData.highScores[0].dungeonFloor) + ")";
                 if (gfxAnimateActive(m_StartMenuFontId)) {
                     gfxRenderString(m_StartMenuFontId, gcScoreText, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 190, 10, GFX_TEXTCENTER);
                 } else {
@@ -251,7 +251,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
             // Render remaining high scores (2-10) with numbered format - reduced size to fit all entries
             gfxSetScaleFactor(m_StartMenuFontId, 0.55, false);
             for (int i = 1; i < NUM_HIGHSCORES; i++) {
-                std::string scoreText = std::to_string(m_saveFileData.highScores[i].highScore);
+                std::string scoreText = std::to_string(m_saveFileData.highScores[i].highScore) + " (L:" + std::to_string(m_saveFileData.highScores[i].dungeonLevel) + " F:" + std::to_string(m_saveFileData.highScores[i].dungeonFloor) + ")";
                 std::string rankText = std::to_string(i + 1) + ":";
                 std::string initialsText = m_saveFileData.highScores[i].playerInitials;
                 int yPos = ACTIVEDISPY + 280 + ((i - 1) * 50);

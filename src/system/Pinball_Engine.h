@@ -258,9 +258,11 @@ struct stNeoPixelSequenceInfo {
 struct stHighScoreData {
     unsigned long highScore;
     char playerInitials[4];  // Fixed-size null-terminated array; POD-safe for binary serialization
+    int dungeonLevel;        // Tower level achieved
+    int dungeonFloor;        // Highest floor achieved
     
     // Default constructor for safe initialization
-    stHighScoreData() : highScore(0), playerInitials{} {}
+    stHighScoreData() : highScore(0), playerInitials{}, dungeonLevel(0), dungeonFloor(0) {}
 };
 
 #define NUM_HIGHSCORES 10

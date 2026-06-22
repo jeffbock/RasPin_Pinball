@@ -29,8 +29,10 @@ struct GameEndQualifier {
     int playerIndex;           // Player index (0-3)
     unsigned long score;       // Player's final score
     char initials[3];          // Initials entered by player (' ', 'A'-'Z', '0'-'9')
+    int dungeonLevel;          // Tower level achieved
+    int dungeonFloor;          // Highest floor achieved
     
-    GameEndQualifier() : playerIndex(-1), score(0) {
+    GameEndQualifier() : playerIndex(-1), score(0), dungeonLevel(0), dungeonFloor(0) {
         initials[0] = 'A';
         initials[1] = 'A';
         initials[2] = 'A';
