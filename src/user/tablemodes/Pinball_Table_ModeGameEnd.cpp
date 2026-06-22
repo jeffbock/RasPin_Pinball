@@ -168,9 +168,10 @@ bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTic
         }
     }
     
-    // Clear to black and render right-panel status icons and other player scores at the bottom.
-    // Ball indicator and status message text are suppressed since the game is over.
-    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    // Render right-panel status icons and other player scores at the bottom.
+    // Screen clear and star background are handled by the main dispatch loop
+    // (pbeRenderGameScreen). Ball indicator and status message text are
+    // suppressed since the game is over.
     pbeRenderPlayerScores(currentTick, lastTick, false);
     pbeRenderStatus(currentTick, lastTick);
     

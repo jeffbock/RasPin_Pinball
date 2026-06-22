@@ -775,6 +775,7 @@ private:
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick, PBTBLMainScreenState subScreenState);
+    void pbeRenderStarBackground();  // Renders the shared star background (loads it on demand)
     bool pbeRenderMainScreenBase(unsigned long currentTick, unsigned long lastTick);  // Always renders: background, scores, status
     bool pbeRenderMainScreenNormal(unsigned long currentTick, unsigned long lastTick); // Normal score/message display
     bool pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned long lastTick); // Extra ball video display

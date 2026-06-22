@@ -106,6 +106,15 @@ bool PBEngine::pbeLoadMainScreen(){
 // PBTBL_MAIN: Render Functions
 // ========================================================================
 
+// Renders the shared star background. Ensures the main-screen resources
+// (which own the star sprite) are loaded before drawing. This is invoked
+// from the main render dispatch loop so the background appears consistently
+// across the gameplay and transition screens.
+void PBEngine::pbeRenderStarBackground(){
+    if (!pbeLoadMainScreen()) return;
+    gfxRenderSprite(m_PBTBLStarBackgroundId, ACTIVEDISPX, ACTIVEDISPY);
+}
+
 // Renders the base main screen elements that are always present
 // (background, player scores, status icons, status text)
 bool PBEngine::pbeRenderMainScreenBase(unsigned long currentTick, unsigned long lastTick){
@@ -115,11 +124,9 @@ bool PBEngine::pbeRenderMainScreenBase(unsigned long currentTick, unsigned long 
         return (false);
     }
 
-    // Clear to black background
-    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
-
-    // Render star background at 50% alpha
-    gfxRenderSprite(m_PBTBLStarBackgroundId, ACTIVEDISPX, ACTIVEDISPY);
+    // Note: screen clear and star background are handled by the main render
+    // dispatch loop (pbeRenderGameScreen) so they apply consistently across
+    // the gameplay and transition screens.
 
     // Render all player scores (skip main score during ball saved, inn open, key obtained, and in-tower screens)
     {
