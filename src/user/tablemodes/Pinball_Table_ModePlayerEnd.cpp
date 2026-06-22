@@ -43,8 +43,8 @@ bool PBEngine::pbeRenderPlayerEnd(unsigned long currentTick, unsigned long lastT
 
     PBTBLPlayerEndState currentState = static_cast<PBTBLPlayerEndState>(m_tableSubScreenState);
 
-    // Clear to black and render side-panel scores and status icons
-    gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+    // Screen clear and star background are rendered by the main dispatch loop
+    // (pbeRenderGameScreen). Render side-panel scores and status icons on top.
     pbeRenderPlayerScores(currentTick, lastTick, false);
     pbeRenderStatus(currentTick, lastTick);
 

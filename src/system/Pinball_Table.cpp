@@ -57,6 +57,21 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
     PBTableState currentScreenState = pbeGetCurrentScreenState();
     int currentSubScreenState = pbeGetCurrentSubScreenState();
 
+    // Shared backdrop: clear to black and draw the star background for the
+    // gameplay and transition screens so it always appears behind the main
+    // screen, player transition screens, and the high score entry screen.
+    switch (currentScreenState) {
+        case PBTableState::PBTBL_MAIN:
+        case PBTableState::PBTBL_PLAYEREND:
+        case PBTableState::PBTBL_GAMEEND:
+        case PBTableState::PBTBL_INTOWER:
+            gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
+            pbeRenderStarBackground();
+            break;
+        default:
+            break;
+    }
+
     switch (currentScreenState) {
         case PBTableState::PBTBL_INIT:
             success = pbeRenderInitScreen(currentTick, lastTick);

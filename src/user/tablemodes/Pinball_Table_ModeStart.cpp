@@ -222,39 +222,49 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
 
             // Render Grand Champion section (first high score)
             {
-                // "Grand Champion" title in gold
+                // "Grand Champion" title in gold (moved up toward top of screen)
                 if (gfxAnimateActive(m_StartMenuFontId)) {
-                    gfxRenderString(m_StartMenuFontId, "Grand Champion", (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 55, 10, GFX_TEXTCENTER);
+                    gfxRenderString(m_StartMenuFontId, "Grand Champion", (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 20, 10, GFX_TEXTCENTER);
                 } else {
                     gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
-                    gfxRenderShadowString(m_StartMenuFontId, "Grand Champion", (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 55, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+                    gfxRenderShadowString(m_StartMenuFontId, "Grand Champion", (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 20, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
                 }
 
                 // Grand Champion initials in gold
                 if (gfxAnimateActive(m_StartMenuFontId)) {
-                    gfxRenderString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 125, 10, GFX_TEXTCENTER);
+                    gfxRenderString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 90, 10, GFX_TEXTCENTER);
                 } else {
                     gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
-                    gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 125, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+                    gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 90, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
                 }
-                
+
                 // Grand Champion score on next line in gold
                 std::string gcScoreText = std::to_string(m_saveFileData.highScores[0].highScore);
                 if (gfxAnimateActive(m_StartMenuFontId)) {
-                    gfxRenderString(m_StartMenuFontId, gcScoreText, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 190, 10, GFX_TEXTCENTER);
+                    gfxRenderString(m_StartMenuFontId, gcScoreText, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 160, 10, GFX_TEXTCENTER);
                 } else {
                     gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
-                    gfxRenderShadowString(m_StartMenuFontId, gcScoreText, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 190, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+                    gfxRenderShadowString(m_StartMenuFontId, gcScoreText, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 160, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
+                }
+
+                // Grand Champion level/floor on its own row in gold (same size as non-grand champion text)
+                gfxSetScaleFactor(m_StartMenuFontId, 0.55, false);
+                std::string gcLevelText = "Level: " + std::to_string(m_saveFileData.highScores[0].dungeonLevel) + " - Floor: " + std::to_string(m_saveFileData.highScores[0].dungeonFloor);
+                if (gfxAnimateActive(m_StartMenuFontId)) {
+                    gfxRenderString(m_StartMenuFontId, gcLevelText, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 225, 10, GFX_TEXTCENTER);
+                } else {
+                    gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
+                    gfxRenderShadowString(m_StartMenuFontId, gcLevelText, (PB_SCREENWIDTH/2) + 20, ACTIVEDISPY + 225, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
                 }
             }
 
             // Render remaining high scores (2-10) with numbered format - reduced size to fit all entries
             gfxSetScaleFactor(m_StartMenuFontId, 0.55, false);
             for (int i = 1; i < NUM_HIGHSCORES; i++) {
-                std::string scoreText = std::to_string(m_saveFileData.highScores[i].highScore);
+                std::string scoreText = std::to_string(m_saveFileData.highScores[i].highScore) + " (L:" + std::to_string(m_saveFileData.highScores[i].dungeonLevel) + " F:" + std::to_string(m_saveFileData.highScores[i].dungeonFloor) + ")";
                 std::string rankText = std::to_string(i + 1) + ":";
                 std::string initialsText = m_saveFileData.highScores[i].playerInitials;
-                int yPos = ACTIVEDISPY + 280 + ((i - 1) * 50);
+                int yPos = ACTIVEDISPY + 290 + ((i - 1) * 50);
 
                 if (gfxAnimateActive(m_StartMenuFontId)) {
                     gfxRenderString(m_StartMenuFontId, rankText, (PB_SCREENWIDTH/2) - 195, yPos, 10, GFX_TEXTRIGHT);

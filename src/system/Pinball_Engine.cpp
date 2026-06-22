@@ -361,6 +361,8 @@ void PBEngine::resetHighScores(){
         m_saveFileData.highScores[i].highScore = 0;
         strncpy(m_saveFileData.highScores[i].playerInitials, "JEF", 3);
         m_saveFileData.highScores[i].playerInitials[3] = '\0';
+        m_saveFileData.highScores[i].dungeonLevel = 0;
+        m_saveFileData.highScores[i].dungeonFloor = 0;
     }
 }
 
@@ -1879,7 +1881,7 @@ bool PBEngine::pbeRenderHighScores(unsigned long currentTick, unsigned long last
     gfxRenderShadowString(m_StartMenuFontId, m_saveFileData.highScores[0].playerInitials, centerX, 230, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
 
     gfxSetScaleFactor(m_StartMenuFontId, 1.0, false);
-    std::string gcScoreText = std::to_string(m_saveFileData.highScores[0].highScore);
+    std::string gcScoreText = std::to_string(m_saveFileData.highScores[0].highScore) + " (L:" + std::to_string(m_saveFileData.highScores[0].dungeonLevel) + " F:" + std::to_string(m_saveFileData.highScores[0].dungeonFloor) + ")";
     gfxRenderShadowString(m_StartMenuFontId, gcScoreText, centerX, 315, 10, GFX_TEXTCENTER, 0, 0, 0, 255, 3);
 
     // Render remaining high scores (2-10) in white
@@ -1889,7 +1891,7 @@ bool PBEngine::pbeRenderHighScores(unsigned long currentTick, unsigned long last
     for (int i = 1; i < NUM_HIGHSCORES; i++) {
         std::string rankText = std::to_string(i + 1) + ":";
         std::string initialsText = m_saveFileData.highScores[i].playerInitials;
-        std::string scoreText = std::to_string(m_saveFileData.highScores[i].highScore);
+        std::string scoreText = std::to_string(m_saveFileData.highScores[i].highScore) + " (L:" + std::to_string(m_saveFileData.highScores[i].dungeonLevel) + " F:" + std::to_string(m_saveFileData.highScores[i].dungeonFloor) + ")";
         int yPos = scoreStartY + ((i - 1) * scoreSpacing);
 
         gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);

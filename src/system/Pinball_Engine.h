@@ -258,9 +258,11 @@ struct stNeoPixelSequenceInfo {
 struct stHighScoreData {
     unsigned long highScore;
     char playerInitials[4];  // Fixed-size null-terminated array; POD-safe for binary serialization
+    int dungeonLevel;        // Tower level achieved
+    int dungeonFloor;        // Highest floor achieved
     
     // Default constructor for safe initialization
-    stHighScoreData() : highScore(0), playerInitials{} {}
+    stHighScoreData() : highScore(0), playerInitials{}, dungeonLevel(0), dungeonFloor(0) {}
 };
 
 #define NUM_HIGHSCORES 10
@@ -773,6 +775,7 @@ private:
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick, PBTBLMainScreenState subScreenState);
+    void pbeRenderStarBackground();  // Renders the shared star background (loads it on demand)
     bool pbeRenderMainScreenBase(unsigned long currentTick, unsigned long lastTick);  // Always renders: background, scores, status
     bool pbeRenderMainScreenNormal(unsigned long currentTick, unsigned long lastTick); // Normal score/message display
     bool pbeRenderMainScreenExtraBall(unsigned long currentTick, unsigned long lastTick); // Extra ball video display
