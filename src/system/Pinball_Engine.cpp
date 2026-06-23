@@ -93,6 +93,13 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_sandboxDiceInstance[2] = 0;
     m_sandboxDiceInstance[3] = 0;
 
+    // Initialize tile-mapped sprite sandbox variables
+    m_sandboxTileSpriteId = NOSPRITE;
+    m_sandboxTileAnimId = NOSPRITE;
+    m_sandboxTileStartId = NOSPRITE;
+    m_sandboxTileEndId = NOSPRITE;
+    m_sandboxTileLoaded = false;
+
     // Initialize crystalwing 3D animation test
     m_sandboxWingModelId = 0;
     m_sandboxWingInstance = 0;
@@ -171,6 +178,16 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_inTowerDungeonPhase = 0;
     m_inTowerShrinkAnimStartTick = 0;
     m_inTowerDoorJustOpened = false;
+    m_inTowerOpenedRow = -1;
+    m_inTowerOpenedCol = -1;
+    m_inTowerEnemyBaseId = NOSPRITE;
+    for (int i = 0; i < 20; i++) m_inTowerEnemyInstanceIds[i] = NOSPRITE;
+    m_inTowerEnemyLoaded = false;
+    m_inTowerEnemiesActive = false;
+    m_inTowerEnemiesNeedSpawn = false;
+    m_inTowerEnemyCount = 0;
+    m_inTowerEnemyRemaining = 0;
+    m_inTowerEnemyAnimTick = 0;
     m_RestartTable = true;
     
     // Extra ball video variables
@@ -1407,28 +1424,36 @@ bool PBEngine::pbeLoadTestSandbox(){
             anim3.startTick = currentTick;
             pb3dCreateAnimation(anim3, true);
             
-            // DICE 4 â€” JUMPRANDOM + RESTART (shaking dice + random Z jitter)
-            // Uses pixel-space start/end so the jitter offset is in pixels (Â±15px)
-            st3DAnimateData anim4 = {};
-            anim4.animateInstanceId = m_sandboxDiceInstance[3];
-            anim4.typeMask = ANIM3D_POSX_MASK | ANIM3D_POSY_MASK | ANIM3D_POSZ_MASK | ANIM3D_ROTX_MASK | ANIM3D_ROTY_MASK | ANIM3D_ROTZ_MASK | ANIM3D_SCALE_MASK;
-            anim4.animType = GFX_ANIM_JUMPRANDOM;
-            anim4.loop = GFX_RESTART;
-            anim4.usePxCoords = true;
-            anim4.startPxX = 1750.0f;  anim4.endPxX = 1765.0f;   // 15px jitter
-            anim4.startPxY =  760.0f;  anim4.endPxY =  745.0f;
-            anim4.startPosZ = 0.0f;    anim4.endPosZ = -4.5f;     // random Z between 0 and -4.5
-            anim4.startRotX = 0.0f;  anim4.endRotX = 30.0f;
-            anim4.startRotY = 0.0f;  anim4.endRotY = 30.0f;
-            anim4.startRotZ = 0.0f;  anim4.endRotZ = 30.0f;
-            anim4.startScale = 0.7f; anim4.endScale = 1.1f;
-            anim4.randomPercent = 0.5f;
-            anim4.animateTimeSec = 0.2f;
-            anim4.isActive = true;
-            anim4.startTick = currentTick;
-            pb3dCreateAnimation(anim4, true);
+            // Dice 4 position (lower-right) replaced by tile-mapped sprite
+            pb3dSetInstanceVisible(m_sandboxDiceInstance[3], false);
             
             m_sandboxDiceLoaded = true;
+        }
+
+    }
+
+    // Load tile-mapped walking sprite
+    // Loading a sprite creates the base sprite plus its first instance (same id). We render
+    // and animate that instance directly by driving its selected tile each frame - no animation
+    // system is used (tile-specific animation routines will be added later).
+    if (!m_sandboxTileLoaded) {
+        m_sandboxTileSpriteId = gfxLoadTileSprite("WarriorTiles", "src/user/resources/textures/warriortilesmall.png",
+                                                   GFX_PNG, GFX_UPPERLEFT, true, 256, 256);
+        if (m_sandboxTileSpriteId != NOSPRITE) {
+            // Two 320px sprites (256px * 1.25) rendered side-by-side, equally spaced about the
+            // original X anchor (1563): the base instance (tiles 0-2) sits to the left and a
+            // second instance (tiles 3-5) to the right, with a small gap centered on 1563.
+            gfxSetXY(m_sandboxTileSpriteId, 1403, 606, false);
+            gfxSetScaleFactor(m_sandboxTileSpriteId, 1.25f, false);
+            gfxSetSelectedTile(m_sandboxTileSpriteId, 0);
+
+            // Second instance renders the next row of tiles (3-5) just right of the old X anchor.
+            m_sandboxTileAnimId = gfxInstanceSprite(m_sandboxTileSpriteId);
+            gfxSetXY(m_sandboxTileAnimId, 1653, 606, false);
+            gfxSetScaleFactor(m_sandboxTileAnimId, 1.25f, false);
+            gfxSetSelectedTile(m_sandboxTileAnimId, 3);
+
+            m_sandboxTileLoaded = true;
         }
     }
 
@@ -1467,6 +1492,13 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
             if (m_sandboxD20ModelId) pb3dUnloadModel(m_sandboxD20ModelId);
             m_sandboxD20ModelId = 0;
             m_sandboxDiceLoaded = false;
+        }
+
+        // Clean up tile-mapped sprite resources
+        if (m_sandboxTileLoaded) {
+            m_sandboxTileSpriteId = NOSPRITE;
+            m_sandboxTileAnimId = NOSPRITE;
+            m_sandboxTileLoaded = false;
         }
 
         // Clean up crystalwing animated model
@@ -1622,8 +1654,13 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
                     m_videoFadingOut = false;
                     m_sandboxVideoPlayer->pbvpStop();
                     // Hide 3D dice when video stops
-                    for (int i = 0; i < 4; i++)
+                    for (int i = 0; i < 3; i++)
                         pb3dSetInstanceVisible(m_sandboxDiceInstance[i], false);
+                    // Reset walking sprites to their first tile when video stops
+                    if (m_sandboxTileLoaded) {
+                        gfxSetSelectedTile(m_sandboxTileSpriteId, 0);
+                        gfxSetSelectedTile(m_sandboxTileAnimId, 3);
+                    }
                 } else {
                     // Fade out progress (1.0 to 0.0)
                     currentVideoAlpha = 1.0f - fadeProgress;
@@ -1634,17 +1671,17 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
             // Render the video sprite
             m_sandboxVideoPlayer->pbvpRender();
             
-            // Render 3D dice around the video if loaded
+            // Render 3D dice around the video if loaded (3 dice - lower-right replaced by tile sprite)
             if (m_sandboxDiceLoaded) {
                 // Show dice at full opacity while video plays
-                for (int i = 0; i < 4; i++) {
+                for (int i = 0; i < 3; i++) {
                     pb3dSetInstanceVisible(m_sandboxDiceInstance[i], true);
                     pb3dSetInstanceAlpha(m_sandboxDiceInstance[i], 1.0f);
                 }
                 
                 // Render 3D dice (animations updated once per frame above)
                 pb3dBegin();
-                for (int i = 0; i < 4; i++) {
+                for (int i = 0; i < 3; i++) {
                     pb3dRenderInstance(m_sandboxDiceInstance[i]);
                 }
                 pb3dEnd();
@@ -1655,8 +1692,18 @@ bool PBEngine::pbeRenderTestSandbox(unsigned long currentTick, unsigned long las
                 gfxRenderShadowString(m_defaultFontSpriteId, "NORMAL+REVERSE",  195,  440, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
                 gfxRenderShadowString(m_defaultFontSpriteId, "ACCELERATE",      1725, 440, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
                 gfxRenderShadowString(m_defaultFontSpriteId, "FADE IN/OUT",      195,  910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
-                gfxRenderShadowString(m_defaultFontSpriteId, "JUMPRANDOM",      1725, 910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
+                gfxRenderShadowString(m_defaultFontSpriteId, "TILE ANIM",       1725, 910, 1, GFX_TEXTCENTER, 0, 0, 0, labelAlpha, 1);
                 gfxSetScaleFactor(m_defaultFontSpriteId, 1.0f, false);
+            }
+
+            // Render tile-mapped walking sprites (lower-right, replaces dice 4)
+            if (m_sandboxTileLoaded) {
+                // Drive both walking animations directly: each cycles its 3-tile set every 0.5s.
+                unsigned int frame = (currentTick / 500) % 3;
+                gfxSetSelectedTile(m_sandboxTileSpriteId, frame);       // tiles 0-2 (left)
+                gfxRenderSprite(m_sandboxTileSpriteId);
+                gfxSetSelectedTile(m_sandboxTileAnimId, 3 + frame);     // tiles 3-5 (right)
+                gfxRenderSprite(m_sandboxTileAnimId);
             }
             
             // Render video title over the video at the top, matching video alpha
@@ -2611,6 +2658,13 @@ void PBEngine::pbeUpdateState(stInputMessage inputMessage){
                         if (m_sandboxD20ModelId) pb3dUnloadModel(m_sandboxD20ModelId);
                         m_sandboxD20ModelId = 0;
                         m_sandboxDiceLoaded = false;
+                    }
+
+                    // Clean up tile-mapped sprite resources before exiting
+                    if (m_sandboxTileLoaded) {
+                        m_sandboxTileSpriteId = NOSPRITE;
+                        m_sandboxTileAnimId = NOSPRITE;
+                        m_sandboxTileLoaded = false;
                     }
 
                     // Clean up crystalwing animated model before exiting

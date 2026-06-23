@@ -181,20 +181,28 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
     }
 
     // If the sprite is a text sprite (and the texture load worked), load the JSON UV map from the text file into an internal map
+    // For GFX_SPRITEMAP with tile metadata, skip JSON and compute tile count from dimensions
     if (((spriteInfo.mapType == GFX_TEXTMAP) || (spriteInfo.mapType == GFX_SPRITEMAP)) && spriteInfo.useTexture) {
-        // Create a file name that has the same name as filename as the texutre (minus the extension), and change extension to .json
-        std::string jsonFileName = spriteInfo.textureFileName;
-        jsonFileName = jsonFileName.substr(0, jsonFileName.find_last_of(".")) + ".json";
+        
+        if (spriteInfo.mapType == GFX_SPRITEMAP && spriteInfo.tileWidth > 0 && spriteInfo.tileHeight > 0) {
+            // Tile-mapped sprite: compute tile count from texture and tile dimensions
+            unsigned int cols = spriteInfo.baseWidth / spriteInfo.tileWidth;
+            unsigned int rows = spriteInfo.baseHeight / spriteInfo.tileHeight;
+            spriteInfo.tileCount = cols * rows;
+        }
+        else if (spriteInfo.mapType == GFX_TEXTMAP) {
+            // Create a file name that has the same name as filename as the texutre (minus the extension), and change extension to .json
+            std::string jsonFileName = spriteInfo.textureFileName;
+            jsonFileName = jsonFileName.substr(0, jsonFileName.find_last_of(".")) + ".json";
 
-        json uvJson;
+            json uvJson;
 
-        // Use Json.hpp functions to load the JSON file and put it in a map structure with the key being the character
-        std::ifstream jsonFile(jsonFileName);
-        jsonFile >> uvJson;
+            // Use Json.hpp functions to load the JSON file and put it in a map structure with the key being the character
+            std::ifstream jsonFile(jsonFileName);
+            jsonFile >> uvJson;
 
-        unsigned int test = 0;
+            unsigned int test = 0;
 
-        if (spriteInfo.mapType == GFX_TEXTMAP){
             // Go through uvJson, and place the values in the m_textMapList map
             for (auto it = uvJson.begin(); it != uvJson.end(); ++it) {
                 std::string charString = it.key();
@@ -213,31 +221,10 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
 
             // Set the width of space to be the width of the letter "j"
             m_textMapList[spriteId][" "].width = m_textMapList[spriteId]["j"].width;
+
+            // Release the json file
+            jsonFile.close();
         }
-        else {
-            // Go through uvJson, and place the values in the m_spriteMapList map
-            // This path is not currently implemented, but would be used for animated sprites
-            // Need to change the stuctures, key to integer and come up with a way to generate the JSON file
-            /*
-            for (auto it = uvJson.begin(); it != uvJson.end(); ++it) {
-                auto spriteOrder = it.key();
-
-                stTextMapData textMapData;
-
-                textMapData.width = uvJson[spriteOrder]["width"];
-                textMapData.height = uvJson[spriteOrder]["height"];
-                textMapData.U1 = uvJson[spriteOrder]["u1"];
-                textMapData.V1 = uvJson[spriteOrder]["v1"];
-                textMapData.U2 = uvJson[spriteOrder]["u2"];
-                textMapData.V2 = uvJson[spriteOrder]["v2"];
-                
-                m_spriteMapList[spriteId][] = textMapData;
-            }
-            */
-        } 
-
-        // Release the json file
-        jsonFile.close();
     }
     
     // Only set isLoaded if it's a texture sprite and the texture was loaded successfully
@@ -264,6 +251,13 @@ unsigned int PBGfx::gfxSysLoadSprite(stSpriteInfo spriteInfo, bool bSystem) {
     instance.rotateDegrees = 0.0f;
     instance.updateBoundingBox = false;
     instance.boundingBox = {0, 0, 0, 0};
+    instance.selectedTile = 0;
+
+    // For tile-mapped sprites, default instance size to tile dimensions
+    if (spriteInfo.mapType == GFX_SPRITEMAP && spriteInfo.tileWidth > 0 && spriteInfo.tileHeight > 0) {
+        instance.width = spriteInfo.tileWidth;
+        instance.height = spriteInfo.tileHeight;
+    }
 
     m_instanceList[spriteId] = instance;
 
@@ -284,6 +278,7 @@ unsigned int PBGfx::gfxInstanceSprite (unsigned int parentSpriteId, int x, int y
     instance.rotateDegrees = rotateDegrees;
     instance.updateBoundingBox = false;
     instance.boundingBox = {0, 0, 0, 0};
+    instance.selectedTile = 0;
 
     return (gfxInstanceSprite (parentSpriteId, instance));
    
@@ -361,6 +356,9 @@ unsigned int PBGfx::gfxLoadSprite(const std::string& spriteName, const std::stri
     spriteInfo.baseHeight = 0; // Default value
     spriteInfo.glTextureId = 0; // Default value
     spriteInfo.isLoaded = false; // Default value
+    spriteInfo.tileWidth = 0;
+    spriteInfo.tileHeight = 0;
+    spriteInfo.tileCount = 0;
     
     return gfxLoadSprite(spriteInfo);
 }
@@ -448,8 +446,39 @@ bool PBGfx::gfxRenderSprite(unsigned int spriteId){
             }
         }
 
+        // For tile-mapped sprites, compute UVs from the selected tile
+        float renderU1 = it->second.u1;
+        float renderV1 = it->second.v1;
+        float renderU2 = it->second.u2;
+        float renderV2 = it->second.v2;
+
+        if (m_spriteList[it->second.parentSpriteId].mapType == GFX_SPRITEMAP &&
+            m_spriteList[it->second.parentSpriteId].tileWidth > 0 &&
+            m_spriteList[it->second.parentSpriteId].tileHeight > 0) {
+            
+            unsigned int tileW = m_spriteList[it->second.parentSpriteId].tileWidth;
+            unsigned int tileH = m_spriteList[it->second.parentSpriteId].tileHeight;
+            unsigned int baseW = m_spriteList[it->second.parentSpriteId].baseWidth;
+            unsigned int baseH = m_spriteList[it->second.parentSpriteId].baseHeight;
+            unsigned int tileCount = m_spriteList[it->second.parentSpriteId].tileCount;
+            unsigned int cols = baseW / tileW;
+
+            unsigned int tile = it->second.selectedTile;
+            if (tile >= tileCount) tile = 0;
+
+            unsigned int col = tile % cols;
+            unsigned int row = tile / cols;
+
+            renderU1 = (float)(col * tileW) / (float)baseW;
+            renderU2 = (float)((col + 1) * tileW) / (float)baseW;
+            // V grows downward from the top of the texture (V=0 is the image top, matching the
+            // default full-sprite convention). Top edge -> V2 (top vertices), bottom edge -> V1.
+            renderV2 = (float)(row * tileH) / (float)baseH;
+            renderV1 = (float)((row + 1) * tileH) / (float)baseH;
+        }
+
         // Render the sprite quad
-        oglRenderQuad(&x1, &y1, &x2, &y2, it->second.u1, it->second.v1, it->second.u2, it->second.v2, useCenter, useTexAlpha, it->second.textureAlpha, tempTextureId, it->second.vertRed, it->second.vertGreen, it->second.vertBlue, it->second.vertAlpha, it->second.scaleFactor, it->second.rotateDegrees, it->second.updateBoundingBox);
+        oglRenderQuad(&x1, &y1, &x2, &y2, renderU1, renderV1, renderU2, renderV2, useCenter, useTexAlpha, it->second.textureAlpha, tempTextureId, it->second.vertRed, it->second.vertGreen, it->second.vertBlue, it->second.vertAlpha, it->second.scaleFactor, it->second.rotateDegrees, it->second.updateBoundingBox);
             
         // Update the bounding box if needed.  Convert the float X1,Y1,X2,Y2 values to screen space corridates and save them in the bounding box struct
         if (it->second.updateBoundingBox) {
@@ -1159,6 +1188,8 @@ void PBGfx::gfxSetFinalAnimationValues(const stAnimateData& animateData) {
         m_instanceList[animateData.animateSpriteId].u1 = m_instanceList[animateData.endSpriteId].u1;
     if (animateData.typeMask & ANIMATE_V_MASK) 
         m_instanceList[animateData.animateSpriteId].v1 = m_instanceList[animateData.endSpriteId].v1;
+    if (animateData.typeMask & ANIMATE_TILE_MASK)
+        m_instanceList[animateData.animateSpriteId].selectedTile = m_instanceList[animateData.endSpriteId].selectedTile;
 }
 
 // Helper function to generate random float between min and max
@@ -1221,6 +1252,14 @@ void PBGfx::gfxAnimateNormal(stAnimateData& animateData, unsigned int currentTic
             if (m_instanceList[animateData.animateSpriteId].rotateDegrees < 0.0f) 
                 m_instanceList[animateData.animateSpriteId].rotateDegrees += 360.0f;
         }
+    }
+
+    // Tile selection animation - interpolate selected tile index between start and end
+    if (animateData.typeMask & ANIMATE_TILE_MASK) {
+        unsigned int startTile = m_instanceList[animateData.startSpriteId].selectedTile;
+        unsigned int endTile = m_instanceList[animateData.endSpriteId].selectedTile;
+        m_instanceList[animateData.animateSpriteId].selectedTile = startTile + 
+            (unsigned int)((float)(endTile - startTile) * percentComplete);
     }
 }
 
@@ -1482,6 +1521,58 @@ void PBGfx::gfxAnimateJumpRandom(stAnimateData& animateData, unsigned int curren
         // Reset timer for next check (handled by loop logic in main function)
         animateData.startTick = currentTick;
     }
+}
+
+// Load a tile-mapped sprite with explicit tile dimensions
+unsigned int PBGfx::gfxLoadTileSprite(const std::string& spriteName, const std::string& textureFileName,
+                                       gfxTexType textureType, gfxTexCenter textureCenter, bool keepResident,
+                                       unsigned int tileWidth, unsigned int tileHeight) {
+
+    stSpriteInfo spriteInfo;
+    spriteInfo.spriteName = spriteName;
+    spriteInfo.textureFileName = textureFileName;
+    spriteInfo.textureType = textureType;
+    spriteInfo.mapType = GFX_SPRITEMAP;
+    spriteInfo.textureCenter = textureCenter;
+    spriteInfo.keepResident = keepResident;
+    spriteInfo.useTexture = true;
+    spriteInfo.baseWidth = 0;
+    spriteInfo.baseHeight = 0;
+    spriteInfo.glTextureId = 0;
+    spriteInfo.isLoaded = false;
+    spriteInfo.tileWidth = tileWidth;
+    spriteInfo.tileHeight = tileHeight;
+    spriteInfo.tileCount = 0;
+
+    return gfxSysLoadSprite(spriteInfo, false);
+}
+
+// Set the selected tile index for a sprite instance
+unsigned int PBGfx::gfxSetSelectedTile(unsigned int spriteId, unsigned int tileIndex) {
+    auto it = m_instanceList.find(spriteId);
+    if (it != m_instanceList.end()) {
+        it->second.selectedTile = tileIndex;
+        return spriteId;
+    }
+    return NOSPRITE;
+}
+
+// Get the selected tile index for a sprite instance
+unsigned int PBGfx::gfxGetSelectedTile(unsigned int spriteId) {
+    auto it = m_instanceList.find(spriteId);
+    if (it != m_instanceList.end()) {
+        return it->second.selectedTile;
+    }
+    return 0;
+}
+
+// Get the tile count for a tile-mapped sprite
+unsigned int PBGfx::gfxGetTileCount(unsigned int spriteId) {
+    auto it = m_instanceList.find(spriteId);
+    if (it != m_instanceList.end()) {
+        return m_spriteList[it->second.parentSpriteId].tileCount;
+    }
+    return 0;
 }
 
 // Update a video texture with new frame data

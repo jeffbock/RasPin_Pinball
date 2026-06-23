@@ -57,13 +57,13 @@ struct DoorCell {
     bool hasLadder;     // Ladder leading up to the row above from this cell
     bool isDragonLair;  // This is the final dragon lair door (top floor)
     bool hasTorch;      // Wall to the right uses doorwall1 (torch); false = doorwall2
+    int  monsterCount;  // Number of enemies in this room (set per level in pbeInitDungeonGrid)
 
     // --- Future room metadata (add fields here as needed) ---
-    // int monsterCount;
     // int roomType;
     // int treasureValue;
 
-    DoorCell() : state(DoorState::DOOR_NONE), hasLadder(false), isDragonLair(false), hasTorch(false) {}
+    DoorCell() : state(DoorState::DOOR_NONE), hasLadder(false), isDragonLair(false), hasTorch(false), monsterCount(0) {}
 };
 
 // The full 5-row × 3-column dungeon grid for one player

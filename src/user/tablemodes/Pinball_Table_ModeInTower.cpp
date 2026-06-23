@@ -62,6 +62,17 @@ static const D20Orient kD20Orient[20] = {
 // Global yaw trim added to every face's Y rotation so the displayed face reads
 // perfectly flat (shared by the initial render and the roll snap).
 static const float kD20YawTrimDeg = 10.0f;
+
+// Center-out fill order for the InTower warrior enemies on a staggered 5-row
+// grid (rows 1=bottom..5=top; odd rows have 5 positions, even rows have 4
+// staggered positions).  Enemy 0 takes the centre (row 3, pos 3); each later
+// enemy fills outward in concentric rings until up to all 20 are placed.
+struct EnemyCell { int row; int pos; };
+static const EnemyCell kEnemyFillOrder[20] = {
+    {3,3}, {3,4}, {3,2}, {2,3}, {2,2}, {4,3}, {4,2}, // centre + first ring
+    {3,5}, {3,1}, {2,4}, {2,1}, {4,4}, {4,1},        // second ring
+    {1,3}, {1,2}, {1,4}, {5,3}, {5,2}, {5,4}, {1,1}  // outer ring
+};
 }
 
 // ========================================================================
@@ -298,6 +309,34 @@ bool PBEngine::pbeLoadInTower() {
         }
     }
 
+    // Load the warrior enemy tile sprite (256x256 tiles) and create 20 instances.
+    // Tiles 0-2 are one walk cycle, tiles 3-4 another; each enemy uses one range.
+    if (!m_inTowerEnemyLoaded) {
+        static constexpr float kInTowerEnemyScale = 0.6f; // 2x the original 0.4, less 25%
+        m_inTowerEnemyBaseId = gfxLoadTileSprite("WarriorEnemy", "src/user/resources/textures/warriortilesmall.png",
+                                                 GFX_PNG, GFX_CENTER, true, 256, 256);
+        if (m_inTowerEnemyBaseId == NOSPRITE) {
+            pbeSendConsole("WARNING: Failed to load warriortilesmall.png");
+        } else {
+            bool allInstancesOk = true;
+            for (int i = 0; i < 20; i++) {
+                m_inTowerEnemyInstanceIds[i] = gfxInstanceSprite(m_inTowerEnemyBaseId);
+                if (m_inTowerEnemyInstanceIds[i] == NOSPRITE) { allInstancesOk = false; break; }
+                gfxSetScaleFactor(m_inTowerEnemyInstanceIds[i], kInTowerEnemyScale, false);
+                gfxSetSelectedTile(m_inTowerEnemyInstanceIds[i], 0);
+            }
+            m_inTowerEnemyLoaded = allInstancesOk;
+        }
+    }
+
+    // Ensure the slash death-overlay sprites are resident.  These are loaded by
+    // the main table state; gfxLoadSprite is idempotent by name, so these calls
+    // just return the existing IDs (no new instances) when already loaded.
+    m_PBTBLSlash1Id = gfxLoadSprite("Slash1", "src/user/resources/textures/slash1.png",
+                                    GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+    m_PBTBLSlash2Id = gfxLoadSprite("Slash2", "src/user/resources/textures/slash2.png",
+                                    GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
+
     m_inTowerLoaded = true;
     return (true);
 }
@@ -342,8 +381,6 @@ void PBEngine::pbeInitDungeonGrid(int playerNum, int level) {
         grid.cells[1][col].hasLadder   = true;
         grid.cells[2][col].isDragonLair = true;
 
-        // TODO: Initialize room metadata here (monsters, room type, etc.)
-
     } else if (level == 2) {
         // ----------------------------------------------------------------
         // Level 2: 4-floor path, cols 1-2, random ladder per row
@@ -368,8 +405,6 @@ void PBEngine::pbeInitDungeonGrid(int playerNum, int level) {
             grid.cells[numRows - 1][activeCols[pick]].isDragonLair = true;
         }
 
-        // TODO: Initialize room metadata here (monsters, room type, etc.)
-
     } else {
         // ----------------------------------------------------------------
         // Level 3: 5-floor path, all 3 cols (0-2), random ladder per row
@@ -393,8 +428,6 @@ void PBEngine::pbeInitDungeonGrid(int playerNum, int level) {
             int pick = rand() % numActiveCols;
             grid.cells[numRows - 1][activeCols[pick]].isDragonLair = true;
         }
-
-        // TODO: Initialize room metadata here (monsters, room type, etc.)
     }
 
     // Randomize hasTorch for every active cell (determines doorwall1 vs doorwall2
@@ -404,6 +437,18 @@ void PBEngine::pbeInitDungeonGrid(int playerNum, int level) {
         for (int c = 0; c < 3; c++) {
             if (grid.cells[r][c].state != DoorState::DOOR_NONE) {
                 grid.cells[r][c].hasTorch = (rand() % 2 == 1);
+            }
+        }
+    }
+
+    // Assign a random enemy count per active room, scaled by level:
+    //   Level 1: 1-8   Level 2: 8-12   Level 3: 6-20
+    for (int r = 0; r < 5; r++) {
+        for (int c = 0; c < 3; c++) {
+            if (grid.cells[r][c].state != DoorState::DOOR_NONE) {
+                if (level == 1)      grid.cells[r][c].monsterCount = (rand() % 8) + 1;   // 1-8
+                else if (level == 2) grid.cells[r][c].monsterCount = (rand() % 5) + 8;   // 8-12
+                else                 grid.cells[r][c].monsterCount = (rand() % 15) + 6;  // 6-20
             }
         }
     }
@@ -700,7 +745,7 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
         if (m_inTowerD20Loaded) {
             pbeUpdateInTowerD20(currentTick);
             int diceX = towerTopLeftX + 220;
-            int diceY = towerTopLeftY + 140;
+            int diceY = towerTopLeftY + 140 - 10;
 
             // While the die spins it hops around a small circle, then settles
             // back to the centre (its final resting spot) once it stops.
@@ -731,6 +776,109 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
             pb3dRenderInstance(m_inTowerD20InstanceId);
             pb3dEnd();
             // m_inTowerD20Value holds the rolled value for later use (not shown).
+        }
+
+        // ---- Warrior enemies: spawn, animate and draw under the dice -----
+        if (m_inTowerEnemiesActive && m_inTowerEnemyLoaded && m_inTowerEnemyCount > 0) {
+            // Region: below the dice and to the left of the minimized dungeon map,
+            // inset 50px on all sides so the enemies cluster more tightly together
+            int diceX = towerTopLeftX + 220;
+            int diceY = towerTopLeftY + 140;
+            int xMin  = towerTopLeftX + 30 + 50 - 25;
+            int xMax  = smallX - 80 - 50 - 20 - 30 + 20;
+            int yMax  = towerTopLeftY + 2 * towerHalfHeight - 40 - 50 - 20 - 20 + 20;
+            if (xMax <= xMin) xMax = xMin + 1;
+
+            const float colStep = (float)(xMax - xMin) / 4.0f; // 5 columns span the width
+            const int   rowStep = 80;                          // vertical gap between ranks
+
+            // Map a center-out fill cell (kEnemyFillOrder) to a screen position.
+            auto cellXY = [&](const EnemyCell& cell, int& outX, int& outY) {
+                bool  wide   = (cell.row % 2 == 1);                 // rows 1,3,5 = 5 wide
+                float startX = wide ? (float)xMin : (float)xMin + colStep * 0.5f;
+                outX = (int)(startX + (cell.pos - 1) * colStep);
+                outY = yMax - (cell.row - 1) * rowStep;             // row 1 at bottom
+            };
+
+            // One-shot spawn: place each enemy at its center-out cell.
+            if (m_inTowerEnemiesNeedSpawn) {
+                for (int i = 0; i < m_inTowerEnemyCount && i < 20; i++) {
+                    unsigned int inst = m_inTowerEnemyInstanceIds[i];
+                    if (inst == NOSPRITE) continue;
+                    int ex, ey;
+                    cellXY(kEnemyFillOrder[i], ex, ey);
+                    unsigned int base = (rand() % 2) ? 3u : 0u; // pick walk range 0-2 or 3-4
+                    gfxSetSelectedTile(inst, base);                // start at the bottom of the range
+                    gfxSetColor(inst, 255, 255, 255, 255);         // fully opaque (clear any prior fade)
+                    gfxSetXY(inst, ex, ey, false);
+                }
+                m_inTowerEnemiesNeedSpawn = false;
+                m_inTowerEnemyAnimTick    = currentTick;
+            }
+
+            // Every 250ms, each surviving enemy has a 25% chance to advance within its range
+            if (currentTick - m_inTowerEnemyAnimTick >= 250) {
+                for (int i = 0; i < m_inTowerEnemyCount && i < m_inTowerEnemyRemaining; i++) {
+                    unsigned int inst = m_inTowerEnemyInstanceIds[i];
+                    if (inst == NOSPRITE) continue;
+                    if (rand() % 4 == 0) {
+                        unsigned int cur  = gfxGetSelectedTile(inst);
+                        unsigned int next = (cur < 3) ? ((cur + 1) % 3)
+                                                      : (3 + ((cur - 3 + 1) % 2));
+                        gfxSetSelectedTile(inst, next);
+                    }
+                }
+                m_inTowerEnemyAnimTick = currentTick;
+            }
+
+            // Draw top-to-bottom (rows 5..1) so the nearer/front ranks overlay the
+            // ones behind and their heads stay visible.  Eliminated enemies (index
+            // >= remaining) render statically as a corpse (tile 5) and fade out
+            // over 0.5s from the moment the die stopped.
+            for (int r = 5; r >= 1; r--) {
+                for (int i = 0; i < m_inTowerEnemyCount && i < 20; i++) {
+                    if (kEnemyFillOrder[i].row == r && m_inTowerEnemyInstanceIds[i] != NOSPRITE) {
+                        bool         dying = (i >= m_inTowerEnemyRemaining);
+                        unsigned int a     = 255;
+                        if (dying) {
+                            gfxSetSelectedTile(m_inTowerEnemyInstanceIds[i], 5);
+                            float fade = 1.0f;
+                            if (currentTick >= m_inTowerD20StopTick) {
+                                fade = 1.0f - (float)(currentTick - m_inTowerD20StopTick) / 1000.0f;
+                                if (fade < 0.0f) fade = 0.0f;
+                            }
+                            // PNG sprites modulate alpha via the vertex colour, not
+                            // textureAlpha, so fade through gfxSetColor.
+                            a = (unsigned int)(fade * 255.0f);
+                            gfxSetColor(m_inTowerEnemyInstanceIds[i], 255, 255, 255, a);
+                        }
+                        gfxRenderSprite(m_inTowerEnemyInstanceIds[i]);
+
+                        // Slash overlay on dying enemies: draw the per-enemy slash
+                        // variant (slash1/slash2) over the corpse, fading at the
+                        // same rate.  Reuses the main-table base sprite IDs.
+                        if (dying) {
+                            unsigned int slashId = (m_inTowerEnemySlashType[i] == 0)
+                                                   ? m_PBTBLSlash1Id : m_PBTBLSlash2Id;
+                            if (slashId != NOSPRITE) {
+                                static constexpr float kSlashScale = 0.55f; // ~half the enemy size
+                                int ex, ey;
+                                cellXY(kEnemyFillOrder[i], ex, ey);
+                                // Enemy anchor is GFX_CENTER; slash anchor is
+                                // GFX_UPPERLEFT, so offset by half the scaled 128px
+                                // texture to centre it over the enemy.
+                                int half = (int)(128.0f * kSlashScale * 0.5f);
+                                gfxSetScaleFactor(slashId, kSlashScale, false);
+                                gfxSetColor(slashId, 255, 255, 255, a);
+                                gfxRenderSprite(slashId, ex - half, ey - half);
+                                // Restore the load-time scale so Main mode's shield
+                                // slash (same base sprite) renders unaffected.
+                                gfxSetScaleFactor(slashId, 0.6f, false);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     else {
@@ -848,16 +996,30 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
                                 grid.cells[r][c].state != DoorState::DOOR_OPEN) {
                                 grid.cells[r][c].state = DoorState::DOOR_OPEN;
                                 m_inTowerDoorJustOpened = true;
+                                m_inTowerOpenedRow = r;
+                                m_inTowerOpenedCol = c;
                                 goto doorOpenDone;
                             }
                         }
                     }
                     doorOpenDone:;
                 } else {
-                    // Second press: start shrink animation
+                    // Second press: start shrink animation; spawn this room's enemies
                     m_inTowerDoorJustOpened = false;
                     m_inTowerShrinkAnimStartTick = GetTickCountGfx();
                     m_inTowerDungeonPhase = 1;
+
+                    int enemies = 0;
+                    if (m_inTowerOpenedRow >= 0 && m_inTowerOpenedCol >= 0) {
+                        enemies = m_playerStates[m_currentPlayer]
+                                      .dungeonGrid.cells[m_inTowerOpenedRow][m_inTowerOpenedCol].monsterCount;
+                    }
+                    if (enemies < 0)  enemies = 0;
+                    if (enemies > 20) enemies = 20;
+                    m_inTowerEnemyCount       = enemies;
+                    m_inTowerEnemyRemaining   = enemies;
+                    m_inTowerEnemiesNeedSpawn = (enemies > 0);
+                    m_inTowerEnemiesActive    = (enemies > 0);
                 }
             }
             else if (m_inTowerDungeonPhase == 2 || m_inTowerDungeonPhase == 3) {
@@ -868,6 +1030,8 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
                 if (!m_inTowerD20Loaded) {
                     m_inTowerShrinkAnimStartTick = GetTickCountGfx();
                     m_inTowerDungeonPhase = 4;
+                    m_inTowerEnemiesActive    = false;
+                    m_inTowerEnemiesNeedSpawn = false;
                 }
                 else if (m_inTowerD20RollState == 0) {
                     m_inTowerD20Value         = (rand() % 20) + 1;
@@ -887,11 +1051,31 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
                     m_inTowerD20RotZ      = o.rz;
                     m_inTowerD20RollState = 2;
                     m_inTowerD20StopTick  = GetTickCountGfx(); // begin bounce settle
+                    // Resolve eliminations: the rolled value destroys that many
+                    // enemies (outermost first); survivors keep animating.
+                    int remaining = m_inTowerEnemyCount - m_inTowerD20Value;
+                    if (remaining < 0) remaining = 0;
+                    m_inTowerEnemyRemaining = remaining;
+                    // Pick a slash overlay variant (slash1/slash2) for each enemy
+                    // marked for death, fixed now so it doesn't flicker during fade.
+                    for (int i = remaining; i < m_inTowerEnemyCount && i < 20; i++) {
+                        m_inTowerEnemySlashType[i] = (unsigned int)(rand() % 2);
+                    }
                 }
                 else {
                     m_inTowerD20RollState        = 0;
                     m_inTowerShrinkAnimStartTick = GetTickCountGfx();
                     m_inTowerDungeonPhase        = 4;
+                    m_inTowerEnemiesActive    = false;
+                    m_inTowerEnemiesNeedSpawn = false;
+                    // Persist the reduction: destroyed enemies stay dead, so the
+                    // opened room now only contains the survivors next visit.
+                    m_inTowerEnemyCount = m_inTowerEnemyRemaining;
+                    if (m_inTowerOpenedRow >= 0 && m_inTowerOpenedCol >= 0) {
+                        m_playerStates[m_currentPlayer]
+                            .dungeonGrid.cells[m_inTowerOpenedRow][m_inTowerOpenedCol]
+                            .monsterCount = m_inTowerEnemyRemaining;
+                    }
                 }
             }
             // Phase 1/4 (animating): ignore flipper presses
