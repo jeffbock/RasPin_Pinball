@@ -283,8 +283,23 @@ bool PBEngine::pbeLoadInTower() {
     m_DoorStairsId = gfxLoadSprite("DoorStairs", "src/user/resources/textures/doorstairs.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
     gfxSetColor(m_DoorStairsId, 255, 255, 255, 255);
 
+    // Load side mini-tower sprites
+    m_TowerSmallTopId = gfxLoadSprite("TowerSmallTop", "src/user/resources/textures/towersmalltop.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    gfxSetColor(m_TowerSmallTopId, 255, 255, 255, 255);
+
+    m_TowerSmallOpenId = gfxLoadSprite("TowerSmallOpen", "src/user/resources/textures/towersmallopen.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    gfxSetColor(m_TowerSmallOpenId, 255, 255, 255, 255);
+
+    m_TowerSmallClosedId = gfxLoadSprite("TowerSmallClosed", "src/user/resources/textures/towersmallclosed.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    gfxSetColor(m_TowerSmallClosedId, 255, 255, 255, 255);
+
+    m_TowerSectionId = gfxLoadSprite("TowerSection", "src/user/resources/textures/towersmallsection.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    gfxSetColor(m_TowerSectionId, 255, 255, 255, 255);
+
     if (m_DoorOpenId == NOSPRITE || m_DoorClosedId == NOSPRITE || m_DoorBlockedId == NOSPRITE ||
-        m_DoorWall1Id == NOSPRITE || m_DoorWall2Id == NOSPRITE || m_DoorStairsId == NOSPRITE) {
+        m_DoorWall1Id == NOSPRITE || m_DoorWall2Id == NOSPRITE || m_DoorStairsId == NOSPRITE ||
+        m_TowerSmallTopId == NOSPRITE || m_TowerSmallOpenId == NOSPRITE ||
+        m_TowerSmallClosedId == NOSPRITE || m_TowerSectionId == NOSPRITE) {
         pbeSendConsole("ERROR: Failed to load InTower door sprites");
         return (false);
     }
@@ -603,6 +618,61 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
             gfxRenderSprite(spriteId, colPositions[c], rowPositions[r], renderScale, 0.0f);
         }
     }
+
+    // ---- Pass 4: Side mini-tower (rendered to the right of the door grid) -------
+    // Layout (bottom to top): TO, [TS, TC[i]] × (numFloors-1), TT
+    //   TO  = towersmallopen.png  (always-open base at the very bottom)
+    //   TS  = towersection.png    (connecting section; sits midway between each pair of key sprites)
+    //   TC  = towersmallclosed/open.png  (gate; open when towerSectionOpen[i] is true)
+    //   TT  = towersmalltop.png   (top cap)
+    //
+    // All Y positions are derived from the already-computed rowPositions and rowStep so the
+    // tower scales and animates identically to the door grid in all phases.
+    {
+        // Determine highest active row (= numFloors - 1)
+        int maxActiveRow = -1;
+        for (int r = 0; r < 5; r++) {
+            for (int c = 0; c < 3; c++) {
+                if (grid.cells[r][c].state != DoorState::DOOR_NONE && r > maxActiveRow)
+                    maxActiveRow = r;
+            }
+        }
+        if (maxActiveRow < 0) maxActiveRow = 0; // safety guard
+        int numFloors = maxActiveRow + 1;
+
+        // Tower column X: shifted 20px closer to the doors than a full colStep offset
+        int towerX = colPositions[maxActiveCol] + colStep - 20;
+
+        // Build an array of Y anchor positions for the key sprites:
+        //   keyY[0]           = TO  (half a rowStep below floor 0)
+        //   keyY[1..N-1]      = TC[0..N-2]  (midway between adjacent floor pairs)
+        //   keyY[numFloors]   = TT  (half a rowStep above the top floor)
+        int keyY[6]; // max N=5 → 6 entries
+        keyY[0] = rowPositions[0] + rowStep / 2;
+        for (int i = 0; i < numFloors - 1; i++) {
+            keyY[i + 1] = (rowPositions[i] + rowPositions[i + 1]) / 2;
+        }
+        keyY[numFloors] = rowPositions[numFloors - 1] - rowStep / 2;
+
+        // TO (always-open base)
+        gfxRenderSprite(m_TowerSmallOpenId, towerX, keyY[0], renderScale, 0.0f);
+
+        // For each TC: render TS at the midpoint between the preceding key sprite and TC,
+        // then render TC itself.  This gives the sequence TO, TS, TC[0], TS, TC[1], ..., TT.
+        for (int i = 0; i < numFloors - 1; i++) {
+            // TS: vertically between keyY[i] (TO or previous TC) and keyY[i+1] (this TC)
+            int tsY = (keyY[i] + keyY[i + 1]) / 2;
+            gfxRenderSprite(m_TowerSectionId, towerX, tsY, renderScale, 0.0f);
+
+            // TC[i]: open or closed based on tracking state
+            unsigned int tcSprite = grid.towerSectionOpen[i] ? m_TowerSmallOpenId : m_TowerSmallClosedId;
+            gfxRenderSprite(tcSprite, towerX, keyY[i + 1], renderScale, 0.0f);
+        }
+
+        // TS between the last TC and TT, then TT at the top cap
+        gfxRenderSprite(m_TowerSectionId,  towerX, rowPositions[numFloors - 1], renderScale, 0.0f);
+        gfxRenderSprite(m_TowerSmallTopId, towerX, keyY[numFloors],             renderScale, 0.0f);
+    }
 }
 
 void PBEngine::pbeUpdateInTowerD20(unsigned long currentTick) {
@@ -708,15 +778,15 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
     }
 #endif
 
-    static constexpr float kDungeonFullscreenScale  = 0.8625f; // 0.75 * 1.15
-    static constexpr float kDungeonSmallScale       = 0.406f; // 0.325 * 1.25 — 25% bigger
+    static constexpr float kDungeonFullscreenScale  = 0.69f;   // 0.8625 * 0.80 (-20%)
+    static constexpr float kDungeonSmallScale       = 0.3248f; // 0.406  * 0.80 (-20%)
     static constexpr float kDungeonTransitionDurMs  = 500.0f;  // shrink and grow duration
 
     // Anchor points: fullscreen centred on towerclimb (shifted up 50 px); small in right half
     int fullX  = towerCenterX;
-    int fullY  = towerCenterY - 30;
+    int fullY  = towerCenterY - 10;  // -30 + 40 - 20px
     int smallX = towerCenterX + towerHalfWidth / 2 + 30;
-    int smallY = towerCenterY;
+    int smallY = towerCenterY + 20;
 
     if (m_inTowerDungeonPhase == 0) {
         // ---- Phase 0: dungeon fills the intower area; dice hidden -------
@@ -995,6 +1065,11 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
                             if (grid.cells[r][c].state != DoorState::DOOR_NONE &&
                                 grid.cells[r][c].state != DoorState::DOOR_OPEN) {
                                 grid.cells[r][c].state = DoorState::DOOR_OPEN;
+                                // If this door has stairs, open the corresponding
+                                // side-tower TC section (TC[r] sits between floor r and r+1)
+                                if (grid.cells[r][c].hasLadder && r < 5) {
+                                    grid.towerSectionOpen[r] = true;
+                                }
                                 m_inTowerDoorJustOpened = true;
                                 m_inTowerOpenedRow = r;
                                 m_inTowerOpenedCol = c;

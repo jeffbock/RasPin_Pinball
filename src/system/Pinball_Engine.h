@@ -620,6 +620,10 @@ public:
     unsigned int m_DoorWall1Id;        // Sprite ID for doorwall1.png (hallway with torch)
     unsigned int m_DoorWall2Id;        // Sprite ID for doorwall2.png (hallway without torch)
     unsigned int m_DoorStairsId;       // Sprite ID for doorstairs.png (open door with stairs/ladder room)
+    unsigned int m_TowerSmallTopId;    // Sprite ID for towersmalltop.png (top cap of side mini-tower)
+    unsigned int m_TowerSmallOpenId;   // Sprite ID for towersmallopen.png (open TC / base TO)
+    unsigned int m_TowerSmallClosedId; // Sprite ID for towersmallclosed.png (closed TC)
+    unsigned int m_TowerSectionId;     // Sprite ID for towersection.png (TS connecting section)
     unsigned int m_inTowerD20ModelId;  // 3D model ID for InTower d20
     unsigned int m_inTowerD20InstanceId; // 3D instance ID for InTower d20
     bool         m_inTowerD20Loaded;   // True when model+instance are ready

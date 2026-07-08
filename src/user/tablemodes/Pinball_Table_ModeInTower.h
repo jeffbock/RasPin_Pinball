@@ -69,7 +69,18 @@ struct DoorCell {
 // The full 5-row × 3-column dungeon grid for one player
 struct TowerDungeonGrid {
     DoorCell cells[5][3]; // [row][col]
-    TowerDungeonGrid() {} // DoorCell default-constructor zeros all entries
+
+    // Per-TC open/closed state for the side mini-tower (5 slots covers all dungeon levels).
+    // Index i corresponds to the TC sprite between floor i and floor i+1.
+    // towerSectionOpen[0] starts true (bottom entrance is always accessible);
+    // all others start false (closed) and are opened when the stair door on floor i is opened.
+    bool towerSectionOpen[5];
+
+    TowerDungeonGrid() {
+        // DoorCell default-constructor zeros all entries.
+        // All TC sections start closed; only the TO base sprite is always rendered open.
+        for (int i = 0; i < 5; i++) towerSectionOpen[i] = false;
+    }
 };
 
 #endif // Pinball_Table_ModeInTower_h
