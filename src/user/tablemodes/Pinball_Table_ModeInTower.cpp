@@ -296,10 +296,21 @@ bool PBEngine::pbeLoadInTower() {
     m_TowerSectionId = gfxLoadSprite("TowerSection", "src/user/resources/textures/towersmallsection.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
     gfxSetColor(m_TowerSectionId, 255, 255, 255, 255);
 
+    // Load dungeon floor tile sprites
+    m_DoorLeftId  = gfxLoadSprite("DoorFloorLeft",  "src/user/resources/textures/doorfloorleft.png",  GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    gfxSetColor(m_DoorLeftId,  255, 255, 255, 255);
+
+    m_DoorRightId = gfxLoadSprite("DoorFloorRight", "src/user/resources/textures/doorfloorright.png", GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    gfxSetColor(m_DoorRightId, 255, 255, 255, 255);
+
+    m_DoorMidId   = gfxLoadSprite("DoorFloorMid",   "src/user/resources/textures/doorfloormid.png",   GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
+    gfxSetColor(m_DoorMidId,   255, 255, 255, 255);
+
     if (m_DoorOpenId == NOSPRITE || m_DoorClosedId == NOSPRITE || m_DoorBlockedId == NOSPRITE ||
         m_DoorWall1Id == NOSPRITE || m_DoorWall2Id == NOSPRITE || m_DoorStairsId == NOSPRITE ||
         m_TowerSmallTopId == NOSPRITE || m_TowerSmallOpenId == NOSPRITE ||
-        m_TowerSmallClosedId == NOSPRITE || m_TowerSectionId == NOSPRITE) {
+        m_TowerSmallClosedId == NOSPRITE || m_TowerSectionId == NOSPRITE ||
+        m_DoorLeftId == NOSPRITE || m_DoorRightId == NOSPRITE || m_DoorMidId == NOSPRITE) {
         pbeSendConsole("ERROR: Failed to load InTower door sprites");
         return (false);
     }
@@ -546,7 +557,7 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
 
     // ---- Row positions (centred at centerY) ----------------------------
     int rowPositions[5];
-    int gridTop = centerY - (2 * rowStep);
+    int gridTop = centerY - (2 * rowStep) - 10;
     for (int r = 0; r < 5; r++) {
         rowPositions[r] = gridTop + (4 - r) * rowStep;
     }
@@ -573,22 +584,63 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
         colPositions[c] = centerX + (int)((c - centerColIdx) * colStep);
     }
 
-    // ---- Pass 1: Walls (lowest layer) ----------------------------------
-    // Render wall horizontally between adjacent door columns on the same row.
-    // Use doorwall1 (torch) if the left door has hasTorch set, else doorwall2.
-    // Shifted 5 pixels left from the exact midpoint.
+    // Pre-compute floor tile dimensions (used in Pass 2)
+    float floorScale    = renderScale * 0.525f;
+    int floorTileH      = (int)(gfxGetBaseHeight(m_DoorLeftId)  * floorScale);
+    int floorTileWLeft  = (int)(gfxGetBaseWidth(m_DoorLeftId)   * floorScale);
+    int floorTileWMid   = (int)(gfxGetBaseWidth(m_DoorMidId)    * floorScale);
+    int floorTileWRight = (int)(gfxGetBaseWidth(m_DoorRightId)  * floorScale);
+
+    // ---- Pass 1: Floor tiles (lowest layer — doorleft | doormid × N | doorright) --
+    // For each active row, render a contiguous floor strip under its doors.
+    // The strip spans from the left edge of the leftmost active column to the
+    // right edge of the rightmost active column in that row.
+    for (int r = 0; r < 5; r++) {
+        int minColRow = 3, maxColRow = -1;
+        for (int c = 0; c < 3; c++) {
+            if (grid.cells[r][c].state != DoorState::DOOR_NONE) {
+                if (c < minColRow) minColRow = c;
+                if (c > maxColRow) maxColRow = c;
+            }
+        }
+        if (maxColRow < 0) continue;
+
+        int floorY     = rowPositions[r] + doorH / 2 + floorTileH / 2 - (int)(doorH * 0.25f);
+        int floorLeft  = colPositions[minColRow] - doorW / 2;
+        int floorRight = colPositions[maxColRow] + doorW / 2;
+
+        // Left cap (shifted inward by 5% of doorW)
+        gfxRenderSprite(m_DoorLeftId,  floorLeft  + (int)(doorW * 0.05f), floorY, floorScale, 0.0f);
+        // Right cap (shifted inward by 5% of doorW)
+        gfxRenderSprite(m_DoorRightId, floorRight - (int)(doorW * 0.05f), floorY, floorScale, 0.0f);
+        // Middle tiles: step by floorTileWMid across the gap between left and right caps
+        if (floorTileWMid > 0) {
+            int midStart = floorLeft  + floorTileWLeft  / 2;
+            int midEnd   = floorRight - floorTileWRight / 2;
+            int midStep  = (int)(floorTileWMid * 0.85f); // 15% overlap to close tile gaps
+            for (int mx = midStart + floorTileWMid / 2; mx < midEnd; mx += midStep) {
+                gfxRenderSprite(m_DoorMidId, mx, floorY, floorScale, 0.0f);
+            }
+        }
+    }
+
+    // ---- Pass 2: Walls --------------------------------------------------
+    // Render the horizontal wall connector between adjacent door columns.
+    // Use doorwall1 (torch) or doorwall2 per hasTorch.
+    // Shifted 5 pixels left from the exact midpoint and 10% of doorH + 10px downward.
     for (int r = 0; r < 5; r++) {
         for (int c = 0; c < 2; c++) {
             if (grid.cells[r][c].state     != DoorState::DOOR_NONE &&
                 grid.cells[r][c + 1].state != DoorState::DOOR_NONE) {
                 int wallX = (colPositions[c] + colPositions[c + 1]) / 2 - 5;
+                int wallY = rowPositions[r] + (int)(doorH * 0.07f) + 2;
                 unsigned int wallSprite = grid.cells[r][c].hasTorch ? m_DoorWall1Id : m_DoorWall2Id;
-                gfxRenderSprite(wallSprite, wallX, rowPositions[r], renderScale, 0.0f);
+                gfxRenderSprite(wallSprite, wallX, wallY, renderScale, 0.0f);
             }
         }
     }
 
-    // ---- Pass 2: Blocked/Stairs overlays --------------------------------
+    // ---- Pass 3: Blocked/Stairs overlays --------------------------------
     // For open doors, render doorstairs.png (shifted +6 px right) if the cell
     // has a ladder; otherwise render doorblocked.png at the original position.
     for (int r = 0; r < 5; r++) {
@@ -609,7 +661,7 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
         }
     }
 
-    // ---- Pass 3: Doors (top layer) -------------------------------------
+    // ---- Pass 4: Doors -------------------------------------------------
     for (int r = 0; r < 5; r++) {
         for (int c = 0; c < 3; c++) {
             if (grid.cells[r][c].state == DoorState::DOOR_NONE) continue;
@@ -640,8 +692,8 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
         if (maxActiveRow < 0) maxActiveRow = 0; // safety guard
         int numFloors = maxActiveRow + 1;
 
-        // Tower column X: shifted 20px closer to the doors than a full colStep offset
-        int towerX = colPositions[maxActiveCol] + colStep - 20;
+        // Tower column X: shifted 20px closer to the doors than a full colStep offset, then +10% of doorW right
+        int towerX = colPositions[maxActiveCol] + colStep - 20 + (int)(doorW * 0.1f);
 
         // Build an array of Y anchor positions for the key sprites:
         //   keyY[0]           = TO  (half a rowStep below floor 0)
