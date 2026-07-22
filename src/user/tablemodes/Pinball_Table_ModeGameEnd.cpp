@@ -124,14 +124,14 @@ static void determineHighScoreQualifiers(
 // PBTBL_GAMEEND: Render Function
 // ========================================================================
 
-bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick){
+bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick, PBTBLGameEndState subScreenState){
     
     if (!pbeLoadGameEnd()) {
         pbeSendConsole("ERROR: Failed to load game end screen resources");
         return (false);
     }
     
-    PBTBLGameEndState currentState = static_cast<PBTBLGameEndState>(m_tableSubScreenState);
+    PBTBLGameEndState currentState = subScreenState;
     
     // Handle initialization on first render
     if (!m_gameEndInitialized) {
@@ -159,12 +159,14 @@ bool PBEngine::pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTic
             // No players qualified - show "Game Over" for 10 seconds then return to start
             m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_COMPLETE);
             currentState = PBTBLGameEndState::GAMEEND_COMPLETE;
+            pbeRequestScreen(PBTableState::PBTBL_GAMEEND, static_cast<int>(PBTBLGameEndState::GAMEEND_COMPLETE), ScreenPriority::PRIORITY_LOW, 0, true);
             pbeSetTimer(GAMEEND_COMPLETE_TIMER_ID, 10000);
         } else {
             // Set current player to first qualifier for proper score display
             m_currentPlayer = m_gameEndQualifiers[0].playerIndex;
             m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_ENTERINITIALS);
             currentState = PBTBLGameEndState::GAMEEND_ENTERINITIALS;
+            pbeRequestScreen(PBTableState::PBTBL_GAMEEND, static_cast<int>(PBTBLGameEndState::GAMEEND_ENTERINITIALS), ScreenPriority::PRIORITY_LOW, 0, true);
         }
     }
     
@@ -303,6 +305,7 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
             if (m_gameEndCurrentQualifierIdx >= (int)m_gameEndQualifiers.size()) {
                 // All qualifiers done, should not happen but handle gracefully
                 m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_COMPLETE);
+                pbeRequestScreen(PBTableState::PBTBL_GAMEEND, static_cast<int>(PBTBLGameEndState::GAMEEND_COMPLETE), ScreenPriority::PRIORITY_LOW, 0, true);
                 pbeSetTimer(GAMEEND_COMPLETE_TIMER_ID, 20000);
                 break;
             }
@@ -388,9 +391,10 @@ void PBEngine::pbeUpdateStateGameEnd(stInputMessage inputMessage){
                             // Save to file
                             pbeSaveFile();
                             
-                            // All initials entered - show game over screen for 10 seconds
+                            // All initials entered - show game over screen for 20 seconds
                             // Keep m_gameEndQualifiers so the render function can apply shimmer
                             m_tableSubScreenState = static_cast<int>(PBTBLGameEndState::GAMEEND_COMPLETE);
+                            pbeRequestScreen(PBTableState::PBTBL_GAMEEND, static_cast<int>(PBTBLGameEndState::GAMEEND_COMPLETE), ScreenPriority::PRIORITY_LOW, 0, true);
                             pbeSetTimer(GAMEEND_COMPLETE_TIMER_ID, 20000);
                         }
                     }

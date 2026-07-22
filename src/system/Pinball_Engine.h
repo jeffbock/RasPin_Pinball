@@ -800,7 +800,7 @@ private:
     
     // Render functions for the pinball game table
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
-    bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick, PBTBLStartScreenState subScreenState);
     bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick, PBTBLMainScreenState subScreenState);
     void pbeRenderStarBackground();  // Renders the shared star background (loads it on demand)
     bool pbeRenderMainScreenBase(unsigned long currentTick, unsigned long lastTick);  // Always renders: background, scores, status
@@ -811,9 +811,9 @@ private:
     bool pbeRenderMainScreenKeyObtained(unsigned long currentTick, unsigned long lastTick); // "Key Obtained!" flash message
     bool pbeRenderStatus(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
-    bool pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick);
-    bool pbeRenderPlayerEnd(unsigned long currentTick, unsigned long lastTick);
-    bool pbeRenderInTower(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick, PBTBLGameEndState subScreenState);
+    bool pbeRenderPlayerEnd(unsigned long currentTick, unsigned long lastTick, PBTBLPlayerEndState subScreenState);
+    bool pbeRenderInTower(unsigned long currentTick, unsigned long lastTick, PBTBLInTowerScreenState subScreenState);
     void pbeRenderDungeonGrid(float scale, int centerX, int centerY, bool animate, unsigned long currentTick, unsigned long lastTick);
     void pbeInitDungeonGrid(int playerNum, int level);
     void pbeUpdateInTowerD20(unsigned long currentTick);

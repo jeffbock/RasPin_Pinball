@@ -758,7 +758,7 @@ void PBEngine::pbeUpdateInTowerD20(unsigned long currentTick) {
 // PBTBL_INTOWER: Render Function
 // ========================================================================
 
-bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTick) {
+bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTick, PBTBLInTowerScreenState subScreenState) {
 
     if (!pbeLoadInTower()) {
         pbeSendConsole("ERROR: Failed to load InTower screen resources");
