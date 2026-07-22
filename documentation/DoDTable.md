@@ -12,6 +12,7 @@
 4. [Architecture Fundamentals](#4-architecture-fundamentals)
    - 4.1 [The Three-Function Pattern](#41-the-three-function-pattern)
    - 4.2 [The Screen Manager](#42-the-screen-manager)
+   - 4.3 [Sub-States and the Screen Manager — The Full Pattern](#43-sub-states-and-the-screen-manager--the-full-pattern)
 5. [Top-Level State Machine](#5-top-level-state-machine)
 6. [Mode: PBTBL_INIT](#6-mode-pbtbl_init)
 7. [Mode: PBTBL_START (Attract / Start Screen)](#7-mode-pbtbl_start-attract--start-screen)
@@ -28,7 +29,8 @@
 9. [Mode: PBTBL_PLAYEREND (Between-Turn Transition)](#9-mode-pbtbl_playerend-between-turn-transition)
 10. [Mode: PBTBL_RESET (Reset / Confirmation)](#10-mode-pbtbl_reset-reset--confirmation)
 11. [Mode: PBTBL_GAMEEND (High Score Entry)](#11-mode-pbtbl_gameend-high-score-entry)
-12. [Adding a New Table Mode — Checklist](#12-adding-a-new-table-mode--checklist)
+12. [Mode: PBTBL_INTOWER (Tower Lock)](#12-mode-pbtbl_intower-tower-lock)
+13. [Adding a New Table Mode — Checklist](#13-adding-a-new-table-mode--checklist)
 
 ---
 
@@ -160,13 +162,19 @@ Each of the 4 player slots is an instance of `pbGameState` stored in `m_playerSt
 Every table mode (`PBTBL_X`) is implemented in its own file (`Pinball_Table_ModeX.cpp`) using exactly three functions:
 
 ```
-pbeLoadXxx()         — Run once. Load textures, create animations, etc.
-                       Guard-flagged: returns immediately if already loaded.
+pbeLoadX()         — Run once. Load textures, create animations, etc.
+                     Guard-flagged: returns immediately if already loaded.
 
-pbeRenderXxx()       — Called every frame. Calls Load, then draws the screen.
+pbeRenderX(currentTick, lastTick, subScreenState)
+                   — Called every frame. Calls Load first, then draws based on
+                     the subScreenState value delivered by the screen manager.
+                     Do NOT read m_tableSubScreenState directly here.
 
-pbeUpdateStateXxx()  — Called with each input message. Changes m_tableState,
-                       m_tableSubScreenState, and issues screen requests.
+pbeUpdateStateX(inputMessage)
+                   — Called with each input message. Changes m_tableState,
+                     m_tableSubScreenState, and issues screen requests.
+                     Every m_tableSubScreenState write must be paired with a
+                     matching pbeRequestScreen() call.
 ```
 
 The main dispatch in `Pinball_Table.cpp` routes to these three functions via `pbeRenderGameScreen()` and `pbeUpdateGameState()`.
@@ -194,7 +202,8 @@ pbeUpdateScreenManager(currentTick)
      selects the top entry as m_currentDisplayedTableState.
 
 pbeGetCurrentScreenState() / pbeGetCurrentSubScreenState()
-   — Return whatever is currently visible (may differ from m_tableState).
+   — Return whatever is currently visible (may differ from m_tableState/
+     m_tableSubScreenState if a timed overlay is active).
 
 pbeClearScreenRequests()
    — Clears the entire queue (used at state transitions).
@@ -208,6 +217,41 @@ pbeClearScreenRequests()
 | 1 | `PRIORITY_MEDIUM` | Mode transitions, bonus screens |
 | 2 | `PRIORITY_HIGH` | Ball saved, extra ball, inn open, key obtained |
 | 3 | `PRIORITY_CRITICAL` | Cannot be preempted |
+
+### 4.3 Sub-States and the Screen Manager — The Full Pattern
+
+**All modes** use the screen manager for sub-state management, not just PBTBL_MAIN. The consistent pattern is:
+
+**In the update function** (`pbeUpdateStateX`) — every sub-state transition **must** do both:
+```cpp
+m_tableSubScreenState = static_cast<int>(PBTBLXState::X_NEW_STATE);
+pbeRequestScreen(PBTableState::PBTBL_X,
+    static_cast<int>(PBTBLXState::X_NEW_STATE),
+    ScreenPriority::PRIORITY_LOW, 0, true);
+```
+
+**In the render dispatch** (`pbeRenderGameScreen`) — the background `pbeRequestScreen` keeps the screen manager in sync:
+```cpp
+case PBTableState::PBTBL_X:
+    pbeRequestScreen(PBTableState::PBTBL_X, m_tableSubScreenState,
+                     ScreenPriority::PRIORITY_LOW, 0, true);
+    break;
+```
+
+Then, after `pbeUpdateScreenManager()` runs, the render function receives the resolved sub-state:
+```cpp
+int currentSubScreenState = pbeGetCurrentSubScreenState();
+// ...
+case PBTableState::PBTBL_X: {
+    PBTBLXState xState = static_cast<PBTBLXState>(currentSubScreenState);
+    success = pbeRenderX(currentTick, lastTick, xState);
+    break;
+}
+```
+
+**The render function reads `subScreenState` — it never reads `m_tableSubScreenState` directly.** This is what allows a `PRIORITY_HIGH` overlay (like `MAIN_EXTRABALL`) to temporarily change what's displayed without touching the persistent background state.
+
+**PBTBL_INTOWER is intentionally a single sub-state** (`INTOWER_SCREEN_ACTIVE`). The entire tower rendering is one complex scene — the dungeon grid, dice, 3D model, and player data — none of which maps cleanly to discrete screen states. All the internal dungeon phase variables remain private implementation details within `pbeRenderInTower`, not screen manager states.
 
 ---
 
@@ -314,6 +358,11 @@ transition to PBTBL_START. Use the Dragons of Destiny table as a reference.
   └──────────────────────────────────────────────────────────────────────┘
 ```
 
+**Screen manager usage:**
+- Every sub-state transition in `pbeUpdateStateStart()` writes `m_tableSubScreenState` **and** calls `pbeRequestScreen(PBTBL_START, newSubState, PRIORITY_LOW, 0, true)`.
+- `pbeRenderGameStart()` receives `subScreenState` from `pbeGetCurrentSubScreenState()` via the render dispatch — it does **not** read `m_tableSubScreenState` directly.
+- On transition to `PBTBL_MAIN`, `pbeClearScreenRequests()` is called followed by `pbeRequestScreen(PBTBL_MAIN, MAIN_NORMAL, PRIORITY_LOW, 0, true)` to seed the main gameplay background.
+
 **Key details:**
 - Backglass, dungeon background, animated flame torches, and door assets are loaded once.
 - "Press Start" text fades in with a color animation (2s). Blinks 2 s on / 0.5 s off.
@@ -330,7 +379,8 @@ Theme is space exploration. The attract screen should cycle through a "Press Sta
 an instructions screen, and a high score board. Pressing START opens an animated transition
 (doors or a hatch) that leads into gameplay. Use the Dragons of Destiny table as a reference
 for structure — same sub-states, same timeout/cycling behavior, just with space-themed
-assets and text.
+assets and text. Ensure every sub-state transition writes both m_tableSubScreenState and
+calls pbeRequestScreen() as required by the screen manager pattern.
 ```
 
 ---
@@ -355,7 +405,7 @@ This is the primary gameplay mode. It is structured as a **base layer** (always 
 
 ```
                ┌─────────────────────────────────────────┐
-               │              MAIN_NORMAL                │  ◄─ priority 0 (permanent)
+               │              MAIN_NORMAL                │  ◄─ priority 0 (permanent background)
                └─────────────────────────────────────────┘
                        ▲ (all overlays expire/auto-remove)
                        │
@@ -368,7 +418,10 @@ This is the primary gameplay mode. It is structured as a **base layer** (always 
   (3.9s, P2 HIGH) (2s, P2 HIGH)  (2s, P2 HIGH)      (2s, P2 HIGH)
 ```
 
-All overlays are requested via `pbeRequestScreen()` with `PRIORITY_HIGH` and a fixed duration. When the timer expires, the screen manager automatically falls back to the priority-0 `MAIN_NORMAL` background.
+All overlays are requested via `pbeRequestScreen()` with `PRIORITY_HIGH` and a fixed duration. When the timer expires, the screen manager automatically falls back to the priority-0 `MAIN_NORMAL` background. The persistent `MAIN_NORMAL` background request is re-issued every frame by `pbeRenderGameScreen()` (as `PRIORITY_LOW, durationMs=0`); because the optimization in `pbeRequestScreen` skips duplicate requests, this is essentially free.
+
+**`pbeRenderMainScreen` sub-state dispatch:**
+The render function receives `subScreenState` (from `pbeGetCurrentSubScreenState()`) and always calls `pbeRenderMainScreenBase()` first (background, scores, status panel), then dispatches to the sub-state-specific overlay render. This means the base layer is always visible regardless of which overlay is active.
 
 ### 8.2 Scoring Rules
 
@@ -591,6 +644,12 @@ Base the implementation on the Dragons of Destiny table but with a space theme:
   [Back to PBTBL_MAIN]
 ```
 
+**Screen manager usage:**
+- On entry from PBTBL_MAIN: `m_tableSubScreenState` is set to `PLAYEREND_DISPLAY` and `pbeRequestScreen(PBTBL_PLAYEREND, PLAYEREND_DISPLAY, PRIORITY_LOW, 0, true)` is called.
+- On transition to `PLAYEREND_EJECTING`: both `m_tableSubScreenState` and `pbeRequestScreen` are updated together.
+- On exit back to `PBTBL_MAIN`: `pbeClearScreenRequests()` → then `pbeRequestScreen(PBTBL_MAIN, MAIN_NORMAL, PRIORITY_LOW, 0, true)`.
+- `pbeRenderPlayerEnd()` receives `subScreenState` from the render dispatch — not from `m_tableSubScreenState` directly.
+
 **Key details:**
 - `m_playerEndNextPlayer` is set by the drain handler in PBTBL_MAIN before transitioning here.
 - `m_playerEndInitialized` is a one-shot flag; initialization happens in the first `pbeUpdateStatePlayerEnd()` call.
@@ -603,7 +662,8 @@ Create the PBTBL_PLAYEREND between-turn transition mode for my RasPin pinball ta
 It should display the next player's name in the center for 2 seconds, then eject the ball
 and wait for the ball-delivered sensor before returning to PBTBL_MAIN. Show all other
 players' scores and the status panel during this screen. Use the same pattern as
-Dragons of Destiny.
+Dragons of Destiny. Ensure every sub-state transition writes both m_tableSubScreenState
+and calls pbeRequestScreen() so the screen manager stays synchronized.
 ```
 
 ---
@@ -614,7 +674,7 @@ Dragons of Destiny.
 
 **Purpose:** Catches the Reset button from any state and asks the player to confirm before returning to the attract screen.
 
-**No sub-states.** Single render state.
+**No sub-states.** Single render state (`subScreenState` is always -1 for this mode).
 
 ```
 [Any state] RESET button pressed
@@ -642,6 +702,7 @@ Dragons of Destiny.
 - `m_StateBeforeReset`, `m_ScreenBeforeResetState`, `m_ScreenBeforeResetSubState` are saved atomically when the button is first pressed.
 - The reset screen renders **over** the previous screen by clearing with a distinct green color (classic BSOD-style). This makes it instantly recognizable.
 - Only the 5 interactive buttons cancel the reset — raw sensors (`IDI_BALLDRAIN` etc.) are ignored.
+- On cancel: `pbeRequestScreen(m_ScreenBeforeResetState, m_ScreenBeforeResetSubState, PRIORITY_LOW, 0, true)` restores the previous display exactly as it was.
 
 ### Sample AI Prompt — PBTBL_RESET
 
@@ -712,6 +773,11 @@ Any other button should restore the previous game state. Use Dragons of Destiny 
     m_tableState = PBTBL_START, m_RestartTable = true.
 ```
 
+**Screen manager usage:**
+- On first render (initialization block): the code sets `m_tableSubScreenState` and calls `pbeRequestScreen(PBTBL_GAMEEND, newSubState, PRIORITY_LOW, 0, true)` for whichever sub-state is chosen (`GAMEEND_ENTERINITIALS` or `GAMEEND_COMPLETE`).
+- On transition from `GAMEEND_ENTERINITIALS` → `GAMEEND_COMPLETE`: both `m_tableSubScreenState` and `pbeRequestScreen` are updated.
+- `pbeRenderGameEnd()` receives `subScreenState` from the render dispatch — the first-frame init block captures it as `currentState` and transitions from there.
+
 **`determineHighScoreQualifiers()` algorithm:**
 1. Collect all active-player scores (score > 0) + all existing 10 high scores into one list.
 2. Sort descending by score.
@@ -728,12 +794,77 @@ run out of balls, check which players scored in the top 10 high scores. For each
 (in player order), let them enter 3-character initials using the flippers to cycle letters
 and the activate buttons to move the cursor. After all initials are entered, save the high
 score file and show a "Game Over" screen with all scores for 20 seconds, then return to
-the attract screen. Use Dragons of Destiny as a reference.
+the attract screen. Use Dragons of Destiny as a reference. On every sub-state change,
+write both m_tableSubScreenState and call pbeRequestScreen() so the screen manager
+stays synchronized.
 ```
 
 ---
 
-## 12. Adding a New Table Mode — Checklist
+## 12. Mode: PBTBL_INTOWER (Tower Lock)
+
+**File:** `Pinball_Table_ModeInTower.cpp`
+
+**Purpose:** Entered when a ball is locked in the tower sensor area. Displays a complex 3D dungeon scene with animated characters, doors, and a D20 dice roll mechanic.
+
+**Sub-states (`PBTBLInTowerScreenState`):**
+
+| Value | Name | Description |
+|-------|------|-------------|
+| 0 | `INTOWER_SCREEN_ACTIVE` | Ball is locked — entire tower rendering active |
+
+PBTBL_INTOWER intentionally uses a **single screen sub-state**. The tower rendering is one complex self-contained scene (dungeon grid, side-tower animation, 3D dice model, party status, door animations) with many internal phase variables. These internal phases are private implementation details within `pbeRenderInTower()` — they are not screen manager states.
+
+**State diagram:**
+
+```
+[Enter when tower sensor triggered from PBTBL_MAIN]
+        │
+        ▼
+  INTOWER_SCREEN_ACTIVE
+  ┌─────────────────────────────────────────────────────┐
+  │  Dungeon grid (5 rows × 3 cols of door cells)       │
+  │  Side mini-tower (TC sprites, towerSectionOpen[])   │
+  │  3D D20 dice model (animated face rotation)         │
+  │  Player stats and dungeon floor/level               │
+  │  Internal phase variables drive door/entry anim     │
+  └─────────────────────────────────────────────────────┘
+        │
+        │ [Exit condition TBD — future gameplay implementation]
+        ▼
+  [Return to PBTBL_MAIN]
+```
+
+**Key structures:**
+
+| Structure | Purpose |
+|-----------|---------|
+| `TowerDungeonGrid` | 5×3 grid of `DoorCell` entries; tracks open/closed/ladder/dragon state |
+| `DoorCell` | One grid position: `DoorState`, `hasLadder`, `isDragonLair`, `hasTorch`, `monsterCount` |
+| `towerSectionOpen[5]` | Whether each TC side-tower section is unlocked (opened by stair door) |
+| `PBInTowerState` | Internal game state (IDLE / RUNNING / COMPLETE) — not a screen sub-state |
+
+**Screen manager usage:**
+- On entry: `m_tableSubScreenState = INTOWER_SCREEN_ACTIVE`, `pbeRequestScreen(PBTBL_INTOWER, INTOWER_SCREEN_ACTIVE, PRIORITY_LOW, 0, true)`.
+- The render function `pbeRenderInTower()` receives `subScreenState` from the render dispatch. Since there is only one screen sub-state, the switch is trivial — the full scene always renders.
+- All internal rendering phases (door animation progress, dice spin state, NeoPixel mode) are tracked as private member variables, not as screen manager states.
+
+**D20 calibration mode:**
+The `D20_CALIBRATION` define in `Pinball_Table_ModeInTower.h` enables a developer-only tool for generating the `kD20Orient[]` face-orientation table. Leave it commented out in production builds.
+
+### Sample AI Prompt — PBTBL_INTOWER
+
+```
+Create the PBTBL_INTOWER tower lock mode for my RasPin pinball table. When a ball
+enters the tower sensor, display a complex dungeon scene with a 5×3 door grid,
+an animated side-tower, and a 3D dice model. Use a single screen sub-state
+(INTOWER_SCREEN_ACTIVE) — all internal animation phases are private member variables,
+not screen manager states. Follow the Dragons of Destiny three-function pattern.
+```
+
+---
+
+## 13. Adding a New Table Mode — Checklist
 
 Use this as a step-by-step guide when creating a new game mode (e.g., a bonus round, a multiball mode, or a dungeon-attack sequence):
 
@@ -741,39 +872,79 @@ Use this as a step-by-step guide when creating a new game mode (e.g., a bonus ro
 [ ] 1. Add a new entry to PBTableState in src/system/Pinball_Table.h
 
 [ ] 2. Create src/user/tablemodes/Pinball_Table_ModeX.h
-        — Define the sub-state enum class (PBTBLXState)
+        — Define the screen sub-state enum class (PBTBLXScreenState)
         — Include any mode-specific constants or structs
 
 [ ] 3. Create src/user/tablemodes/Pinball_Table_ModeX.cpp
-        — bool pbeLoadX()          — guard-flagged resource loading
-        — bool pbeRenderX()        — per-frame rendering (calls Load first)
-        — void pbeUpdateStateX()   — input message handler
+        — bool pbeLoadX()
+            Guard-flagged resource loading; returns true immediately if already loaded.
+        — bool pbeRenderX(unsigned long currentTick, unsigned long lastTick,
+                          PBTBLXScreenState subScreenState)
+            Per-frame rendering. Calls Load first.
+            Dispatches on subScreenState — do NOT read m_tableSubScreenState here.
+        — void pbeUpdateStateX(stInputMessage inputMessage)
+            Input message handler. On every sub-state transition:
+              m_tableSubScreenState = static_cast<int>(PBTBLXScreenState::X_NEW);
+              pbeRequestScreen(PBTBL_X, static_cast<int>(PBTBLXScreenState::X_NEW),
+                               PRIORITY_LOW, 0, true);
 
 [ ] 4. Include the new header in src/system/Pinball_Table.h
         #include "tablemodes/Pinball_Table_ModeX.h"
 
 [ ] 5. Add function declarations in src/system/Pinball_Engine.h
         bool pbeLoadX();
-        bool pbeRenderX(unsigned long currentTick, unsigned long lastTick);
+        bool pbeRenderX(unsigned long currentTick, unsigned long lastTick,
+                        PBTBLXScreenState subScreenState);
         void pbeUpdateStateX(stInputMessage inputMessage);
-        bool m_xLoaded = false;           // load guard member
-        int  m_xSubScreenState = 0;       // if sub-states are needed
+        bool m_xLoaded = false;   // load guard member
 
-[ ] 6. Add dispatch cases in Pinball_Table.cpp:
-        In pbeRenderGameScreen()  → case PBTableState::PBTBL_X: pbeRenderX(...)
-        In pbeUpdateGameState()   → case PBTableState::PBTBL_X: pbeUpdateStateX(...)
-        In pbeRenderGameScreen()  → case PBTBL_X: pbeRequestScreen(PBTBL_X, ...)
+[ ] 6. Add dispatch cases in Pinball_Table.cpp (pbeRenderGameScreen):
 
-[ ] 7. Add the new .cpp to CMakeLists.txt and all tasks.json build args
+        // Background request block — keeps screen manager in sync with m_tableState:
+        case PBTableState::PBTBL_X:
+            pbeRequestScreen(PBTableState::PBTBL_X, m_tableSubScreenState,
+                             ScreenPriority::PRIORITY_LOW, 0, true);
+            break;
 
-[ ] 8. Trigger the mode:
-        From another mode's update function: m_tableState = PBTableState::PBTBL_X;
-        Call pbeClearScreenRequests() and pbeRequestScreen(PBTBL_X, 0, PRIORITY_LOW, 0, true)
+        // Render dispatch block (after pbeUpdateScreenManager runs):
+        case PBTableState::PBTBL_X: {
+            PBTBLXScreenState xState =
+                static_cast<PBTBLXScreenState>(currentSubScreenState);
+            success = pbeRenderX(currentTick, lastTick, xState);
+            break;
+        }
 
-[ ] 9. Return from the mode:
-        Set m_tableState back to the appropriate state (usually PBTBL_MAIN)
-        Call pbeActivatePlayer() if hardware state needs resetting
-        Call pbeClearScreenRequests() and request the return screen
+        // Update dispatch block (in pbeUpdateGameState):
+        case PBTableState::PBTBL_X:
+            pbeUpdateStateX(inputMessage);
+            break;
+
+[ ] 7. Add the new .cpp to CMakeLists.txt
+
+[ ] 8. Reset the load guard in pbeTableReload():
+        m_xLoaded = false;
+
+[ ] 9. Trigger the mode from another mode's update function:
+        pbeClearScreenRequests();
+        m_tableState = PBTableState::PBTBL_X;
+        m_tableSubScreenState = static_cast<int>(PBTBLXScreenState::X_INITIAL);
+        pbeRequestScreen(PBTableState::PBTBL_X,
+            static_cast<int>(PBTBLXScreenState::X_INITIAL),
+            ScreenPriority::PRIORITY_LOW, 0, true);
+
+[ ] 10. Return from the mode (in pbeUpdateStateX or pbeRenderX when done):
+        pbeClearScreenRequests();
+        m_tableState = PBTableState::PBTBL_MAIN;  // or whichever state to return to
+        m_tableSubScreenState = static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL);
+        pbeRequestScreen(PBTableState::PBTBL_MAIN,
+            static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL),
+            ScreenPriority::PRIORITY_LOW, 0, true);
+        if (needsHardwareReset) pbeActivatePlayer(m_currentPlayer);
 ```
 
-**Remember:** The load guard (`if (m_xLoaded) return true;`) is critical — render functions are called every frame, so resource loading must be idempotent. Reset the flag in `pbeTableReload()` so a full game reset re-loads everything correctly.
+**Key rules to remember:**
+- The load guard (`if (m_xLoaded) return true;`) is critical — render functions are called every frame.
+- Reset the load guard in `pbeTableReload()` so a full game reset re-initializes everything.
+- **Always** pair every `m_tableSubScreenState =` write with a `pbeRequestScreen()` call using the same sub-state value.
+- **Never** read `m_tableSubScreenState` inside a render function — use the `subScreenState` parameter instead.
+- For complex modes like PBTBL_INTOWER, a single screen sub-state is perfectly valid; internal phases belong in private member variables, not in the screen manager.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The RasPin Pinball Mode System provides a framework for managing multiple game modes within a pinball game. Each mode represents a distinct play state with its own rules, scoring, and screen displays. Modes can transition between each other based on game conditions, creating dynamic and engaging gameplay.
+The RasPin Pinball Mode System provides a framework for managing multiple game states within a pinball game. Each mode (table state) represents a distinct play state with its own rules, rendering, and screen display. The screen manager decouples *what state the game is in* from *what is currently shown on screen*, enabling timed overlays and priority-based preemption without changing game logic.
 
 ## Architecture
 
@@ -10,92 +10,115 @@ The RasPin Pinball Mode System provides a framework for managing multiple game m
 
 The mode system consists of three main components:
 
-1. **Mode States** - Enum-based mode types and sub-states within each mode
-2. **Mode Manager** - Functions that handle mode transitions and state updates
-3. **Screen Manager** - Centralized system for managing screen display requests with priorities
+1. **Table States** — `PBTableState` enum values (e.g. `PBTBL_START`, `PBTBL_MAIN`), each with their own sub-state enum defined in the mode's header file
+2. **The Three-Function Pattern** — Every mode is implemented as exactly three functions: Load, Render, and UpdateState
+3. **Screen Manager** — Centralized system managing screen display requests with priority levels and optional timed expiry
 
-### Mode Flow Hierarchy
+### Table State Hierarchy
 
 ```
 PBTableState (Top Level)
     │
-    ├─ PBTBL_INIT
-    ├─ PBTBL_START
-    ├─ PBTBL_MAIN ────────────┐
-    ├─ PBTBL_RESET            │ Mode System Active
-    ├─ PBTBL_GAMEEND          │
-    └─ PBTBL_END              ┘
-                              │
-                    ┌─────────┴─────────┐
-                    │                   │
-            MODE_NORMAL_PLAY     MODE_MULTIBALL
-                    │                   │
-            ┌───────┼───────┐   ┌──────┼──────┐
-            │       │       │   │      │      │
-         IDLE   ACTIVE  DRAIN START ACTIVE ENDING
+    ├─ PBTBL_INIT        — One-time hardware/engine setup; no sub-states
+    ├─ PBTBL_START       — Attract screen: sub-states START_START / INST / SCORES / OPENDOOR
+    ├─ PBTBL_MAIN        — Gameplay: sub-states MAIN_NORMAL / EXTRABALL / BALLSAVED / INN_OPEN / KEY_OBTAINED
+    ├─ PBTBL_RESET       — Reset confirmation; no sub-states
+    ├─ PBTBL_PLAYEREND   — Between-turn transition: sub-states PLAYEREND_DISPLAY / EJECTING
+    ├─ PBTBL_GAMEEND     — High-score entry: sub-states GAMEEND_ENTERINITIALS / COMPLETE
+    └─ PBTBL_INTOWER     — Tower lock mode: single sub-state INTOWER_SCREEN_ACTIVE
 ```
 
-## Core Data Structures
+### The Three-Function Pattern
 
-### PBTableMode Enum
+Every table mode is implemented in its own `.cpp` file as exactly three functions:
 
-Defines the different game modes available:
+```
+pbeLoadX()           — Run once on first use (guard-flagged). Load textures, create
+                       animations, configure hardware. Returns false on failure.
+
+pbeRenderX(tick, lastTick, subScreenState)
+                     — Called every frame. Calls Load first. Dispatches on the
+                       subScreenState value delivered by the screen manager.
+
+pbeUpdateStateX(inputMessage)
+                     — Called once per input message. Drives sub-state transitions:
+                       writes m_tableSubScreenState AND calls pbeRequestScreen() in
+                       parallel so the screen manager stays synchronized.
+```
+
+The key insight is that `pbeRenderX` receives its `subScreenState` argument from `pbeGetCurrentSubScreenState()` (via the render dispatch in `pbeRenderGameScreen`), not by reading `m_tableSubScreenState` directly. This means the screen manager fully controls what is displayed, including priority-based overlays that temporarily supersede the persistent background state.
+
+### How Sub-States Flow Through the System
+
+```
+pbeUpdateStateX():                      pbeRenderGameScreen():
+  Transition detected                     (called every frame)
+  │                                       │
+  ├─ m_tableSubScreenState = NEW          ├─ pbeRequestScreen(state, m_tableSubScreenState,
+  └─ pbeRequestScreen(state, NEW,         │    PRIORITY_LOW, 0, true)  ← background request
+       PRIORITY_LOW, 0, true)             │
+                                          ├─ pbeUpdateScreenManager(currentTick)
+  High-priority overlays:                 │    ← resolves priorities, expires timed requests
+  └─ pbeRequestScreen(state, OVERLAY,     │
+       PRIORITY_HIGH, durationMs, true)   ├─ currentSubScreenState = pbeGetCurrentSubScreenState()
+       ← expires automatically            │
+                                          └─ pbeRenderX(tick, lastTick, currentSubScreenState)
+                                               ← render uses whatever the screen manager chose
+```
+
+This means the screen manager can display a timed `MAIN_EXTRABALL` overlay from `PRIORITY_HIGH` while the persistent `MAIN_NORMAL` background sits at `PRIORITY_LOW`. When the overlay expires, the background takes over automatically — the game logic never changes.
+
+## Sub-State Enum Pattern
+
+Each mode defines its sub-states in `tablemodes/Pinball_Table_ModeX.h`:
 
 ```cpp
-enum class PBTableMode {
-    MODE_NORMAL_PLAY = 0,     // Normal play mode - main gameplay
-    MODE_MULTIBALL = 1,       // Multiball mode - triggered by specific conditions
-    MODE_END
+// Example: Pinball_Table_ModeYourMode.h
+enum class PBTBLYourModeScreenState {
+    YOURMODE_SCREEN_A = 0,   // First display state
+    YOURMODE_SCREEN_B = 1,   // Second display state
+    YOURMODE_SCREEN_END
 };
 ```
 
-### Mode Sub-States
+The render function accepts this enum directly:
 
-Each mode has its own set of sub-states:
-
-**Normal Play Mode:**
 ```cpp
-enum class PBNormalPlayState {
-    NORMAL_IDLE = 0,          // Waiting for ball to be active
-    NORMAL_ACTIVE = 1,        // Ball in play
-    NORMAL_DRAIN = 2,         // Ball drained, handling end of ball
-    NORMAL_END
-};
+bool PBEngine::pbeRenderYourMode(unsigned long currentTick, unsigned long lastTick,
+                                  PBTBLYourModeScreenState subScreenState) {
+    if (!pbeLoadYourMode()) return false;
+
+    switch (subScreenState) {
+        case PBTBLYourModeScreenState::YOURMODE_SCREEN_A:
+            // draw state A
+            break;
+        case PBTBLYourModeScreenState::YOURMODE_SCREEN_B:
+            // draw state B
+            break;
+    }
+    return true;
+}
 ```
 
-**Multiball Mode:**
-```cpp
-enum class PBMultiballState {
-    MULTIBALL_START = 0,      // Starting multiball sequence
-    MULTIBALL_ACTIVE = 1,     // Multiball gameplay active
-    MULTIBALL_ENDING = 2,     // Transitioning back to normal play
-    MULTIBALL_END
-};
-```
-
-### ModeState Structure
-
-Tracks the current mode and all mode-specific state data:
+The update function writes `m_tableSubScreenState` and calls `pbeRequestScreen` together on every transition:
 
 ```cpp
-struct ModeState {
-    PBTableMode currentMode;              // Current active mode
-    PBTableMode previousMode;             // Previous mode (for returning)
-    
-    // Normal play mode state
-    PBNormalPlayState normalPlayState;
-    unsigned long normalPlayStateStartTick;
-    
-    // Multiball mode state
-    PBMultiballState multiballState;
-    unsigned long multiballStateStartTick;
-    int multiballCount;                   // Number of balls in multiball
-    bool multiballQualified;              // Is multiball qualified to start?
-    
-    // Mode transition tracking
-    bool modeTransitionActive;
-    unsigned long modeTransitionStartTick;
-};
+void PBEngine::pbeUpdateStateYourMode(stInputMessage inputMessage) {
+    PBTBLYourModeScreenState currentState =
+        static_cast<PBTBLYourModeScreenState>(m_tableSubScreenState);
+
+    switch (currentState) {
+        case PBTBLYourModeScreenState::YOURMODE_SCREEN_A:
+            if (/* transition condition */) {
+                m_tableSubScreenState = static_cast<int>(PBTBLYourModeScreenState::YOURMODE_SCREEN_B);
+                pbeRequestScreen(PBTableState::PBTBL_YOURMODE,
+                                 static_cast<int>(PBTBLYourModeScreenState::YOURMODE_SCREEN_B),
+                                 ScreenPriority::PRIORITY_LOW, 0, true);
+            }
+            break;
+        // ...
+    }
+}
 ```
 
 ## Screen Management System
@@ -106,9 +129,9 @@ The screen manager uses a priority-based queue system to determine which screen 
 
 ```cpp
 enum class ScreenPriority {
-    PRIORITY_LOW = 0,         // Normal gameplay screens
+    PRIORITY_LOW = 0,         // Persistent background (current game state)
     PRIORITY_MEDIUM = 1,      // Mode transitions, bonus screens
-    PRIORITY_HIGH = 2,        // Important events, jackpots
+    PRIORITY_HIGH = 2,        // Important events (extra ball, ball saved, inn open)
     PRIORITY_CRITICAL = 3     // Cannot be preempted (e.g., game over)
 };
 ```
@@ -118,165 +141,23 @@ enum class ScreenPriority {
 ```cpp
 struct ScreenRequest {
     PBTableState tableState;         // Main table state to display
-    int subScreenState;              // Subscreen enum value for the table state
+    int subScreenState;              // Sub-state enum value cast to int
     ScreenPriority priority;         // Priority level
     unsigned long durationMs;        // How long to display (0 = until cleared)
     unsigned long requestTick;       // When request was made
-    bool canBePreempted;             // Can this screen be preempted by any higher priority request?
+    bool canBePreempted;             // Can this screen be preempted by a higher priority request?
 };
 ```
 
 ### Screen Manager Functions
 
-- **pbeRequestScreen()** - Request a screen to be displayed
-- **pbeUpdateScreenManager()** - Update screen queue and determine current screen
-- **pbeClearScreenRequests()** - Clear all pending screen requests
-- **pbeGetCurrentScreenState()** - Get the currently displayed `PBTableState`
-
-## Mode System Flow Charts
-
-### Overall Mode System Flow
-
-```
-┌──────────────────────────────────────────────────┐
-│           Game Update Loop (Each Frame)          │
-└──────────────────────────┬───────────────────────┘
-                           │
-                           ▼
-              ┌────────────────────────┐
-              │  pbeUpdateGameState()  │
-              └────────────┬───────────┘
-                           │
-                           ▼
-              ┌────────────────────────┐
-              │  pbeUpdateModeState()  │
-              │  - Check transitions   │
-              │  - Update current mode │
-              └────────────┬───────────┘
-                           │
-                           ▼
-              ┌────────────────────────────┐
-              │ pbeUpdateScreenManager()   │
-              │ - Process screen queue     │
-              │ - Handle priorities        │
-              └────────────────────────────┘
-```
-
-### Mode Transition Flow
-
-```
-┌─────────────────────────────────────────────────────┐
-│               Check Mode Transition                 │
-│          pbeCheckModeTransition()                   │
-└──────────────────┬──────────────────────────────────┘
-                   │
-                   ├───► Qualification Met? ───No───► Continue Current Mode
-                   │                                          │
-                   Yes                                        │
-                   │                                          │
-                   ▼                                          │
-         ┌─────────────────┐                                │
-         │  Exit Old Mode  │                                │
-         │ pbeExitMode()   │                                │
-         │ - Cleanup       │                                │
-         │ - Save state    │                                │
-         └────────┬────────┘                                │
-                  │                                          │
-                  ▼                                          │
-         ┌─────────────────┐                                │
-         │  Enter New Mode │                                │
-         │ pbeEnterMode()  │                                │
-         │ - Initialize    │                                │
-         │ - Set state     │                                │
-         │ - Request screen│                                │
-         └────────┬────────┘                                │
-                  │                                          │
-                  └──────────────────────────────────────────┘
-                                   │
-                                   ▼
-                        ┌──────────────────┐
-                        │ Return to Update │
-                        └──────────────────┘
-```
-
-### Normal Play Mode State Flow
-
-```
-              ┌──────────────┐
-       ┌─────►│  NORMAL_IDLE │◄──────┐
-       │      └──────┬───────┘       │
-       │             │                │
-       │     Ball Active Event        │
-       │             │                │
-       │             ▼                │
-       │      ┌─────────────┐        │
-       │      │NORMAL_ACTIVE│        │
-       │      └──────┬──────┘        │
-       │             │                │
-       │  Check Multiball Qualified  │
-       │             │                │
-       │      Drain Event             │
-       │             │                │
-       │             ▼                │
-       │      ┌─────────────┐        │
-       │      │NORMAL_DRAIN │        │
-       │      └──────┬──────┘        │
-       │             │                │
-       │       After Delay            │
-       │             │                │
-       └─────────────┘                │
-                                      │
-            Multiball Qualified       │
-            & Triggered               │
-                     │                │
-                     ▼                │
-            ┌────────────────┐       │
-            │MODE_MULTIBALL  │───────┘
-            │  (Transition)  │  Return
-            └────────────────┘
-```
-
-### Multiball Mode State Flow
-
-```
-     Enter Multiball Mode
-             │
-             ▼
-    ┌────────────────┐
-    │MULTIBALL_START │
-    │ - Show intro   │
-    │ - Prepare game │
-    └────────┬───────┘
-             │
-      3 second delay
-             │
-             ▼
-    ┌────────────────┐
-    │MULTIBALL_ACTIVE│
-    │ - Track balls  │
-    │ - Higher score │
-    │ - Jackpots     │
-    └────────┬───────┘
-             │
-    Only 1 ball remains
-    or timeout (20s)
-             │
-             ▼
-    ┌────────────────┐
-    │MULTIBALL_ENDING│
-    │ - Show total   │
-    │ - Cleanup      │
-    └────────┬───────┘
-             │
-      2 second delay
-             │
-             ▼
-    ┌────────────────┐
-    │ Exit Multiball │
-    │ Return to      │
-    │ Normal Play    │
-    └────────────────┘
-```
+| Function | Purpose |
+|----------|---------|
+| `pbeRequestScreen(state, sub, priority, durationMs, canBePreempted)` | Queue a screen display request |
+| `pbeUpdateScreenManager(currentTick)` | Process queue, expire timed requests, select current display |
+| `pbeClearScreenRequests()` | Clear all pending requests (use at state transitions) |
+| `pbeGetCurrentScreenState()` | Return the currently displayed `PBTableState` |
+| `pbeGetCurrentSubScreenState()` | Return the currently displayed sub-state (int) |
 
 ### Screen Manager Flow
 
@@ -298,6 +179,12 @@ struct ScreenRequest {
                    │
                    ▼
          ┌──────────────────┐
+         │ Remove Expired   │
+         │ Requests         │
+         └──────────┬───────┘
+                    │
+                    ▼
+         ┌──────────────────┐
          │  Sort by Priority│
          │  (Highest First) │
          └──────────┬───────┘
@@ -315,304 +202,275 @@ struct ScreenRequest {
         │                        │
         ▼                        │
   Can preempt? ──No──►      Continue ◄──┘
-        │                        │
-       Yes                       │
-        │                        │
-        ▼                        │
-  ┌────────────┐                │
-  │Change Screen│               │
-  └──────┬─────┘                │
-         │                      │
-         └──────────┬───────────┘
-                    │
-                    ▼
-         ┌──────────────────┐
-         │ Remove Expired   │
-         │ Requests         │
-         └──────────────────┘
+        │
+       Yes
+        │
+        ▼
+  ┌────────────┐
+  │Change Screen│
+  └──────┬─────┘
+         │
+         ▼
+  m_currentDisplayedTableState / m_currentDisplayedSubScreenState
+  updated ← render functions read from here via pbeGetCurrentSubScreenState()
 ```
 
 ## Creating a New Mode
 
-To add a new mode to the system, follow these steps:
+Follow these steps in order when creating a new table mode. The "DoD checklist" in `DoDTable.md` mirrors this but is tailored to that specific table.
 
-### 1. Define Mode Enum
+### 1. Add a Value to `PBTableState`
 
-Add your new mode to `PBTableMode` in `Pinball_Table.h`:
+In `src/system/Pinball_Table.h`:
 
 ```cpp
-enum class PBTableMode {
-    MODE_NORMAL_PLAY = 0,
-    MODE_MULTIBALL = 1,
-    MODE_YOUR_NEW_MODE = 2,  // Add here
-    MODE_END
+enum class PBTableState {
+    PBTBL_INIT = 0,
+    PBTBL_START,
+    PBTBL_MAIN,
+    PBTBL_RESET,
+    PBTBL_PLAYEREND,
+    PBTBL_INTOWER,
+    PBTBL_GAMEEND,
+    PBTBL_YOURMODE,   // ← Add here
+    PBTBL_END
 };
 ```
 
-### 2. Define Mode Sub-States
+### 2. Create the Mode Header
 
-Create an enum for your mode's sub-states:
+Create `src/user/tablemodes/Pinball_Table_ModeYourMode.h`:
 
 ```cpp
-enum class PBYourModeState {
-    YOURMODE_INIT = 0,
-    YOURMODE_ACTIVE = 1,
-    YOURMODE_COMPLETE = 2,
-    YOURMODE_END
+#ifndef Pinball_Table_ModeYourMode_h
+#define Pinball_Table_ModeYourMode_h
+
+// Screen sub-states for PBTBL_YOURMODE
+enum class PBTBLYourModeScreenState {
+    YOURMODE_SCREEN_A = 0,   // First display variant
+    YOURMODE_SCREEN_B = 1,   // Second display variant
+    YOURMODE_SCREEN_END
 };
+
+#endif // Pinball_Table_ModeYourMode_h
 ```
 
-### 3. Add State Variables to ModeState
-
-Add your mode's state tracking to the `ModeState` structure:
+### 3. Include the Header in `Pinball_Table.h`
 
 ```cpp
-struct ModeState {
-    // ... existing members ...
-    
-    // Your new mode state
-    PBYourModeState yourModeState;
-    unsigned long yourModeStateStartTick;
-    int yourModeSpecificData;
-    
-    // Update reset() method
-    void reset() {
-        // ... existing resets ...
-        yourModeState = PBYourModeState::YOURMODE_INIT;
-        yourModeStateStartTick = 0;
-        yourModeSpecificData = 0;
-    }
-};
+#include "tablemodes/Pinball_Table_ModeYourMode.h"
 ```
 
-### 4. Create Mode Update Function
-
-Implement a function to handle your mode's logic in `Pinball_Table.cpp`:
+### 4. Add Function Declarations to `Pinball_Engine.h`
 
 ```cpp
-void PBEngine::pbeUpdateYourMode(stInputMessage inputMessage, unsigned long currentTick) {
-    ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
-    
-    // Handle your mode's state machine
-    switch (modeState.yourModeState) {
-        case PBYourModeState::YOURMODE_INIT:
-            // Initialization logic
-            modeState.yourModeState = PBYourModeState::YOURMODE_ACTIVE;
-            modeState.yourModeStateStartTick = currentTick;
-            break;
-            
-        case PBYourModeState::YOURMODE_ACTIVE:
-            // Active gameplay logic
-            // Check for completion conditions
-            break;
-            
-        case PBYourModeState::YOURMODE_COMPLETE:
-            // Completion logic
-            // Exit mode when done
-            break;
-    }
-}
+bool pbeLoadYourMode();
+bool pbeRenderYourMode(unsigned long currentTick, unsigned long lastTick,
+                       PBTBLYourModeScreenState subScreenState);
+void pbeUpdateStateYourMode(stInputMessage inputMessage);
+
+bool m_yourModeLoaded = false;   // load guard
 ```
 
-### 5. Add Mode Entry/Exit Logic
+### 5. Create the Mode Implementation
 
-Update `pbeEnterMode()` and `pbeExitMode()` in `Pinball_Table.cpp`:
+Create `src/user/tablemodes/Pinball_Table_ModeYourMode.cpp`:
 
 ```cpp
-void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
-    // ... existing code ...
-    
-    switch (newMode) {
-        // ... existing modes ...
-        
-        case PBTableMode::MODE_YOUR_NEW_MODE:
-            modeState.yourModeState = PBYourModeState::YOURMODE_INIT;
-            modeState.yourModeStateStartTick = currentTick;
-            
-            // Request your mode's screen (example: main gameplay state with sub-state 0)
-            pbeRequestScreen(PBTableState::PBTBL_MAIN, 0, ScreenPriority::PRIORITY_MEDIUM, 0, true);
-            break;
-    }
+#include "Pinball_Engine.h"
+#include "Pinball_Table.h"
+
+// ── Load (guard-flagged) ────────────────────────────────────────────────
+bool PBEngine::pbeLoadYourMode() {
+    if (m_yourModeLoaded) return true;
+    // Load textures, set up animations, etc.
+    m_yourModeLoaded = true;
+    return true;
 }
 
-void PBEngine::pbeExitMode(PBTableMode exitingMode, unsigned long currentTick) {
-    // ... existing code ...
-    
-    switch (exitingMode) {
-        // ... existing modes ...
-        
-        case PBTableMode::MODE_YOUR_NEW_MODE:
-            // Cleanup your mode's state
+// ── Render ──────────────────────────────────────────────────────────────
+// subScreenState comes from pbeGetCurrentSubScreenState() — do NOT read
+// m_tableSubScreenState directly here.
+bool PBEngine::pbeRenderYourMode(unsigned long currentTick, unsigned long lastTick,
+                                  PBTBLYourModeScreenState subScreenState) {
+    if (!pbeLoadYourMode()) return false;
+
+    switch (subScreenState) {
+        case PBTBLYourModeScreenState::YOURMODE_SCREEN_A:
+            // draw state A
+            break;
+        case PBTBLYourModeScreenState::YOURMODE_SCREEN_B:
+            // draw state B
+            break;
+        default:
             break;
     }
+    return true;
 }
-```
 
-### 6. Add Qualification Check
+// ── Update ──────────────────────────────────────────────────────────────
+// On every sub-state transition: write m_tableSubScreenState AND call
+// pbeRequestScreen() so the screen manager stays synchronized.
+void PBEngine::pbeUpdateStateYourMode(stInputMessage inputMessage) {
+    PBTBLYourModeScreenState currentState =
+        static_cast<PBTBLYourModeScreenState>(m_tableSubScreenState);
 
-Create a function to check if your mode should activate:
-
-```cpp
-bool PBEngine::pbeCheckYourModeQualified() {
-    // Return true when your mode should activate
-    // Example: return specific targets were hit
-    return false;
-}
-```
-
-### 7. Update Mode Transition Logic
-
-Add your mode transition check to `pbeCheckModeTransition()`:
-
-```cpp
-bool PBEngine::pbeCheckModeTransition(unsigned long currentTick) {
-    ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
-    
-    switch (modeState.currentMode) {
-        case PBTableMode::MODE_NORMAL_PLAY: {
-            // ... existing checks ...
-            
-            // Check for your mode
-            if (pbeCheckYourModeQualified()) {
-                pbeExitMode(PBTableMode::MODE_NORMAL_PLAY, currentTick);
-                pbeEnterMode(PBTableMode::MODE_YOUR_NEW_MODE, currentTick);
-                return true;
+    switch (currentState) {
+        case PBTBLYourModeScreenState::YOURMODE_SCREEN_A:
+            if (/* transition condition */) {
+                m_tableSubScreenState =
+                    static_cast<int>(PBTBLYourModeScreenState::YOURMODE_SCREEN_B);
+                pbeRequestScreen(PBTableState::PBTBL_YOURMODE,
+                    static_cast<int>(PBTBLYourModeScreenState::YOURMODE_SCREEN_B),
+                    ScreenPriority::PRIORITY_LOW, 0, true);
             }
             break;
-        }
+        case PBTBLYourModeScreenState::YOURMODE_SCREEN_B:
+            if (/* exit condition */) {
+                // Transition to another top-level state
+                pbeClearScreenRequests();
+                m_tableState = PBTableState::PBTBL_MAIN;
+                m_tableSubScreenState =
+                    static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL);
+                pbeRequestScreen(PBTableState::PBTBL_MAIN,
+                    static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL),
+                    ScreenPriority::PRIORITY_LOW, 0, true);
+            }
+            break;
+        default:
+            break;
     }
-    return false;
 }
 ```
 
-### 8. Integrate into Update Loop
+### 6. Add Dispatch Cases in `Pinball_Table.cpp`
 
-Add your mode to the switch statement in `pbeUpdateModeState()` and `pbeUpdateGameState()`:
+In `pbeRenderGameScreen()`:
 
 ```cpp
-switch (modeState.currentMode) {
-    // ... existing modes ...
-    
-    case PBTableMode::MODE_YOUR_NEW_MODE:
-        pbeUpdateYourMode(inputMessage, currentTick);
-        break;
+// Background request (keeps screen manager in sync with m_tableState)
+case PBTableState::PBTBL_YOURMODE:
+    pbeRequestScreen(PBTableState::PBTBL_YOURMODE, m_tableSubScreenState,
+                     ScreenPriority::PRIORITY_LOW, 0, true);
+    break;
+
+// Render dispatch
+case PBTableState::PBTBL_YOURMODE: {
+    PBTBLYourModeScreenState yourModeState =
+        static_cast<PBTBLYourModeScreenState>(currentSubScreenState);
+    success = pbeRenderYourMode(currentTick, lastTick, yourModeState);
+    break;
 }
+```
+
+In `pbeUpdateGameState()`:
+
+```cpp
+case PBTableState::PBTBL_YOURMODE:
+    pbeUpdateStateYourMode(inputMessage);
+    break;
+```
+
+### 7. Reset the Load Guard in `pbeTableReload()`
+
+```cpp
+m_yourModeLoaded = false;
+```
+
+### 8. Add to `CMakeLists.txt`
+
+Add `src/user/tablemodes/Pinball_Table_ModeYourMode.cpp` to the source file list.
+
+### 9. Trigger Entry from Another Mode
+
+From the mode that should transition into yours:
+
+```cpp
+pbeClearScreenRequests();
+m_tableState = PBTableState::PBTBL_YOURMODE;
+m_tableSubScreenState = static_cast<int>(PBTBLYourModeScreenState::YOURMODE_SCREEN_A);
+pbeRequestScreen(PBTableState::PBTBL_YOURMODE,
+    static_cast<int>(PBTBLYourModeScreenState::YOURMODE_SCREEN_A),
+    ScreenPriority::PRIORITY_LOW, 0, true);
 ```
 
 ## Screen Management Best Practices
 
 ### 1. Use Appropriate Priorities
 
-- **PRIORITY_LOW** - Normal scoring displays, ongoing gameplay
-- **PRIORITY_MEDIUM** - Mode starts, lane completion, multiplier changes
-- **PRIORITY_HIGH** - Jackpots, mode completions, extra balls
-- **PRIORITY_CRITICAL** - Ball save warnings, game over screens
+| Priority | Enum | Use for |
+|----------|------|---------|
+| 0 | `PRIORITY_LOW` | Persistent background state (the current `m_tableState`/sub-state) |
+| 1 | `PRIORITY_MEDIUM` | Mode transitions, bonus start screens |
+| 2 | `PRIORITY_HIGH` | Timed event overlays: extra ball, ball saved, inn open, key obtained |
+| 3 | `PRIORITY_CRITICAL` | Screens that must not be preempted (reserved for critical use) |
 
 ### 2. Set Duration Appropriately
 
-- **0 ms** - Stays until cleared (for ongoing displays)
-- **2000-3000 ms** - Quick information displays
-- **5000+ ms** - Important information that needs time to read
+- **0 ms** — Stays until cleared (`pbeClearScreenRequests()`). Always use for the persistent `PRIORITY_LOW` background request.
+- **2000–3000 ms** — Short event displays (ball saved, inn open, key obtained).
+- **4000–5000 ms** — Longer animated sequences (extra ball video).
 
 ### 3. Use Preemption Wisely
 
-- Set `canBePreempted = false` for critical information
-- Set `canBePreempted = true` for normal displays that can be interrupted
+- Set `canBePreempted = true` for all `PRIORITY_LOW` backgrounds and most overlays.
+- Set `canBePreempted = false` only when an overlay absolutely must not be cut short.
 
-### Example Screen Requests:
+### 4. Always Pair `m_tableSubScreenState` Writes with `pbeRequestScreen()`
+
+Every time you assign `m_tableSubScreenState`, call `pbeRequestScreen()` with the same values in the same code path. This is what keeps the screen manager synchronized with game state.
 
 ```cpp
-// Normal scoring display - can be interrupted
-// Requests PBTBL_MAIN with sub-state 0 (MAIN_NORMAL)
-pbeRequestScreen(PBTableState::PBTBL_MAIN, (int)PBTBLMainScreenState::MAIN_NORMAL, ScreenPriority::PRIORITY_LOW, 0, true);
+// ✅ Correct: write both at the same time
+m_tableSubScreenState = static_cast<int>(PBTBLYourModeScreenState::YOURMODE_SCREEN_B);
+pbeRequestScreen(PBTableState::PBTBL_YOURMODE,
+    static_cast<int>(PBTBLYourModeScreenState::YOURMODE_SCREEN_B),
+    ScreenPriority::PRIORITY_LOW, 0, true);
 
-// Mode start screen - stays for 3 seconds, can be preempted by higher priority
-pbeRequestScreen(PBTableState::PBTBL_START, 0, ScreenPriority::PRIORITY_MEDIUM, 3000, true);
-
-// Extra ball screen - stays for 5 seconds, cannot be preempted
-pbeRequestScreen(PBTableState::PBTBL_MAIN, (int)PBTBLMainScreenState::MAIN_EXTRABALL, ScreenPriority::PRIORITY_HIGH, 5000, false);
-
-// Game end screen - stays until cleared, cannot be preempted
-pbeRequestScreen(PBTableState::PBTBL_GAMEEND, 0, ScreenPriority::PRIORITY_CRITICAL, 0, false);
+// ❌ Wrong: only writing m_tableSubScreenState (screen manager won't know)
+m_tableSubScreenState = static_cast<int>(PBTBLYourModeScreenState::YOURMODE_SCREEN_B);
 ```
 
-## Example: Implementing a Wizard Mode
+### 5. Example Screen Requests
 
-Here's a complete example of implementing a wizard mode:
-
-### 1. Add to enum:
 ```cpp
-enum class PBTableMode {
-    MODE_NORMAL_PLAY = 0,
-    MODE_MULTIBALL = 1,
-    MODE_WIZARD = 2,
-    MODE_END
-};
-```
+// Persistent background for PBTBL_MAIN / MAIN_NORMAL
+pbeRequestScreen(PBTableState::PBTBL_MAIN,
+    static_cast<int>(PBTBLMainScreenState::MAIN_NORMAL),
+    ScreenPriority::PRIORITY_LOW, 0, true);
 
-### 2. Create sub-states:
-```cpp
-enum class PBWizardState {
-    WIZARD_INTRO = 0,
-    WIZARD_COMBAT = 1,
-    WIZARD_VICTORY = 2,
-    WIZARD_END
-};
-```
+// Timed "Extra Ball!" overlay — automatically expires after 3.9 s
+pbeRequestScreen(PBTableState::PBTBL_MAIN,
+    static_cast<int>(PBTBLMainScreenState::MAIN_EXTRABALL),
+    ScreenPriority::PRIORITY_HIGH, 3900, true);
 
-### 3. Add to ModeState:
-```cpp
-PBWizardState wizardState;
-unsigned long wizardStateStartTick;
-int wizardHitsRemaining;
-bool wizardQualified;
+// Timed "Ball Saved" overlay — expires after 2 s
+pbeRequestScreen(PBTableState::PBTBL_MAIN,
+    static_cast<int>(PBTBLMainScreenState::MAIN_BALLSAVED),
+    ScreenPriority::PRIORITY_HIGH, 2000, true);
 ```
-
-### 4. Implement qualification:
-```cpp
-bool PBEngine::pbeCheckWizardQualified() {
-    // Qualified when all three characters are level 5+
-    return (m_playerStates[m_currentPlayer].knightLevel >= 5 &&
-            m_playerStates[m_currentPlayer].priestLevel >= 5 &&
-            m_playerStates[m_currentPlayer].rangerLevel >= 5);
-}
-```
-
-### 5. Create update function with full state flow and appropriate screens at each stage.
 
 ## Testing Your Mode
 
-1. **Test Mode Entry** - Verify qualification conditions work correctly
-2. **Test State Flow** - Ensure sub-states progress properly
-3. **Test Mode Exit** - Confirm cleanup happens correctly
-4. **Test Screen Display** - Verify correct screens show at right times
-5. **Test Transitions** - Check transitions to/from other modes work
+1. **Test Mode Entry** — Verify the trigger sets `m_tableState`, `m_tableSubScreenState`, and calls `pbeRequestScreen` correctly.
+2. **Test Sub-State Transitions** — Confirm sub-states advance on the right inputs/timers, and that `pbeRequestScreen` is called on each transition.
+3. **Test Priority Overlays** — If your mode uses timed overlays, verify they expire and fall back to the background automatically.
+4. **Test Mode Exit** — Confirm cleanup (reset load guard, clear screen requests, set new `m_tableState`) happens correctly.
+5. **Test Render Dispatch** — Ensure `pbeRenderX` correctly dispatches on each sub-state value.
 
 ## Debugging Tips
 
-1. **Use Console Output** - Add `pbeSendConsole()` calls to track state changes
-2. **Check Mode State** - Print current mode and sub-state each frame
-3. **Monitor Screen Queue** - Log screen requests and changes
-4. **Verify Timing** - Ensure tick-based timing is working correctly
-5. **Test Edge Cases** - Try rapid inputs, mode switches, and timeouts
-
-## Integration with Existing Code
-
-The mode system integrates with the existing table state system:
-
-- **PBTBL_MAIN** uses the mode system (mode transitions happen inside the main gameplay state)
-- Mode state is per-player (stored in `pbGameState`)
-- Screen manager is global (shared across all players)
-- Mode transitions can happen at any time based on game conditions
+1. **Console Output** — Add `pbeSendConsole()` calls at every sub-state transition to trace the flow.
+2. **Screen Manager State** — Log `pbeGetCurrentScreenState()` and `pbeGetCurrentSubScreenState()` each frame to confirm the screen manager is tracking what you expect.
+3. **Load Guard** — If rendering looks wrong on re-entry, check whether the load guard (`m_xLoaded`) was reset in `pbeTableReload()`.
+4. **Tick Timing** — Always compare against `currentTick - startTick` rather than incrementing a counter.
 
 ## Summary
 
 The mode system provides:
-- ✅ Multiple independent game modes
-- ✅ Each mode with its own state machine
-- ✅ Centralized screen management with priorities
-- ✅ Clean transition system between modes
-- ✅ Per-player mode state tracking
-- ✅ Extensible architecture for adding new modes
-
-This architecture allows for complex, engaging pinball gameplay with multiple layers of rules and objectives, all managed in a clean and maintainable way.
+- ✅ All top-level states and their sub-states managed through the screen manager
+- ✅ Priority-based preemption for timed overlays without changing game logic
+- ✅ Consistent three-function pattern (Load / Render / UpdateState) per mode
+- ✅ Render functions always receive sub-state from `pbeGetCurrentSubScreenState()` — never read `m_tableSubScreenState` directly in a render function
+- ✅ Update functions always keep `m_tableSubScreenState` and `pbeRequestScreen()` in sync
+- ✅ Extensible: adding a new mode requires only a header, a `.cpp`, and dispatch cases
