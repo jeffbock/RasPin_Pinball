@@ -627,6 +627,8 @@ public:
     unsigned int m_DoorLeftId;          // Sprite ID for doorleft.png  (floor left cap)
     unsigned int m_DoorRightId;         // Sprite ID for doorright.png (floor right cap)
     unsigned int m_DoorMidId;           // Sprite ID for doormid.png   (floor middle tile, tiled)
+    unsigned int m_inTowerAvatarId;     // Sprite ID for avatarsprite.png (tile sequence 0-3)
+    unsigned long m_inTowerAvatarOpenTick; // Tick the active door-avatar animation began
     unsigned int m_inTowerD20ModelId;  // 3D model ID for InTower d20
     unsigned int m_inTowerD20InstanceId; // 3D instance ID for InTower d20
     bool         m_inTowerD20Loaded;   // True when model+instance are ready

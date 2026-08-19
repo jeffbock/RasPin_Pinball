@@ -57,11 +57,11 @@ def update_version_in_header(header_file):
         with open(header_file, 'w') as f:
             f.write(content)
         
-        print(f"✅ Build number updated to {build_number} (Version: v{major}.{minor}.{build_number})")
+        print(f"Build number updated to {build_number} (Version: v{major}.{minor}.{build_number})")
         return True
         
     else:
-        print("❌ Version defines not found in the expected format")
+        print("Version defines not found in the expected format")
         return False
 
 def main():
@@ -81,9 +81,9 @@ def main():
     success = update_version_in_header(header_file)
     
     if success:
-        print(f"🎯 Ready to build with updated build number!")
+        print(f"Ready to build with updated build number!")
     else:
-        print("❌ Failed to update build number")
+        print("Failed to update build number")
         sys.exit(1)
 
 if __name__ == "__main__":

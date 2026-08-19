@@ -180,6 +180,8 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_inTowerDoorJustOpened = false;
     m_inTowerOpenedRow = -1;
     m_inTowerOpenedCol = -1;
+    m_inTowerAvatarId = NOSPRITE;
+    m_inTowerAvatarOpenTick = 0;
     m_inTowerEnemyBaseId = NOSPRITE;
     for (int i = 0; i < 20; i++) m_inTowerEnemyInstanceIds[i] = NOSPRITE;
     m_inTowerEnemyLoaded = false;

@@ -306,6 +306,15 @@ bool PBEngine::pbeLoadInTower() {
     m_DoorMidId   = gfxLoadSprite("DoorFloorMid",   "src/user/resources/textures/doorfloormid.png",   GFX_PNG, GFX_NOMAP, GFX_CENTER, true, true);
     gfxSetColor(m_DoorMidId,   255, 255, 255, 255);
 
+    m_inTowerAvatarId = gfxLoadTileSprite("InTowerAvatar", "src/user/resources/textures/avatarsprite.png",
+                                         GFX_PNG, GFX_CENTER, true, 128, 128);
+    if (m_inTowerAvatarId != NOSPRITE) {
+        gfxSetSelectedTile(m_inTowerAvatarId, 0);
+        gfxSetColor(m_inTowerAvatarId, 255, 255, 255, 255);
+    } else {
+        pbeSendConsole("WARNING: Failed to load avatarsprite.png");
+    }
+
     if (m_DoorOpenId == NOSPRITE || m_DoorClosedId == NOSPRITE || m_DoorBlockedId == NOSPRITE ||
         m_DoorWall1Id == NOSPRITE || m_DoorWall2Id == NOSPRITE || m_DoorStairsId == NOSPRITE ||
         m_TowerSmallTopId == NOSPRITE || m_TowerSmallOpenId == NOSPRITE ||
@@ -671,7 +680,53 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
         }
     }
 
-    // ---- Pass 4: Side mini-tower (rendered to the right of the door grid) -------
+    // ---- Pass 5: Door-opening avatar ------------------------------------
+    if (m_inTowerAvatarId != NOSPRITE) {
+        int avatarRow = -1;
+        int avatarCol = -1;
+
+        if (m_inTowerDoorJustOpened && m_inTowerOpenedRow >= 0 && m_inTowerOpenedCol >= 0) {
+            avatarRow = m_inTowerOpenedRow;
+            avatarCol = m_inTowerOpenedCol;
+        } else if (m_inTowerDungeonPhase == 0 || m_inTowerDungeonPhase == 1) {
+            for (int r = 0; r < 5; r++) {
+                for (int c = 0; c < 3; c++) {
+                    if (grid.cells[r][c].state != DoorState::DOOR_NONE &&
+                        grid.cells[r][c].state != DoorState::DOOR_OPEN) {
+                        avatarRow = r;
+                        avatarCol = c;
+                        goto avatar_pick_done;
+                    }
+                }
+            }
+        }
+avatar_pick_done:
+        if (avatarRow >= 0 && avatarCol >= 0) {
+            float vanish = 0.0f;
+            unsigned long avatarAgeMs = 0;
+            if (m_inTowerDoorJustOpened) {
+                avatarAgeMs = currentTick - m_inTowerAvatarOpenTick;
+                if (avatarAgeMs > 1000UL) avatarAgeMs = 1000UL;
+                vanish = (float)avatarAgeMs / 1000.0f;
+            } else if (m_inTowerDungeonPhase == 1 && m_inTowerShrinkAnimStartTick > 0) {
+                avatarAgeMs = currentTick - m_inTowerShrinkAnimStartTick;
+                if (avatarAgeMs > 1000UL) avatarAgeMs = 1000UL;
+                vanish = (float)avatarAgeMs / 1000.0f;
+            }
+
+            const float avatarAgeSec = (float)currentTick / 1000.0f;
+            const float sequence = avatarAgeSec / 0.5f;
+            const unsigned int frameIndex = (unsigned int)fmodf(sequence, 4.0f);
+            gfxSetSelectedTile(m_inTowerAvatarId, frameIndex);
+
+            const float avatarScale = renderScale * 0.75f;
+            const int baseAvatarY = rowPositions[avatarRow] + (int)(doorH * 0.62f) - 30;
+            const int renderY = baseAvatarY - (int)(doorH * 0.35f * vanish);
+            gfxRenderSprite(m_inTowerAvatarId, colPositions[avatarCol], renderY, avatarScale * (1.0f - vanish * 0.85f), 0.0f);
+        }
+    }
+
+    // ---- Pass 6: Side mini-tower (rendered to the right of the door grid) -------
     // Layout (bottom to top): TO, [TS, TC[i]] × (numFloors-1), TT
     //   TO  = towersmallopen.png  (always-open base at the very bottom)
     //   TS  = towersection.png    (connecting section; sits midway between each pair of key sprites)
@@ -1125,6 +1180,7 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
                                 m_inTowerDoorJustOpened = true;
                                 m_inTowerOpenedRow = r;
                                 m_inTowerOpenedCol = c;
+                                m_inTowerAvatarOpenTick = GetTickCountGfx();
                                 goto doorOpenDone;
                             }
                         }
