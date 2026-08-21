@@ -25,8 +25,15 @@ PBTableState (Top Level)
     ├─ PBTBL_RESET       — Reset confirmation; no sub-states
     ├─ PBTBL_PLAYEREND   — Between-turn transition: sub-states PLAYEREND_DISPLAY / EJECTING
     ├─ PBTBL_GAMEEND     — High-score entry: sub-states GAMEEND_ENTERINITIALS / COMPLETE
-    └─ PBTBL_INTOWER     — Tower lock mode: single sub-state INTOWER_SCREEN_ACTIVE
+    ├─ PBTBL_INTOWER     — Tower lock mode: single screen state; internal climb/fight/challenge transitions stay self-contained
+    └─ PBTBL_DRAGONMULTIBALL — Dragon battle placeholder: left/right activation selects failure/victory
 ```
+
+### InTower Internal Flow
+
+`PBTBL_INTOWER` intentionally keeps its detailed transitions inside the mode rather than registering each one with the screen manager. The mode owns `TowerInit`, `TowerClimb`, `RoomFight`, floor-challenge video/roll/success, exit, and dragon-video flow, while the screen manager continues to display the outer InTower screen. This keeps animation timing, D20 input routing, and persisted tower progress in one place.
+
+Tower progress belongs to the active player's `pbGameState`. A new player starts with `towerNeedsReset`; `TowerInit` generates the selected level once and clears that flag. Re-entry resets tower HP to 20 while retaining doors, remaining enemies, selected staircase challenges, floor, and resume door. A DragonMultiball victory advances through Level 3, resets to floor 1, and sets `towerNeedsReset` for the next entry.
 
 ### The Three-Function Pattern
 

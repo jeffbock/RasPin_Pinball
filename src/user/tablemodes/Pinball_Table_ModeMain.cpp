@@ -1302,6 +1302,10 @@ void PBEngine::pbeEnterMode(PBTableMode newMode, unsigned long currentTick) {
         case PBTableMode::MODE_INTOWER:
             modeState.inTowerState = PBInTowerState::INTOWER_IDLE;
             modeState.inTowerStateStartTick = currentTick;
+            m_inTowerFlowState = InTowerFlowState::TOWER_INIT;
+            m_inTowerFlowStateStartTick = currentTick;
+            m_inTowerVideoSkipRequested = false;
+            m_inTowerVideoLoaded = false;
 
             // Set InTower-specific status text
             pbeSetStatusText(0, "Climb the Tower! ");

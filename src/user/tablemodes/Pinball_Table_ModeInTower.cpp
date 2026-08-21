@@ -412,9 +412,12 @@ void PBEngine::pbeInitDungeonGrid(int playerNum, int level) {
             grid.cells[r][col].state = DoorState::DOOR_CLOSED;
         }
         // Ladders on floors 0 and 1; dragon lair on floor 2
-        grid.cells[0][col].hasLadder   = true;
-        grid.cells[1][col].hasLadder   = true;
+        grid.cells[0][col].hasLadder = true;
+        grid.cells[0][col].role = TowerDoorRole::STAIRCASE;
+        grid.cells[1][col].hasLadder = true;
+        grid.cells[1][col].role = TowerDoorRole::STAIRCASE;
         grid.cells[2][col].isDragonLair = true;
+        grid.cells[2][col].role = TowerDoorRole::DRAGON;
 
     } else if (level == 2) {
         // ----------------------------------------------------------------
@@ -432,12 +435,16 @@ void PBEngine::pbeInitDungeonGrid(int playerNum, int level) {
         // One random ladder per non-top row
         for (int r = 0; r < numRows - 1; r++) {
             int pick = rand() % numActiveCols;
-            grid.cells[r][activeCols[pick]].hasLadder = true;
+            DoorCell& stair = grid.cells[r][activeCols[pick]];
+            stair.hasLadder = true;
+            stair.role = TowerDoorRole::STAIRCASE;
         }
         // One random dragon lair on top row
         {
             int pick = rand() % numActiveCols;
-            grid.cells[numRows - 1][activeCols[pick]].isDragonLair = true;
+            DoorCell& dragon = grid.cells[numRows - 1][activeCols[pick]];
+            dragon.isDragonLair = true;
+            dragon.role = TowerDoorRole::DRAGON;
         }
 
     } else {
@@ -456,12 +463,16 @@ void PBEngine::pbeInitDungeonGrid(int playerNum, int level) {
         // One random ladder per non-top row
         for (int r = 0; r < numRows - 1; r++) {
             int pick = rand() % numActiveCols;
-            grid.cells[r][activeCols[pick]].hasLadder = true;
+            DoorCell& stair = grid.cells[r][activeCols[pick]];
+            stair.hasLadder = true;
+            stair.role = TowerDoorRole::STAIRCASE;
         }
         // One random dragon lair on top row
         {
             int pick = rand() % numActiveCols;
-            grid.cells[numRows - 1][activeCols[pick]].isDragonLair = true;
+            DoorCell& dragon = grid.cells[numRows - 1][activeCols[pick]];
+            dragon.isDragonLair = true;
+            dragon.role = TowerDoorRole::DRAGON;
         }
     }
 
@@ -484,6 +495,29 @@ void PBEngine::pbeInitDungeonGrid(int playerNum, int level) {
                 if (level == 1)      grid.cells[r][c].monsterCount = (rand() % 8) + 1;   // 1-8
                 else if (level == 2) grid.cells[r][c].monsterCount = (rand() % 5) + 8;   // 8-12
                 else                 grid.cells[r][c].monsterCount = (rand() % 15) + 6;  // 6-20
+                grid.cells[r][c].originalMonsterCount = grid.cells[r][c].monsterCount;
+            }
+        }
+    }
+
+    // Challenge requirements are persisted on their staircase doors.  Shuffle
+    // the party once, then repeat a member only after every member was used.
+    const int challengeLevels[3][4] = { { 1, 1, 0, 0 }, { 1, 1, 2, 0 }, { 1, 2, 2, 3 } };
+    TowerChampion champions[3] = { TowerChampion::KNIGHT, TowerChampion::PRIEST, TowerChampion::RANGER };
+    for (int i = 2; i > 0; --i) {
+        int pick = rand() % (i + 1);
+        TowerChampion swap = champions[i];
+        champions[i] = champions[pick];
+        champions[pick] = swap;
+    }
+    int challengeIndex = 0;
+    for (int r = 0; r < 5; ++r) {
+        for (int c = 0; c < 3; ++c) {
+            DoorCell& cell = grid.cells[r][c];
+            if (cell.role == TowerDoorRole::STAIRCASE) {
+                cell.requiredChampion = champions[challengeIndex % 3];
+                cell.challengeLevel = challengeLevels[level - 1][challengeIndex];
+                challengeIndex++;
             }
         }
     }
@@ -494,6 +528,7 @@ void PBEngine::pbeInitDungeonGrid(int playerNum, int level) {
     // Return the dungeon to fullscreen presentation phase
     m_inTowerDungeonPhase = 0;
     m_inTowerDoorJustOpened = false;
+    m_inTowerSelectedDoor = -1;
 }
 
 // ========================================================================
@@ -649,12 +684,28 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
         }
     }
 
+    const int currentFloorRow = m_playerStates[m_currentPlayer].dungeonFloor - 1;
+    const auto resolvedDoorState = [&](int row, int col) -> DoorState {
+        const bool isCurrentFloorStaircaseDoor = (row == currentFloorRow &&
+                                                 grid.cells[row][col].hasLadder);
+        const bool isChallengeDoorOverride = (m_inTowerChallengeDoorOverrideActive &&
+                                              row == m_inTowerChallengeDoorOverrideRow &&
+                                              col == m_inTowerChallengeDoorOverrideCol);
+        if ((m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_VIDEO ||
+             m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_FIGHT) &&
+            (isCurrentFloorStaircaseDoor || isChallengeDoorOverride)) {
+            return DoorState::DOOR_CLOSED;
+        }
+        return grid.cells[row][col].state;
+    };
+
     // ---- Pass 3: Blocked/Stairs overlays --------------------------------
     // For open doors, render doorstairs.png (shifted +6 px right) if the cell
     // has a ladder; otherwise render doorblocked.png at the original position.
     for (int r = 0; r < 5; r++) {
         for (int c = 0; c < 3; c++) {
-            if (grid.cells[r][c].state == DoorState::DOOR_OPEN) {
+            const DoorState visualState = resolvedDoorState(r, c);
+            if (visualState == DoorState::DOOR_OPEN) {
                 if (grid.cells[r][c].hasLadder) {
                     gfxRenderSprite(m_DoorStairsId,
                                     colPositions[c] + 6,
@@ -674,7 +725,8 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
     for (int r = 0; r < 5; r++) {
         for (int c = 0; c < 3; c++) {
             if (grid.cells[r][c].state == DoorState::DOOR_NONE) continue;
-            unsigned int spriteId = (grid.cells[r][c].state == DoorState::DOOR_OPEN)
+            const DoorState visualState = resolvedDoorState(r, c);
+            unsigned int spriteId = (visualState == DoorState::DOOR_OPEN)
                                     ? m_DoorOpenId : m_DoorClosedId;
             gfxRenderSprite(spriteId, colPositions[c], rowPositions[r], renderScale, 0.0f);
         }
@@ -689,18 +741,24 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
             avatarRow = m_inTowerOpenedRow;
             avatarCol = m_inTowerOpenedCol;
         } else {
-            for (int r = 0; r < 5; r++) {
-                for (int c = 0; c < 3; c++) {
-                    if (grid.cells[r][c].state != DoorState::DOOR_NONE &&
-                        grid.cells[r][c].state != DoorState::DOOR_OPEN) {
-                        avatarRow = r;
+            int selectedRow = m_playerStates[m_currentPlayer].dungeonFloor - 1;
+            int selectedCol = m_inTowerSelectedDoor;
+            if (selectedRow >= 0 && selectedRow < 5 && selectedCol >= 0 && selectedCol < 3 &&
+                grid.cells[selectedRow][selectedCol].state == DoorState::DOOR_CLOSED) {
+                avatarRow = selectedRow;
+                avatarCol = selectedCol;
+            } else {
+                for (int c = 2; c >= 0; --c) {
+                    if (selectedRow >= 0 && selectedRow < 5 &&
+                        grid.cells[selectedRow][c].state == DoorState::DOOR_CLOSED) {
+                        avatarRow = selectedRow;
                         avatarCol = c;
-                        goto avatar_pick_done;
+                        m_inTowerSelectedDoor = c;
+                        break;
                     }
                 }
             }
         }
-avatar_pick_done:
         if (avatarRow >= 0 && avatarCol >= 0) {
             float vanish = 0.0f;
             unsigned long avatarAgeMs = 0;
@@ -773,8 +831,12 @@ avatar_pick_done:
             int tsY = (keyY[i] + keyY[i + 1]) / 2;
             gfxRenderSprite(m_TowerSectionId, towerX, tsY, renderScale, 0.0f);
 
-            // TC[i]: open or closed based on tracking state
-            unsigned int tcSprite = grid.towerSectionOpen[i] ? m_TowerSmallOpenId : m_TowerSmallClosedId;
+            // The gate just unlocked by a challenge remains closed until the
+            // return animation finishes and the avatar is back on the next floor.
+            bool sectionOpen = grid.towerSectionOpen[i];
+            const int newlyUnlockedSection = m_playerStates[m_currentPlayer].dungeonFloor - 2;
+            if (i == newlyUnlockedSection && m_inTowerDungeonPhase != 0) sectionOpen = false;
+            unsigned int tcSprite = sectionOpen ? m_TowerSmallOpenId : m_TowerSmallClosedId;
             gfxRenderSprite(tcSprite, towerX, keyY[i + 1], renderScale, 0.0f);
         }
 
@@ -822,10 +884,242 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
         return (false);
     }
 
+    pbGameState& player = m_playerStates[m_currentPlayer];
+    TowerDungeonGrid& grid = player.dungeonGrid;
+    if (m_inTowerFlowState == InTowerFlowState::TOWER_INIT) {
+#if TEST_TOWER < 0 || TEST_TOWER > 3
+#error "TEST_TOWER must be 0, 1, 2, or 3"
+#endif
+        if (player.towerNeedsReset) {
+#if TEST_TOWER != 0
+            player.knightJoined = true;
+            player.priestJoined = true;
+            player.rangerJoined = true;
+        player.knightLevel = TEST_TOWER;
+        player.priestLevel = TEST_TOWER;
+        player.rangerLevel = TEST_TOWER;
+        player.dungeonLevel = TEST_TOWER;
+#endif
+            pbeInitDungeonGrid(m_currentPlayer, player.dungeonLevel);
+            player.towerNeedsReset = false;
+            player.dungeonFloor = 1;
+            player.towerResumeFloor = 1;
+            player.towerResumeDoor = -1;
+        }
+        player.towerHitPoints = 20;
+        m_inTowerSelectedDoor = player.towerResumeDoor;
+        m_inTowerFlowState = InTowerFlowState::TOWER_CLIMB;
+        m_inTowerFlowStateStartTick = currentTick;
+    }
+
+    pbeSetStatusText(0, "Climb the Tower!");
+    if (m_inTowerFlowState == InTowerFlowState::TOWER_CLIMB) {
+        pbeSetStatusText(1, "Flipper to select door, Activate to open!");
+        if (m_inTowerDoorJustOpened && currentTick - m_inTowerAvatarOpenTick >= 750UL) {
+            DoorCell& door = grid.cells[m_inTowerOpenedRow][m_inTowerOpenedCol];
+            int enemies = door.monsterCount;
+            if (enemies < 0) enemies = 0;
+            if (enemies > 20) enemies = 20;
+            m_inTowerEnemyCount = enemies;
+            m_inTowerEnemyRemaining = enemies;
+            m_inTowerEnemiesNeedSpawn = enemies > 0;
+            m_inTowerEnemiesActive = enemies > 0;
+            m_inTowerDoorJustOpened = false;
+            m_inTowerD20RollState = 0;
+            m_inTowerResolutionApplied = false;
+            if (enemies == 0 && door.role == TowerDoorRole::STAIRCASE) {
+                m_inTowerChallengeDoorOverrideActive = true;
+                m_inTowerChallengeDoorOverrideRow = m_inTowerOpenedRow;
+                m_inTowerChallengeDoorOverrideCol = m_inTowerOpenedCol;
+                m_inTowerFlowState = InTowerFlowState::FLOOR_CHALLENGE_VIDEO;
+                m_inTowerFlowStateStartTick = currentTick;
+                m_inTowerDungeonPhase = 4;
+                m_inTowerShrinkAnimStartTick = currentTick;
+            } else {
+                m_inTowerDungeonPhase = 1;
+                m_inTowerShrinkAnimStartTick = currentTick;
+                m_inTowerFlowState = InTowerFlowState::ROOM_FIGHT;
+                m_inTowerFlowStateStartTick = currentTick;
+            }
+            m_inTowerShrinkAnimStartTick = currentTick;
+            m_inTowerFlowState = InTowerFlowState::ROOM_FIGHT;
+            m_inTowerFlowStateStartTick = currentTick;
+        }
+    } else if (m_inTowerFlowState == InTowerFlowState::ROOM_FIGHT) {
+        pbeSetStatusText(1, m_inTowerD20RollState == 0 ? "Activate to roll the D20!" :
+                            m_inTowerD20RollState == 1 ? "Activate to stop the D20!" : "Resolving battle...");
+    } else if (m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_VIDEO) {
+        pbeSetStatusText(1, "Champion challenge incoming...");
+        if (m_inTowerVideoSkipRequested) {
+            m_inTowerVideoSkipRequested = false;
+            DoorCell& door = grid.cells[m_inTowerOpenedRow][m_inTowerOpenedCol];
+            bool joined = door.requiredChampion == TowerChampion::KNIGHT ? player.knightJoined :
+                          door.requiredChampion == TowerChampion::PRIEST ? player.priestJoined : player.rangerJoined;
+            if (!joined) {
+                player.towerMissingChampion = true;
+                door.state = DoorState::DOOR_CLOSED;
+                m_inTowerChallengeDoorOverrideActive = false;
+                m_inTowerChallengeDoorOverrideRow = -1;
+                m_inTowerChallengeDoorOverrideCol = -1;
+                m_inTowerFlowState = InTowerFlowState::EXIT_TOWER;
+                m_inTowerFlowStateStartTick = currentTick;
+            } else {
+                m_inTowerChallengeMode = true;
+                m_inTowerEnemyCount = 0;
+                m_inTowerEnemyRemaining = 0;
+                m_inTowerEnemiesActive = false;
+                m_inTowerD20RollState = 0;
+                m_inTowerResolutionApplied = false;
+                m_inTowerDungeonPhase = 1;
+                m_inTowerShrinkAnimStartTick = currentTick;
+                m_inTowerFlowState = InTowerFlowState::FLOOR_CHALLENGE_FIGHT;
+                m_inTowerFlowStateStartTick = currentTick;
+                m_inTowerChallengeDoorOverrideActive = true;
+                m_inTowerChallengeDoorOverrideRow = m_inTowerOpenedRow;
+                m_inTowerChallengeDoorOverrideCol = m_inTowerOpenedCol;
+            }
+        }
+    } else if (m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_FIGHT) {
+        pbeSetStatusText(1, m_inTowerD20RollState == 0 ? "Activate to attempt challenge!" :
+                            m_inTowerD20RollState == 1 ? "Activate to stop the D20!" : "Resolving challenge...");
+    } else if (m_inTowerFlowState == InTowerFlowState::EXIT_TOWER) {
+        pbeSetStatusText(1, player.towerMissingChampion ? "Missing Champion" : "Defeated! Try Again");
+        if (currentTick - m_inTowerFlowStateStartTick >= 2000UL) {
+            player.towerMissingChampion = false;
+            pbeExitMode(PBTableMode::MODE_INTOWER, currentTick);
+            pbeEnterMode(PBTableMode::MODE_NORMAL_PLAY, currentTick);
+            m_tableState = PBTableState::PBTBL_MAIN;
+        }
+    } else if (m_inTowerFlowState == InTowerFlowState::DRAGON_VIDEO) {
+        pbeSetStatusText(1, "Dragon discovered!");
+        if (m_inTowerVideoSkipRequested) {
+            m_inTowerVideoSkipRequested = false;
+            m_dragonMultiballResult = 0;
+            m_tableState = PBTableState::PBTBL_DRAGONMULTIBALL;
+        }
+    }
+
+    if ((m_inTowerFlowState == InTowerFlowState::ROOM_FIGHT ||
+         m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_FIGHT) &&
+        m_inTowerD20RollState == 2 && !m_inTowerResolutionApplied &&
+        currentTick - m_inTowerD20StopTick >= 750UL) {
+        DoorCell& door = grid.cells[m_inTowerOpenedRow][m_inTowerOpenedCol];
+        m_inTowerResolutionApplied = true;
+        if (m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_FIGHT) {
+            const int championLevel = door.requiredChampion == TowerChampion::KNIGHT ? player.knightLevel :
+                                      door.requiredChampion == TowerChampion::PRIEST ? player.priestLevel : player.rangerLevel;
+            int target = door.challengeLevel > championLevel ? 20 :
+                         door.challengeLevel == championLevel ? 10 : 10 - 4 * (championLevel - door.challengeLevel);
+            if (target < 1) target = 1;
+            if (m_inTowerD20Value >= target) {
+                grid.towerSectionOpen[m_inTowerOpenedRow] = true;
+                player.dungeonFloor++;
+                player.towerResumeFloor = player.dungeonFloor;
+                player.towerResumeDoor = -1;
+                m_inTowerSelectedDoor = -1;
+                m_inTowerChallengeMode = false;
+                m_inTowerFlowState = InTowerFlowState::TOWER_CLIMB;
+                m_inTowerDungeonPhase = 4;
+                m_inTowerShrinkAnimStartTick = currentTick;
+            } else {
+                player.towerMissingChampion = false;
+                door.state = DoorState::DOOR_CLOSED;
+                player.towerResumeFloor = player.dungeonFloor;
+                player.towerResumeDoor = m_inTowerOpenedCol;
+                m_inTowerChallengeDoorOverrideActive = false;
+                m_inTowerChallengeDoorOverrideRow = -1;
+                m_inTowerChallengeDoorOverrideCol = -1;
+                m_inTowerFlowState = InTowerFlowState::EXIT_TOWER;
+                m_inTowerFlowStateStartTick = currentTick;
+                m_inTowerDungeonPhase = 4;
+                m_inTowerShrinkAnimStartTick = currentTick;
+            }
+        } else {
+            const int attackUsed = m_inTowerEnemyRemaining < player.attackValue ? m_inTowerEnemyRemaining : player.attackValue;
+            m_inTowerEnemyRemaining -= attackUsed;
+            player.attackValue -= attackUsed;
+            if (attackUsed > 0) {
+                m_swordFireAnimActive = true;
+                m_swordFireAnimStartTick = currentTick;
+            }
+            const int defenseUsed = m_inTowerEnemyRemaining < player.defenseValue ? m_inTowerEnemyRemaining : player.defenseValue;
+            player.defenseValue -= defenseUsed;
+            player.towerHitPoints -= m_inTowerEnemyRemaining - defenseUsed;
+            if (defenseUsed > 0) {
+                m_shieldShakeAnimActive = true;
+                m_shieldShakeAnimStartTick = currentTick;
+            }
+            door.monsterCount = m_inTowerEnemyRemaining;
+            if (player.towerHitPoints <= 0) {
+                door.state = DoorState::DOOR_CLOSED;
+                player.towerMissingChampion = false;
+                player.towerResumeFloor = player.dungeonFloor;
+                player.towerResumeDoor = m_inTowerOpenedCol;
+                m_inTowerChallengeDoorOverrideActive = false;
+                m_inTowerChallengeDoorOverrideRow = -1;
+                m_inTowerChallengeDoorOverrideCol = -1;
+                m_inTowerFlowState = InTowerFlowState::EXIT_TOWER;
+                m_inTowerFlowStateStartTick = currentTick;
+            } else if (m_inTowerEnemyRemaining == 0 && door.role == TowerDoorRole::STAIRCASE) {
+                m_inTowerFlowState = InTowerFlowState::FLOOR_CHALLENGE_VIDEO;
+                m_inTowerChallengeDoorOverrideActive = true;
+                m_inTowerChallengeDoorOverrideRow = m_inTowerOpenedRow;
+                m_inTowerChallengeDoorOverrideCol = m_inTowerOpenedCol;
+            } else if (m_inTowerEnemyRemaining == 0 && door.role == TowerDoorRole::DRAGON) {
+                m_inTowerFlowState = InTowerFlowState::DRAGON_VIDEO;
+            } else if (m_inTowerEnemyRemaining == 0) {
+                m_inTowerFlowState = InTowerFlowState::TOWER_CLIMB;
+            }
+            m_inTowerFlowStateStartTick = currentTick;
+            m_inTowerDungeonPhase = 4;
+            m_inTowerShrinkAnimStartTick = currentTick;
+            m_inTowerEnemiesActive = false;
+        }
+    }
+
     // Render the standard main screen base: black background, player scores,
     // status text and icons, NeoPixel animation
     if (!pbeRenderMainScreenBase(currentTick, lastTick)) {
         return (false);
+    }
+
+    if (m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_VIDEO ||
+        m_inTowerFlowState == InTowerFlowState::DRAGON_VIDEO) {
+        if (!m_inTowerVideoPlayer) m_inTowerVideoPlayer = new PBVideoPlayer(this, &m_soundSystem);
+        if (!m_inTowerVideoLoaded) {
+            const char* videoPath = "src/user/resources/videos/dragonmultiball.mp4";
+            if (m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_VIDEO) {
+                const DoorCell& door = grid.cells[m_inTowerOpenedRow][m_inTowerOpenedCol];
+                videoPath = door.requiredChampion == TowerChampion::KNIGHT ? "src/user/resources/videos/knight.mp4" :
+                            door.requiredChampion == TowerChampion::PRIEST ? "src/user/resources/videos/priest.mp4" :
+                            "src/user/resources/videos/ranger.mp4";
+            }
+            m_inTowerVideoSpriteId = m_inTowerVideoPlayer->pbvpLoadVideo(videoPath, 0, 0, false);
+            if (m_inTowerVideoSpriteId != NOSPRITE) {
+                const stVideoInfo info = m_inTowerVideoPlayer->pbvpGetVideoInfo();
+                const int videoX = ACTIVEDISPX + (1024 / 3) - info.width / 2;
+                const int videoY = ACTIVEDISPY + 350 - info.height / 2;
+                m_inTowerVideoPlayer->pbvpSetXY(videoX, videoY);
+                m_inTowerVideoPlayer->pbvpSetVolume(0);
+                m_inTowerVideoPlayer->pbvpPlay();
+                m_inTowerVideoLoaded = true;
+            } else {
+                pbeSendConsole("ERROR: Failed to load InTower video");
+                m_inTowerVideoSkipRequested = true;
+            }
+        }
+        if (m_inTowerVideoLoaded) {
+            m_inTowerVideoPlayer->pbvpUpdate(currentTick);
+            m_inTowerVideoPlayer->pbvpRender();
+            if (m_inTowerVideoSkipRequested || m_inTowerVideoPlayer->pbvpGetPlaybackState() == PBV_FINISHED) {
+                m_inTowerVideoPlayer->pbvpStop();
+                m_inTowerVideoPlayer->pbvpUnloadVideo();
+                m_inTowerVideoSpriteId = NOSPRITE;
+                m_inTowerVideoLoaded = false;
+                m_inTowerVideoSkipRequested = true;
+            }
+        }
+        return true;
     }
 
     // Render towerclimb image centered in the main score area
@@ -1077,6 +1371,43 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
         pbeRenderDungeonGrid(renderScale, renderX, renderY, false, currentTick, lastTick);
     }
 
+    if (m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_FIGHT &&
+        (m_inTowerDungeonPhase == 2 || m_inTowerDungeonPhase == 3)) {
+        const DoorCell& door = grid.cells[m_inTowerOpenedRow][m_inTowerOpenedCol];
+        const char* champion = door.requiredChampion == TowerChampion::KNIGHT ? "Knight" :
+                               door.requiredChampion == TowerChampion::PRIEST ? "Priest" : "Ranger";
+        const int championLevel = door.requiredChampion == TowerChampion::KNIGHT ? player.knightLevel :
+                                  door.requiredChampion == TowerChampion::PRIEST ? player.priestLevel : player.rangerLevel;
+        int target = door.challengeLevel > championLevel ? 20 :
+                     door.challengeLevel == championLevel ? 10 : 10 - 4 * (championLevel - door.challengeLevel);
+        if (target < 1) target = 1;
+        gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
+        gfxRenderString(m_StartMenuFontId, std::string(champion) + " Level " + std::to_string(door.challengeLevel),
+                        towerTopLeftX + 220, towerTopLeftY + 370, 4, GFX_TEXTCENTER);
+        gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+        gfxRenderString(m_StartMenuFontId, "Roll " + std::to_string(target) + " or higher",
+                        towerTopLeftX + 220, towerTopLeftY + 420, 3, GFX_TEXTCENTER);
+    }
+
+    if (m_inTowerFlowState == InTowerFlowState::ROOM_FIGHT &&
+        (m_inTowerDungeonPhase == 2 || m_inTowerDungeonPhase == 3)) {
+        gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+        gfxRenderString(m_StartMenuFontId, "HP: " + std::to_string(player.towerHitPoints),
+                        smallX, smallY - 165, 3, GFX_TEXTCENTER);
+    }
+
+    if (m_inTowerFlowState == InTowerFlowState::EXIT_TOWER) {
+        const std::string result = player.towerMissingChampion ? "Missing Champion" : "Defeated!";
+        const std::string detail = player.towerMissingChampion ? "" : "Try Again";
+        gfxSetColor(m_StartMenuFontId, 255, 215, 0, 255);
+        gfxRenderString(m_StartMenuFontId, result, towerCenterX, towerCenterY - 80, 6, GFX_TEXTCENTER);
+        gfxSetColor(m_StartMenuFontId, 255, 255, 255, 255);
+        if (!detail.empty()) gfxRenderString(m_StartMenuFontId, detail, towerCenterX, towerCenterY - 25, 4, GFX_TEXTCENTER);
+        if (m_inTowerAvatarId != NOSPRITE) {
+            gfxRenderSprite(m_inTowerAvatarId, towerCenterX, towerCenterY + 80, 1.5f, 0.0f);
+        }
+    }
+
     // Render divider bars on top, same as pbeRenderMainScreen
     gfxRenderSprite(m_PBTBLMainScreenBGId, ACTIVEDISPX, ACTIVEDISPY);
 
@@ -1159,6 +1490,88 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
             return;
         }
 #endif // D20_CALIBRATION
+
+        const unsigned long currentTick = GetTickCountGfx();
+        pbGameState& player = m_playerStates[m_currentPlayer];
+        TowerDungeonGrid& grid = player.dungeonGrid;
+
+        if (m_inTowerFlowState == InTowerFlowState::TOWER_CLIMB) {
+            const int row = player.dungeonFloor - 1;
+            if (row >= 0 && row < 5) {
+                if (inputMessage.inputId == IDI_LFLIP || inputMessage.inputId == IDI_RFLIP) {
+                    const int step = inputMessage.inputId == IDI_LFLIP ? -1 : 1;
+                    int column = m_inTowerSelectedDoor;
+                    for (int attempt = 0; attempt < 3; ++attempt) {
+                        column = (column + step + 3) % 3;
+                        if (grid.cells[row][column].state == DoorState::DOOR_CLOSED) {
+                            m_inTowerSelectedDoor = column;
+                            break;
+                        }
+                    }
+                } else if (inputMessage.inputId == IDI_LACTIVATE || inputMessage.inputId == IDI_RACTIVATE) {
+                    const int column = m_inTowerSelectedDoor;
+                    if (column >= 0 && column < 3 && grid.cells[row][column].state == DoorState::DOOR_CLOSED) {
+                        DoorCell& door = grid.cells[row][column];
+                        door.state = DoorState::DOOR_OPEN;
+                        if (door.hasLadder || door.role == TowerDoorRole::STAIRCASE) {
+                            grid.towerSectionOpen[row] = false;
+                            m_inTowerChallengeDoorOverrideActive = true;
+                            m_inTowerChallengeDoorOverrideRow = row;
+                            m_inTowerChallengeDoorOverrideCol = column;
+                        }
+                        m_inTowerOpenedRow = row;
+                        m_inTowerOpenedCol = column;
+                        m_inTowerDoorJustOpened = true;
+                        m_inTowerAvatarOpenTick = currentTick;
+                        m_inTowerFlowStateStartTick = currentTick;
+                    }
+                }
+            }
+            pbeUpdateModeSystem(inputMessage, currentTick);
+            return;
+        }
+
+        if (m_inTowerFlowState == InTowerFlowState::ROOM_FIGHT ||
+            m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_FIGHT) {
+            if (inputMessage.inputId == IDI_LACTIVATE || inputMessage.inputId == IDI_RACTIVATE) {
+                if (!m_inTowerD20Loaded) {
+                    m_inTowerD20Value = (rand() % 20) + 1;
+                    m_inTowerD20RollState = 2;
+                    m_inTowerD20StopTick = currentTick;
+                } else if (m_inTowerD20RollState == 0) {
+                    m_inTowerD20Value = (rand() % 20) + 1;
+                    m_inTowerD20RollState = 1;
+                    m_inTowerD20SpinStartTick = currentTick;
+                    m_inTowerD20SpinBaseRotX = m_inTowerD20RotX;
+                    m_inTowerD20SpinBaseRotY = m_inTowerD20RotY;
+                    m_inTowerD20SpinBaseRotZ = m_inTowerD20RotZ;
+                } else if (m_inTowerD20RollState == 1) {
+                    const D20Orient& orientation = kD20Orient[(m_inTowerD20Value - 1) % 20];
+                    m_inTowerD20RotX = orientation.rx;
+                    m_inTowerD20RotY = orientation.ry + kD20YawTrimDeg;
+                    m_inTowerD20RotZ = orientation.rz;
+                    m_inTowerD20RollState = 2;
+                    m_inTowerD20StopTick = currentTick;
+                    m_inTowerEnemyRemaining = m_inTowerEnemyCount - m_inTowerD20Value;
+                    if (m_inTowerEnemyRemaining < 0) m_inTowerEnemyRemaining = 0;
+                    for (int i = m_inTowerEnemyRemaining; i < m_inTowerEnemyCount && i < 20; ++i) {
+                        m_inTowerEnemySlashType[i] = (unsigned int)(rand() % 2);
+                    }
+                }
+            }
+            pbeUpdateModeSystem(inputMessage, currentTick);
+            return;
+        }
+
+           if ((m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_VIDEO ||
+               m_inTowerFlowState == InTowerFlowState::DRAGON_VIDEO) &&
+            (inputMessage.inputId == IDI_LACTIVATE || inputMessage.inputId == IDI_RACTIVATE) &&
+            currentTick - m_inTowerFlowStateStartTick >= 750UL) {
+            m_inTowerVideoSkipRequested = true;
+        }
+
+        pbeUpdateModeSystem(inputMessage, currentTick);
+        return;
 
         // ------------------------------------------------------------
         // Flippers: behaviour depends on current dungeon phase

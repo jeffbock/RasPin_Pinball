@@ -26,6 +26,11 @@
 //   production builds.  Safe to remove this define and the calibration block.
 #define D20_CALIBRATION
 
+// Tower progression test override. Valid values are 0 (off) or 1-3. When
+// enabled, TowerInit joins every champion, sets each champion level and tower
+// level to this value, then generates that tower for quick simulator testing.
+#define TEST_TOWER 1
+
 // Sub-states for the InTower game screen
 enum class PBTBLInTowerScreenState {
     INTOWER_SCREEN_ACTIVE = 0,   // Ball is locked in tower, mode is running
@@ -50,20 +55,50 @@ enum class DoorState {
     DOOR_CLOSED  = 2   // Door exists but has not been opened
 };
 
+enum class TowerDoorRole {
+    ORDINARY = 0,
+    STAIRCASE = 1,
+    DRAGON = 2
+};
+
+enum class TowerChampion {
+    KNIGHT = 0,
+    PRIEST = 1,
+    RANGER = 2
+};
+
+enum class InTowerFlowState {
+    TOWER_INIT = 0,
+    TOWER_CLIMB,
+    ROOM_FIGHT,
+    FLOOR_CHALLENGE_VIDEO,
+    FLOOR_CHALLENGE_FIGHT,
+    FLOOR_CHALLENGE_SUCCESS,
+    EXIT_TOWER,
+    DRAGON_VIDEO
+};
+
 // A single door cell in the dungeon grid
 // [row][col], row 0 = bottom floor (ground), row 4 = top floor
 struct DoorCell {
     DoorState state;    // Current door state
     bool hasLadder;     // Ladder leading up to the row above from this cell
     bool isDragonLair;  // This is the final dragon lair door (top floor)
+    TowerDoorRole role; // Explicit gameplay role; mirrors legacy ladder/dragon flags
     bool hasTorch;      // Wall to the right uses doorwall1 (torch); false = doorwall2
-    int  monsterCount;  // Number of enemies in this room (set per level in pbeInitDungeonGrid)
+    int  monsterCount;  // Number of enemies currently remaining in this room
+    int  originalMonsterCount;
+    TowerChampion requiredChampion;
+    int challengeLevel;
 
     // --- Future room metadata (add fields here as needed) ---
     // int roomType;
     // int treasureValue;
 
-    DoorCell() : state(DoorState::DOOR_NONE), hasLadder(false), isDragonLair(false), hasTorch(false), monsterCount(0) {}
+    DoorCell() : state(DoorState::DOOR_NONE), hasLadder(false), isDragonLair(false),
+                 role(TowerDoorRole::ORDINARY), hasTorch(false), monsterCount(0),
+                 originalMonsterCount(0), requiredChampion(TowerChampion::KNIGHT),
+                 challengeLevel(1) {}
 };
 
 // The full 5-row × 3-column dungeon grid for one player
@@ -72,8 +107,7 @@ struct TowerDungeonGrid {
 
     // Per-TC open/closed state for the side mini-tower (5 slots covers all dungeon levels).
     // Index i corresponds to the TC sprite between floor i and floor i+1.
-    // towerSectionOpen[0] starts true (bottom entrance is always accessible);
-    // all others start false (closed) and are opened when the stair door on floor i is opened.
+    // All sections start closed; a section opens after its floor challenge succeeds.
     bool towerSectionOpen[5];
 
     TowerDungeonGrid() {
