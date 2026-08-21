@@ -681,14 +681,14 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
     }
 
     // ---- Pass 5: Door-opening avatar ------------------------------------
-    if (m_inTowerAvatarId != NOSPRITE) {
+    if (m_inTowerAvatarId != NOSPRITE && m_inTowerDungeonPhase == 0) {
         int avatarRow = -1;
         int avatarCol = -1;
 
         if (m_inTowerDoorJustOpened && m_inTowerOpenedRow >= 0 && m_inTowerOpenedCol >= 0) {
             avatarRow = m_inTowerOpenedRow;
             avatarCol = m_inTowerOpenedCol;
-        } else if (m_inTowerDungeonPhase == 0 || m_inTowerDungeonPhase == 1) {
+        } else {
             for (int r = 0; r < 5; r++) {
                 for (int c = 0; c < 3; c++) {
                     if (grid.cells[r][c].state != DoorState::DOOR_NONE &&
@@ -708,10 +708,6 @@ avatar_pick_done:
                 avatarAgeMs = currentTick - m_inTowerAvatarOpenTick;
                 if (avatarAgeMs > 1000UL) avatarAgeMs = 1000UL;
                 vanish = (float)avatarAgeMs / 1000.0f;
-            } else if (m_inTowerDungeonPhase == 1 && m_inTowerShrinkAnimStartTick > 0) {
-                avatarAgeMs = currentTick - m_inTowerShrinkAnimStartTick;
-                if (avatarAgeMs > 1000UL) avatarAgeMs = 1000UL;
-                vanish = (float)avatarAgeMs / 1000.0f;
             }
 
             const float avatarAgeSec = (float)currentTick / 1000.0f;
@@ -719,10 +715,16 @@ avatar_pick_done:
             const unsigned int frameIndex = (unsigned int)fmodf(sequence, 4.0f);
             gfxSetSelectedTile(m_inTowerAvatarId, frameIndex);
 
-            const float avatarScale = renderScale * 0.75f;
-            const int baseAvatarY = rowPositions[avatarRow] + (int)(doorH * 0.62f) - 30;
-            const int renderY = baseAvatarY - (int)(doorH * 0.35f * vanish);
-            gfxRenderSprite(m_inTowerAvatarId, colPositions[avatarCol], renderY, avatarScale * (1.0f - vanish * 0.85f), 0.0f);
+            const bool isStaircaseDoor = (avatarRow >= 0 && avatarCol >= 0 && grid.cells[avatarRow][avatarCol].hasLadder);
+            const float avatarScale = renderScale * 0.75f * 1.40f * 0.95f * 0.85f;
+            const int baseAvatarY = rowPositions[avatarRow] + (int)(doorH * 0.62f) - 35;
+            const int yShift = isStaircaseDoor ? 25 : 15;
+            const int xShift = isStaircaseDoor ? 8 : 0;
+            const int renderX = colPositions[avatarCol] + (int)(xShift * vanish);
+            const int renderY = baseAvatarY - (int)(yShift * vanish);
+            const float endScale = isStaircaseDoor ? 0.40f : 0.75f;
+            const float animatedScale = avatarScale * (endScale + (1.0f - endScale) * (1.0f - vanish));
+            gfxRenderSprite(m_inTowerAvatarId, renderX, renderY, animatedScale, 0.0f);
         }
     }
 
