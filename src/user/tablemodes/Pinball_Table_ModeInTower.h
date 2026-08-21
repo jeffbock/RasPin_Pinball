@@ -57,19 +57,30 @@ struct DoorCell {
     bool hasLadder;     // Ladder leading up to the row above from this cell
     bool isDragonLair;  // This is the final dragon lair door (top floor)
     bool hasTorch;      // Wall to the right uses doorwall1 (torch); false = doorwall2
+    int  monsterCount;  // Number of enemies in this room (set per level in pbeInitDungeonGrid)
 
     // --- Future room metadata (add fields here as needed) ---
-    // int monsterCount;
     // int roomType;
     // int treasureValue;
 
-    DoorCell() : state(DoorState::DOOR_NONE), hasLadder(false), isDragonLair(false), hasTorch(false) {}
+    DoorCell() : state(DoorState::DOOR_NONE), hasLadder(false), isDragonLair(false), hasTorch(false), monsterCount(0) {}
 };
 
 // The full 5-row × 3-column dungeon grid for one player
 struct TowerDungeonGrid {
     DoorCell cells[5][3]; // [row][col]
-    TowerDungeonGrid() {} // DoorCell default-constructor zeros all entries
+
+    // Per-TC open/closed state for the side mini-tower (5 slots covers all dungeon levels).
+    // Index i corresponds to the TC sprite between floor i and floor i+1.
+    // towerSectionOpen[0] starts true (bottom entrance is always accessible);
+    // all others start false (closed) and are opened when the stair door on floor i is opened.
+    bool towerSectionOpen[5];
+
+    TowerDungeonGrid() {
+        // DoorCell default-constructor zeros all entries.
+        // All TC sections start closed; only the TO base sprite is always rendered open.
+        for (int i = 0; i < 5; i++) towerSectionOpen[i] = false;
+    }
 };
 
 #endif // Pinball_Table_ModeInTower_h

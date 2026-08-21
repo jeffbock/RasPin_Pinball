@@ -77,9 +77,11 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
             success = pbeRenderInitScreen(currentTick, lastTick);
             break;
 
-        case PBTableState::PBTBL_START:
-            success = pbeRenderGameStart(currentTick, lastTick);
+        case PBTableState::PBTBL_START: {
+            PBTBLStartScreenState startState = static_cast<PBTBLStartScreenState>(currentSubScreenState);
+            success = pbeRenderGameStart(currentTick, lastTick, startState);
             break;
+        }
 
         case PBTableState::PBTBL_MAIN: {
             PBTBLMainScreenState mainState = static_cast<PBTBLMainScreenState>(currentSubScreenState);
@@ -102,17 +104,23 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
             success = pbeRenderReset(currentTick, lastTick);
             break;
 
-        case PBTableState::PBTBL_GAMEEND:
-            success = pbeRenderGameEnd(currentTick, lastTick);
+        case PBTableState::PBTBL_GAMEEND: {
+            PBTBLGameEndState gameEndState = static_cast<PBTBLGameEndState>(currentSubScreenState);
+            success = pbeRenderGameEnd(currentTick, lastTick, gameEndState);
             break;
+        }
 
-        case PBTableState::PBTBL_PLAYEREND:
-            success = pbeRenderPlayerEnd(currentTick, lastTick);
+        case PBTableState::PBTBL_PLAYEREND: {
+            PBTBLPlayerEndState playerEndState = static_cast<PBTBLPlayerEndState>(currentSubScreenState);
+            success = pbeRenderPlayerEnd(currentTick, lastTick, playerEndState);
             break;
+        }
 
-        case PBTableState::PBTBL_INTOWER:
-            success = pbeRenderInTower(currentTick, lastTick);
+        case PBTableState::PBTBL_INTOWER: {
+            PBTBLInTowerScreenState inTowerState = static_cast<PBTBLInTowerScreenState>(currentSubScreenState);
+            success = pbeRenderInTower(currentTick, lastTick, inTowerState);
             break;
+        }
             
         default:
             // No valid screen, render nothing

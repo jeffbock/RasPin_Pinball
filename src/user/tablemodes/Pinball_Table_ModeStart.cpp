@@ -108,7 +108,7 @@ bool PBEngine::pbeLoadGameStart(){
 // PBTBL_START: Render Function
 // ========================================================================
 
-bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick){
+bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick, PBTBLStartScreenState subScreenState){
 
     static int timeoutTicks, blinkCountTicks, torchId;
     static PBTBLStartScreenState lastScreenState;
@@ -122,7 +122,8 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
         m_PBTBLOpenDoors = false;
         m_PBTBLStartDoorsDone = false;
         m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START);
-        lastScreenState = static_cast<PBTBLStartScreenState>(m_tableSubScreenState);
+        pbeRequestScreen(PBTableState::PBTBL_START, static_cast<int>(PBTBLStartScreenState::START_START), ScreenPriority::PRIORITY_LOW, 0, true);
+        lastScreenState = PBTBLStartScreenState::START_START;
 
         // Play torch sound loop and door theme music
         torchId = m_soundSystem.pbsPlayEffect(SOUNDTORCHES, true);
@@ -168,7 +169,7 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
     gfxRenderSprite(m_PBTBLFlame2Id, ACTIVEDISPX + 852, ACTIVEDISPY + 392);
     gfxRenderSprite(m_PBTBLFlame3Id, ACTIVEDISPX + 852, ACTIVEDISPY + 392);
 
-    PBTBLStartScreenState currentStartState = static_cast<PBTBLStartScreenState>(m_tableSubScreenState);
+    PBTBLStartScreenState currentStartState = subScreenState;
 
     if (lastScreenState != currentStartState) {
         timeoutTicks = 18000; // Reset the timeout if we change screens
@@ -337,15 +338,17 @@ bool PBEngine::pbeRenderGameStart(unsigned long currentTick, unsigned long lastT
 
         default:
             m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START);
+            currentStartState = PBTBLStartScreenState::START_START;
+            pbeRequestScreen(PBTableState::PBTBL_START, static_cast<int>(PBTBLStartScreenState::START_START), ScreenPriority::PRIORITY_LOW, 0, true);
         break;
     }
 
     // If timeout happens, switch back to "Press Start"
-    currentStartState = static_cast<PBTBLStartScreenState>(m_tableSubScreenState);
     if ((timeoutTicks > 0) && (currentStartState != PBTBLStartScreenState::START_START) && (currentStartState != PBTBLStartScreenState::START_OPENDOOR)) {
         timeoutTicks -= (currentTick - lastTick);
         if (timeoutTicks <= 0) {
             m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START);
+            pbeRequestScreen(PBTableState::PBTBL_START, static_cast<int>(PBTBLStartScreenState::START_START), ScreenPriority::PRIORITY_LOW, 0, true);
         }
     }
 
@@ -362,15 +365,25 @@ void PBEngine::pbeUpdateStateStart(stInputMessage inputMessage){
         if (inputMessage.inputId == IDI_START) {
             // Start button opens the doors
             m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_OPENDOOR);
+            pbeRequestScreen(PBTableState::PBTBL_START, static_cast<int>(PBTBLStartScreenState::START_OPENDOOR), ScreenPriority::PRIORITY_LOW, 0, true);
         }
         else {
             // Other buttons cycle through info screens (only when doors aren't opening)
             if (!m_PBTBLOpenDoors) {
                 PBTBLStartScreenState currentStartState = static_cast<PBTBLStartScreenState>(m_tableSubScreenState);
                 switch (currentStartState) {
-                    case PBTBLStartScreenState::START_START: m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_INST); break;
-                    case PBTBLStartScreenState::START_INST: m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_SCORES); break;
-                    case PBTBLStartScreenState::START_SCORES: m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START); break;
+                    case PBTBLStartScreenState::START_START:
+                        m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_INST);
+                        pbeRequestScreen(PBTableState::PBTBL_START, static_cast<int>(PBTBLStartScreenState::START_INST), ScreenPriority::PRIORITY_LOW, 0, true);
+                        break;
+                    case PBTBLStartScreenState::START_INST:
+                        m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_SCORES);
+                        pbeRequestScreen(PBTableState::PBTBL_START, static_cast<int>(PBTBLStartScreenState::START_SCORES), ScreenPriority::PRIORITY_LOW, 0, true);
+                        break;
+                    case PBTBLStartScreenState::START_SCORES:
+                        m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_START);
+                        pbeRequestScreen(PBTableState::PBTBL_START, static_cast<int>(PBTBLStartScreenState::START_START), ScreenPriority::PRIORITY_LOW, 0, true);
+                        break;
                     default: break;
                 }
             }

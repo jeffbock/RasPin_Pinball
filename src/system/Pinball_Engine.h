@@ -499,6 +499,13 @@ public:
     unsigned int m_sandboxDiceInstance[4];
     bool m_sandboxDiceLoaded;
 
+    // Tile-mapped sprite sandbox test variables
+    unsigned int m_sandboxTileSpriteId;
+    unsigned int m_sandboxTileAnimId;
+    unsigned int m_sandboxTileStartId;
+    unsigned int m_sandboxTileEndId;
+    bool m_sandboxTileLoaded;
+
     // Crystalwing animated 3D model test
     unsigned int m_sandboxWingModelId;
     unsigned int m_sandboxWingInstance;
@@ -613,6 +620,15 @@ public:
     unsigned int m_DoorWall1Id;        // Sprite ID for doorwall1.png (hallway with torch)
     unsigned int m_DoorWall2Id;        // Sprite ID for doorwall2.png (hallway without torch)
     unsigned int m_DoorStairsId;       // Sprite ID for doorstairs.png (open door with stairs/ladder room)
+    unsigned int m_TowerSmallTopId;    // Sprite ID for towersmalltop.png (top cap of side mini-tower)
+    unsigned int m_TowerSmallOpenId;   // Sprite ID for towersmallopen.png (open TC / base TO)
+    unsigned int m_TowerSmallClosedId; // Sprite ID for towersmallclosed.png (closed TC)
+    unsigned int m_TowerSectionId;     // Sprite ID for towersection.png (TS connecting section)
+    unsigned int m_DoorLeftId;          // Sprite ID for doorleft.png  (floor left cap)
+    unsigned int m_DoorRightId;         // Sprite ID for doorright.png (floor right cap)
+    unsigned int m_DoorMidId;           // Sprite ID for doormid.png   (floor middle tile, tiled)
+    unsigned int m_inTowerAvatarId;     // Sprite ID for avatarsprite.png (tile sequence 0-3)
+    unsigned long m_inTowerAvatarOpenTick; // Tick the active door-avatar animation began
     unsigned int m_inTowerD20ModelId;  // 3D model ID for InTower d20
     unsigned int m_inTowerD20InstanceId; // 3D instance ID for InTower d20
     bool         m_inTowerD20Loaded;   // True when model+instance are ready
@@ -642,6 +658,19 @@ public:
     int           m_inTowerDungeonPhase;
     unsigned long m_inTowerShrinkAnimStartTick; // Tick when shrink animation began
     bool          m_inTowerDoorJustOpened;      // True after door opened, waiting for shrink press
+    int           m_inTowerOpenedRow;           // Row of the door opened this visit (-1 = none)
+    int           m_inTowerOpenedCol;           // Col of the door opened this visit (-1 = none)
+
+    // InTower warrior enemy tile-sprites (drawn under the dice during the roll)
+    unsigned int  m_inTowerEnemyBaseId;         // Base tile sprite (warriortilesmall.png)
+    unsigned int  m_inTowerEnemyInstanceIds[20];// 20 renderable instances
+    bool          m_inTowerEnemyLoaded;         // True when sprite + instances are ready
+    bool          m_inTowerEnemiesActive;       // True while enemies should draw/animate
+    bool          m_inTowerEnemiesNeedSpawn;    // True = randomize positions/tiles next render
+    int           m_inTowerEnemyCount;          // Number of enemies to draw (0-20)
+    int           m_inTowerEnemyRemaining;      // Survivors after the roll (rest render as corpses)
+    unsigned long m_inTowerEnemyAnimTick;       // Tick of last 250ms animation step
+    unsigned int  m_inTowerEnemySlashType[20];  // Per-enemy slash variant (0=slash1,1=slash2) for the death overlay
 
     // Multi-player game state
     pbGameState m_playerStates[4];    // Array of 4 player states
@@ -773,7 +802,7 @@ private:
     
     // Render functions for the pinball game table
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
-    bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderGameStart(unsigned long currentTick, unsigned long lastTick, PBTBLStartScreenState subScreenState);
     bool pbeRenderMainScreen(unsigned long currentTick, unsigned long lastTick, PBTBLMainScreenState subScreenState);
     void pbeRenderStarBackground();  // Renders the shared star background (loads it on demand)
     bool pbeRenderMainScreenBase(unsigned long currentTick, unsigned long lastTick);  // Always renders: background, scores, status
@@ -784,9 +813,9 @@ private:
     bool pbeRenderMainScreenKeyObtained(unsigned long currentTick, unsigned long lastTick); // "Key Obtained!" flash message
     bool pbeRenderStatus(unsigned long currentTick, unsigned long lastTick);
     bool pbeRenderReset(unsigned long currentTick, unsigned long lastTick);
-    bool pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick);
-    bool pbeRenderPlayerEnd(unsigned long currentTick, unsigned long lastTick);
-    bool pbeRenderInTower(unsigned long currentTick, unsigned long lastTick);
+    bool pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick, PBTBLGameEndState subScreenState);
+    bool pbeRenderPlayerEnd(unsigned long currentTick, unsigned long lastTick, PBTBLPlayerEndState subScreenState);
+    bool pbeRenderInTower(unsigned long currentTick, unsigned long lastTick, PBTBLInTowerScreenState subScreenState);
     void pbeRenderDungeonGrid(float scale, int centerX, int centerY, bool animate, unsigned long currentTick, unsigned long lastTick);
     void pbeInitDungeonGrid(int playerNum, int level);
     void pbeUpdateInTowerD20(unsigned long currentTick);

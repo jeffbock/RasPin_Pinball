@@ -34,14 +34,14 @@ bool PBEngine::pbeLoadPlayerEnd(){
 // PBTBL_PLAYEREND: Render Function
 // ========================================================================
 
-bool PBEngine::pbeRenderPlayerEnd(unsigned long currentTick, unsigned long lastTick){
+bool PBEngine::pbeRenderPlayerEnd(unsigned long currentTick, unsigned long lastTick, PBTBLPlayerEndState subScreenState){
 
     if (!pbeLoadPlayerEnd()) {
         pbeSendConsole("ERROR: Failed to load player end screen resources");
         return (false);
     }
 
-    PBTBLPlayerEndState currentState = static_cast<PBTBLPlayerEndState>(m_tableSubScreenState);
+    PBTBLPlayerEndState currentState = subScreenState;
 
     // Screen clear and star background are rendered by the main dispatch loop
     // (pbeRenderGameScreen). Render side-panel scores and status icons on top.
@@ -86,6 +86,7 @@ void PBEngine::pbeUpdateStatePlayerEnd(stInputMessage inputMessage){
     // --- One-time initialization when entering this mode ---
     if (!m_playerEndInitialized) {
         m_tableSubScreenState     = static_cast<int>(PBTBLPlayerEndState::PLAYEREND_DISPLAY);
+        pbeRequestScreen(PBTableState::PBTBL_PLAYEREND, static_cast<int>(PBTBLPlayerEndState::PLAYEREND_DISPLAY), ScreenPriority::PRIORITY_LOW, 0, true);
         m_playerEndInitialized    = true;
         pbeSetTimer(PLAYEREND_DISPLAY_TIMER_ID, 2000);
         return;
@@ -111,6 +112,7 @@ void PBEngine::pbeUpdateStatePlayerEnd(stInputMessage inputMessage){
                 }
 
                 m_tableSubScreenState = static_cast<int>(PBTBLPlayerEndState::PLAYEREND_EJECTING);
+                pbeRequestScreen(PBTableState::PBTBL_PLAYEREND, static_cast<int>(PBTBLPlayerEndState::PLAYEREND_EJECTING), ScreenPriority::PRIORITY_LOW, 0, true);
             }
             break;
 
