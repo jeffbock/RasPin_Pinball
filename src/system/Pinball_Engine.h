@@ -660,6 +660,7 @@ public:
     bool          m_inTowerDoorJustOpened;      // True after door opened, waiting for shrink press
     int           m_inTowerOpenedRow;           // Row of the door opened this visit (-1 = none)
     int           m_inTowerOpenedCol;           // Col of the door opened this visit (-1 = none)
+    float         m_inTowerAvatarRoomProgress;  // Completed door-entry progress retained during a room fight
     bool          m_inTowerChallengeDoorOverrideActive; // Render-only override keeps the challenge door visually closed
     int           m_inTowerChallengeDoorOverrideRow;    // Row of the door to override while the challenge is active
     int           m_inTowerChallengeDoorOverrideCol;    // Col of the door to override while the challenge is active
@@ -672,13 +673,19 @@ public:
     bool          m_inTowerEnemiesNeedSpawn;    // True = randomize positions/tiles next render
     int           m_inTowerEnemyCount;          // Number of enemies to draw (0-20)
     int           m_inTowerEnemyRemaining;      // Survivors after the roll (rest render as corpses)
+    int           m_inTowerRollEnemyCount;      // Survivors alive when the current D20 roll started
     unsigned long m_inTowerEnemyAnimTick;       // Tick of last 250ms animation step
     unsigned int  m_inTowerEnemySlashType[20];  // Per-enemy slash variant (0=slash1,1=slash2) for the death overlay
+    unsigned long m_inTowerEnemyDeathTick[20];  // Per-enemy defeat tick for independent slash/fade timing
     InTowerFlowState m_inTowerFlowState;
     unsigned long m_inTowerFlowStateStartTick;
     int m_inTowerSelectedDoor;
     bool m_inTowerChallengeMode;
     bool m_inTowerResolutionApplied;
+    int m_inTowerResolutionStep; // 0=none, 1=sword, 2=shield, 3=HP, 4=result hold
+    unsigned long m_inTowerResolutionStepStartTick;
+    int m_inTowerPendingDamage;
+    unsigned long m_inTowerHitPointFlashTick;
     PBVideoPlayer* m_inTowerVideoPlayer;
     unsigned int m_inTowerVideoSpriteId;
     bool m_inTowerVideoLoaded;

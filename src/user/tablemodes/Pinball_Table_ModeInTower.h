@@ -29,7 +29,8 @@
 // Tower progression test override. Valid values are 0 (off) or 1-3. When
 // enabled, TowerInit joins every champion, sets each champion level and tower
 // level to this value, then generates that tower for quick simulator testing.
-#define TEST_TOWER 1
+#define TEST_TOWER 2
+
 
 // Sub-states for the InTower game screen
 enum class PBTBLInTowerScreenState {
