@@ -1023,6 +1023,21 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
     } else if (m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_FIGHT) {
         pbeSetStatusText(1, m_inTowerD20RollState == 0 ? "Activate to attempt challenge!" :
                             m_inTowerD20RollState == 1 ? "Activate to stop the D20!" : "Resolving challenge...");
+    } else if (m_inTowerFlowState == InTowerFlowState::FLOOR_CHALLENGE_SUCCESS) {
+        pbeSetStatusText(1, "Challenge complete!");
+        if (currentTick - m_inTowerFlowStateStartTick >= 1500UL) {
+            grid.towerSectionOpen[m_inTowerOpenedRow] = true;
+            player.dungeonFloor++;
+            player.towerResumeFloor = player.dungeonFloor;
+            player.towerResumeDoor = -1;
+            m_inTowerSelectedDoor = -1;
+            m_inTowerChallengeMode = false;
+            m_inTowerChallengeDoorOverrideActive = false;
+            m_inTowerChallengeDoorOverrideRow = -1;
+            m_inTowerChallengeDoorOverrideCol = -1;
+            m_inTowerFlowState = InTowerFlowState::TOWER_CLIMB;
+            m_inTowerDungeonPhase = 0;
+        }
     } else if (m_inTowerFlowState == InTowerFlowState::EXIT_TOWER) {
         pbeSetStatusText(1, player.towerMissingChampion ? "Missing Champion" : "Defeated! Try Again");
         if (currentTick - m_inTowerFlowStateStartTick >= 2000UL) {
@@ -1054,13 +1069,8 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
                          door.challengeLevel == championLevel ? 10 : 10 - 4 * (championLevel - door.challengeLevel);
             if (target < 1) target = 1;
             if (m_inTowerD20Value >= target) {
-                grid.towerSectionOpen[m_inTowerOpenedRow] = true;
-                player.dungeonFloor++;
-                player.towerResumeFloor = player.dungeonFloor;
-                player.towerResumeDoor = -1;
-                m_inTowerSelectedDoor = -1;
-                m_inTowerChallengeMode = false;
-                m_inTowerFlowState = InTowerFlowState::TOWER_CLIMB;
+                m_inTowerFlowState = InTowerFlowState::FLOOR_CHALLENGE_SUCCESS;
+                m_inTowerFlowStateStartTick = currentTick;
                 m_inTowerDungeonPhase = 4;
                 m_inTowerShrinkAnimStartTick = currentTick;
             } else {
@@ -1587,16 +1597,19 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
         if (m_inTowerFlowState == InTowerFlowState::TOWER_CLIMB) {
             const int row = player.dungeonFloor - 1;
             if (row >= 0 && row < 5) {
+                const auto isClosedDoor = [&](int column) {
+                    return grid.cells[row][column].state == DoorState::DOOR_CLOSED;
+                };
                 if (inputMessage.inputId == IDI_LFLIP || inputMessage.inputId == IDI_RFLIP) {
                     const int step = inputMessage.inputId == IDI_LFLIP ? -1 : 1;
                     int column = m_inTowerSelectedDoor;
                     if (column < 0 || column >= 3 ||
-                        grid.cells[row][column].state == DoorState::DOOR_NONE) {
+                        !isClosedDoor(column)) {
                         column = -1;
                         const int firstColumn = step < 0 ? 2 : 0;
                         const int lastColumn = step < 0 ? -1 : 3;
                         for (int candidate = firstColumn; candidate != lastColumn; candidate += step) {
-                            if (grid.cells[row][candidate].state != DoorState::DOOR_NONE) {
+                            if (isClosedDoor(candidate)) {
                                 column = candidate;
                                 break;
                             }
@@ -1605,7 +1618,7 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
                     }
 
                     for (int candidate = column + step; candidate >= 0 && candidate < 3; candidate += step) {
-                        if (grid.cells[row][candidate].state != DoorState::DOOR_NONE) {
+                        if (isClosedDoor(candidate)) {
                             m_inTowerSelectedDoor = candidate;
                             break;
                         }

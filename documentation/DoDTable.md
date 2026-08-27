@@ -812,8 +812,9 @@ stays synchronized.
 | Value | Name | Description |
 |-------|------|-------------|
 | 0 | `INTOWER_SCREEN_ACTIVE` | Ball is locked — entire tower rendering active |
+| 1 | `INTOWER_SCREEN_END` | Reserved for future exit transition (not yet triggered) |
 
-PBTBL_INTOWER intentionally uses a **single screen sub-state**. The tower rendering is one complex self-contained scene (dungeon grid, side-tower animation, 3D dice model, party status, door animations) with many internal phase variables. These internal phases are private implementation details within `pbeRenderInTower()` — they are not screen manager states.
+PBTBL_INTOWER intentionally uses a **single active screen sub-state**. The tower rendering is one complex self-contained scene (dungeon grid, side-tower animation, 3D dice model, party status, door animations) with many internal phase variables. These internal phases are private implementation details within `pbeRenderInTower()` — they are not screen manager states. `INTOWER_SCREEN_END` is defined for the future exit transition back to `PBTBL_MAIN` and is not yet used.
 
 **State diagram:**
 
@@ -844,10 +845,34 @@ PBTBL_INTOWER intentionally uses a **single screen sub-state**. The tower render
 | `towerSectionOpen[5]` | Whether each TC side-tower section is unlocked (opened by stair door) |
 | `PBInTowerState` | Internal game state (IDLE / RUNNING / COMPLETE) — not a screen sub-state |
 
+**Sprite assets used:**
+
+| Sprite name | Texture file | Type | Purpose |
+|-------------|--------------|------|---------|
+| `DoorOpen` | `dooropen.png` | Normal | Open door cell in the dungeon grid |
+| `DoorClosed` | `doorclosed.png` | Normal | Closed door cell |
+| `DoorBlocked` | `doorblocked.png` | Normal | Blocked/impassable cell |
+| `DoorWall1` | `doorwall1.png` | Normal | Wall with torch (right side of cell) |
+| `DoorWall2` | `doorwall2.png` | Normal | Plain wall (right side of cell) |
+| `DoorStairs` | `doorstairs.png` | Normal | Staircase cell (ladder between floors) |
+| `DoorFloorLeft` | `doorfloorleft.png` | Normal | Left-cap floor tile strip |
+| `DoorFloorMid` | `doorfloormid.png` | Normal | Repeating mid floor tile (tiled across row) |
+| `DoorFloorRight` | `doorfloorright.png` | Normal | Right-cap floor tile strip |
+| `TowerSmallTop` | `towersmalltop.png` | Normal | Top crenellation of the side mini-tower |
+| `TowerSmallOpen` | `towersmallopen.png` | Normal | Unlocked section of the side mini-tower |
+| `TowerSmallClosed` | `towersmallclosed.png` | Normal | Locked section of the side mini-tower |
+| `TowerSection` | `towersmallsection.png` | Normal | Connecting segment between tower sections |
+| `TowerClimb` | `towerclimb.png` | Normal | Avatar climbing-up overlay sprite |
+| `InTowerAvatar` | `avatarsprite.png` | **Tile-mapped** | Player avatar; each tile is one animation frame |
+| `WarriorEnemy` | `warriortilesmall.png` | **Tile-mapped** | Enemy warriors; 6 tiles — tiles 0–2 one walk cycle, tiles 3–4 a second walk cycle, tile 5 is a defeated (X) marker |
+| `Slash1` / `Slash2` | `slash1.png` / `slash2.png` | Normal | Slash-mark overlays drawn on defeated enemy cells |
+
+> **Tile-mapped sprites** are loaded with `gfxLoadTileSprite()` instead of `gfxLoadSprite()`. The texture sheet is divided into equal-sized tiles; the active tile is selected at runtime with `gfxSetSelectedTile()`. See [Game_Creation_API.md — Tile-Mapped Sprites](#tile-mapped-sprites) for the full API reference.
+
 **Screen manager usage:**
 - On entry: `m_tableSubScreenState = INTOWER_SCREEN_ACTIVE`, `pbeRequestScreen(PBTBL_INTOWER, INTOWER_SCREEN_ACTIVE, PRIORITY_LOW, 0, true)`.
-- The render function `pbeRenderInTower()` receives `subScreenState` from the render dispatch. Since there is only one screen sub-state, the switch is trivial — the full scene always renders.
-- All internal rendering phases (door animation progress, dice spin state, NeoPixel mode) are tracked as private member variables, not as screen manager states.
+- The render function `pbeRenderInTower()` receives `subScreenState` from the render dispatch. Since there is only one active screen sub-state, the switch is trivial — the full scene always renders.
+- All internal rendering phases (door animation progress, dice spin state, NeoPixel mode, enemy walk-cycle frame) are tracked as private member variables, not as screen manager states.
 
 **D20 calibration mode:**
 The `D20_CALIBRATION` define in `Pinball_Table_ModeInTower.h` enables a developer-only tool for generating the `kD20Orient[]` face-orientation table. Leave it commented out in production builds.
