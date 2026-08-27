@@ -170,6 +170,98 @@ m_fontId = gfxLoadSprite("MenuFont",
                          true, true);
 ```
 
+#### gfxLoadTileSprite()
+
+Loads a sprite sheet as a **tile-mapped sprite** — a texture divided into equal-sized tiles where only one tile is displayed at a time. Use this instead of `gfxLoadSprite()` when your texture is a grid of animation frames or character poses.
+
+**Signature:**
+```cpp
+unsigned int gfxLoadTileSprite(const std::string& spriteName,
+                               const std::string& textureFileName,
+                               gfxTexType textureType,
+                               gfxTexCenter textureCenter,
+                               bool keepResident,
+                               unsigned int tileWidth,
+                               unsigned int tileHeight);
+```
+
+**Parameters:**
+- `spriteName` — Unique identifier for the sprite
+- `textureFileName` — Path to the sprite-sheet image file
+- `textureType` — `GFX_PNG` or `GFX_BMP`
+- `textureCenter` — `GFX_UPPERLEFT` or `GFX_CENTER`
+- `keepResident` — Keep texture in GPU memory (`true` recommended)
+- `tileWidth` — Width of each individual tile in pixels
+- `tileHeight` — Height of each individual tile in pixels
+
+**Returns:** Sprite ID. Returns `NOSPRITE` if the texture could not be loaded.
+
+The engine computes `tileCount = (sheetWidth / tileWidth) * (sheetHeight / tileHeight)` automatically when the texture loads. Each tile is indexed left-to-right, top-to-bottom starting at 0. The instance's dimensions are automatically set to `tileWidth × tileHeight`.
+
+**Example:**
+```cpp
+// 256×256 sheet with 32×32 tiles → 64 tiles
+m_warriorId = gfxLoadTileSprite("Warrior", "src/user/resources/textures/warrior.png",
+                                GFX_PNG, GFX_CENTER, true, 32, 32);
+if (m_warriorId != NOSPRITE)
+    gfxSetSelectedTile(m_warriorId, 0);
+```
+
+---
+
+### Tile-Mapped Sprites
+
+Once loaded with `gfxLoadTileSprite()`, use these functions to read and change the active tile of any instance.
+
+#### gfxSetSelectedTile()
+
+Sets the tile displayed by a sprite instance.
+
+**Signature:**
+```cpp
+unsigned int gfxSetSelectedTile(unsigned int spriteId, unsigned int tileIndex);
+```
+
+- `spriteId` — Instance ID returned by `gfxLoadTileSprite()` or `gfxInstanceSprite()`
+- `tileIndex` — Zero-based tile index (clamped to tile 0 if out of range)
+
+**Returns:** `spriteId` on success, `NOSPRITE` if the instance was not found.
+
+```cpp
+// Switch to frame 3 of the walk cycle
+gfxSetSelectedTile(m_warriorId, 3);
+```
+
+#### gfxGetSelectedTile()
+
+Returns the currently active tile index for a sprite instance.
+
+**Signature:**
+```cpp
+unsigned int gfxGetSelectedTile(unsigned int spriteId);
+```
+
+**Returns:** Current tile index, or `0` if the instance was not found.
+
+#### gfxGetTileCount()
+
+Returns the total number of tiles in the sprite sheet.
+
+**Signature:**
+```cpp
+unsigned int gfxGetTileCount(unsigned int spriteId);
+```
+
+**Returns:** Total tile count (`sheetWidth / tileWidth * sheetHeight / tileHeight`), or `0` if not found.
+
+```cpp
+// Manual walk-cycle loop
+unsigned int frame = (currentTick / 150) % gfxGetTileCount(m_warriorId);
+gfxSetSelectedTile(m_warriorId, frame);
+```
+
+---
+
 ### Configuring Sprites
 
 #### gfxSetColor()
@@ -572,7 +664,10 @@ Control which properties are animated:
 #define ANIMATE_SCALE_MASK       0x40  // Animate scale factor
 #define ANIMATE_ROTATE_MASK      0x80  // Animate rotation
 #define ANIMATE_ALL_MASK         0xFF  // Animate everything
+#define ANIMATE_TILE_MASK        0x100 // Animate tile index (tile-mapped sprites only)
 ```
+
+`ANIMATE_TILE_MASK` steps the `selectedTile` of a tile-mapped sprite from the tile index stored on the start instance to the tile index stored on the end instance over the animation duration. Use `GFX_RESTART` looping to create a continuous walk-cycle or frame animation. Only valid on sprites loaded with `gfxLoadTileSprite()`.
 
 ### Loop Types
 
