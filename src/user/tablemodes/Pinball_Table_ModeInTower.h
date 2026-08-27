@@ -1,7 +1,6 @@
 // Pinball_Table_ModeInTower.h:  Header for PBTBL_INTOWER mode
 //   The InTower mode is entered when a ball is locked in the tower area
-//   (IDI_TOWER sensor triggered). The mode handles tower-lock gameplay
-//   until a future exit condition is defined.
+//   (IDI_TOWER sensor triggered).
 //
 //   Functions:
 //     pbeLoadInTower()             - Load InTower screen resources

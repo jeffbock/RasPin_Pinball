@@ -2,7 +2,6 @@
 //   Handles the tower lock screen. Entered when IDI_TOWER sensor is triggered.
 //   Reuses the main screen base rendering (background, scores, status) and
 //   renders tower-specific content only within the main status/scoring area.
-//   No exit condition yet; will be added in a future task.
 
 // Copyright (c) 2025 Jeffrey D. Bock, unless otherwise noted. Licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
 // The license can be found here: <https://creativecommons.org/licenses/by-nc/4.0/>.
@@ -382,10 +381,6 @@ bool PBEngine::pbeLoadInTower() {
 // PBTBL_INTOWER: Dungeon Grid Initialization
 // ========================================================================
 
-// File-scope test variable: tracks which dungeon level is displayed in InTower
-// (for testing only; not tied to player-state dungeonLevel)
-static int s_testDungeonLevel = 1;
-
 // Initialize the dungeon grid for a given player at the specified level.
 //   playerNum : 0-3 (clamped)
 //   level     : 1=linear 3-floor (col 1 only)
@@ -690,6 +685,11 @@ void PBEngine::pbeRenderDungeonGrid(float scale, int centerX, int centerY,
     }
 
     const auto resolvedDoorState = [&](int row, int col) -> DoorState {
+        if (m_inTowerChallengeDoorOverrideActive &&
+            row == m_inTowerChallengeDoorOverrideRow &&
+            col == m_inTowerChallengeDoorOverrideCol) {
+            return DoorState::DOOR_CLOSED;
+        }
         return grid.cells[row][col].state;
     };
 
@@ -958,7 +958,6 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
             m_inTowerHitPointFlashTick = 0;
             for (int i = 0; i < 20; ++i) m_inTowerEnemyDeathTick[i] = 0;
             if (enemies == 0 && door.role == TowerDoorRole::STAIRCASE) {
-                grid.towerSectionOpen[m_inTowerOpenedRow] = true;
                 m_inTowerChallengeDoorOverrideActive = true;
                 m_inTowerChallengeDoorOverrideRow = m_inTowerOpenedRow;
                 m_inTowerChallengeDoorOverrideCol = m_inTowerOpenedCol;
@@ -989,6 +988,12 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
         pbeSetStatusText(1, "Champion challenge incoming...");
         if (m_inTowerVideoSkipRequested) {
             m_inTowerVideoSkipRequested = false;
+            if (m_inTowerVideoLoaded) {
+                m_inTowerVideoPlayer->pbvpStop();
+                m_inTowerVideoPlayer->pbvpUnloadVideo();
+                m_inTowerVideoSpriteId = NOSPRITE;
+                m_inTowerVideoLoaded = false;
+            }
             DoorCell& door = grid.cells[m_inTowerOpenedRow][m_inTowerOpenedCol];
             bool joined = door.requiredChampion == TowerChampion::KNIGHT ? player.knightJoined :
                           door.requiredChampion == TowerChampion::PRIEST ? player.priestJoined : player.rangerJoined;
@@ -1050,6 +1055,12 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
         pbeSetStatusText(1, "Dragon discovered!");
         if (m_inTowerVideoSkipRequested) {
             m_inTowerVideoSkipRequested = false;
+            if (m_inTowerVideoLoaded) {
+                m_inTowerVideoPlayer->pbvpStop();
+                m_inTowerVideoPlayer->pbvpUnloadVideo();
+                m_inTowerVideoSpriteId = NOSPRITE;
+                m_inTowerVideoLoaded = false;
+            }
             m_dragonMultiballResult = 0;
             m_tableState = PBTableState::PBTBL_DRAGONMULTIBALL;
         }
@@ -1161,7 +1172,6 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
                 m_inTowerEnemiesActive = true;
                 m_inTowerDungeonPhase = 2;
             } else if (door.role == TowerDoorRole::STAIRCASE) {
-                grid.towerSectionOpen[m_inTowerOpenedRow] = true;
                 m_inTowerFlowState = InTowerFlowState::FLOOR_CHALLENGE_VIDEO;
                 m_inTowerChallengeDoorOverrideActive = true;
                 m_inTowerChallengeDoorOverrideRow = m_inTowerOpenedRow;
@@ -1690,132 +1700,5 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
 
         pbeUpdateModeSystem(inputMessage, currentTick);
         return;
-
-        // ------------------------------------------------------------
-        // Flippers: behaviour depends on current dungeon phase
-        // ------------------------------------------------------------
-        if (inputMessage.inputId == IDI_LFLIP || inputMessage.inputId == IDI_RFLIP) {
-
-            if (m_inTowerDungeonPhase == 0) {
-                if (!m_inTowerDoorJustOpened) {
-                    // First press: open the next available door; stay fullscreen
-                    TowerDungeonGrid& grid = m_playerStates[m_currentPlayer].dungeonGrid;
-                    for (int r = 0; r < 5; r++) {
-                        for (int c = 0; c < 3; c++) {
-                            if (grid.cells[r][c].state != DoorState::DOOR_NONE &&
-                                grid.cells[r][c].state != DoorState::DOOR_OPEN) {
-                                grid.cells[r][c].state = DoorState::DOOR_OPEN;
-                                // If this door has stairs, open the corresponding
-                                // side-tower TC section (TC[r] sits between floor r and r+1)
-                                if (grid.cells[r][c].hasLadder && r < 5) {
-                                    grid.towerSectionOpen[r] = true;
-                                }
-                                m_inTowerDoorJustOpened = true;
-                                m_inTowerOpenedRow = r;
-                                m_inTowerOpenedCol = c;
-                                m_inTowerAvatarOpenTick = GetTickCountGfx();
-                                goto doorOpenDone;
-                            }
-                        }
-                    }
-                    doorOpenDone:;
-                } else {
-                    // Second press: start shrink animation; spawn this room's enemies
-                    m_inTowerDoorJustOpened = false;
-                    m_inTowerShrinkAnimStartTick = GetTickCountGfx();
-                    m_inTowerDungeonPhase = 1;
-
-                    int enemies = 0;
-                    if (m_inTowerOpenedRow >= 0 && m_inTowerOpenedCol >= 0) {
-                        enemies = m_playerStates[m_currentPlayer]
-                                      .dungeonGrid.cells[m_inTowerOpenedRow][m_inTowerOpenedCol].monsterCount;
-                    }
-                    if (enemies < 0)  enemies = 0;
-                    if (enemies > 20) enemies = 20;
-                    m_inTowerEnemyCount       = enemies;
-                    m_inTowerEnemyRemaining   = enemies;
-                    m_inTowerEnemiesNeedSpawn = (enemies > 0);
-                    m_inTowerEnemiesActive    = (enemies > 0);
-                }
-            }
-            else if (m_inTowerDungeonPhase == 2 || m_inTowerDungeonPhase == 3) {
-                // Dice screen: flippers drive the roll state machine.
-                //   state 0 (READY)    -> pick value now, start fast spin
-                //   state 1 (SPINNING) -> stop spin, snap rolled value flat/upright
-                //   state 2 (STOPPED)  -> grow dungeon back to fullscreen
-                if (!m_inTowerD20Loaded) {
-                    m_inTowerShrinkAnimStartTick = GetTickCountGfx();
-                    m_inTowerDungeonPhase = 4;
-                    m_inTowerEnemiesActive    = false;
-                    m_inTowerEnemiesNeedSpawn = false;
-                }
-                else if (m_inTowerD20RollState == 0) {
-                    m_inTowerD20Value         = (rand() % 20) + 1;
-                    m_inTowerD20RollState     = 1;
-                    m_inTowerD20SpinStartTick = GetTickCountGfx();
-                    m_inTowerD20SpinBaseRotX  = m_inTowerD20RotX;
-                    m_inTowerD20SpinBaseRotY  = m_inTowerD20RotY;
-                    m_inTowerD20SpinBaseRotZ  = m_inTowerD20RotZ;
-                    m_inTowerDungeonPhase     = 2;
-                }
-                else if (m_inTowerD20RollState == 1) {
-                    // Global yaw trim: nudge every face slightly about Y so
-                    // the displayed face reads perfectly flat.
-                    const D20Orient& o = kD20Orient[(m_inTowerD20Value - 1) % 20];
-                    m_inTowerD20RotX      = o.rx;
-                    m_inTowerD20RotY      = o.ry + kD20YawTrimDeg;
-                    m_inTowerD20RotZ      = o.rz;
-                    m_inTowerD20RollState = 2;
-                    m_inTowerD20StopTick  = GetTickCountGfx(); // begin bounce settle
-                    // Resolve eliminations: the rolled value destroys that many
-                    // enemies (outermost first); survivors keep animating.
-                    int remaining = m_inTowerEnemyCount - m_inTowerD20Value;
-                    if (remaining < 0) remaining = 0;
-                    m_inTowerEnemyRemaining = remaining;
-                    // Pick a slash overlay variant (slash1/slash2) for each enemy
-                    // marked for death, fixed now so it doesn't flicker during fade.
-                    for (int i = remaining; i < m_inTowerEnemyCount && i < 20; i++) {
-                        m_inTowerEnemySlashType[i] = (unsigned int)(rand() % 2);
-                    }
-                }
-                else {
-                    m_inTowerD20RollState        = 0;
-                    m_inTowerShrinkAnimStartTick = GetTickCountGfx();
-                    m_inTowerDungeonPhase        = 4;
-                    m_inTowerEnemiesActive    = false;
-                    m_inTowerEnemiesNeedSpawn = false;
-                    // Persist the reduction: destroyed enemies stay dead, so the
-                    // opened room now only contains the survivors next visit.
-                    m_inTowerEnemyCount = m_inTowerEnemyRemaining;
-                    if (m_inTowerOpenedRow >= 0 && m_inTowerOpenedCol >= 0) {
-                        m_playerStates[m_currentPlayer]
-                            .dungeonGrid.cells[m_inTowerOpenedRow][m_inTowerOpenedCol]
-                            .monsterCount = m_inTowerEnemyRemaining;
-                    }
-                }
-            }
-            // Phase 1/4 (animating): ignore flipper presses
-        }
-
-        // ------------------------------------------------------------
-        // Activate buttons: change test dungeon level and re-initialise
-        // Left activate  → level - 1 (min 1)
-        // Right activate → level + 1 (max 3)
-        // ------------------------------------------------------------
-        else if (inputMessage.inputId == IDI_LACTIVATE) {
-            if (s_testDungeonLevel > 1) {
-                s_testDungeonLevel--;
-                pbeInitDungeonGrid(m_currentPlayer, s_testDungeonLevel);
-            }
-        }
-        else if (inputMessage.inputId == IDI_RACTIVATE) {
-            if (s_testDungeonLevel < 3) {
-                s_testDungeonLevel++;
-                pbeInitDungeonGrid(m_currentPlayer, s_testDungeonLevel);
-            }
-        }
     }
-
-    // Always run mode-system bookkeeping
-    pbeUpdateModeSystem(inputMessage, GetTickCountGfx());
 }
