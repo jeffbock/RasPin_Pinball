@@ -1,15 +1,28 @@
-# PB3D API Reference — 3D Rendering
+# PB3D API Reference — 3D Rendering (Optional Add-On)
 
 ## Overview
 
-The `PB3D` class provides hardware-accelerated 3D model rendering built on OpenGL ES.  It sits in the class hierarchy between `PBOGLES` (the raw GL wrapper) and `PBGfx` (the 2D graphics layer), so every `PBEngine` subclass has full access to both 2D and 3D rendering in the same frame:
+> **3D is completely optional.**  The RasPin engine's primary rendering system is `PBGfx`, a
+> full-featured 2D sprite, text, and animation layer.  Most tables never need 3D at all.  Only
+> read this document if you want to place hardware-accelerated 3D models in your scene.
+> For everything else — sprites, tile animation, text, color effects — see
+> [PBGfx_2D_API.md](PBGfx_2D_API.md).
+
+The `PB3D` class is an **optional add-on** that provides hardware-accelerated 3D model
+rendering built on OpenGL ES.  It sits in the class hierarchy *between* `PBOGLES` (the raw GL
+wrapper) and `PBGfx` (the 2D graphics layer):
 
 ```
 PBOGLES   (raw OpenGL ES)
-  └─ PB3D          (3D model rendering — this API)
-       └─ PBGfx    (2D sprites, text, animation)
+  └─ PB3D          (optional 3D add-on — this API)
+       └─ PBGfx    (2D sprites, text, animation — use this for all 2D rendering)
             └─ PBEngine  (game logic, state, timers)
 ```
+
+Because `PB3D` sits between the GL layer and `PBGfx`, it is always compiled in, but
+**you are not required to use any of its functions**.  A table that never calls a `pb3d*()`
+function behaves exactly as if `PB3D` did not exist — there is no performance penalty for
+ignoring it.  3D and 2D sprites can freely be mixed in the same frame when 3D *is* used.
 
 **Supported format:** glTF binary (`.glb`) loaded via the embedded **cgltf** library.  No external 3D library dependencies are required.
 
@@ -65,9 +78,14 @@ PB3D internally converts pixel positions to 3D world coordinates using the camer
 
 ## Initialization
 
-`pb3dInit()` is called once automatically from `gfxInit()`.  It compiles and caches both the static 3D GLSL shader and the skinned-mesh GLSL shader.  You do not need to call it manually.
+`pb3dInit()` is called once automatically from `gfxInit()`.  It compiles and caches both the
+static 3D GLSL shader and the skinned-mesh GLSL shader.  You do not need to call it manually,
+and it does not affect 2D rendering regardless of whether it succeeds.
 
-**Status:** returns `false` (and logs an error to the on-screen console) if the static shader fails to compile.  If the skinned shader fails to compile (non-fatal), a warning is logged and skinned models will fall back to static rendering.
+**Status:** returns `false` (and logs an error to the on-screen console) if the static shader
+fails to compile.  If the skinned shader fails to compile (non-fatal), a warning is logged and
+skinned models will fall back to static rendering.  Failure of `pb3dInit()` has **no effect on
+2D sprite rendering** — your table will continue to run normally using only the `PBGfx` layer.
 
 ---
 
