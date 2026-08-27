@@ -316,6 +316,11 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
         delete m_extraBallVideoPlayer;
         m_extraBallVideoPlayer = nullptr;
     }
+
+    if (m_inTowerVideoPlayer) {
+        delete m_inTowerVideoPlayer;
+        m_inTowerVideoPlayer = nullptr;
+    }
     
     // Clean up all registered devices
     pbeClearDevices();
@@ -4529,5 +4534,4 @@ void PBEngine::neoPixelSnake(uint8_t baseR, uint8_t baseG, uint8_t baseB,
         }
     }
 }
-
 

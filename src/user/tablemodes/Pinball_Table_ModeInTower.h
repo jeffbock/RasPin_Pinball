@@ -24,12 +24,12 @@
 //   the confirmed (value -> rx,ry,rz) tuples are logged to the pinball console
 //   (and console.txt) for pasting into the table.  Leave commented out for
 //   production builds.  Safe to remove this define and the calibration block.
-#define D20_CALIBRATION
+// #define D20_CALIBRATION
 
 // Tower progression test override. Valid values are 0 (off) or 1-3. When
 // enabled, TowerInit joins every champion, sets each champion level and tower
 // level to this value, then generates that tower for quick simulator testing.
-#define TEST_TOWER 2
+#define TEST_TOWER 0
 
 
 // Sub-states for the InTower game screen

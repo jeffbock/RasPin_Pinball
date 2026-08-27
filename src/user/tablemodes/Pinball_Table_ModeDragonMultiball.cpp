@@ -48,6 +48,8 @@ void PBEngine::pbeUpdateStateDragonMultiball(stInputMessage inputMessage) {
     if (inputMessage.inputId == IDI_LACTIVATE) {
         if (m_inTowerOpenedRow >= 0 && m_inTowerOpenedCol >= 0) {
             player.dungeonGrid.cells[m_inTowerOpenedRow][m_inTowerOpenedCol].state = DoorState::DOOR_CLOSED;
+            player.towerResumeFloor = player.dungeonFloor;
+            player.towerResumeDoor = m_inTowerOpenedCol;
         }
         m_dragonMultiballResult = 1;
         m_dragonMultiballResultTick = GetTickCountGfx();
