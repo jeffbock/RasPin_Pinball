@@ -180,6 +180,10 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_inTowerDoorJustOpened = false;
     m_inTowerOpenedRow = -1;
     m_inTowerOpenedCol = -1;
+    m_inTowerAvatarRoomProgress = 0.0f;
+    m_inTowerChallengeDoorOverrideActive = false;
+    m_inTowerChallengeDoorOverrideRow = -1;
+    m_inTowerChallengeDoorOverrideCol = -1;
     m_inTowerAvatarId = NOSPRITE;
     m_inTowerAvatarOpenTick = 0;
     m_inTowerEnemyBaseId = NOSPRITE;
@@ -189,7 +193,24 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_inTowerEnemiesNeedSpawn = false;
     m_inTowerEnemyCount = 0;
     m_inTowerEnemyRemaining = 0;
+    m_inTowerRollEnemyCount = 0;
     m_inTowerEnemyAnimTick = 0;
+    for (int i = 0; i < 20; i++) m_inTowerEnemyDeathTick[i] = 0;
+    m_inTowerFlowState = InTowerFlowState::TOWER_INIT;
+    m_inTowerFlowStateStartTick = 0;
+    m_inTowerSelectedDoor = -1;
+    m_inTowerChallengeMode = false;
+    m_inTowerResolutionApplied = false;
+    m_inTowerResolutionStep = 0;
+    m_inTowerResolutionStepStartTick = 0;
+    m_inTowerPendingDamage = 0;
+    m_inTowerHitPointFlashTick = 0;
+    m_inTowerVideoPlayer = nullptr;
+    m_inTowerVideoSpriteId = NOSPRITE;
+    m_inTowerVideoLoaded = false;
+    m_inTowerVideoSkipRequested = false;
+    m_dragonMultiballResult = 0;
+    m_dragonMultiballResultTick = 0;
     m_RestartTable = true;
     
     // Extra ball video variables
@@ -246,6 +267,7 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_gameEndLoaded = false;
     m_playerEndLoaded = false;
     m_inTowerLoaded = false;
+    m_dragonMultiballLoaded = false;
     
     // Sword/shield ramp animation state initialization
     m_swordFireAnimActive     = false;
@@ -293,6 +315,11 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     if (m_extraBallVideoPlayer) {
         delete m_extraBallVideoPlayer;
         m_extraBallVideoPlayer = nullptr;
+    }
+
+    if (m_inTowerVideoPlayer) {
+        delete m_inTowerVideoPlayer;
+        m_inTowerVideoPlayer = nullptr;
     }
     
     // Clean up all registered devices
@@ -894,6 +921,7 @@ std::string PBEngine::TableStateToString(PBTableState state) {
         case PBTableState::PBTBL_GAMEEND: return "GAMEEND";
         case PBTableState::PBTBL_PLAYEREND: return "PLAYEREND";
         case PBTableState::PBTBL_INTOWER: return "INTOWER";
+        case PBTableState::PBTBL_DRAGONMULTIBALL: return "DRAGONMULTIBALL";
         case PBTableState::PBTBL_END: return "END";
         default: return "UNKNOWN";
     }
@@ -4506,5 +4534,4 @@ void PBEngine::neoPixelSnake(uint8_t baseR, uint8_t baseG, uint8_t baseB,
         }
     }
 }
-
 

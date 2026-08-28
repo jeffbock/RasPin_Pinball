@@ -46,6 +46,11 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
         case PBTableState::PBTBL_INTOWER:
             pbeRequestScreen(PBTableState::PBTBL_INTOWER, m_tableSubScreenState, ScreenPriority::PRIORITY_LOW, 0, true);
             break;
+        case PBTableState::PBTBL_DRAGONMULTIBALL:
+            pbeRequestScreen(PBTableState::PBTBL_DRAGONMULTIBALL,
+                             static_cast<int>(PBTBLDragonMultiballScreenState::DRAGONMULTIBALL_ACTIVE),
+                             ScreenPriority::PRIORITY_LOW, 0, true);
+            break;
         default:
             break;
     }
@@ -65,6 +70,7 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
         case PBTableState::PBTBL_PLAYEREND:
         case PBTableState::PBTBL_GAMEEND:
         case PBTableState::PBTBL_INTOWER:
+        case PBTableState::PBTBL_DRAGONMULTIBALL:
             gfxClear(0.0f, 0.0f, 0.0f, 1.0f, false);
             pbeRenderStarBackground();
             break;
@@ -121,6 +127,12 @@ bool PBEngine::pbeRenderGameScreen(unsigned long currentTick, unsigned long last
             success = pbeRenderInTower(currentTick, lastTick, inTowerState);
             break;
         }
+
+        case PBTableState::PBTBL_DRAGONMULTIBALL:
+            success = pbeRenderDragonMultiball(
+                currentTick, lastTick,
+                static_cast<PBTBLDragonMultiballScreenState>(currentSubScreenState));
+            break;
             
         default:
             // No valid screen, render nothing
@@ -188,6 +200,9 @@ void PBEngine::pbeUpdateGameState(stInputMessage inputMessage){
         case PBTableState::PBTBL_INTOWER:
             pbeUpdateStateInTower(inputMessage);
             break;
+        case PBTableState::PBTBL_DRAGONMULTIBALL:
+            pbeUpdateStateDragonMultiball(inputMessage);
+            break;
         default:
             break;
     }
@@ -206,6 +221,7 @@ void PBEngine::pbeTableReload() {
     m_gameEndLoaded = false;
     m_playerEndLoaded = false;
     m_inTowerLoaded = false;
+    m_dragonMultiballLoaded = false;
     m_inTowerD20Spinning = false;
     m_inTowerD20RollState = 0;
     m_RestartTable = true;
@@ -218,6 +234,15 @@ void PBEngine::pbeTableReload() {
         m_extraBallVideoPlayer = nullptr;
         m_extraBallVideoSpriteId = NOSPRITE;
         m_extraBallVideoLoaded = false;
+    }
+
+    if (m_inTowerVideoPlayer) {
+        m_inTowerVideoPlayer->pbvpStop();
+        m_inTowerVideoPlayer->pbvpUnloadVideo();
+        delete m_inTowerVideoPlayer;
+        m_inTowerVideoPlayer = nullptr;
+        m_inTowerVideoSpriteId = NOSPRITE;
+        m_inTowerVideoLoaded = false;
     }
 }
 
@@ -253,7 +278,6 @@ bool PBEngine::pbeTryAddPlayer(){
     
     // Enable and initialize the new player
     m_playerStates[nextPlayerIdx].reset(m_saveFileData.ballsPerGame);
-    pbeInitDungeonGrid(nextPlayerIdx, 1);  // Seed dungeon grid at level 1 for new player
     m_playerStates[nextPlayerIdx].enabled = true;
     m_playerStates[nextPlayerIdx].inGame  = true;
     

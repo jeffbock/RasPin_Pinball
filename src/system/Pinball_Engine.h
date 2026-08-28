@@ -660,6 +660,10 @@ public:
     bool          m_inTowerDoorJustOpened;      // True after door opened, waiting for shrink press
     int           m_inTowerOpenedRow;           // Row of the door opened this visit (-1 = none)
     int           m_inTowerOpenedCol;           // Col of the door opened this visit (-1 = none)
+    float         m_inTowerAvatarRoomProgress;  // Completed door-entry progress retained during a room fight
+    bool          m_inTowerChallengeDoorOverrideActive; // Render-only override keeps the challenge door visually closed
+    int           m_inTowerChallengeDoorOverrideRow;    // Row of the door to override while the challenge is active
+    int           m_inTowerChallengeDoorOverrideCol;    // Col of the door to override while the challenge is active
 
     // InTower warrior enemy tile-sprites (drawn under the dice during the roll)
     unsigned int  m_inTowerEnemyBaseId;         // Base tile sprite (warriortilesmall.png)
@@ -669,8 +673,26 @@ public:
     bool          m_inTowerEnemiesNeedSpawn;    // True = randomize positions/tiles next render
     int           m_inTowerEnemyCount;          // Number of enemies to draw (0-20)
     int           m_inTowerEnemyRemaining;      // Survivors after the roll (rest render as corpses)
+    int           m_inTowerRollEnemyCount;      // Survivors alive when the current D20 roll started
     unsigned long m_inTowerEnemyAnimTick;       // Tick of last 250ms animation step
     unsigned int  m_inTowerEnemySlashType[20];  // Per-enemy slash variant (0=slash1,1=slash2) for the death overlay
+    unsigned long m_inTowerEnemyDeathTick[20];  // Per-enemy defeat tick for independent slash/fade timing
+    InTowerFlowState m_inTowerFlowState;
+    unsigned long m_inTowerFlowStateStartTick;
+    int m_inTowerSelectedDoor;
+    bool m_inTowerChallengeMode;
+    bool m_inTowerResolutionApplied;
+    int m_inTowerResolutionStep; // 0=none, 1=sword, 2=shield, 3=HP, 4=result hold
+    unsigned long m_inTowerResolutionStepStartTick;
+    int m_inTowerPendingDamage;
+    unsigned long m_inTowerHitPointFlashTick;
+    PBVideoPlayer* m_inTowerVideoPlayer;
+    unsigned int m_inTowerVideoSpriteId;
+    bool m_inTowerVideoLoaded;
+    bool m_inTowerVideoSkipRequested;
+
+    int m_dragonMultiballResult; // 0=selecting, 1=failed, 2=defeated
+    unsigned long m_dragonMultiballResultTick;
 
     // Multi-player game state
     pbGameState m_playerStates[4];    // Array of 4 player states
@@ -739,6 +761,7 @@ private:
     bool m_playerEndInitialized;  // Whether the PlayerEnd sub-state has been set up
     int  m_playerEndNextPlayer;   // Player index to activate after the countdown
     bool m_inTowerLoaded;         // Whether InTower screen resources are loaded
+    bool m_dragonMultiballLoaded; // Whether DragonMultiball resources are loaded
 
     // Game End mode state tracking
     bool m_gameEndInitialized;                           // Whether high score qualifiers have been determined
@@ -799,6 +822,7 @@ private:
     void pbeUpdateStateGameEnd(stInputMessage inputMessage);  // tablemodes/Pinball_Table_ModeGameEnd.cpp
     void pbeUpdateStatePlayerEnd(stInputMessage inputMessage); // tablemodes/Pinball_Table_ModePlayerEnd.cpp
     void pbeUpdateStateInTower(stInputMessage inputMessage);  // tablemodes/Pinball_Table_ModeInTower.cpp
+    void pbeUpdateStateDragonMultiball(stInputMessage inputMessage);
     
     // Render functions for the pinball game table
     bool pbeRenderInitScreen(unsigned long currentTick, unsigned long lastTick);
@@ -816,9 +840,12 @@ private:
     bool pbeRenderGameEnd(unsigned long currentTick, unsigned long lastTick, PBTBLGameEndState subScreenState);
     bool pbeRenderPlayerEnd(unsigned long currentTick, unsigned long lastTick, PBTBLPlayerEndState subScreenState);
     bool pbeRenderInTower(unsigned long currentTick, unsigned long lastTick, PBTBLInTowerScreenState subScreenState);
+    bool pbeRenderDragonMultiball(unsigned long currentTick, unsigned long lastTick,
+                                  PBTBLDragonMultiballScreenState subScreenState);
     void pbeRenderDungeonGrid(float scale, int centerX, int centerY, bool animate, unsigned long currentTick, unsigned long lastTick);
     void pbeInitDungeonGrid(int playerNum, int level);
     void pbeUpdateInTowerD20(unsigned long currentTick);
+    bool pbeLoadDragonMultiball();
 
     // Load functions for the pinball game table
     bool pbeLoadInitScreen(); // Load the init screen for the pinball game

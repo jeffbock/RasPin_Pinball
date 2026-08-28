@@ -54,6 +54,7 @@ set(PINBALL_SOURCES
     ${SRC}/user/tablemodes/Pinball_Table_ModeGameEnd.cpp
     ${SRC}/user/tablemodes/Pinball_Table_ModePlayerEnd.cpp
     ${SRC}/user/tablemodes/Pinball_Table_ModeInTower.cpp
+    ${SRC}/user/tablemodes/Pinball_Table_ModeDragonMultiball.cpp
 )
 
 # --- Output location ----------------------------------------------------------

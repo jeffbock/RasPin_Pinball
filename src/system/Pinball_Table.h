@@ -33,6 +33,7 @@ enum class PBTableState {
     PBTBL_GAMEEND = 4,
     PBTBL_PLAYEREND = 5,
     PBTBL_INTOWER = 6,
+    PBTBL_DRAGONMULTIBALL = 7,
     PBTBL_END
 };
 
@@ -46,6 +47,7 @@ enum class PBTableState {
 #include "tablemodes/Pinball_Table_ModeGameEnd.h"
 #include "tablemodes/Pinball_Table_ModePlayerEnd.h"
 #include "tablemodes/Pinball_Table_ModeInTower.h"
+#include "tablemodes/Pinball_Table_ModeDragonMultiball.h"
 
 // Screen request priority levels
 enum class ScreenPriority {
@@ -202,6 +204,11 @@ public:
     int defenseValue;                 // Defense/shield value
     int dungeonFloor;                 // Current dungeon floor
     int dungeonLevel;                 // Dungeon difficulty level
+    int towerHitPoints;               // Resets to 20 on every InTower entry
+    bool towerNeedsReset;             // Generate a fresh grid on the next InTower entry
+    bool towerMissingChampion;        // ExitTower displays Missing Champion once
+    int towerResumeFloor;             // Stable floor to restore after tower exit
+    int towerResumeDoor;              // Selected door column to restore after tower exit
     bool bInnOpen;                    // All 3 inn lanes completed (Inn is open)
     bool bKeyObtained;                // All 3 key targets hit (Key obtained)
 
@@ -248,6 +255,11 @@ public:
         defenseValue = 0;
         dungeonFloor = 1;
         dungeonLevel = 1;
+        towerHitPoints = 20;
+        towerNeedsReset = true;
+        towerMissingChampion = false;
+        towerResumeFloor = 1;
+        towerResumeDoor = -1;
         bInnOpen = false;
         bKeyObtained = false;
         dungeonGrid = TowerDungeonGrid();
