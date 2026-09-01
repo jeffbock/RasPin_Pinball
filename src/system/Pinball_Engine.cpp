@@ -25,7 +25,9 @@ unsigned char g_NeoPixelSPIBuffer0[g_NeoPixelSPIBufferSize[0]];
 unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
 
 // Class functions for PBEngine
- PBEngine::PBEngine() {
+ PBEngine::PBEngine()
+         : m_gameplayRandomGenerator(std::random_device{}()),
+             m_visualRandomGenerator(std::random_device{}()) {
 
     m_mainState = PB_BOOTUP;
 
@@ -175,6 +177,8 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_inTowerD20Value = 1;
     m_inTowerD20RollState = 0;
     m_inTowerD20StopTick = 0;
+    m_inTowerCriticalFailure = false;
+    m_inTowerCriticalSuccess = false;
     m_inTowerDungeonPhase = 0;
     m_inTowerShrinkAnimStartTick = 0;
     m_inTowerDoorJustOpened = false;
@@ -302,6 +306,16 @@ unsigned char g_NeoPixelSPIBuffer1[g_NeoPixelSPIBufferSize[1]];
     m_currentDisplayedSubScreen = -1;
     m_currentScreenStartTick = 0;
  }
+
+int PBEngine::pbeRandomInt(int upperExclusive) {
+    if (upperExclusive <= 0) return 0;
+    return std::uniform_int_distribution<int>(0, upperExclusive - 1)(m_gameplayRandomGenerator);
+}
+
+int PBEngine::pbeVisualRandomInt(int upperExclusive) {
+    if (upperExclusive <= 0) return 0;
+    return std::uniform_int_distribution<int>(0, upperExclusive - 1)(m_visualRandomGenerator);
+}
 
  PBEngine::~PBEngine(){
 
@@ -2108,8 +2122,8 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         gfxSetScaleFactor(m_StartMenuSwordId, 0.10, false);
         while ((GetTickCountGfx() - currentTick) < msRender) {
             // Get and random X and Y value, within the screen bounds
-            x = rand() % PB_SCREENWIDTH;
-            y = rand() % PB_SCREENHEIGHT;
+            x = pbeVisualRandomInt(PB_SCREENWIDTH);
+            y = pbeVisualRandomInt(PB_SCREENHEIGHT);
             gfxRenderSprite(m_StartMenuSwordId, x, y);
             smallSpriteCount++;
         }
@@ -2125,8 +2139,8 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         
         while ((GetTickCountGfx() - currentTick) < msRender ){
             // Get a ramdom value from -ScreenWidth  to +ScreenWidth and -ScreenHeight to +ScreenHeight
-            x = rand() % (PB_SCREENWIDTH * 2) - PB_SCREENWIDTH;
-            y = rand() % (PB_SCREENHEIGHT * 2) - PB_SCREENHEIGHT;
+            x = pbeVisualRandomInt(PB_SCREENWIDTH * 2) - PB_SCREENWIDTH;
+            y = pbeVisualRandomInt(PB_SCREENHEIGHT * 2) - PB_SCREENHEIGHT;
             gfxRenderSprite(m_BootUpConsoleId, x, y);
             bigSpriteCount++;
         }
@@ -2142,11 +2156,11 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
         
         while ((GetTickCountGfx() - currentTick) < msRender) {
             // Get and random X and Y value, within the screen bounds
-            x = rand() % PB_SCREENWIDTH;
-            y = rand() % PB_SCREENHEIGHT;
+            x = pbeVisualRandomInt(PB_SCREENWIDTH);
+            y = pbeVisualRandomInt(PB_SCREENHEIGHT);
             // Get a random scale and rotation value
-            float scale = (rand() % 100) / 100.0f;
-            float rotation = (rand() % 360);
+            float scale = pbeVisualRandomInt(100) / 100.0f;
+            float rotation = (float)pbeVisualRandomInt(360);
             gfxSetScaleFactor(m_StartMenuSwordId, scale, false);
             gfxSetRotateDegrees(m_StartMenuSwordId, rotation, false);
             gfxRenderSprite(m_StartMenuSwordId, x, y);
@@ -2171,13 +2185,13 @@ bool PBEngine::pbeRenderBenchmark(unsigned long currentTick, unsigned long lastT
             while ((GetTickCountGfx() - currentTick) < msRender) {
                 unsigned int idx = bench3DCount % 4;
                 // Random screen position + depth, matching the screen-range used by the sprite tests
-                float px    = (float)(rand() % PB_SCREENWIDTH);
-                float py    = (float)(rand() % PB_SCREENHEIGHT);
-                float pz    = -((float)(rand() % 300) / 100.0f);   // 0.0 .. -3.0 depth
-                float rx    = (float)(rand() % 360);
-                float ry    = (float)(rand() % 360);
-                float rz    = (float)(rand() % 360);
-                float scale = 0.5f + (float)(rand() % 100) / 100.0f; // 0.5 .. 1.5
+                float px    = (float)pbeVisualRandomInt(PB_SCREENWIDTH);
+                float py    = (float)pbeVisualRandomInt(PB_SCREENHEIGHT);
+                float pz    = -((float)pbeVisualRandomInt(300) / 100.0f);   // 0.0 .. -3.0 depth
+                float rx    = (float)pbeVisualRandomInt(360);
+                float ry    = (float)pbeVisualRandomInt(360);
+                float rz    = (float)pbeVisualRandomInt(360);
+                float scale = 0.5f + (float)pbeVisualRandomInt(100) / 100.0f; // 0.5 .. 1.5
                 pb3dSetInstancePositionPx(m_bench3DDiceInstance[idx], px, py, pz);
                 pb3dSetInstanceRotation  (m_bench3DDiceInstance[idx], rx, ry, rz);
                 pb3dSetInstanceScale     (m_bench3DDiceInstance[idx], scale);

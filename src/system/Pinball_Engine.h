@@ -35,6 +35,7 @@ class pbdHopperEjector;
 #include <chrono>
 #include <string>
 #include <array>
+#include <random>
 
 // Hardware configuration defines
 // These reflect the maximum number of addressable chips for each type:
@@ -645,6 +646,8 @@ public:
     // spin, then advance.  0 = idle (ready to roll), 1 = spinning, 2 = stopped.
     int          m_inTowerD20RollState;
     unsigned long m_inTowerD20StopTick; // tick when the spin stopped (bounce settle)
+    bool         m_inTowerCriticalFailure; // True when the current D20 roll is a 1
+    bool         m_inTowerCriticalSuccess; // True when the current D20 roll is a 20
 
     // InTower dungeon grid zoom-in animation state
     unsigned long m_dungeonGridAnimStartTick;  // Tick when zoom-in animation started
@@ -715,6 +718,11 @@ public:
 private:
 
     PBMainState m_mainState;
+    std::mt19937 m_gameplayRandomGenerator;
+    std::mt19937 m_visualRandomGenerator;
+
+    int pbeRandomInt(int upperExclusive);
+    int pbeVisualRandomInt(int upperExclusive);
 
     // Main Table Variables, etc..
     PBTableState m_tableState; 

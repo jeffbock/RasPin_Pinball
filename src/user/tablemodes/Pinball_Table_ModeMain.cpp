@@ -40,7 +40,7 @@ bool PBEngine::pbeLoadMainScreen(){
     m_PBTBLDungeonEyesBlinkId = gfxLoadSprite("DungeonEyesBlink", "", GFX_NONE, GFX_NOMAP, GFX_UPPERLEFT, true, false);
     gfxSetWH(m_PBTBLDungeonEyesBlinkId, 30, 30);
     gfxSetColor(m_PBTBLDungeonEyesBlinkId, 3, 7, 22, 255);
-    m_dungeonBlinkNextTick = (rand() % 14001) + 1000;  // Initial random delay of 1-15s
+    m_dungeonBlinkNextTick = pbeVisualRandomInt(14001) + 1000;  // Initial random delay of 1-15s
     
     m_PBTBLShield256Id = gfxLoadSprite("Shield256", "src/user/resources/textures/Shield256.png", GFX_PNG, GFX_NOMAP, GFX_UPPERLEFT, true, true);
     gfxSetColor(m_PBTBLShield256Id, 255, 255, 255, 255);
@@ -705,10 +705,10 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
                 m_shieldShakeAnimActive = false;
             } else {
                 if ((currentTick - m_shieldShakeLastChangeTick) >= SHAKE_INTERVAL_MS) {
-                    int signX = (rand() % 2) ? 1 : -1;
-                    int signY = (rand() % 2) ? 1 : -1;
-                    m_shieldShakeOffsetX = signX * (4 + rand() % 5);
-                    m_shieldShakeOffsetY = signY * (4 + rand() % 5);
+                    int signX = pbeVisualRandomInt(2) ? 1 : -1;
+                    int signY = pbeVisualRandomInt(2) ? 1 : -1;
+                    m_shieldShakeOffsetX = signX * (4 + pbeVisualRandomInt(5));
+                    m_shieldShakeOffsetY = signY * (4 + pbeVisualRandomInt(5));
                     m_shieldShakeLastChangeTick = currentTick;
                 }
                 renderShieldX = shieldX + m_shieldShakeOffsetX;
@@ -745,7 +745,7 @@ bool PBEngine::pbeRenderStatus(unsigned long currentTick, unsigned long lastTick
             gfxRenderSprite(m_PBTBLDungeonEyesBlinkId, blinkX, blinkY);
         } else {
             // Blink finished — schedule next one with a random 1-15 second delay
-            m_dungeonBlinkNextTick = currentTick + (rand() % 14001) + 1000;
+            m_dungeonBlinkNextTick = currentTick + pbeVisualRandomInt(14001) + 1000;
         }
     }
 
@@ -844,7 +844,7 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
                 if (!m_coinDropActive[i]) {
                     m_coinDropActive[i] = true;
                     m_coinDropStartTick[i] = GetTickCountGfx();
-                    m_coinDropXOffset[i] = (rand() % 41) - 20;
+                    m_coinDropXOffset[i] = pbeVisualRandomInt(41) - 20;
                     break;
                 }
             }
@@ -1065,9 +1065,9 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
             m_shieldShakeOffsetX        = 0;
             m_shieldShakeOffsetY        = 0;
             // Pick a random slash image and randomize its position within ±8px
-            m_shieldSlashIndex          = rand() % 3;
-            m_shieldSlashOffsetX        = (rand() % 17) + 7;  // +2 to +18 (shifted right 10px)
-            m_shieldSlashOffsetY        = (rand() % 17) + 4;  // +2 to +18 (shifted down 10px)
+            m_shieldSlashIndex          = pbeVisualRandomInt(3);
+            m_shieldSlashOffsetX        = pbeVisualRandomInt(17) + 7;  // +2 to +18 (shifted right 10px)
+            m_shieldSlashOffsetY        = pbeVisualRandomInt(17) + 4;  // +2 to +18 (shifted down 10px)
             m_shieldSlashActive         = true;
             m_shieldSlashStartTick      = GetTickCountGfx();
         }
