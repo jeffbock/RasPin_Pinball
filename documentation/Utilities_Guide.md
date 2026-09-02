@@ -819,7 +819,7 @@ All utilities are designed to work alongside the main RasPin engine:
 ## See Also
 
 - **[PB3D API](PB3D_API.md)** - Complete 3D rendering API including skeleton animation
-- **[Game Creation API](Game_Creation_API.md)** - Complete guide to PBGfx class and text rendering
+- **[PBGfx 2D Graphics API](PBGfx_2D_API.md)** - Complete guide to sprites, text rendering, and animation
 - **[I/O Processing API](IO_Processing_API.md)** - Hardware I2C communication details
 - **[How To Build](HowToBuild.md)** - Build instructions for all utilities
 - **[RasPin Overview](RasPin_Overview.md)** - Framework architecture overview

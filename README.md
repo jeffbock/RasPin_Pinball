@@ -57,12 +57,15 @@ Prototype hardware shown, full machine in development.
   - **[PBEngine API](documentation/PBEngine_API.md)** - Core engine class, game state, timer system, and output control
   - **[I/O Processing API](documentation/IO_Processing_API.md)** - Input/output message processing and hardware communication
   - **[LED Control API](documentation/LED_Control_API.md)** - LED control, NeoPixel RGB strips, sequences, and animation patterns
-  - **[2D Graphics API](documentation/PBGfx_2D_API.md)** - Sprite loading, rendering, tile-mapped sprites, text, and 2D graphics controls
   - **[NeoPixel Timing Methods](documentation/NeoPixel_Timing_Methods.md)** - Timing methods for reliable NeoPixel control (clock_gettime, NOP, SPI, PWM)
   - **[NeoPixel Instrumentation](documentation/NeoPixel_Instrumentation.md)** - Diagnostic tools for NeoPixel timing verification
   - **[PBDevice API](documentation/PBDevice_API.md)** - Device management framework for complex pinball mechanisms
   - **[Platform Init API](documentation/Platform_Init_API.md)** - Platform initialization, main loop, and configuration
-  - **[Game Creation API](documentation/Game_Creation_API.md)** - Graphics (PBGfx), sound (PBSound), video playback (PBVideoPlayer), sprites, animations, and screen management
+  - **[Screen Manager API](documentation/Screen_Manager_API.md)** - Priority-based screen requests, timed overlays, and render dispatch
+  - **[Game Screen Creation Guide](documentation/Game_Creation_API.md)** - Screen lifecycle, state, input, and resource ownership
+  - **[2D Graphics API](documentation/PBGfx_2D_API.md)** - Sprite loading, rendering, tile-mapped sprites, text, and 2D graphics controls
+  - **[Sound API](documentation/PBSound_API.md)** - Background music, sound effects, volume, and video audio streaming
+  - **[Video API](documentation/PBVideo_API.md)** - PBVideoPlayer loading, playback, presentation, and queries
   - **[3D Rendering API](documentation/PB3D_API.md)** - 3D model loading (glTF/GLB), instance management, lighting, perspective animation, coordinate system, and **skeleton animation** — load skinned models, list/play/stop named animation clips, and combine bone deformation with transform animations
 
 - **[Dragons of Destiny Table Spec](documentation/DoDTable.md)** - Full specification for the *Dragons of Destiny* example table: gameplay overview, all state machines with transition diagrams, I/O pin assignments, per-player data structures, screen-manager system, and AI prompt templates for each mode

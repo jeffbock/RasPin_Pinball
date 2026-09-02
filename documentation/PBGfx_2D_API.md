@@ -890,7 +890,7 @@ Returns `false` if the sprite is not a video type, is not loaded, or if the supp
 dimensions do not match the texture dimensions.  The `PBVideoPlayer` layer handles all of
 this automatically.
 
-For details on loading and playing video, see [Game_Creation_API.md — PBVideoPlayer](Game_Creation_API.md#pbvideoplayer-class---video-playback-system).
+For details on loading and playing video, see [PBVideoPlayer API](PBVideo_API.md).
 
 ---
 

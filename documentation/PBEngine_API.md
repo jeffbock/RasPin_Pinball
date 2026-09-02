@@ -696,4 +696,5 @@ int main(int argc, char const *argv[]) {
 - **[IO_Processing_API.md](IO_Processing_API.md)** - Details on I/O message processing and timer messages
 - **[LED_Control_API.md](LED_Control_API.md)** - LED sequence and animation details
 - **[Platform_Init_API.md](Platform_Init_API.md)** - Platform-specific initialization
+- **[Screen_Manager_API.md](Screen_Manager_API.md)** - Screen requests, priorities, and render dispatch
 - **[RasPin_Overview.md](RasPin_Overview.md)** - Overall framework architecture including timer system

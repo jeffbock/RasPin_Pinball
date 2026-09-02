@@ -191,6 +191,8 @@ The main dispatch in `Pinball_Table.cpp` routes to these three functions via `pb
 
 The screen manager decouples *what state the game is in* from *what is currently displayed*. This lets high-priority events (extra ball, ball saved, inn open) temporarily overlay gameplay without changing the game state.
 
+See [Screen Manager API](Screen_Manager_API.md) for the public queue API and selection rules.
+
 ```
 pbeRequestScreen(state, subState, priority, durationMs, canBePreempted)
    — Queues a screen request. Only one priority-0 request exists at a time
@@ -867,7 +869,7 @@ PBTBL_INTOWER intentionally uses a **single active screen sub-state**. The tower
 | `WarriorEnemy` | `warriortilesmall.png` | **Tile-mapped** | Enemy warriors; 6 tiles — tiles 0–2 one walk cycle, tiles 3–4 a second walk cycle, tile 5 is a defeated (X) marker |
 | `Slash1` / `Slash2` | `slash1.png` / `slash2.png` | Normal | Slash-mark overlays drawn on defeated enemy cells |
 
-> **Tile-mapped sprites** are loaded with `gfxLoadTileSprite()` instead of `gfxLoadSprite()`. The texture sheet is divided into equal-sized tiles; the active tile is selected at runtime with `gfxSetSelectedTile()`. See [Game_Creation_API.md — Tile-Mapped Sprites](#tile-mapped-sprites) for the full API reference.
+> **Tile-mapped sprites** are loaded with `gfxLoadTileSprite()` instead of `gfxLoadSprite()`. The texture sheet is divided into equal-sized tiles; the active tile is selected at runtime with `gfxSetSelectedTile()`. See [PBGfx 2D Graphics API — Tile-Mapped Sprites](PBGfx_2D_API.md#11-tile-mapped-sprites) for the full API reference.
 
 **Screen manager usage:**
 - On entry: `m_tableSubScreenState = INTOWER_SCREEN_ACTIVE`, `pbeRequestScreen(PBTBL_INTOWER, INTOWER_SCREEN_ACTIVE, PRIORITY_LOW, 0, true)`.

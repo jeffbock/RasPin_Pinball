@@ -813,6 +813,6 @@ void MyDevice::pbdExecute() {
 
 - **[PBEngine_API.md](PBEngine_API.md)** - Engine timing, timer system, and output control
 - **[IO_Processing_API.md](IO_Processing_API.md)** - Input/output message details
-- **[Game_Creation_API.md](Game_Creation_API.md)** - Game integration patterns
+- **[Game Screen Creation Guide](Game_Creation_API.md)** - Game integration patterns
 - **[Platform_Init_API.md](Platform_Init_API.md)** - Main loop and initialization
 - **[RasPin_Overview.md](RasPin_Overview.md)** - Overall framework architecture

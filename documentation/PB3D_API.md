@@ -899,6 +899,8 @@ pb3dCreateAnimation(anim, true);
 
 ## Related Documentation
 
-- **[Game Creation API](Game_Creation_API.md)** — 2D sprites, animation, sound, and video
+- **[PBGfx 2D Graphics API](PBGfx_2D_API.md)** — 2D sprites and animation
+- **[PBSound API](PBSound_API.md)** — music and sound effects
+- **[PBVideoPlayer API](PBVideo_API.md)** — video playback
 - **[RasPin Overview](RasPin_Overview.md)** — architecture overview and system introduction
 - **[Utilities Guide](Utilities_Guide.md)** — pb3dutil model analysis tool (bone counts, clip listing, simplification analysis)

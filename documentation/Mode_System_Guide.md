@@ -2,7 +2,7 @@
 
 ## Overview
 
-The RasPin Pinball Mode System provides a framework for managing multiple game states within a pinball game. Each mode (table state) represents a distinct play state with its own rules, rendering, and screen display. The screen manager decouples *what state the game is in* from *what is currently shown on screen*, enabling timed overlays and priority-based preemption without changing game logic.
+The RasPin Pinball Mode System provides a framework for managing multiple game states within a pinball game. Each mode (table state) represents a distinct play state with its own rules, rendering, and screen display. The screen manager decouples *what state the game is in* from *what is currently shown on screen*, enabling timed overlays and priority-based preemption without changing game logic. See [Screen Manager API](Screen_Manager_API.md) for the request queue and public API.
 
 ## Architecture
 
@@ -130,6 +130,10 @@ void PBEngine::pbeUpdateStateYourMode(stInputMessage inputMessage) {
 
 ## Screen Management System
 
+The queue API, request semantics, expiry behavior, and render-dispatch contract
+are defined in [Screen Manager API](Screen_Manager_API.md). This guide explains
+how table modes use that API alongside their own state and input handling.
+
 ### Screen Priority System
 
 The screen manager uses a priority-based queue system to determine which screen to display:
@@ -163,6 +167,7 @@ struct ScreenRequest {
 | `pbeRequestScreen(state, sub, priority, durationMs, canBePreempted)` | Queue a screen display request |
 | `pbeUpdateScreenManager(currentTick)` | Process queue, expire timed requests, select current display |
 | `pbeClearScreenRequests()` | Clear all pending requests (use at state transitions) |
+| `pbeClearPriority0Screen()` | Clear only the persistent background, leaving overlays queued |
 | `pbeGetCurrentScreenState()` | Return the currently displayed `PBTableState` |
 | `pbeGetCurrentSubScreenState()` | Return the currently displayed sub-state (int) |
 

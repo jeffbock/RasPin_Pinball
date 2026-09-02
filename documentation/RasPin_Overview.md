@@ -219,7 +219,7 @@ Load Model → Create Instance → Set Position/Properties → Animate → Rende
 - Scene dirty-flag caching avoids redundant view/projection matrix uploads
 - Font rendering from generated texture atlases
 
-**Documentation:** [Game_Creation_API.md](Game_Creation_API.md)
+**Documentation:** [PBGfx_2D_API.md](PBGfx_2D_API.md) and [PB3D_API.md](PB3D_API.md)
 
 ---
 
@@ -246,7 +246,7 @@ Load Model → Create Instance → Set Position/Properties → Animate → Rende
 └─────────────┘
 ```
 
-**Documentation:** [Game_Creation_API.md](Game_Creation_API.md) (PBSound section)
+**Documentation:** [PBSound_API.md](PBSound_API.md)
 
 ---
 
@@ -316,7 +316,7 @@ Load Model → Create Instance → Set Position/Properties → Animate → Rende
 | Audio playback | ❌ Stubbed | ✅ Via SDL2 |
 | Hardware decode | ❌ Not applicable | ❌ Disabled by default (`ENABLE_HW_VIDEO_DECODE=0`) |
 
-**Documentation:** [Game_Creation_API.md](Game_Creation_API.md) (PBVideoPlayer section)
+**Documentation:** [PBVideo_API.md](PBVideo_API.md)
 
 ---
 
@@ -816,7 +816,7 @@ Engine Handles:
 - **Jump** — Discrete jump from start to end at completion
 - **JumpRandom** — Random offset within a percentage range
 
-**Documentation:** [Game_Creation_API.md](Game_Creation_API.md) (Animation section)
+**Documentation:** [PBGfx_2D_API.md](PBGfx_2D_API.md) (Animation section)
 
 ---
 
@@ -1101,20 +1101,26 @@ This PR includes comprehensive documentation for each subsystem:
 2. **[PBEngine_API.md](PBEngine_API.md)** - Core engine functions and state management
 
 ### Graphics, Audio, and Video
-3. **[Game_Creation_API.md](Game_Creation_API.md)** - Complete guide to sprites, 3D models, animations, sound, and video playback
-4. **[PB3D_API.md](PB3D_API.md)** - 3D rendering: model loading, instance management, lighting, and animation
-5. **[FontGen_Guide.md](FontGen_Guide.md)** - Creating custom fonts for text rendering
+3. **[Game Screen Creation Guide](Game_Creation_API.md)** - Screen lifecycle, state, input, and resource ownership
+4. **[PBGfx_2D_API.md](PBGfx_2D_API.md)** - 2D sprites, text, and animation
+5. **[PBSound_API.md](PBSound_API.md)** - Music and sound effects
+6. **[PBVideo_API.md](PBVideo_API.md)** - Video playback
+7. **[PB3D_API.md](PB3D_API.md)** - 3D rendering: model loading, instance management, lighting, and animation
+8. **[FontGen_Guide.md](FontGen_Guide.md)** - Creating custom fonts for text rendering
+
+### Screen Coordination
+9. **[Screen_Manager_API.md](Screen_Manager_API.md)** - Priority-based screen requests, timed overlays, and render dispatch
 
 ### Hardware Control
-6. **[IO_Processing_API.md](IO_Processing_API.md)** - Input/output message system and hardware communication
-7. **[LED_Control_API.md](LED_Control_API.md)** - LED control, NeoPixel RGB strips, and animation sequences
-8. **[NeoPixel_Timing_Methods.md](NeoPixel_Timing_Methods.md)** - Timing methods for reliable NeoPixel control (clock_gettime, NOP, SPI, PWM)
-9. **[NeoPixel_Instrumentation.md](NeoPixel_Instrumentation.md)** - Diagnostic tools for NeoPixel timing verification
-10. **[PBDevice_API.md](PBDevice_API.md)** - Device management for complex pinball mechanisms
+10. **[IO_Processing_API.md](IO_Processing_API.md)** - Input/output message system and hardware communication
+11. **[LED_Control_API.md](LED_Control_API.md)** - LED control, NeoPixel RGB strips, and animation sequences
+12. **[NeoPixel_Timing_Methods.md](NeoPixel_Timing_Methods.md)** - Timing methods for reliable NeoPixel control (clock_gettime, NOP, SPI, PWM)
+13. **[NeoPixel_Instrumentation.md](NeoPixel_Instrumentation.md)** - Diagnostic tools for NeoPixel timing verification
+14. **[PBDevice_API.md](PBDevice_API.md)** - Device management for complex pinball mechanisms
 
 ### Additional Resources
-10. **[HowToBuild.md](HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
-11. **[Utilities_Guide.md](Utilities_Guide.md)** - Utility tools and helpers
+15. **[HowToBuild.md](HowToBuild.md)** - Build instructions for Windows and Raspberry Pi
+16. **[Utilities_Guide.md](Utilities_Guide.md)** - Utility tools and helpers
 12. **[UsersGuide.md](UsersGuide.md)** - Comprehensive framework guide (pre-existing)
 
 ---
@@ -1260,7 +1266,7 @@ The RasPin Pinball Framework provides a complete, flexible foundation for buildi
 ### Next Steps
 
 1. Read **[Platform_Init_API.md](Platform_Init_API.md)** to understand the main loop
-2. Review **[Game_Creation_API.md](Game_Creation_API.md)** for graphics and sound
+2. Review **[PBGfx_2D_API.md](PBGfx_2D_API.md)** for graphics and **[PBSound_API.md](PBSound_API.md)** for sound
 3. Study **[IO_Processing_API.md](IO_Processing_API.md)** for hardware control
 4. Explore example code in `Pinball_Table.cpp` and sandbox screen
 5. Build your custom pinball table!
@@ -1275,7 +1281,11 @@ The RasPin Pinball Framework provides a complete, flexible foundation for buildi
 - **NeoPixel_Instrumentation.md** - Diagnostic tools for NeoPixel timing
 - **PBDevice_API.md** - Device management framework for complex mechanisms
 - **Platform_Init_API.md** - Initialization and main loop
-- **Game_Creation_API.md** - Graphics, sound, video playback, and screen management
+- **Screen_Manager_API.md** - Priority-based screen requests, timed overlays, and render dispatch
+- **Game_Creation_API.md** - Screen lifecycle, state, input, and resource ownership
+- **PBGfx_2D_API.md** - 2D sprites, text, and animation
+- **PBSound_API.md** - Music and sound effects
+- **PBVideo_API.md** - Video playback
 - **Utilities_Guide.md** - Utility tools and helpers
 
 Each document contains detailed API references, code examples, and best practices based on actual framework usage.
