@@ -44,7 +44,8 @@ Prototype hardware shown, full machine in development.
   - **Inn lanes:** 3 lanes at the top of the field; completing all 3 scores 250 pts each, sets Inn Open, and resets lane LEDs. Flippers rotate the lit lane indicator left/right.
   - **Key targets:** 3 standup targets; completing all 3 scores 250 pts each and sets Key Obtained. State tracked and displayed in the status panel.
   - **Inlanes + ball save:** Hitting both inlane sensors lights the SAVE LED and activates a 5-second ball-save timer.
-  - **Character recruit & dungeon:** Per-player party members (Knight/Priest/Ranger) and dungeon floor/level tracked and displayed in the status panel. Full recruitment mechanic is planned.
+  - **Character recruit & dungeon:** Per-player party members (Knight/Priest/Ranger) and dungeon floor/level tracked and displayed in the status panel.
+  - **InTower mode:** Locking a ball in the tower opens a per-player dungeon with flipper-selected doors, level-scaled rooms, D20 combat, champion-gated staircase challenges, resumable failed attempts, and a dragon-lair transition to Dragon Multiball.
   - **Ball hopper eject device** supported.
 - See **[Dragons of Destiny Table Spec](documentation/DoDTable.md)** for full state machine diagrams, I/O map, per-player data structures, and mode-by-mode details.
 
