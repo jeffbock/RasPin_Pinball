@@ -57,6 +57,7 @@ Prototype hardware shown, full machine in development.
   - **[PBEngine API](documentation/PBEngine_API.md)** - Core engine class, game state, timer system, and output control
   - **[I/O Processing API](documentation/IO_Processing_API.md)** - Input/output message processing and hardware communication
   - **[LED Control API](documentation/LED_Control_API.md)** - LED control, NeoPixel RGB strips, sequences, and animation patterns
+  - **[2D Graphics API](documentation/PBGfx_2D_API.md)** - Sprite loading, rendering, tile-mapped sprites, text, and 2D graphics controls
   - **[NeoPixel Timing Methods](documentation/NeoPixel_Timing_Methods.md)** - Timing methods for reliable NeoPixel control (clock_gettime, NOP, SPI, PWM)
   - **[NeoPixel Instrumentation](documentation/NeoPixel_Instrumentation.md)** - Diagnostic tools for NeoPixel timing verification
   - **[PBDevice API](documentation/PBDevice_API.md)** - Device management framework for complex pinball mechanisms
