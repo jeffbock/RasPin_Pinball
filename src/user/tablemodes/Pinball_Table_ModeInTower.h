@@ -28,7 +28,7 @@
 // Tower progression test override. Valid values are 0 (off) or 1-3. When
 // enabled, TowerInit joins every champion, sets each champion level and tower
 // level to this value, then generates that tower for quick simulator testing.
-#define TEST_TOWER 2
+#define TEST_TOWER 0
 
 // Force a certain die roll for test purposes.
 // Valid values are 1-20 for a D20 die. Set to 0 to disable.
