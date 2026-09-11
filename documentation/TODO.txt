@@ -26,7 +26,7 @@ Add capapacitors to I/O boards for noise reduction, solenoid surge protection
 
 ** Lower Priority
 Refactor redudant input messages (output messages now not type (eg: flipper) specific) - do same for inputs?
-Bug: Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
+BUG: Debug why u1 and u2 and x1 and x2 seem to be swapped when going from screen to 3D space.  Maybe rendering backface polys
 Protect input / output queues with mutex and make them multi-thread?  Doesn't seem to be needed with current design but could improve input/output response.
 Actually checkout the CMAKE flow - I don't use it a lot right now
 BUG: Linux VM / Debian doesn't render / light the dragon model properly
