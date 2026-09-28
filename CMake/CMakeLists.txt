@@ -77,7 +77,11 @@ file(MAKE_DIRECTORY ${OUT_DIR})
 # --- Main executable ----------------------------------------------------------
 add_executable(${EXE_NAME} ${PINBALL_SOURCES})
 add_dependencies(${EXE_NAME} prebuild)
-set_target_properties(${EXE_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUT_DIR})
+set_target_properties(${EXE_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${OUT_DIR}
+    PDB_OUTPUT_DIRECTORY ${OUT_DIR}
+    COMPILE_PDB_OUTPUT_DIRECTORY ${OUT_DIR}
+)
 
 target_include_directories(${EXE_NAME} PRIVATE
     ${SRC}
@@ -124,7 +128,11 @@ add_executable(FontGen
     ${SRC}/PButils/FontGen.cpp
 )
 target_include_directories(FontGen PRIVATE ${SRC}/3rdparty)
-set_target_properties(FontGen PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUT_DIR})
+set_target_properties(FontGen PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${OUT_DIR}
+    PDB_OUTPUT_DIRECTORY ${OUT_DIR}
+    COMPILE_PDB_OUTPUT_DIRECTORY ${OUT_DIR}
+)
 
 # pb3dutil: 3D model analysis and utility tool (all platforms, no GL required)
 add_executable(pb3dutil
@@ -132,7 +140,11 @@ add_executable(pb3dutil
     ${SRC}/PButils/pb3dutil.cpp
 )
 target_include_directories(pb3dutil PRIVATE ${SRC}/3rdparty)
-set_target_properties(pb3dutil PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUT_DIR})
+set_target_properties(pb3dutil PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${OUT_DIR}
+    PDB_OUTPUT_DIRECTORY ${OUT_DIR}
+    COMPILE_PDB_OUTPUT_DIRECTORY ${OUT_DIR}
+)
 
 if(BUILD_TARGET STREQUAL "RASPI")
     add_executable(pblistdevices ${SRC}/PButils/pblistdevices.cpp)
