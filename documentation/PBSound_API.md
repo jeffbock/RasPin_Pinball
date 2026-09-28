@@ -6,12 +6,18 @@
 stream used by `PBVideoPlayer`. `PBEngine` owns the table sound system as
 `m_soundSystem`; initialize it during platform startup before playing audio.
 
-On Raspberry Pi and Debian builds, playback uses SDL2 and SDL_mixer. Windows
-simulator builds provide the same API but do not output audio.
+Windows, Raspberry Pi, and Debian builds use SDL2 and SDL_mixer for playback.
+The Windows simulator supports table music, effects, volume controls, and
+`PBVideoPlayer` audio through the same public API.
 
 ## Setup
 
-Raspberry Pi and Debian builds need SDL2 and SDL_mixer development packages:
+Windows builds use vendored x64 SDL2 and SDL_mixer development artifacts. See
+[HowToBuild.md](HowToBuild.md) for the required SDL 2.xx packages, repository
+locations, and runtime DLL deployment.
+
+Raspberry Pi and Debian builds need their system SDL2 and SDL_mixer development
+packages:
 
 ```bash
 sudo apt update

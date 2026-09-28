@@ -107,8 +107,10 @@ void PBEngine::pbeUpdateStateReset(stInputMessage inputMessage){
             // Any other button pressed - cancel reset and return to previous state
             m_ResetButtonPressed = false;
             m_tableState = m_StateBeforeReset;
-            // Placeholder: reset cancelled effect.
-            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
+            if (inputMessage.inputId != IDI_LFLIP && inputMessage.inputId != IDI_RFLIP) {
+                // Placeholder: reset cancelled effect.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
+            }
             
             // Clear screen queue and restore the saved screen as priority 0
             pbeClearScreenRequests();

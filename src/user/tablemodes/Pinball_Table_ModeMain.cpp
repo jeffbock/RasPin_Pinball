@@ -900,8 +900,6 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
         if (inputMessage.inputId == IDI_LFLIP) {
             // Rotate LEDs left: [1]→[0], [2]→[1], [0]→[2]
-            // Placeholder: inn lane selection movement effect.
-            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             bool temp = m_innLaneLEDOn[0];
             m_innLaneLEDOn[0] = m_innLaneLEDOn[1];
             m_innLaneLEDOn[1] = m_innLaneLEDOn[2];
@@ -912,8 +910,6 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
         }
         else if (inputMessage.inputId == IDI_RFLIP) {
             // Rotate LEDs right: [1]→[2], [0]→[1], [2]→[0]
-            // Placeholder: inn lane selection movement effect.
-            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             bool temp = m_innLaneLEDOn[2];
             m_innLaneLEDOn[2] = m_innLaneLEDOn[1];
             m_innLaneLEDOn[1] = m_innLaneLEDOn[0];

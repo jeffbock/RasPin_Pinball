@@ -7,7 +7,7 @@ The build is set up with VS code, with both Windows and Linux (Raspberry Pi 5 / 
 While using VS Code, by hitting Ctrl-Shift-P, you can bring up the Task Commands.  The following commands exist:
 - Windows / Rasberry Pi:  Full Pinball Build - Build the RasPin engine and executable to run PInball.
 - Windows / Rasberry Pi:  Full Pinball Build (Release) - Optimized release build with full compiler optimizations.
-- Windows: Copy Runtime DLLs - Copies all required Windows DLLs (FFmpeg and ANGLE) to both `build/windows/debug/` and `build/windows/release/`. Run this once after cloning, or again if DLLs are missing.
+- Windows: Copy Runtime DLLs - Copies all required Windows DLLs (FFmpeg, ANGLE, SDL2, and SDL_mixer) to both `build/windows/debug/` and `build/windows/release/`. Run this once after cloning, or again if DLLs are missing.
 - Windows / Rasberry Pi:  FontGen Build - Builds FontGen.cpp, a utility program takes a truetype font, and generate the files needed to use that font in the RasPin.
 - Windows / Rasberry Pi:  Single file build - used for testing single files
 
@@ -72,6 +72,24 @@ Windows development assumes VS Code and Visual Studio 2022 are already installed
  
 - Note: At some point, the Windows setup may be updated to use the headers / libraries directly from the Angle locations, but it does not currently do that, unlike the Raspberry Pi setup.
 
+### SDL2 Sound Support (Windows)
+
+Windows sound playback uses SDL2 and SDL_mixer. Download the latest compatible **2.xx** development packages, not SDL3: `PBSound` uses the SDL2 API.
+
+1. Download the x64 Visual C++ development packages from:
+    - [SDL Releases](https://github.com/libsdl-org/SDL/releases)
+    - [SDL_mixer Releases](https://github.com/libsdl-org/SDL_mixer/releases)
+
+2. Copy the development artifacts into the repository:
+    - SDL `include/` contents -> `src/include_ogl_win/SDL2/`
+    - SDL_mixer `include/SDL_mixer.h` -> `src/include_ogl_win/SDL2/`
+    - `SDL2.lib` and `SDL2_mixer.lib` from the x64 `lib/` directories -> `src/lib_ogl_win/`
+    - `SDL2.dll`, `SDL2_mixer.dll`, and any x64 SDL_mixer codec DLLs -> `src/lib_ogl_win/`
+
+    Keep the SDL2 headers, import library, and runtime DLL from the same SDL 2.xx package. Do the same for SDL_mixer; do not mix x86 and x64 files.
+
+3. **Windows: Copy Runtime DLLs** deploys the SDL2, SDL_mixer, and codec DLLs beside `Pinball.exe` for both Debug and Release builds. It reports a missing required DLL with its expected source path.
+
 ### FFMPEG Video Support (Windows)
 
 For Windows the libs and DLLs are already included in the source repo, but can be updated/re-installed as needed.
@@ -96,7 +114,7 @@ For Windows the libs and DLLs are already included in the source repo, but can b
    - `libegl.dll` and `libglesv2.dll` (from your ANGLE build)
    - Any DLLs that the above depend on (e.g. `avdevice-*.dll`, `avfilter-*.dll`, `postproc-*.dll`)
 
-   **Where to put them:** The **Windows: Copy Runtime DLLs** task (Ctrl-Shift-P) runs `scripts/copy_win_dlls.ps1` automatically as part of every Windows Full Pinball Build. It copies all FFmpeg and ANGLE DLLs from `src/lib_ogl_win/` to both `build/windows/debug/` and `build/windows/release/`. Run it manually if DLLs are ever missing from those folders.
+    **Where to put them:** The **Windows: Copy Runtime DLLs** task (Ctrl-Shift-P) runs `scripts/copy_win_dlls.ps1` automatically as part of every Windows Full Pinball Build. It copies all FFmpeg, ANGLE, SDL2, and SDL_mixer DLLs needed by the Windows executable to both `build/windows/debug/` and `build/windows/release/`. Run it manually if DLLs are ever missing from those folders.
 
    **If the DLL version numbers change** (e.g. after a FFmpeg update), the `.dll` filenames in `src/lib_ogl_win/` must match what `copy_win_dlls.ps1` looks for — check that script if copies are silently skipped.
 
