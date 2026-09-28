@@ -14,6 +14,30 @@ The RasPin framework includes several command-line utilities to help with font g
 | **pb3dutil** | Windows & Raspberry Pi | Analyzes and inspects 3D model files (.glb) — bone counts, animation clips, simplification advice |
 | **pblistdevices** | Raspberry Pi only | Scans I2C bus and lists all connected hardware devices |
 | **pbsetamp** | Raspberry Pi only | Controls MAX9744 amplifier volume settings |
+| **State Map Generator** | Windows, Linux & Raspberry Pi | Visualizes AI-maintained transition specifications derived from table-mode C++ code |
+
+---
+
+# State Map Generator
+
+**Platform:** Windows, Linux & Raspberry Pi
+
+**Purpose:** Visualizes table-state and mode-flow transitions for any `Pinball_Table` implementation. The C++ table-mode implementation is authoritative; AI inspects that code and maintains the derived JSON transition specifications in `documentation/state_map/`. This utility validates those specifications and generates dated Graphviz DOT diagrams. When Graphviz is installed, it also renders SVG diagrams in `documentation/state_map/generated_maps/`.
+
+The JSON files do not control gameplay or generate code. The intended workflow is:
+
+```text
+Change C++ state logic -> ask AI to update the matching JSON specification -> run this utility to visualize and review the result
+```
+
+Run from the repository root:
+
+```bash
+python scripts/generate_state_map.py --check
+python scripts/generate_state_map.py --render-svg
+```
+
+Use the `Generate State Map` VS Code task for the normal visualization flow. After changing a major table state, mode, or focused subflow transition, ask AI to inspect the implementation and update the matching JSON registry. The full AI prompt, review checklist, and Graphviz installation instructions are in [Table State Maps](state_map/README.md).
 
 ---
 

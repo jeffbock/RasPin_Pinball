@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 from collections import defaultdict
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -129,10 +130,11 @@ def generate(registry_path: Path, render_svg: bool) -> tuple[Path, Path | None]:
     data = load_registry(registry_path)
     validate_registry(registry_path, data)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    output_dot = OUTPUT_DIR / f"{registry_path.stem}.dot"
+    generated_date = date.today().isoformat()
+    output_dot = OUTPUT_DIR / f"{registry_path.stem}_{generated_date}.dot"
     output_dot.write_text(render_dot(data), encoding="utf-8")
 
-    output_svg = OUTPUT_DIR / f"{registry_path.stem}.svg"
+    output_svg = OUTPUT_DIR / f"{registry_path.stem}_{generated_date}.svg"
     if render_svg:
         subprocess.run(["dot", "-Tsvg", str(output_dot), "-o", str(output_svg)], check=True)
         return output_dot, output_svg
