@@ -836,6 +836,8 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
         if (inputMessage.inputId == IDI_POP1 ||
             inputMessage.inputId == IDI_POP2 ||
             inputMessage.inputId == IDI_POP3) {
+            // Placeholder: playfield impact / coin reward effect.
+            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             addPlayerScore(50);
             pbGameState& ps = m_playerStates[m_currentPlayer];
             ps.goldValue++;
@@ -872,11 +874,15 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
         }
 
         if (innLaneHit) {
+            // Placeholder: inn lane hit effect.
+            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             addPlayerScore(250);
             // Check if all three inn lanes are lit
             if (m_innLaneLEDOn[0] && m_innLaneLEDOn[1] && m_innLaneLEDOn[2]) {
                 pbGameState& ps = m_playerStates[m_currentPlayer];
                 ps.bInnOpen = true;
+                // Placeholder: inn unlocked achievement callout.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 // Reset inn lane LEDs
                 m_innLaneLEDOn[0] = m_innLaneLEDOn[1] = m_innLaneLEDOn[2] = false;
                 SendOutputMsg(PB_OMSG_LED, IDO_INN1LED, PB_OFF, false);
@@ -894,6 +900,8 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
         if (inputMessage.inputId == IDI_LFLIP) {
             // Rotate LEDs left: [1]→[0], [2]→[1], [0]→[2]
+            // Placeholder: inn lane selection movement effect.
+            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             bool temp = m_innLaneLEDOn[0];
             m_innLaneLEDOn[0] = m_innLaneLEDOn[1];
             m_innLaneLEDOn[1] = m_innLaneLEDOn[2];
@@ -904,6 +912,8 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
         }
         else if (inputMessage.inputId == IDI_RFLIP) {
             // Rotate LEDs right: [1]→[2], [0]→[1], [2]→[0]
+            // Placeholder: inn lane selection movement effect.
+            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             bool temp = m_innLaneLEDOn[2];
             m_innLaneLEDOn[2] = m_innLaneLEDOn[1];
             m_innLaneLEDOn[1] = m_innLaneLEDOn[0];
@@ -935,11 +945,15 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
         }
 
         if (keyTargetHit) {
+            // Placeholder: key target impact effect.
+            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             addPlayerScore(250);
             // Check if all three key targets are lit
             if (m_keyTargetLEDOn[0] && m_keyTargetLEDOn[1] && m_keyTargetLEDOn[2]) {
                 pbGameState& ps = m_playerStates[m_currentPlayer];
                 ps.bKeyObtained = true;
+                // Placeholder: key obtained achievement callout.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 // Flash "Key Obtained!" for 2 seconds
                 pbeRequestScreen(PBTableState::PBTBL_MAIN,
                                  static_cast<int>(PBTBLMainScreenState::MAIN_KEY_OBTAINED),
@@ -963,6 +977,10 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
         // Leave inlane LEDs on while save is active; they turn off when the timer expires
         if (m_leftInlaneLEDOn && m_rightInlaneLEDOn) {
             pbGameState& ps = m_playerStates[m_currentPlayer];
+            if (!ps.ballSaveEnabled) {
+                // Placeholder: ball save armed callout.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
+            }
             ps.ballSaveEnabled = true;
             SendOutputMsg(PB_OMSG_LED, IDO_SAVELED, PB_ON, false);
             pbeSetTimer(BALLSAVE_TIMER_ID, 5000);
@@ -973,6 +991,8 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
     if (inputMessage.inputMsg == PB_IMSG_TIMER &&
         inputMessage.inputId == BALLSAVE_TIMER_ID) {
         pbGameState& ps = m_playerStates[m_currentPlayer];
+        // Placeholder: ball save expired warning effect.
+        m_soundSystem.pbsPlayEffect(SOUNDBEEP);
         ps.ballSaveEnabled = false;
         m_leftInlaneLEDOn  = false;
         m_rightInlaneLEDOn = false;
@@ -988,6 +1008,8 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
         pbGameState& ps = m_playerStates[m_currentPlayer];
         if (ps.ballSaveEnabled) {
             // Ball save active – return ball, clear save and extra ball flags
+            // Placeholder: ball saved recovery callout.
+            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             ps.ballSaveEnabled  = false;
             ps.extraBallEnabled = false;
             pbeActivatePlayer(m_currentPlayer);   // resets LEDs, save LED off, NeoPixel restart
@@ -1001,6 +1023,8 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
                              ScreenPriority::PRIORITY_HIGH, 2000, false);
         } else {
             // No save – advance ball, rotate players or end game
+            // Placeholder: ball drain / lost-ball effect.
+            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             ps.currentBall++;
             if (ps.currentBall > m_saveFileData.ballsPerGame) {
                 ps.enabled = false;
@@ -1047,6 +1071,8 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
     // Sword ramp: +1 attack, trigger fire animation if not already active
     if (inputMessage.inputMsg == PB_IMSG_SENSOR && inputMessage.inputState == PB_ON &&
         inputMessage.inputId == IDI_SWORDRAMP) {
+        // Placeholder: sword-ramp attack effect.
+        m_soundSystem.pbsPlayEffect(SOUNDBEEP);
         m_playerStates[m_currentPlayer].attackValue++;
         if (!m_swordFireAnimActive) {
             m_swordFireAnimActive    = true;
@@ -1057,6 +1083,8 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
     // Shield ramp: +1 defense, trigger shake animation if not already active
     if (inputMessage.inputMsg == PB_IMSG_SENSOR && inputMessage.inputState == PB_ON &&
         inputMessage.inputId == IDI_SHIELDRAMP) {
+        // Placeholder: shield-ramp block effect.
+        m_soundSystem.pbsPlayEffect(SOUNDBEEP);
         m_playerStates[m_currentPlayer].defenseValue++;
         if (!m_shieldShakeAnimActive) {
             m_shieldShakeAnimActive     = true;
@@ -1076,6 +1104,8 @@ void PBEngine::pbeUpdateStateMain(stInputMessage inputMessage){
     // Tower sensor: ball has entered the tower lock area → enter INTOWER mode
     if (inputMessage.inputMsg == PB_IMSG_SENSOR && inputMessage.inputState == PB_ON &&
         inputMessage.inputId == IDI_TOWER) {
+        // Placeholder: tower mode entry callout.
+        m_soundSystem.pbsPlayEffect(SOUNDBEEP);
         ModeState& modeState = m_playerStates[m_currentPlayer].modeState;
         pbeExitMode(modeState.currentMode, GetTickCountGfx());
         pbeEnterMode(PBTableMode::MODE_INTOWER, GetTickCountGfx());

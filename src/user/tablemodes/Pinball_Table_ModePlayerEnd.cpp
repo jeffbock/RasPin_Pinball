@@ -88,6 +88,8 @@ void PBEngine::pbeUpdateStatePlayerEnd(stInputMessage inputMessage){
         m_tableSubScreenState     = static_cast<int>(PBTBLPlayerEndState::PLAYEREND_DISPLAY);
         pbeRequestScreen(PBTableState::PBTBL_PLAYEREND, static_cast<int>(PBTBLPlayerEndState::PLAYEREND_DISPLAY), ScreenPriority::PRIORITY_LOW, 0, true);
         m_playerEndInitialized    = true;
+        // Placeholder: next player turn callout.
+        m_soundSystem.pbsPlayEffect(SOUNDBEEP);
         pbeSetTimer(PLAYEREND_DISPLAY_TIMER_ID, 2000);
         return;
     }
@@ -104,6 +106,8 @@ void PBEngine::pbeUpdateStatePlayerEnd(stInputMessage inputMessage){
                 // Switch over to the next player and activate hardware state
                 m_currentPlayer = static_cast<unsigned int>(m_playerEndNextPlayer);
                 pbeActivatePlayer(m_currentPlayer);
+                // Placeholder: ball launch / turn start effect.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
 
                 // Enable and start the hopper ejector
                 if (m_hopperDevice) {

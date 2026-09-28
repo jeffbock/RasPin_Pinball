@@ -1,0 +1,107 @@
+{
+  "title": "InTower Adventure Flow",
+  "description": "Focused InTowerFlowState transitions. This complements, rather than duplicates, the global PBTableState map.",
+  "nodes": [
+    { "id": "TOWER_INIT", "label": "Tower Init", "group": "Entry" },
+    { "id": "TOWER_CLIMB", "label": "Tower Climb", "group": "Exploration" },
+    { "id": "ROOM_FIGHT", "label": "Room Fight", "group": "Combat" },
+    { "id": "FLOOR_CHALLENGE_VIDEO", "label": "Challenge Video", "group": "Challenge" },
+    { "id": "FLOOR_CHALLENGE_FIGHT", "label": "Challenge Roll", "group": "Challenge" },
+    { "id": "FLOOR_CHALLENGE_SUCCESS", "label": "Challenge Success", "group": "Challenge" },
+    { "id": "DRAGON_VIDEO", "label": "Dragon Video", "group": "Exit" },
+    { "id": "EXIT_TOWER", "label": "Exit Tower", "group": "Exit" }
+  ],
+  "transitions": [
+    {
+      "from": "TOWER_INIT",
+      "to": "TOWER_CLIMB",
+      "kind": "table-state",
+      "trigger": "Initialize player tower state",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "TOWER_CLIMB",
+      "to": "ROOM_FIGHT",
+      "kind": "table-state",
+      "trigger": "Selected door opens into a room with enemies",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "TOWER_CLIMB",
+      "to": "FLOOR_CHALLENGE_VIDEO",
+      "kind": "table-state",
+      "trigger": "Selected staircase door opens",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "ROOM_FIGHT",
+      "to": "ROOM_FIGHT",
+      "kind": "loop",
+      "trigger": "D20 resolution leaves enemies alive",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "ROOM_FIGHT",
+      "to": "FLOOR_CHALLENGE_VIDEO",
+      "kind": "table-state",
+      "trigger": "Staircase room cleared",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "ROOM_FIGHT",
+      "to": "DRAGON_VIDEO",
+      "kind": "table-state",
+      "trigger": "Dragon room cleared",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "ROOM_FIGHT",
+      "to": "TOWER_CLIMB",
+      "kind": "table-state",
+      "trigger": "Ordinary room cleared",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "FLOOR_CHALLENGE_VIDEO",
+      "to": "FLOOR_CHALLENGE_FIGHT",
+      "kind": "table-state",
+      "trigger": "Champion joined; video completes or is skipped",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "FLOOR_CHALLENGE_VIDEO",
+      "to": "EXIT_TOWER",
+      "kind": "conditional",
+      "trigger": "Required champion missing",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "FLOOR_CHALLENGE_FIGHT",
+      "to": "FLOOR_CHALLENGE_SUCCESS",
+      "kind": "success",
+      "trigger": "D20 result meets challenge target",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "FLOOR_CHALLENGE_FIGHT",
+      "to": "EXIT_TOWER",
+      "kind": "failure",
+      "trigger": "D20 result misses challenge target or critically fails",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "FLOOR_CHALLENGE_SUCCESS",
+      "to": "TOWER_CLIMB",
+      "kind": "table-state",
+      "trigger": "Success animation completes",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "EXIT_TOWER",
+      "to": "TOWER_CLIMB",
+      "kind": "external",
+      "trigger": "Returns to PBTBL_MAIN / MODE_NORMAL_PLAY",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    }
+  ]
+}

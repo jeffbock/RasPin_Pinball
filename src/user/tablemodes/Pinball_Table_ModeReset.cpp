@@ -96,6 +96,8 @@ void PBEngine::pbeUpdateStateReset(stInputMessage inputMessage){
             // Stop any playing music/effects
             m_soundSystem.pbsStopAllEffects();
             m_soundSystem.pbsStopMusic();
+            // Placeholder: reset confirmed effect.
+            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
         }
         else if (inputMessage.inputId == IDI_START || 
                  inputMessage.inputId == IDI_LACTIVATE || 
@@ -105,6 +107,8 @@ void PBEngine::pbeUpdateStateReset(stInputMessage inputMessage){
             // Any other button pressed - cancel reset and return to previous state
             m_ResetButtonPressed = false;
             m_tableState = m_StateBeforeReset;
+            // Placeholder: reset cancelled effect.
+            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             
             // Clear screen queue and restore the saved screen as priority 0
             pbeClearScreenRequests();

@@ -364,12 +364,16 @@ void PBEngine::pbeUpdateStateStart(stInputMessage inputMessage){
     if (inputMessage.inputMsg == PB_IMSG_BUTTON && inputMessage.inputState == PB_ON) {
         if (inputMessage.inputId == IDI_START) {
             // Start button opens the doors
+            // Placeholder: game-start door transition effect.
+            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             m_tableSubScreenState = static_cast<int>(PBTBLStartScreenState::START_OPENDOOR);
             pbeRequestScreen(PBTableState::PBTBL_START, static_cast<int>(PBTBLStartScreenState::START_OPENDOOR), ScreenPriority::PRIORITY_LOW, 0, true);
         }
         else {
             // Other buttons cycle through info screens (only when doors aren't opening)
             if (!m_PBTBLOpenDoors) {
+                // Placeholder: attract screen navigation effect.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 PBTBLStartScreenState currentStartState = static_cast<PBTBLStartScreenState>(m_tableSubScreenState);
                 switch (currentStartState) {
                     case PBTBLStartScreenState::START_START:

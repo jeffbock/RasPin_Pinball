@@ -46,6 +46,8 @@ void PBEngine::pbeUpdateStateDragonMultiball(stInputMessage inputMessage) {
 
     pbGameState& player = m_playerStates[m_currentPlayer];
     if (inputMessage.inputId == IDI_LACTIVATE) {
+        // Placeholder: dragon encounter failure / retreat effect.
+        m_soundSystem.pbsPlayEffect(SOUNDBEEP);
         if (m_inTowerOpenedRow >= 0 && m_inTowerOpenedCol >= 0) {
             player.dungeonGrid.cells[m_inTowerOpenedRow][m_inTowerOpenedCol].state = DoorState::DOOR_CLOSED;
             player.towerResumeFloor = player.dungeonFloor;
@@ -54,6 +56,8 @@ void PBEngine::pbeUpdateStateDragonMultiball(stInputMessage inputMessage) {
         m_dragonMultiballResult = 1;
         m_dragonMultiballResultTick = GetTickCountGfx();
     } else if (inputMessage.inputId == IDI_RACTIVATE) {
+        // Placeholder: dragon defeat / level completion callout.
+        m_soundSystem.pbsPlayEffect(SOUNDBEEP);
         if (player.dungeonLevel < 3) player.dungeonLevel++;
         player.dungeonFloor = 1;
         player.towerResumeFloor = 1;

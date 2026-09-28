@@ -59,7 +59,7 @@
 // Version Information
 #define PB_VERSION_MAJOR 0
 #define PB_VERSION_MINOR 5  
-#define PB_VERSION_BUILD 1313
+#define PB_VERSION_BUILD 1314
 
 // This must be set to whatever actual screen size is being use for Rasbeery Pi
 #define PB_SCREENWIDTH 1920
@@ -76,6 +76,7 @@
 #define SAVEFILENAME "src/user/resources/savefile.bin"
 
 // Sound file
+#define SOUNDBEEP "src/user/resources/sound/beep.mp3"
 #define SOUNDCLICK "src/user/resources/sound/click.mp3"
 #define SOUNDDOORCLOSE "src/user/resources/sound/doorclose.mp3"
 #define SOUNDDOORTHEME "src/user/resources/sound/doortheme.mp3"

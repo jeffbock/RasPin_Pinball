@@ -1,0 +1,108 @@
+{
+  "title": "Dragons of Destiny Table Flow",
+  "description": "Top-level PBTableState transitions. Keep mode-internal transitions in a focused registry such as intower_transitions.json.",
+  "nodes": [
+    { "id": "PBTBL_INIT", "label": "Init", "group": "Lifecycle" },
+    { "id": "PBTBL_START", "label": "Start / Attract", "group": "Lifecycle" },
+    { "id": "PBTBL_MAIN", "label": "Main Play", "group": "Gameplay" },
+    { "id": "PBTBL_PLAYEREND", "label": "Player End", "group": "Gameplay" },
+    { "id": "PBTBL_GAMEEND", "label": "Game End", "group": "Lifecycle" },
+    { "id": "PBTBL_RESET", "label": "Reset Confirm", "group": "Lifecycle" },
+    { "id": "ACTIVE_TABLE_STATE", "label": "Active Table State\n(before reset)", "group": "Lifecycle" },
+    { "id": "PBTBL_INTOWER", "label": "InTower", "group": "Adventure" },
+    { "id": "PBTBL_DRAGONMULTIBALL", "label": "Dragon Multiball", "group": "Adventure" }
+  ],
+  "transitions": [
+    {
+      "from": "PBTBL_INIT",
+      "to": "PBTBL_START",
+      "kind": "table-state",
+      "trigger": "Initialization complete",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInit.cpp"
+    },
+    {
+      "from": "PBTBL_START",
+      "to": "PBTBL_MAIN",
+      "kind": "table-state",
+      "trigger": "Start pressed; door animation completes",
+      "source": "src/user/tablemodes/Pinball_Table_ModeStart.cpp"
+    },
+    {
+      "from": "PBTBL_MAIN",
+      "to": "PBTBL_PLAYEREND",
+      "kind": "table-state",
+      "trigger": "Ball drain; another player remains",
+      "source": "src/user/tablemodes/Pinball_Table_ModeMain.cpp"
+    },
+    {
+      "from": "PBTBL_MAIN",
+      "to": "PBTBL_GAMEEND",
+      "kind": "table-state",
+      "trigger": "Ball drain; no enabled players remain",
+      "source": "src/user/tablemodes/Pinball_Table_ModeMain.cpp"
+    },
+    {
+      "from": "PBTBL_PLAYEREND",
+      "to": "PBTBL_MAIN",
+      "kind": "table-state",
+      "trigger": "IDI_BALLDELIVERED",
+      "source": "src/user/tablemodes/Pinball_Table_ModePlayerEnd.cpp"
+    },
+    {
+      "from": "PBTBL_MAIN",
+      "to": "PBTBL_INTOWER",
+      "kind": "mode-entry",
+      "trigger": "IDI_TOWER; enter MODE_INTOWER",
+      "source": "src/user/tablemodes/Pinball_Table_ModeMain.cpp"
+    },
+    {
+      "from": "PBTBL_INTOWER",
+      "to": "PBTBL_DRAGONMULTIBALL",
+      "kind": "table-state",
+      "trigger": "Dragon video completes or is skipped",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "PBTBL_INTOWER",
+      "to": "PBTBL_MAIN",
+      "kind": "mode-exit",
+      "trigger": "Tower exit timeout; enter MODE_NORMAL_PLAY",
+      "source": "src/user/tablemodes/Pinball_Table_ModeInTower.cpp"
+    },
+    {
+      "from": "PBTBL_DRAGONMULTIBALL",
+      "to": "PBTBL_MAIN",
+      "kind": "mode-exit",
+      "trigger": "Dragon result display completes; enter MODE_NORMAL_PLAY",
+      "source": "src/user/tablemodes/Pinball_Table_ModeDragonMultiball.cpp"
+    },
+    {
+      "from": "PBTBL_GAMEEND",
+      "to": "PBTBL_START",
+      "kind": "table-state",
+      "trigger": "Game-end timer or button press",
+      "source": "src/user/tablemodes/Pinball_Table_ModeGameEnd.cpp"
+    },
+    {
+      "from": "ACTIVE_TABLE_STATE",
+      "to": "PBTBL_RESET",
+      "kind": "conditional",
+      "trigger": "IDI_RESET; store m_StateBeforeReset",
+      "source": "src/system/Pinball_Table.cpp"
+    },
+    {
+      "from": "PBTBL_RESET",
+      "to": "PBTBL_START",
+      "kind": "table-state",
+      "trigger": "IDI_RESET confirmed",
+      "source": "src/user/tablemodes/Pinball_Table_ModeReset.cpp"
+    },
+    {
+      "from": "PBTBL_RESET",
+      "to": "ACTIVE_TABLE_STATE",
+      "kind": "conditional",
+      "trigger": "Cancel; restore m_StateBeforeReset",
+      "source": "src/user/tablemodes/Pinball_Table_ModeReset.cpp"
+    }
+  ]
+}

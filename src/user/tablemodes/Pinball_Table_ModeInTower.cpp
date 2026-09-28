@@ -966,6 +966,8 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
                 m_inTowerChallengeDoorOverrideActive = true;
                 m_inTowerChallengeDoorOverrideRow = m_inTowerOpenedRow;
                 m_inTowerChallengeDoorOverrideCol = m_inTowerOpenedCol;
+                // Placeholder: champion challenge discovery callout.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 m_inTowerFlowState = InTowerFlowState::FLOOR_CHALLENGE_VIDEO;
                 m_inTowerFlowStateStartTick = currentTick;
                 m_inTowerDungeonPhase = 4;
@@ -1006,6 +1008,8 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
                 player.towerMissingChampion = true;
                 door.state = DoorState::DOOR_CLOSED;
                 grid.towerSectionOpen[m_inTowerOpenedRow] = false;
+                // Placeholder: missing champion / tower exit effect.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 m_inTowerChallengeDoorOverrideActive = false;
                 m_inTowerChallengeDoorOverrideRow = -1;
                 m_inTowerChallengeDoorOverrideCol = -1;
@@ -1023,6 +1027,8 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
                 m_inTowerPendingDamage = 0;
                 m_inTowerDungeonPhase = 1;
                 m_inTowerShrinkAnimStartTick = currentTick;
+                // Placeholder: champion challenge start effect.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 m_inTowerFlowState = InTowerFlowState::FLOOR_CHALLENGE_FIGHT;
                 m_inTowerFlowStateStartTick = currentTick;
                 m_inTowerChallengeDoorOverrideActive = true;
@@ -1081,6 +1087,8 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
             m_inTowerResolutionApplied = true;
             door.state = DoorState::DOOR_CLOSED;
             grid.towerSectionOpen[m_inTowerOpenedRow] = false;
+            // Placeholder: critical failure / tower defeat effect.
+            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             player.towerMissingChampion = false;
             player.towerResumeFloor = player.dungeonFloor;
             player.towerResumeDoor = m_inTowerOpenedCol;
@@ -1099,7 +1107,11 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
                          door.challengeLevel == championLevel ? 10 : 10 - 4 * (championLevel - door.challengeLevel);
             if (target < 1) target = 1;
             if (m_inTowerD20Value >= target) {
+                // Placeholder: champion challenge victory callout.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 if (m_inTowerCriticalSuccess) {
+                    // Placeholder: critical success bonus callout.
+                    m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                     player.attackValue += 5;
                     player.defenseValue += 5;
                     m_swordFireAnimActive = true;
@@ -1129,6 +1141,8 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
                 player.towerMissingChampion = false;
                 door.state = DoorState::DOOR_CLOSED;
                 grid.towerSectionOpen[m_inTowerOpenedRow] = false;
+                // Placeholder: failed champion challenge / tower exit effect.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 player.towerResumeFloor = player.dungeonFloor;
                 player.towerResumeDoor = m_inTowerOpenedCol;
                 m_inTowerChallengeDoorOverrideActive = false;
@@ -1153,6 +1167,8 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
             if (m_inTowerEnemyRemaining > 0 && player.attackValue > 0) {
                 --m_inTowerEnemyRemaining;
                 --player.attackValue;
+                // Placeholder: enemy hit and defeat effect.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 m_inTowerEnemySlashType[m_inTowerEnemyRemaining] = (unsigned int)pbeVisualRandomInt(2);
                 m_inTowerEnemyDeathTick[m_inTowerEnemyRemaining] = currentTick;
                 m_swordFireAnimActive = true;
@@ -1168,6 +1184,8 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
             if (m_inTowerPendingDamage > 0 && player.defenseValue > 0) {
                 --m_inTowerPendingDamage;
                 --player.defenseValue;
+                // Placeholder: shield block effect.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 m_shieldShakeAnimActive = true;
                 m_shieldShakeAnimStartTick = currentTick;
                 m_shieldShakeLastChangeTick = currentTick;
@@ -1188,6 +1206,8 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
             if (m_inTowerPendingDamage > 0 && player.towerHitPoints > 0) {
                 --m_inTowerPendingDamage;
                 --player.towerHitPoints;
+                // Placeholder: tower damage / player hurt effect.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 m_inTowerHitPointFlashTick = currentTick;
                 m_inTowerResolutionStepStartTick = currentTick;
             } else {
@@ -1216,6 +1236,8 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
                  currentTick - m_inTowerResolutionStepStartTick >= 600UL) {
             m_inTowerResolutionApplied = true;
             m_inTowerEnemiesActive = false;
+            // Placeholder: combat round resolution effect.
+            m_soundSystem.pbsPlayEffect(SOUNDBEEP);
             m_inTowerDungeonPhase = 4;
             m_inTowerShrinkAnimStartTick = currentTick;
             m_inTowerFlowStateStartTick = currentTick;
@@ -1223,6 +1245,8 @@ bool PBEngine::pbeRenderInTower(unsigned long currentTick, unsigned long lastTic
             if (player.towerHitPoints <= 0) {
                 door.state = DoorState::DOOR_CLOSED;
                 player.towerMissingChampion = false;
+                // Placeholder: tower defeat / exit effect.
+                m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 player.towerResumeFloor = player.dungeonFloor;
                 player.towerResumeDoor = m_inTowerOpenedCol;
                 m_inTowerChallengeDoorOverrideActive = false;
@@ -1796,10 +1820,14 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
                             }
                         }
                     }
+                    // Placeholder: tower door selection movement effect.
+                    m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                 } else if (inputMessage.inputId == IDI_LACTIVATE || inputMessage.inputId == IDI_RACTIVATE) {
                     const int column = m_inTowerSelectedDoor;
                     if (column >= 0 && column < 3 && grid.cells[row][column].state == DoorState::DOOR_CLOSED) {
                         DoorCell& door = grid.cells[row][column];
+                        // Placeholder: tower door open / room entry effect.
+                        m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                         door.state = DoorState::DOOR_OPEN;
                         if (door.hasLadder || door.role == TowerDoorRole::STAIRCASE) {
                             grid.towerSectionOpen[row] = false;
@@ -1824,6 +1852,8 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
                     m_inTowerD20Value = TEST_D20_ROLL != 0 ? TEST_D20_ROLL : pbeRandomInt(20) + 1;
                     m_inTowerCriticalFailure = m_inTowerD20Value == 1;
                     m_inTowerCriticalSuccess = m_inTowerD20Value == 20;
+                    // Placeholder: instant D20 result effect when the model is unavailable.
+                    m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                     m_inTowerD20RollState = 2;
                     m_inTowerD20StopTick = currentTick;
                 } else if (m_inTowerD20RollState == 0) {
@@ -1831,6 +1861,8 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
                     m_inTowerCriticalFailure = m_inTowerD20Value == 1;
                     m_inTowerCriticalSuccess = m_inTowerD20Value == 20;
                     m_inTowerRollEnemyCount = m_inTowerEnemyRemaining;
+                    // Placeholder: D20 roll start effect.
+                    m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                     m_inTowerD20RollState = 1;
                     m_inTowerD20SpinStartTick = currentTick;
                     m_inTowerD20SpinBaseRotX = m_inTowerD20RotX;
@@ -1841,6 +1873,8 @@ void PBEngine::pbeUpdateStateInTower(stInputMessage inputMessage) {
                     m_inTowerD20RotX = orientation.rx;
                     m_inTowerD20RotY = orientation.ry + kD20YawTrimDeg;
                     m_inTowerD20RotZ = orientation.rz;
+                    // Placeholder: D20 result locked effect.
+                    m_soundSystem.pbsPlayEffect(SOUNDBEEP);
                     m_inTowerD20RollState = 2;
                     m_inTowerD20StopTick = currentTick;
                     m_inTowerEnemyRemaining = m_inTowerRollEnemyCount - m_inTowerD20Value;

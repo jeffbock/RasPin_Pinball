@@ -56,6 +56,24 @@
             "detail": "Generate src/system/io_defs_generated.h from src/user/io_definitions.json"
         },
 
+        {
+            "type": "shell",
+            "label": "Generate State Map",
+            "command": "python",
+            "args": ["scripts/generate_state_map.py"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "detail": "Generate Graphviz DOT state maps from documentation/state_map registries"
+        },
+
         // Windows C/C++ single file EXE build
         {
             "type": "cppbuild",
