@@ -79,5 +79,6 @@
         "stop_token": "cpp",
         "thread": "cpp"
     },
-    "debug.defaultDebugConfiguration": "RasPi: Debug Pinball"
+    "debug.defaultDebugConfiguration": "RasPi: Debug Pinball",
+    "cmake.sourceDirectory": "C:/Users/jeffd/PInballProj/PInball/CMake"
 }
