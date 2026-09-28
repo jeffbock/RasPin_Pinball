@@ -40,6 +40,9 @@ bool PBSound::pbsInitialize() {
     }
     
     // Initialize SDL audio subsystem
+#if defined(EXE_MODE_WINDOWS)
+    SDL_SetMainReady();
+#endif
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
         return false;
     }
@@ -571,9 +574,9 @@ void PBSound::handleChannelFinished(int channel) {
             if (result == -1) {
                 // Failed to play - clean up and stop streaming
                 if (videoAudioChunk->abuf) {
-                    delete[] (Sint16*)videoAudioChunk->abuf;
+                    SDL_free(videoAudioChunk->abuf);
                 }
-                delete videoAudioChunk;
+                SDL_free(videoAudioChunk);
                 videoAudioChunk = nullptr;
                 videoAudioStreaming = false;
             } else {
