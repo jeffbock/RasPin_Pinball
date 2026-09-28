@@ -1,7 +1,7 @@
 {
     "version": "2.0.0",
     "tasks": [
-        // Copy required Windows runtime DLLs (FFmpeg + ANGLE) to build output dirs.
+        // Copy required Windows runtime DLLs (FFmpeg, ANGLE, SDL2, and SDL_mixer) to build output dirs.
         // Run this once after a clean or whenever the DLLs are missing.
         {
             "type": "shell",
@@ -14,7 +14,7 @@
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": [],
             "group": "build",
-            "detail": "Copy FFmpeg and ANGLE DLLs (including transitive deps) to Windows build output directories"
+            "detail": "Copy FFmpeg, ANGLE, SDL2, and SDL_mixer DLLs to Windows build output directories"
         },
 
         // Version Update Task

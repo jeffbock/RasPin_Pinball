@@ -84,11 +84,19 @@ Windows sound playback uses SDL2 and SDL_mixer. Download the latest compatible *
     - SDL `include/` contents -> `src/include_ogl_win/SDL2/`
     - SDL_mixer `include/SDL_mixer.h` -> `src/include_ogl_win/SDL2/`
     - `SDL2.lib` and `SDL2_mixer.lib` from the x64 `lib/` directories -> `src/lib_ogl_win/`
-    - `SDL2.dll`, `SDL2_mixer.dll`, and any x64 SDL_mixer codec DLLs -> `src/lib_ogl_win/`
+     - `SDL2.dll` and `SDL2_mixer.dll` -> `src/lib_ogl_win/`
+     - SDL_mixer codec DLLs from the x64 `optional/` directory -> `src/lib_ogl_win/`:
+         `libgme.dll`, `libogg-0.dll`, `libopus-0.dll`, `libopusfile-0.dll`,
+         `libwavpack-1.dll`, and `libxmp.dll`
 
     Keep the SDL2 headers, import library, and runtime DLL from the same SDL 2.xx package. Do the same for SDL_mixer; do not mix x86 and x64 files.
 
-3. **Windows: Copy Runtime DLLs** deploys the SDL2, SDL_mixer, and codec DLLs beside `Pinball.exe` for both Debug and Release builds. It reports a missing required DLL with its expected source path.
+3. **Windows: Copy Runtime DLLs** reads SDL2, SDL_mixer, and codec DLLs from
+    `src/lib_ogl_win/` and deploys them beside `Pinball.exe` for both Debug and
+    Release builds. It runs automatically before each Windows Full Pinball Build;
+    run it manually after a clean build or when DLLs are missing. If it reports a
+    missing DLL, copy the matching x64 file from the SDL development package to
+    `src/lib_ogl_win/`.
 
 ### FFMPEG Video Support (Windows)
 
