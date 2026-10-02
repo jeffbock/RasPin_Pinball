@@ -3,9 +3,9 @@
 # Run after a clean build or when DLLs are missing from the build output.
 
 $ffmpeg       = "C:\Users\jeffd\PInballProj\FFmpegLib\ffmpeg-master-latest-win64-gpl-shared\ffmpeg-master-latest-win64-gpl-shared\bin"
-$angleDebug   = "C:\ArmDev\angle\out\debug"
 $angleRelease = "C:\ArmDev\angle\out\release"
 $root         = Split-Path $PSScriptRoot -Parent
+$sdl          = Join-Path $root "src\lib_ogl_win"
 
 $ffmpegDlls = @(
     "avcodec-62.dll",
@@ -22,6 +22,27 @@ $angleDlls = @(
     "dawn_proc.dll"
 )
 
+$sdlDlls = @(
+    "SDL2.dll",
+    "SDL2_mixer.dll",
+    "libgme.dll",
+    "libogg-0.dll",
+    "libopus-0.dll",
+    "libopusfile-0.dll",
+    "libwavpack-1.dll",
+    "libxmp.dll"
+)
+
+function Copy-RuntimeDll([string]$sourceDirectory, [string]$dllName, [string]$destination) {
+    $sourcePath = Join-Path $sourceDirectory $dllName
+    if (-not (Test-Path $sourcePath)) {
+        throw "Required runtime DLL is missing: $sourcePath"
+    }
+
+    Copy-Item $sourcePath $destination -Force
+    Write-Host "  Copied $dllName -> $destination"
+}
+
 # Map each build target to its corresponding ANGLE source
 $targets = @(
     @{ Path = "$root\build\windows\debug";   Angle = $angleRelease },
@@ -33,12 +54,13 @@ foreach ($entry in $targets) {
     $angleSrc = $entry.Angle
     New-Item -ItemType Directory -Force -Path $t | Out-Null
     foreach ($d in $ffmpegDlls) {
-        Copy-Item "$ffmpeg\$d" "$t\" -Force
-        Write-Host "  Copied $d -> $t"
+        Copy-RuntimeDll $ffmpeg $d $t
     }
     foreach ($d in $angleDlls) {
-        Copy-Item "$angleSrc\$d" "$t\" -Force
-        Write-Host "  Copied $d -> $t"
+        Copy-RuntimeDll $angleSrc $d $t
+    }
+    foreach ($d in $sdlDlls) {
+        Copy-RuntimeDll $sdl $d $t
     }
     # Clean up debug-only DLLs that are statically linked in release ANGLE
     foreach ($stale in @("libc++.dll", "third_party_abseil-cpp_absl.dll", "third_party_zlib.dll")) {

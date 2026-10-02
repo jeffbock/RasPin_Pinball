@@ -18,10 +18,26 @@ To use PBSound on Raspberry Pi, you need to install SDL2 and SDL_mixer:
 #include "PBBuildSwitch.h"
 #include <string>
 
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(EXE_MODE_WINDOWS) || defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#define PB_SOUND_USE_SDL_MIXER
+#endif
+
+#if defined(PB_SOUND_USE_SDL_MIXER)
+#if defined(EXE_MODE_WINDOWS)
+#define SDL_MAIN_HANDLED
+#endif
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
 #include <map>
+
+#if SDL_MAJOR_VERSION != 2
+#error PBSound requires SDL2 headers.
+#endif
+
+#if SDL_MIXER_MAJOR_VERSION != 2
+#error PBSound requires SDL_mixer 2 headers.
+#endif
 #endif
 
 class PBSound {
@@ -59,7 +75,7 @@ public:
     // Stop all effects
     void pbsStopAllEffects();
     
-    // Video audio streaming functions (Raspberry Pi only, channel 4 reserved for video)
+    // Video audio streaming functions (channel 4 reserved for video)
     bool pbsStartVideoAudioStream();  // Initialize the streaming system
     void pbsStopVideoAudio();
     void pbsRestartVideoAudioStream();  // Restart stream (for looping video)
@@ -86,7 +102,7 @@ private:
     int musicVolume;   // 0-100%
     int videoVolume;   // 0-100%
     
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     Mix_Music* currentMusic;
     Mix_Chunk* effectSlots[4];  // Up to 4 simultaneous effects
     int effectChannels[4];      // Channel assignments for effects

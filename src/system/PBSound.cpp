@@ -5,12 +5,12 @@
 #include "PBSound.h"
 #include "PBVideo.h"
 
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
 PBSound* PBSound::instance = nullptr;
 #endif
 
 PBSound::PBSound() : initialized(false), masterVolume(100), musicVolume(100), videoVolume(100) {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     currentMusic = nullptr;
     for (int i = 0; i < 4; i++) {
         effectSlots[i] = nullptr;
@@ -34,12 +34,15 @@ PBSound::~PBSound() {
 }
 
 bool PBSound::pbsInitialize() {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (initialized) {
         return true;
     }
     
     // Initialize SDL audio subsystem
+#if defined(EXE_MODE_WINDOWS)
+    SDL_SetMainReady();
+#endif
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
         return false;
     }
@@ -66,13 +69,12 @@ bool PBSound::pbsInitialize() {
     initialized = true;
     return true;
 #else
-    // Windows stub - just return false
     return false;
 #endif
 }
 
 void PBSound::pbsShutdown() {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (!initialized) {
         return;
     }
@@ -105,7 +107,7 @@ void PBSound::pbsShutdown() {
 }
 
 bool PBSound::pbsPlayMusic(const std::string& mp3FilePath) {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (!initialized) {
         return false;
     }
@@ -132,13 +134,12 @@ bool PBSound::pbsPlayMusic(const std::string& mp3FilePath) {
     
     return true;
 #else
-    // Windows stub
     return false;
 #endif
 }
 
 void PBSound::pbsStopMusic() {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (initialized && currentMusic) {
         Mix_HaltMusic();
     }
@@ -146,7 +147,7 @@ void PBSound::pbsStopMusic() {
 }
 
 void PBSound::pbsPauseMusic() {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (initialized && currentMusic && Mix_PlayingMusic()) {
         Mix_PauseMusic();
     }
@@ -154,7 +155,7 @@ void PBSound::pbsPauseMusic() {
 }
 
 void PBSound::pbsResumeMusic() {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (initialized && currentMusic && Mix_PausedMusic()) {
         Mix_ResumeMusic();
     }
@@ -162,7 +163,7 @@ void PBSound::pbsResumeMusic() {
 }
 
 int PBSound::pbsPlayEffect(const std::string& mp3FilePath, bool loop) {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (!initialized) {
         return 0;
     }
@@ -198,13 +199,12 @@ int PBSound::pbsPlayEffect(const std::string& mp3FilePath, bool loop) {
     
     return slotIndex + 1; // Return 1-based effect ID
 #else
-    // Windows stub
     return 0;
 #endif
 }
 
 bool PBSound::pbsIsEffectPlaying(int effectId) {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (!initialized || effectId < 1 || effectId > 4) {
         return false;
     }
@@ -216,13 +216,12 @@ bool PBSound::pbsIsEffectPlaying(int effectId) {
     
     return effectActive[slotIndex];
 #else
-    // Windows stub
     return false;
 #endif
 }
 
 void PBSound::pbsStopEffect(int effectId) {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (!initialized || effectId < 1 || effectId > 4) {
         return;
     }
@@ -241,7 +240,7 @@ void PBSound::pbsStopEffect(int effectId) {
 }
 
 void PBSound::pbsStopAllEffects() {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (!initialized) {
         return;
     }
@@ -267,7 +266,7 @@ void PBSound::pbsSetMasterVolume(int volume) {
     
     masterVolume = volume;
     
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (initialized) {
         Mix_Volume(-1, convertVolumeToSDL(masterVolume));
     }
@@ -281,7 +280,7 @@ void PBSound::pbsSetMusicVolume(int volume) {
     
     musicVolume = volume;
     
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (initialized) {
         Mix_VolumeMusic(convertVolumeToSDL(musicVolume));
     }
@@ -295,14 +294,14 @@ void PBSound::pbsSetVideoVolume(int volume) {
     
     videoVolume = volume;
     
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (initialized) {
         Mix_Volume(VIDEO_AUDIO_CHANNEL, convertVolumeToSDL(videoVolume));
     }
 #endif
 }
 
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
 int PBSound::findFreeEffectSlot() {
     for (int i = 0; i < 4; i++) {
         if (!effectActive[i]) {
@@ -402,16 +401,16 @@ Mix_Chunk* PBSound::createAudioChunkFromSamples(const float* audioSamples, int n
 }
 #endif
 
-// Video audio streaming functions (stubs for Windows, implementation for Raspberry Pi)
+// Video audio streaming functions.
 
 void PBSound::pbsSetVideoAudioProvider(PBVideo* provider) {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     videoProvider = provider;
 #endif
 }
 
 bool PBSound::pbsStartVideoAudioStream() {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (!initialized || !videoProvider) {
         return false;
     }
@@ -434,9 +433,9 @@ bool PBSound::pbsStartVideoAudioStream() {
             if (result == -1) {
                 // Failed to play - clean up
                 if (videoAudioChunk->abuf) {
-                    delete[] (Sint16*)videoAudioChunk->abuf;
+                    SDL_free(videoAudioChunk->abuf);
                 }
-                delete videoAudioChunk;
+                SDL_free(videoAudioChunk);
                 videoAudioChunk = nullptr;
                 videoAudioStreaming = false;
                 return false;
@@ -456,7 +455,7 @@ bool PBSound::pbsStartVideoAudioStream() {
 }
 
 void PBSound::pbsStopVideoAudio() {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (!initialized) {
         return;
     }
@@ -470,25 +469,25 @@ void PBSound::pbsStopVideoAudio() {
     // Clean up current chunk
     if (videoAudioChunk) {
         if (videoAudioChunk->abuf) {
-            delete[] (Sint16*)videoAudioChunk->abuf;
+            SDL_free(videoAudioChunk->abuf);
         }
-        delete videoAudioChunk;
+        SDL_free(videoAudioChunk);
         videoAudioChunk = nullptr;
     }
     
     // Clean up pending chunk if any
     if (videoAudioChunkPending) {
         if (videoAudioChunkPending->abuf) {
-            delete[] (Sint16*)videoAudioChunkPending->abuf;
+            SDL_free(videoAudioChunkPending->abuf);
         }
-        delete videoAudioChunkPending;
+        SDL_free(videoAudioChunkPending);
         videoAudioChunkPending = nullptr;
     }
 #endif
 }
 
 void PBSound::pbsRestartVideoAudioStream() {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     // Stop current stream and restart
     pbsStopVideoAudio();
     
@@ -502,7 +501,7 @@ void PBSound::pbsRestartVideoAudioStream() {
 }
 
 bool PBSound::pbsIsVideoAudioPlaying() {
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
     if (!initialized) {
         return false;
     }
@@ -514,7 +513,7 @@ bool PBSound::pbsIsVideoAudioPlaying() {
 }
 
 // Static callback function - called by SDL_mixer when a channel finishes
-#if defined(EXE_MODE_RASPI) || defined(EXE_MODE_DEBIAN)
+#if defined(PB_SOUND_USE_SDL_MIXER)
 void PBSound::channelFinishedCallback(int channel) {
     if (instance) {
         instance->handleChannelFinished(channel);
@@ -530,9 +529,9 @@ void PBSound::handleChannelFinished(int channel) {
     // Clean up previous chunk
     if (videoAudioChunk) {
         if (videoAudioChunk->abuf) {
-            delete[] (Sint16*)videoAudioChunk->abuf;
+            SDL_free(videoAudioChunk->abuf);
         }
-        delete videoAudioChunk;
+        SDL_free(videoAudioChunk);
         videoAudioChunk = nullptr;
     }
     
@@ -547,9 +546,9 @@ void PBSound::handleChannelFinished(int channel) {
         if (result == -1) {
             // Failed to play - clean up and stop streaming
             if (videoAudioChunk->abuf) {
-                delete[] (Sint16*)videoAudioChunk->abuf;
+                SDL_free(videoAudioChunk->abuf);
             }
-            delete videoAudioChunk;
+            SDL_free(videoAudioChunk);
             videoAudioChunk = nullptr;
             videoAudioStreaming = false;
             return;
@@ -575,9 +574,9 @@ void PBSound::handleChannelFinished(int channel) {
             if (result == -1) {
                 // Failed to play - clean up and stop streaming
                 if (videoAudioChunk->abuf) {
-                    delete[] (Sint16*)videoAudioChunk->abuf;
+                    SDL_free(videoAudioChunk->abuf);
                 }
-                delete videoAudioChunk;
+                SDL_free(videoAudioChunk);
                 videoAudioChunk = nullptr;
                 videoAudioStreaming = false;
             } else {
